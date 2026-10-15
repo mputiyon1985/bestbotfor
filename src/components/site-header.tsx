@@ -56,6 +56,11 @@ export async function SiteHeader() {
             <Link href={signedIn ? '/members' : '/sign-in'} className="min-h-12 py-2 font-semibold">
               {signedIn ? 'Members' : 'Sign in'}
             </Link>
+            {signedIn ? (
+              <div className="min-h-12 py-2">
+                <MemberButton />
+              </div>
+            ) : null}
           </nav>
         </details>
       </div>

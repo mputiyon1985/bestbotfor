@@ -12,6 +12,19 @@ export const skillLabel: Record<Skill, string> = {
   pro: 'Advanced',
 }
 
+/** Phrase that already includes the article, so "any" does not become "a any budget budget". */
+export function budgetPhrase(budget: Budget): string {
+  if (budget === 'free') return 'on a free-only budget'
+  if (budget === 'low') return 'on a low-cost budget'
+  return 'on any budget'
+}
+
+export function skillPhrase(skill: Skill): string {
+  const label = skillLabel[skill].toLowerCase()
+  const article = /^[aeiou]/.test(label) ? 'an' : 'a'
+  return `${article} ${label} user`
+}
+
 export function formatUsDate(isoDate: string): string {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(isoDate)
   if (!match) return isoDate

@@ -1,11 +1,9 @@
-import { eq } from 'drizzle-orm'
 import type { Database } from './db'
-import { rateLimits } from './db/schema'
 
 /**
- * Fixed window counter. A burst across two app instances can exceed the limit
- * by a small amount; the unique key still caps each window. Fail closed when
- * the database write fails so signup and /go cannot skip the limit.
+ * One SQLite statement inserts or increments the window. Concurrent requests
+ * cannot all read the old count and then write the same next value. Fail
+ * closed when the write fails so signup and /go cannot skip the limit.
  */
 export async function consumeRateLimit(
   db: Database,
@@ -14,20 +12,26 @@ export async function consumeRateLimit(
   windowMs: number,
   now = Date.now(),
 ): Promise<{ ok: boolean; remaining: number }> {
-  const existing = await db.select().from(rateLimits).where(eq(rateLimits.key, key)).limit(1)
-  const row = existing[0]
-  if (!row || row.resetAt <= now) {
-    await db
-      .insert(rateLimits)
-      .values({ key, count: 1, resetAt: now + windowMs })
-      .onConflictDoUpdate({
-        target: rateLimits.key,
-        set: { count: 1, resetAt: now + windowMs },
-      })
-    return { ok: true, remaining: limit - 1 }
-  }
-  if (row.count >= limit) return { ok: false, remaining: 0 }
-  const next = row.count + 1
-  await db.update(rateLimits).set({ count: next }).where(eq(rateLimits.key, key))
-  return { ok: next <= limit, remaining: Math.max(0, limit - next) }
+  const resetAt = now + windowMs
+  const result = await db.$client.execute({
+    sql: `
+      INSERT INTO rate_limits ("key", count, reset_at)
+      VALUES (?, 1, ?)
+      ON CONFLICT("key") DO UPDATE SET
+        count = CASE
+          WHEN rate_limits.reset_at <= ? THEN 1
+          ELSE rate_limits.count + 1
+        END,
+        reset_at = CASE
+          WHEN rate_limits.reset_at <= ? THEN ?
+          ELSE rate_limits.reset_at
+        END
+      RETURNING count
+    `,
+    args: [key, resetAt, now, now, resetAt],
+  })
+  const count = Number(result.rows[0]?.count ?? 0)
+  if (!Number.isFinite(count) || count <= 0) return { ok: false, remaining: 0 }
+  const ok = count <= limit
+  return { ok, remaining: ok ? limit - count : 0 }
 }

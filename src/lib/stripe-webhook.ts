@@ -90,14 +90,14 @@ export async function handleStripeWebhook(input: {
 }
 
 async function applyEvent(db: Database, event: Stripe.Event): Promise<void> {
-  if (event.type === 'checkout.session.completed') {
+  if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
     const parsed = checkoutSchema.safeParse(event.data.object)
     if (!parsed.success || parsed.data.mode !== 'subscription' || !parsed.data.subscription) return
     await upsertSubscription(db, {
       subscriptionId: parsed.data.subscription,
       customerId: parsed.data.customer ?? null,
       clerkUserId: parsed.data.metadata?.clerkUserId ?? null,
-      status: 'incomplete',
+      status: event.type === 'checkout.session.async_payment_succeeded' ? 'active' : 'incomplete',
       priceId: null,
       periodEnd: null,
     })

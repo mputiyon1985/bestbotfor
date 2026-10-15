@@ -10,9 +10,13 @@ import { getCatalog, getTool } from '@/lib/catalog'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
 import { breadcrumbJsonLd, softwareJsonLd } from '@/lib/jsonld'
 import { pageMetadata } from '@/lib/metadata'
+import { slugSchema } from '@/lib/validation'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
+  if (!slugSchema.safeParse(slug).success) {
+    return pageMetadata({ title: 'Tool', description: 'That tool is not in the catalog.', path: '/tools', noIndex: true })
+  }
   const tool = await getTool(slug)
   if (!tool) return pageMetadata({ title: 'Tool', description: 'That tool is not in the catalog.', path: `/tools/${slug}`, noIndex: true })
   return pageMetadata({
@@ -24,6 +28,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function ToolPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
+  if (!slugSchema.safeParse(slug).success) notFound()
   const tool = await getTool(slug)
   if (!tool) notFound()
   const catalog = await getCatalog()

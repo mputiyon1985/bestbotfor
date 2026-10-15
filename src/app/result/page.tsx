@@ -5,7 +5,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
 import { getCatalog } from '@/lib/catalog'
-import { budgetLabel, priceLabel, skillLabel } from '@/lib/format'
+import { budgetLabel, budgetPhrase, priceLabel, skillLabel, skillPhrase } from '@/lib/format'
 import { breadcrumbJsonLd } from '@/lib/jsonld'
 import { memberAccess } from '@/lib/members'
 import { pageMetadata } from '@/lib/metadata'
@@ -39,7 +39,7 @@ export async function generateMetadata({
   const title = result && pick ? `Best AI tool for ${result.task.name.toLowerCase()}: ${pick.name}` : 'Your result'
   const description =
     result && pick
-      ? `${pick.name} is the top pick for ${result.task.name.toLowerCase()} on a ${budgetLabel[parsed.data.budget].toLowerCase()} budget for a ${skillLabel[parsed.data.skill].toLowerCase()} user.`
+      ? `${pick.name} is the top pick for ${result.task.name.toLowerCase()} ${budgetPhrase(parsed.data.budget)} for ${skillPhrase(parsed.data.skill)}.`
       : 'No matching tools for that combination.'
   const query = new URLSearchParams(parsed.data).toString()
   return pageMetadata({

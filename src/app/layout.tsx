@@ -1,11 +1,11 @@
-import type { ReactNode } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import type { Metadata } from 'next'
 import { Fraunces, Source_Sans_3 } from 'next/font/google'
-import { GoogleAnalytics } from '@next/third-parties/google'
 import { Analytics } from '@vercel/analytics/next'
 import { headers } from 'next/headers'
 import Script from 'next/script'
 import { ConsentBanner, consentDefaultScript } from '@/components/consent-banner'
+import { GoogleAnalyticsScripts } from '@/components/google-analytics'
 import { JsonLd } from '@/components/json-ld'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
@@ -70,7 +70,11 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <JsonLd data={websiteJsonLd()} nonce={nonce} />
       <JsonLd data={organizationJsonLd()} nonce={nonce} />
       <Analytics />
-      {gaId.success ? <GoogleAnalytics gaId={gaId.data} nonce={nonce ?? undefined} /> : null}
+      {gaId.success ? (
+        <Suspense fallback={null}>
+          <GoogleAnalyticsScripts gaId={gaId.data} nonce={nonce ?? undefined} />
+        </Suspense>
+      ) : null}
     </>
   )
 

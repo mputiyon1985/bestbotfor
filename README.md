@@ -15,7 +15,7 @@ npm ci
 cp .env.example .env.local
 ```
 
-For local development, `TURSO_DATABASE_URL=file:./data/local.db` is enough. `TURSO_AUTH_TOKEN` is required only for a hosted Turso database. `npm run dev` applies the SQL migrations and seeds the catalog.
+For local development, `TURSO_DATABASE_URL=file:./data/local.db` is enough. `TURSO_AUTH_TOKEN` is required only for a hosted Turso database. `npm run dev` creates the parent directory for a `file:` URL, applies the SQL migrations, and seeds the catalog.
 
 ```bash
 npm run dev

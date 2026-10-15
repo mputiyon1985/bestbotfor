@@ -1,9 +1,39 @@
-import { readdir, readFile } from 'node:fs/promises'
+import { mkdir, readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { createClient } from '@libsql/client'
 
+/**
+ * libsql file URLs. `:memory:` has no directory. `file://` URLs use the URL
+ * pathname; `file:./relative.db` keeps the relative path.
+ */
+export function sqliteFilePath(url: string): string | null {
+  if (!url.startsWith('file:')) return null
+  const withoutQuery = url.split('?')[0] ?? url
+  const rest = withoutQuery.slice('file:'.length)
+  if (rest === ':memory:' || rest.startsWith(':memory:')) return null
+  if (rest.startsWith('//')) {
+    try {
+      const pathname = decodeURIComponent(new URL(withoutQuery).pathname)
+      return pathname && pathname !== '/' ? pathname : null
+    } catch {
+      return null
+    }
+  }
+  return rest || null
+}
+
+/** Create the parent directory for a file: database. Remote libsql URLs are unchanged. */
+export async function ensureSqliteDirectory(url: string): Promise<void> {
+  const filePath = sqliteFilePath(url)
+  if (!filePath) return
+  const directory = path.dirname(filePath)
+  if (!directory || directory === '.') return
+  await mkdir(directory, { recursive: true })
+}
+
 export async function applyMigrations(url: string, authToken?: string): Promise<void> {
   const fileDatabase = url.startsWith('file:')
+  if (fileDatabase) await ensureSqliteDirectory(url)
   const client = createClient({
     url,
     authToken: fileDatabase ? undefined : authToken,

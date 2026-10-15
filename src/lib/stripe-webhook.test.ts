@@ -94,6 +94,34 @@ describe('handleStripeWebhook', () => {
     await close()
   })
 
+  it('records a subscription when a delayed checkout payment succeeds', async () => {
+    const { db, close } = await createTestDatabase()
+    const event = {
+      id: 'evt_async',
+      type: 'checkout.session.async_payment_succeeded',
+      livemode: false,
+      data: {
+        object: {
+          mode: 'subscription',
+          customer: 'cus_async',
+          subscription: 'sub_async',
+          metadata: { clerkUserId: 'user_async' },
+        },
+      },
+    } as unknown as Stripe.Event
+    const result = await handleStripeWebhook({
+      rawBody: JSON.stringify(event),
+      signature: 'valid',
+      db,
+      stripe: stripeStub([event]),
+      secret: SECRET,
+    })
+    expect(result.status).toBe(200)
+    const rows = await db.select().from(subscriptions).where(eq(subscriptions.stripeSubscriptionId, 'sub_async'))
+    expect(rows[0]).toMatchObject({ clerkUserId: 'user_async', status: 'active', stripeCustomerId: 'cus_async' })
+    await close()
+  })
+
   it('reports billing as disabled when Stripe is not passed in', async () => {
     const { db, close } = await createTestDatabase()
     const result = await handleStripeWebhook({
