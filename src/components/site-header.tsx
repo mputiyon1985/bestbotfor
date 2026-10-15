@@ -12,6 +12,7 @@ export async function SiteHeader() {
   }
 
   const links = [
+    { href: '/tools', label: 'Tools' },
     { href: '/best/coding', label: 'Best for' },
     { href: '/compare/cursor-vs-github-copilot', label: 'Compare' },
     { href: '/pricing', label: 'Pricing' },

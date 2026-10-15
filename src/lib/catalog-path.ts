@@ -4,14 +4,18 @@ const CATALOG_ROOT = /^\/(go|best|tools)(\/.*)?$/
 
 /**
  * True when a raw request path is under /go, /best, or /tools but is not one
- * safe slug. This runs on the path before the URL parser collapses `%2e%2e`
- * into `/`, which would otherwise answer with the home page.
+ * safe slug. /tools with no slug is the catalog index. This runs on the path
+ * before the URL parser collapses `%2e%2e` into `/`, which would otherwise
+ * answer with the home page.
  */
 export function isUnsafeCatalogPath(rawUrl: string): boolean {
   const path = (rawUrl.split('?')[0] ?? rawUrl).split('#')[0] ?? rawUrl
   const match = CATALOG_ROOT.exec(path)
   if (!match) return false
+  const root = match[1]
   const rest = match[2] ?? ''
+  // /tools is the catalog index. /go and /best still require one slug.
+  if (rest === '' || rest === '/') return root !== 'tools'
   const segment = /^\/([^/]+)\/?$/.exec(rest)
   if (!segment?.[1]) return true
   let decoded = segment[1]

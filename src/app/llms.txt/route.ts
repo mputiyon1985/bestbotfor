@@ -21,6 +21,7 @@ export async function GET() {
     ...comparePairSeeds.map(([a, b]) => `- [${a} vs ${b}](${site}/compare/${a}-vs-${b})`),
     '',
     '## Tools',
+    `- [All tools](${site}/tools): the full catalog. Filter with \`?category=\`.`,
     ...catalog.tools.map((tool) => `- [${tool.name}](${site}/tools/${tool.slug}): ${tool.shortDesc}`),
     '',
     '## Policies',

@@ -86,7 +86,7 @@ async function loadCatalog(): Promise<Catalog> {
   return { tasks: catalogTasks, tools: catalogTools }
 }
 
-export const getCatalog = unstable_cache(loadCatalog, ['catalog-v1'], { revalidate: 3600 })
+export const getCatalog = unstable_cache(loadCatalog, ['catalog-v2'], { revalidate: 3600 })
 
 export async function getTool(slug: string): Promise<CatalogTool | undefined> {
   const catalog = await getCatalog()
