@@ -65,13 +65,13 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
       <JsonLd data={itemListJsonLd(`Best AI tools for ${task.name.toLowerCase()}`, `/best/${task.slug}`, ranked.slice(0, 5))} nonce={nonce} />
       <JsonLd data={faqJsonLd(faqs)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
-      <h1 className="font-serif text-5xl leading-tight">Best AI tool for {task.name.toLowerCase()}</h1>
+      <h1 className="font-bold text-5xl leading-tight">Best AI tool for {task.name.toLowerCase()}</h1>
       <p className="text-lg">
         The best AI tool for {task.name.toLowerCase()} is {top.name}. {top.shortDesc}
       </p>
       <p className="text-sm text-muted">Last reviewed {verified}. Prices change, so confirm them on the vendor’s site.</p>
       <p>
-        <OutboundLink slug={top.slug} className="inline-flex min-h-12 items-center rounded-full bg-forest px-5 font-semibold text-white">
+        <OutboundLink slug={top.slug} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
           Visit {top.name}
         </OutboundLink>
       </p>
@@ -103,7 +103,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
         </table>
       </div>
       <section>
-        <h2 className="font-serif text-3xl">Questions</h2>
+        <h2 className="font-semibold text-3xl">Questions</h2>
         <dl className="mt-4 space-y-4">
           {faqs.map((faq) => (
             <div key={faq.question}>

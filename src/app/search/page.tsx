@@ -36,7 +36,7 @@ export default async function SearchPage({
   return (
     <div className="space-y-6">
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Search', path: '/search' }]} />
-      <h1 className="font-serif text-5xl">Search tools</h1>
+      <h1 className="font-bold text-5xl">Search tools</h1>
       <form action="/search" method="get" role="search" className="flex flex-wrap gap-2">
         <label htmlFor="q" className="sr-only">
           Search tools
@@ -49,7 +49,7 @@ export default async function SearchPage({
           maxLength={80}
           className="min-h-12 min-w-0 flex-1 rounded-xl border border-line bg-card px-3"
         />
-        <button type="submit" className="min-h-12 rounded-full bg-forest px-5 font-semibold text-white">
+        <button type="submit" className="min-h-12 rounded-full bg-indigo px-5 font-medium text-white">
           Search
         </button>
       </form>

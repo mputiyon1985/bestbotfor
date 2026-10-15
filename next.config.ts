@@ -15,6 +15,13 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  async redirects() {
+    return [
+      { source: '/opengraph-image', destination: '/og/og-default-1200x630.png', permanent: true },
+      { source: '/icon.svg', destination: '/favicon.svg', permanent: true },
+      { source: '/manifest.webmanifest', destination: '/site.webmanifest', permanent: true },
+    ]
+  },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }]
   },

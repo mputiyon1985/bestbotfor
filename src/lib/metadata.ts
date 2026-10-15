@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { OG_IMAGE_PATH } from './brand'
 import { getSiteUrl, SITE_NAME, TAGLINE } from './site'
 
 export function pageMetadata(input: {
@@ -10,7 +11,7 @@ export function pageMetadata(input: {
   noIndex?: boolean
 }): Metadata {
   const canonical = new URL(input.path, getSiteUrl()).toString()
-  const image = input.imagePath ?? '/opengraph-image'
+  const image = input.imagePath ?? OG_IMAGE_PATH
   return {
     title: input.absoluteTitle ? { absolute: input.title } : input.title,
     description: input.description,

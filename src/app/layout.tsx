@@ -1,6 +1,6 @@
 import { Suspense, type ReactNode } from 'react'
-import type { Metadata } from 'next'
-import { Fraunces, Source_Sans_3 } from 'next/font/google'
+import type { Metadata, Viewport } from 'next'
+import localFont from 'next/font/local'
 import { Analytics } from '@vercel/analytics/next'
 import { headers } from 'next/headers'
 import Script from 'next/script'
@@ -9,6 +9,7 @@ import { GoogleAnalyticsScripts } from '@/components/google-analytics'
 import { JsonLd } from '@/components/json-ld'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
+import { BRAND, OG_IMAGE_PATH } from '@/lib/brand'
 import { isClerkConfigured } from '@/lib/flags'
 import { organizationJsonLd, websiteJsonLd } from '@/lib/jsonld'
 import { homeDescription, homeTitle } from '@/lib/metadata'
@@ -16,23 +17,28 @@ import { getSiteUrl, SITE_NAME, TAGLINE } from '@/lib/site'
 import { gaIdSchema } from '@/lib/validation'
 import './globals.css'
 
-const sans = Source_Sans_3({
-  subsets: ['latin'],
-  weight: ['400', '600', '700'],
-  variable: '--font-source',
+const poppins = localFont({
+  src: [
+    { path: '../fonts/Poppins-Regular.woff2', weight: '400', style: 'normal' },
+    { path: '../fonts/Poppins-Medium.woff2', weight: '500', style: 'normal' },
+    { path: '../fonts/Poppins-SemiBold.woff2', weight: '600', style: 'normal' },
+    { path: '../fonts/Poppins-Bold.woff2', weight: '700', style: 'normal' },
+  ],
+  variable: '--font-poppins',
   display: 'swap',
-})
-
-const serif = Fraunces({
-  subsets: ['latin'],
-  weight: ['500', '700'],
-  variable: '--font-fraunces',
-  display: 'swap',
+  adjustFontFallback: 'Arial',
 })
 
 const verification = process.env.GOOGLE_SITE_VERIFICATION?.trim()
 const googleVerification = verification && /^[A-Za-z0-9_-]+$/.test(verification) ? verification : undefined
 const gaId = gaIdSchema.safeParse(process.env.NEXT_PUBLIC_GA_ID?.trim() ?? '')
+
+const ogImage = { url: OG_IMAGE_PATH, width: 1200, height: 630, alt: TAGLINE }
+
+export const viewport: Viewport = {
+  themeColor: BRAND.indigo,
+  colorScheme: 'light dark',
+}
 
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
@@ -40,14 +46,23 @@ export const metadata: Metadata = {
   description: homeDescription,
   applicationName: SITE_NAME,
   alternates: { canonical: '/' },
+  manifest: '/site.webmanifest',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+    ],
+    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
   openGraph: {
     title: homeTitle,
     description: TAGLINE,
     siteName: SITE_NAME,
     locale: 'en_US',
     type: 'website',
+    images: [ogImage],
   },
-  twitter: { card: 'summary_large_image', title: homeTitle, description: TAGLINE },
+  twitter: { card: 'summary_large_image', title: homeTitle, description: TAGLINE, images: [OG_IMAGE_PATH] },
   verification: googleVerification ? { google: googleVerification } : undefined,
   robots: { index: true, follow: true },
 }
@@ -97,7 +112,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   }
 
   return (
-    <html lang="en-US" className={`${sans.variable} ${serif.variable}`}>
+    <html lang="en-US" className={poppins.variable}>
       <body className="font-sans antialiased">
         {gaId.success ? (
           <Script id="ga-consent-default" strategy="beforeInteractive" nonce={nonce ?? undefined}>

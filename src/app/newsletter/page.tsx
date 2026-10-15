@@ -13,7 +13,7 @@ export default function NewsletterPage() {
   return (
     <article className="max-w-xl space-y-4">
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Newsletter', path: '/newsletter' }]} />
-      <h1 className="font-serif text-5xl">Daily AI digest</h1>
+      <h1 className="font-bold text-5xl">Daily AI digest</h1>
       <p>
         A short, plain-English note on AI tools and agents. We store your email on our servers. When the digest is
         connected to Beehiiv, that is where the issues are sent. If Beehiiv asks you to confirm, check your inbox.

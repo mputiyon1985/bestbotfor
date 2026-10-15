@@ -26,7 +26,7 @@ export default async function MembersPage({
   if (!access.allowed) {
     return (
       <article className="max-w-2xl space-y-4">
-        <h1 className="font-serif text-5xl">Members</h1>
+        <h1 className="font-bold text-5xl">Members</h1>
         {checkout === 'success' ? <p>Payment is processing. Membership opens when Stripe confirms the subscription.</p> : null}
         {access.reason === 'billing-disabled' ? (
           <p>Membership billing is not available on this server yet.</p>
@@ -46,7 +46,7 @@ export default async function MembersPage({
 
   return (
     <article className="space-y-8">
-      <h1 className="font-serif text-5xl">Your membership</h1>
+      <h1 className="font-bold text-5xl">Your membership</h1>
       <p>Your subscription is active. Saved picks and the comparison notes are open.</p>
       {customer ? (
         <form action={portalAction}>
@@ -58,7 +58,7 @@ export default async function MembersPage({
         <p className="text-sm text-muted">The billing portal appears after Stripe sends a customer id.</p>
       )}
       <section>
-        <h2 className="font-serif text-3xl">Saved picks</h2>
+        <h2 className="font-semibold text-3xl">Saved picks</h2>
         {picks.length === 0 ? (
           <p className="mt-2 text-muted">You have not saved a pick yet. Run the picker and choose “Save this pick.”</p>
         ) : (
@@ -83,7 +83,7 @@ export default async function MembersPage({
         )}
       </section>
       <section>
-        <h2 className="font-serif text-3xl">Deep dives</h2>
+        <h2 className="font-semibold text-3xl">Deep dives</h2>
         <ul className="mt-3 space-y-2">
           {comparePairSeeds.map(([a, b]) => (
             <li key={`${a}-${b}`}>

@@ -1,15 +1,16 @@
 'use client'
 
 import { SignIn } from '@clerk/nextjs'
+import { BRAND } from '@/lib/brand'
 
 export function SignInPanel() {
   return (
     <SignIn
       appearance={{
         variables: {
-          colorPrimary: '#1b4332',
-          colorBackground: '#fffdf8',
-          colorForeground: '#1c1915',
+          colorPrimary: BRAND.indigo,
+          colorBackground: BRAND.white,
+          colorForeground: BRAND.ink,
           borderRadius: '0.75rem',
         },
       }}

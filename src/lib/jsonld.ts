@@ -1,3 +1,4 @@
+import { ORGANIZATION_LOGO_PATH } from './brand'
 import { absoluteUrl, getSiteUrl, SITE_NAME, TAGLINE } from './site'
 import type { CatalogTool } from './catalog-types'
 
@@ -24,7 +25,7 @@ export function organizationJsonLd() {
     name: SITE_NAME,
     url: getSiteUrl(),
     description: `${TAGLINE} BestBotFor recommends one AI tool and two alternatives.`,
-    logo: absoluteUrl('/icon.svg'),
+    logo: absoluteUrl(ORGANIZATION_LOGO_PATH),
   }
 }
 

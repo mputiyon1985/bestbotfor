@@ -62,7 +62,7 @@ export function ConsentBanner() {
           </button>
           <button
             type="button"
-            className="min-h-12 rounded-full bg-forest px-4 text-sm font-semibold text-white"
+            className="min-h-12 rounded-full bg-indigo px-4 text-sm font-medium text-white"
             onClick={() => {
               writeChoice('granted')
               updateConsent('granted')

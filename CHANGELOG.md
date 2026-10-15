@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Apply the approved concept 1 brand: Poppins, the indigo and mint palette, lockups in the header and footer, kit favicons, and kit Open Graph art.
+
 ## 0.1.0
 
 - Local `file:` databases create their parent directory before migrate and seed.

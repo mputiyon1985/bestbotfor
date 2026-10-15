@@ -66,9 +66,9 @@ export default async function ResultPage({
   if (!parsed.success) {
     return (
       <div>
-        <h1 className="font-serif text-4xl">We need three answers</h1>
+        <h1 className="font-bold text-4xl">We need three answers</h1>
         <p className="mt-3 text-muted">Choose a job, a budget, and an experience level. The form works without an account.</p>
-        <Link href="/" className="mt-6 inline-flex min-h-12 items-center rounded-full bg-forest px-5 font-semibold text-white">
+        <Link href="/" className="mt-6 inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
           Back to the questions
         </Link>
       </div>
@@ -80,7 +80,7 @@ export default async function ResultPage({
   if (!result || result.picks.length === 0) {
     return (
       <div>
-        <h1 className="font-serif text-4xl">No tool in the catalog fits that job yet</h1>
+        <h1 className="font-bold text-4xl">No tool in the catalog fits that job yet</h1>
         <p className="mt-3 text-muted">Try a nearby job from the list on the home page.</p>
         <Link href="/" className="mt-6 inline-flex min-h-12 items-center font-semibold underline">
           Start over
@@ -103,8 +103,8 @@ export default async function ResultPage({
     <article className="space-y-10">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
-      <p className="text-sm font-semibold uppercase tracking-[0.14em] text-forest">Your pick</p>
-      <h1 className="font-serif text-5xl leading-tight">{top.name}</h1>
+      <p className="text-sm font-semibold uppercase tracking-[0.14em] text-accent">Your pick</p>
+      <h1 className="font-bold text-5xl leading-tight">{top.name}</h1>
       <p className="max-w-2xl text-lg">
         Best bot for {result.task.name.toLowerCase()}, {budgetLabel[parsed.data.budget].toLowerCase()}, {skillLabel[parsed.data.skill].toLowerCase()}: {top.name}.
       </p>
@@ -115,7 +115,7 @@ export default async function ResultPage({
         <Fact label="Free tier" value={top.tool.hasFreeTier ? 'Yes' : 'No'} />
       </dl>
       <div className="flex flex-wrap gap-3">
-        <OutboundLink slug={top.slug} className="inline-flex min-h-12 items-center rounded-full bg-forest px-5 font-semibold text-white">
+        <OutboundLink slug={top.slug} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
           Visit {top.name}
         </OutboundLink>
         <Link href={`/tools/${top.slug}`} className="inline-flex min-h-12 items-center rounded-full border border-ink px-5 font-semibold">
@@ -128,7 +128,7 @@ export default async function ResultPage({
           <input type="hidden" name="task" value={parsed.data.task} />
           <input type="hidden" name="budget" value={parsed.data.budget} />
           <input type="hidden" name="skill" value={parsed.data.skill} />
-          <button type="submit" className="min-h-12 rounded-full border border-forest px-5 font-semibold text-forest">
+          <button type="submit" className="min-h-12 rounded-full border border-accent px-5 font-medium text-accent">
             Save this pick
           </button>
         </form>
@@ -142,14 +142,14 @@ export default async function ResultPage({
       )}
 
       <section>
-        <h2 className="font-serif text-3xl">Alternatives</h2>
+        <h2 className="font-semibold text-3xl">Alternatives</h2>
         {alternatives.length === 0 ? (
           <p className="mt-2 text-muted">The catalog does not have two other strong fits for this job.</p>
         ) : (
           <ul className="mt-4 grid gap-4 md:grid-cols-2">
             {alternatives.map((alt) => (
               <li key={alt.slug} className="rounded-2xl border border-line bg-card p-4">
-                <h3 className="font-serif text-2xl">
+                <h3 className="font-semibold text-2xl">
                   <Link href={`/tools/${alt.slug}`} className="underline-offset-4 hover:underline">
                     {alt.name}
                   </Link>
@@ -166,7 +166,7 @@ export default async function ResultPage({
       </section>
 
       <section>
-        <h2 className="font-serif text-3xl">Side by side</h2>
+        <h2 className="font-semibold text-3xl">Side by side</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
             <caption className="sr-only">Comparison of the top pick and alternatives</caption>
@@ -209,8 +209,8 @@ export default async function ResultPage({
 
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-moss px-4 py-3">
-      <dt className="text-xs font-semibold uppercase tracking-wide text-forest">{label}</dt>
+    <div className="rounded-2xl bg-mist px-4 py-3">
+      <dt className="text-xs font-semibold uppercase tracking-wide text-accent">{label}</dt>
       <dd className="font-semibold">{value}</dd>
     </div>
   )
