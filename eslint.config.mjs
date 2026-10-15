@@ -11,6 +11,7 @@ export default tseslint.config(
       'playwright-report/**',
       'test-results/**',
       'next-env.d.ts',
+      '.lighthouseci/**',
     ],
   },
   eslint.configs.recommended,
@@ -18,6 +19,15 @@ export default tseslint.config(
   {
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    },
+  },
+  {
+    files: ['lighthouserc.cjs'],
+    languageOptions: {
+      globals: {
+        module: 'readonly',
+        process: 'readonly',
+      },
     },
   },
 )

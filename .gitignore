@@ -12,3 +12,4 @@ blob-report
 *.tsbuildinfo
 next-env.d.ts
 .vercel
+.lighthouseci

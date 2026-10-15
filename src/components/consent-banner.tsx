@@ -4,7 +4,9 @@ import { useEffect, useState } from 'react'
 
 const COOKIE = 'bbf_consent'
 
-function readChoice(): 'granted' | 'denied' | null {
+export const CONSENT_EVENT = 'bbf-consent'
+
+export function readConsent(): 'granted' | 'denied' | null {
   if (typeof document === 'undefined') return null
   const match = document.cookie.split('; ').find((part) => part.startsWith(`${COOKIE}=`))
   const value = match?.split('=')[1]
@@ -32,7 +34,7 @@ export function ConsentBanner() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    setVisible(readChoice() === null)
+    setVisible(readConsent() === null)
   }, [])
 
   if (!visible) return null
@@ -55,6 +57,7 @@ export function ConsentBanner() {
             onClick={() => {
               writeChoice('denied')
               updateConsent('denied')
+              window.dispatchEvent(new Event(CONSENT_EVENT))
               setVisible(false)
             }}
           >
@@ -66,6 +69,7 @@ export function ConsentBanner() {
             onClick={() => {
               writeChoice('granted')
               updateConsent('granted')
+              window.dispatchEvent(new Event(CONSENT_EVENT))
               setVisible(false)
             }}
           >
@@ -76,30 +80,3 @@ export function ConsentBanner() {
     </div>
   )
 }
-
-export const consentDefaultScript = `
-window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('consent', 'default', {
-  ad_storage: 'denied',
-  ad_user_data: 'denied',
-  ad_personalization: 'denied',
-  analytics_storage: 'denied',
-  functionality_storage: 'denied',
-  personalization_storage: 'denied',
-  security_storage: 'granted',
-  wait_for_update: 500
-});
-gtag('set', 'ads_data_redaction', true);
-gtag('set', 'allow_google_signals', false);
-try {
-  if (document.cookie.indexOf('${COOKIE}=granted') !== -1) {
-    gtag('consent', 'update', {
-      analytics_storage: 'granted',
-      ad_storage: 'denied',
-      ad_user_data: 'denied',
-      ad_personalization: 'denied'
-    });
-  }
-} catch (e) {}
-`
