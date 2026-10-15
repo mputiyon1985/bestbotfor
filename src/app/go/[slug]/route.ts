@@ -1,19 +1,21 @@
-import { NextResponse } from 'next/server'
+import { after, NextResponse } from 'next/server'
+import { toolSeeds } from '@/data/catalog'
 import { getCatalog } from '@/lib/catalog'
+import { withDeadline } from '@/lib/deadline'
 import { getDb } from '@/lib/db'
 import { clicks } from '@/lib/db/schema'
-import { clientIp, countryCode, hashIp, rateLimitKey, sameOriginPath } from '@/lib/ip'
+import { GO_DB_BUDGET_MS, resolveGoRedirect } from '@/lib/go-redirect'
+import { clientIp, rateLimitKey } from '@/lib/ip'
 import { consumeRateLimit } from '@/lib/rate-limit'
-import { decideRedirect } from '@/lib/redirect'
 import { getSiteUrl } from '@/lib/site'
 import { slugSchema } from '@/lib/validation'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * Allowlist redirect. The destination is the tool's official URL from the
- * database. Query strings, affiliate_url, and anything else the caller sends
- * are ignored. A stored URL that is not public https is refused.
+ * Allowlist redirect. The destination is the tool's official URL, and the
+ * host must be on the reviewed list shipped with the seed. Query strings and
+ * affiliate URLs are ignored. The click row is written after the response.
  */
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   const { slug } = await context.params
@@ -21,43 +23,49 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     return text('That address is not a tool in the catalog.', 404)
   }
 
+  const reviewed = toolSeeds.find((item) => item.slug === slug)
+  if (!reviewed) return text('That tool is not in the catalog.', 404)
+
   const db = getDb()
   const ip = clientIp(request.headers)
-  let limited: { ok: boolean }
-  try {
-    limited = await consumeRateLimit(db, rateLimitKey(ip, 'go'), 60, 60_000)
-  } catch (error) {
-    console.error('go rate limit failed', error instanceof Error ? error.name : 'error')
-    return text('Try again in a minute.', 503)
-  }
-  if (!limited.ok) return text('Too many clicks from this network. Try again in a minute.', 429)
-
-  const catalog = await getCatalog()
-  const tool = catalog.tools.find((item) => item.slug === slug) ?? null
-  const decision = decideRedirect({
-    tool: tool ? { url: tool.url, affiliateUrl: tool.affiliate.affiliateUrl } : null,
+  const outcome = await resolveGoRedirect({
+    headers: request.headers,
+    ip,
+    siteUrl: getSiteUrl(),
+    seedUrl: reviewed.url,
+    allowedHosts: reviewed.allowedHosts,
+    limit: () => consumeRateLimit(db, rateLimitKey(ip, 'go'), 60, 60_000),
+    loadTool: async () => {
+      const catalog = await getCatalog()
+      const tool = catalog.tools.find((item) => item.slug === slug)
+      if (!tool) return null
+      return { id: tool.id, url: tool.url, affiliateUrl: tool.affiliate.affiliateUrl }
+    },
   })
-  if (decision.type === 'not_found' || !tool) {
-    return text('That tool is not in the catalog.', 404)
+
+  if (outcome.status !== 302) return text(outcome.body, outcome.status)
+
+  const click = outcome.click
+  if (click) {
+    after(async () => {
+      try {
+        await withDeadline(
+          db.insert(clicks).values({
+            toolId: click.toolId,
+            page: click.page,
+            ts: Date.now(),
+            country: click.country,
+            ipHash: click.ipHash,
+          }),
+          GO_DB_BUDGET_MS,
+        )
+      } catch (error) {
+        console.error('click log failed', error instanceof Error ? error.name : 'error')
+      }
+    })
   }
 
-  const purpose = request.headers.get('purpose')
-  const prefetch = request.headers.get('next-router-prefetch')
-  if (purpose !== 'prefetch' && prefetch !== '1') {
-    try {
-      await db.insert(clicks).values({
-        toolId: tool.id,
-        page: sameOriginPath(request.headers.get('referer'), getSiteUrl()),
-        ts: Date.now(),
-        country: countryCode(request.headers),
-        ipHash: hashIp(ip),
-      })
-    } catch (error) {
-      console.error('click log failed', error instanceof Error ? error.name : 'error')
-    }
-  }
-
-  const response = NextResponse.redirect(decision.url, 302)
+  const response = NextResponse.redirect(outcome.location, 302)
   response.headers.set('Cache-Control', 'no-store')
   return response
 }

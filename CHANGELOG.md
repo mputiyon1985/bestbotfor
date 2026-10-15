@@ -3,6 +3,10 @@
 ## Unreleased
 
 - Apply the approved concept 1 brand: Poppins, the indigo and mint palette, lockups in the header and footer, kit favicons, and kit Open Graph art.
+- Google Analytics does not load gtag.js until the visitor accepts cookies.
+- `/go` redirects only to the reviewed host for that tool.
+- `/go` fails open when the rate-limit write is slow, and records the click after the redirect.
+- CI runs gitleaks, a client-bundle token scan, database-write and member-route checks, Lighthouse, and CodeQL. Actions are pinned to commit SHAs.
 
 ## 0.1.0
 

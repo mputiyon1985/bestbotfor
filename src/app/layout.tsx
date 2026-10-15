@@ -2,9 +2,8 @@ import { Suspense, type ReactNode } from 'react'
 import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import { Analytics } from '@vercel/analytics/next'
-import { headers } from 'next/headers'
-import Script from 'next/script'
-import { ConsentBanner, consentDefaultScript } from '@/components/consent-banner'
+import { cookies, headers } from 'next/headers'
+import { ConsentBanner } from '@/components/consent-banner'
 import { GoogleAnalyticsScripts } from '@/components/google-analytics'
 import { JsonLd } from '@/components/json-ld'
 import { SiteFooter } from '@/components/site-footer'
@@ -71,6 +70,7 @@ export const dynamic = 'force-dynamic'
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const nonce = (await headers()).get('x-nonce')
+  const analyticsGranted = (await cookies()).get('bbf_consent')?.value === 'granted'
   const clerkOn = isClerkConfigured()
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ''
 
@@ -87,7 +87,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <Analytics />
       {gaId.success ? (
         <Suspense fallback={null}>
-          <GoogleAnalyticsScripts gaId={gaId.data} nonce={nonce ?? undefined} />
+          <GoogleAnalyticsScripts gaId={gaId.data} nonce={nonce ?? undefined} initialGranted={analyticsGranted} />
         </Suspense>
       ) : null}
     </>
@@ -113,14 +113,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   return (
     <html lang="en-US" className={poppins.variable}>
-      <body className="font-sans antialiased">
-        {gaId.success ? (
-          <Script id="ga-consent-default" strategy="beforeInteractive" nonce={nonce ?? undefined}>
-            {consentDefaultScript}
-          </Script>
-        ) : null}
-        {shell}
-      </body>
+      <body className="font-sans antialiased">{shell}</body>
     </html>
   )
 }
