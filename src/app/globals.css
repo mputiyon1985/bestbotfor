@@ -1,18 +1,62 @@
 @import 'tailwindcss';
 
-@theme {
-  --font-sans: var(--font-source), 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-fraunces), Georgia, 'Times New Roman', serif;
-  --color-paper: #f6f3ec;
-  --color-ink: #1c1915;
-  --color-muted: #4a453e;
-  --color-line: #e3dcd0;
-  --color-card: #fffdf8;
-  --color-forest: #1b4332;
-  --color-moss: #e7f2eb;
-  --color-clay: #9a3412;
-  --color-danger: #9f1239;
-  --color-danger-bg: #fff1f2;
+/*
+ * BestBotFor brand sheet v1.0.
+ * Named colors: Indigo #5B4BFF, Mint #2EE6A8, Ink #12122B, White #FFFFFF, Soft Indigo #8F84FF.
+ * Poppins: Bold headlines, SemiBold subheads and labels, Medium buttons and tagline, Regular body.
+ * Muted text, rules, and callout fills are mixes of those colors so contrast stays WCAG AA.
+ */
+:root {
+  color-scheme: light;
+  --indigo: #5B4BFF;
+  --mint: #2EE6A8;
+  --ink-brand: #12122B;
+  --white: #FFFFFF;
+  --soft: #8F84FF;
+  --paper: var(--white);
+  --ink: var(--ink-brand);
+  --muted: color-mix(in srgb, var(--ink-brand) 72%, var(--white));
+  --line: color-mix(in srgb, var(--ink-brand) 14%, var(--white));
+  --card: var(--white);
+  --mist: color-mix(in srgb, var(--indigo) 8%, var(--white));
+  --accent: var(--indigo);
+  --focus: var(--indigo);
+  --danger: #9f1239;
+  --danger-bg: #fff1f2;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --paper: var(--ink-brand);
+    --ink: var(--white);
+    --muted: var(--soft);
+    --line: color-mix(in srgb, var(--white) 35%, var(--ink-brand));
+    --card: var(--ink-brand);
+    --mist: color-mix(in srgb, var(--indigo) 28%, var(--ink-brand));
+    --accent: var(--mint);
+    --focus: var(--mint);
+    --danger: #ffb4c0;
+    --danger-bg: color-mix(in srgb, #9f1239 40%, var(--ink-brand));
+  }
+}
+
+@theme inline {
+  --font-sans: var(--font-poppins), Poppins, ui-sans-serif, system-ui, sans-serif;
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-card: var(--card);
+  --color-mist: var(--mist);
+  --color-accent: var(--accent);
+  --color-indigo: var(--indigo);
+  --color-mint: var(--mint);
+  --color-soft: var(--soft);
+  --color-white: var(--white);
+  --color-danger: var(--danger);
+  --color-danger-bg: var(--danger-bg);
+  --color-focus: var(--focus);
 }
 
 html {
@@ -20,14 +64,15 @@ html {
 }
 
 body {
-  background: var(--color-paper);
-  color: var(--color-ink);
+  background: var(--paper);
+  color: var(--ink);
   font-size: 1.0625rem;
+  font-weight: 400;
   line-height: 1.6;
 }
 
 :focus-visible {
-  outline: 3px solid var(--color-forest);
+  outline: 3px solid var(--focus);
   outline-offset: 3px;
 }
 
@@ -36,8 +81,8 @@ body {
   left: 1rem;
   top: -4rem;
   z-index: 50;
-  background: var(--color-forest);
-  color: white;
+  background: var(--indigo);
+  color: var(--white);
   padding: 0.75rem 1rem;
   border-radius: 0.5rem;
 }

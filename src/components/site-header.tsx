@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { isClerkConfigured } from '@/lib/flags'
+import { BrandLockup } from './brand-lockup'
 import { MemberButton } from './member-button'
 
 export async function SiteHeader() {
@@ -18,14 +19,12 @@ export async function SiteHeader() {
   ]
 
   return (
-    <header className="border-b border-line bg-paper/95">
+    <header className="border-b border-line bg-paper">
       <a className="skip-link" href="#main">
         Skip to content
       </a>
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4">
-        <Link href="/" className="font-serif text-2xl font-medium tracking-tight">
-          Best<span className="text-forest">Bot</span>For
-        </Link>
+        <BrandLockup />
         <nav aria-label="Primary" className="hidden items-center gap-5 md:flex">
           {links.map((link) => (
             <Link key={link.href} href={link.href} className="text-sm font-semibold text-ink underline-offset-4 hover:underline">

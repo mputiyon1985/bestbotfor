@@ -38,13 +38,12 @@ export default async function HomePage() {
       <JsonLd data={faqJsonLd(faqs)} nonce={nonce} />
       <section className="grid gap-8 md:grid-cols-[1.1fr_0.9fr] md:items-end">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.14em] text-forest">BestBotFor</p>
-          <h1 className="mt-3 font-serif text-5xl leading-tight font-medium md:text-6xl">{TAGLINE}</h1>
+          <h1 className="font-bold text-5xl leading-tight md:text-6xl">{TAGLINE}</h1>
           <p className="mt-4 max-w-xl text-lg text-muted">
             Tell us the job, your budget, and how experienced you are. You’ll get one AI tool and two alternatives, in plain English.
           </p>
         </div>
-        <p className="rounded-3xl bg-moss px-5 py-4 text-sm text-forest">
+        <p className="rounded-3xl bg-mist px-5 py-4 text-sm text-accent">
           No account required. The result has its own link, so you can send it to someone else.
         </p>
       </section>
@@ -52,11 +51,11 @@ export default async function HomePage() {
       <PickerForm tasks={tasks} />
 
       <section>
-        <h2 className="font-serif text-3xl">Popular jobs</h2>
+        <h2 className="font-semibold text-3xl">Popular jobs</h2>
         <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {tasks.map((task) => (
             <li key={task.slug}>
-              <Link href={`/best/${task.slug}`} className="block min-h-12 rounded-2xl border border-line bg-card px-4 py-3 hover:border-forest">
+              <Link href={`/best/${task.slug}`} className="block min-h-12 rounded-2xl border border-line bg-card px-4 py-3 hover:border-accent">
                 <span className="font-semibold">{task.name}</span>
                 <span className="mt-1 block text-sm text-muted">{task.description}</span>
               </Link>
@@ -66,11 +65,11 @@ export default async function HomePage() {
       </section>
 
       <section>
-        <h2 className="font-serif text-3xl">Side by side</h2>
+        <h2 className="font-semibold text-3xl">Side by side</h2>
         <ul className="mt-4 grid gap-3 sm:grid-cols-2">
           {comparePairSeeds.slice(0, 8).map(([a, b]) => (
             <li key={`${a}-${b}`}>
-              <Link href={`/compare/${a}-vs-${b}`} className="block min-h-12 rounded-2xl border border-line px-4 py-3 font-semibold hover:border-forest">
+              <Link href={`/compare/${a}-vs-${b}`} className="block min-h-12 rounded-2xl border border-line px-4 py-3 font-semibold hover:border-accent">
                 {label(a)} vs {label(b)}
               </Link>
             </li>
@@ -79,7 +78,7 @@ export default async function HomePage() {
       </section>
 
       <section>
-        <h2 className="font-serif text-3xl">Questions</h2>
+        <h2 className="font-semibold text-3xl">Questions</h2>
         <dl className="mt-4 space-y-4">
           {faqs.map((faq) => (
             <div key={faq.question}>

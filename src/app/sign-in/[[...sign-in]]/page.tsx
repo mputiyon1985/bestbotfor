@@ -15,7 +15,7 @@ export default function SignInPage() {
   if (!isClerkConfigured()) {
     return (
       <article className="max-w-xl space-y-4">
-        <h1 className="font-serif text-5xl">Sign in</h1>
+        <h1 className="font-bold text-5xl">Sign in</h1>
         <p>Sign-in is not configured on this server yet. The picker still works without an account.</p>
         <Link href="/" className="inline-flex min-h-12 items-center font-semibold underline">
           Back home
@@ -25,7 +25,7 @@ export default function SignInPage() {
   }
   return (
     <article className="space-y-4">
-      <h1 className="font-serif text-4xl">Sign in</h1>
+      <h1 className="font-bold text-4xl">Sign in</h1>
       <SignInPanel />
     </article>
   )

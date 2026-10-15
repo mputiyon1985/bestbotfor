@@ -12,7 +12,7 @@ export default function TermsPage() {
   return (
     <article className="max-w-2xl space-y-4">
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Terms', path: '/terms' }]} />
-      <h1 className="font-serif text-5xl">Terms of use</h1>
+      <h1 className="font-bold text-5xl">Terms of use</h1>
       <p>These terms are a plain-language agreement for bestbotfor.com. They are not a substitute for legal advice. Last updated October 15, 2026.</p>
       <p>
         The site is aimed at readers in the United States. Recommendations are opinions. They are not a warranty that a

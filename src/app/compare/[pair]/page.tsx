@@ -60,7 +60,7 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
       <JsonLd data={faqJsonLd(faqs)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
-      <h1 className="font-serif text-5xl leading-tight">{a.name} vs {b.name}</h1>
+      <h1 className="font-bold text-5xl leading-tight">{a.name} vs {b.name}</h1>
       <p className="text-lg">{summary}</p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
@@ -99,15 +99,15 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
         <Link className="underline" href={`/tools/${b.slug}`}>{b.name} profile</Link>
       </p>
       {notes ? (
-        <section className="rounded-3xl bg-moss p-6">
-          <h2 className="font-serif text-3xl">{notes.heading}</h2>
+        <section className="rounded-3xl bg-mist p-6">
+          <h2 className="font-semibold text-3xl">{notes.heading}</h2>
           {notes.paragraphs.map((paragraph) => (
             <p key={paragraph.slice(0, 40)} className="mt-3">{paragraph}</p>
           ))}
         </section>
       ) : (
         <section className="rounded-3xl border border-line p-6">
-          <h2 className="font-serif text-3xl">Members’ deep dive</h2>
+          <h2 className="font-semibold text-3xl">Members’ deep dive</h2>
           <p className="mt-2 text-muted">
             Members get a longer note on price, skill fit, and when to switch. The note is not on this page until you have an active membership.
           </p>

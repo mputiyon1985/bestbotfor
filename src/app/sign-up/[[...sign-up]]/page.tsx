@@ -15,7 +15,7 @@ export default function SignUpPage() {
   if (!isClerkConfigured()) {
     return (
       <article className="max-w-xl space-y-4">
-        <h1 className="font-serif text-5xl">Create an account</h1>
+        <h1 className="font-bold text-5xl">Create an account</h1>
         <p>Account creation is not configured on this server yet.</p>
         <Link href="/" className="font-semibold underline">
           Back home
@@ -25,7 +25,7 @@ export default function SignUpPage() {
   }
   return (
     <article className="space-y-4">
-      <h1 className="font-serif text-4xl">Create an account</h1>
+      <h1 className="font-bold text-4xl">Create an account</h1>
       <SignUpPanel />
     </article>
   )

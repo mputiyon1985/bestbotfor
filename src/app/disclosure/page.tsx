@@ -12,7 +12,7 @@ export default function DisclosurePage() {
   return (
     <article className="max-w-2xl space-y-4">
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Affiliate disclosure', path: '/disclosure' }]} />
-      <h1 className="font-serif text-5xl">Affiliate disclosure</h1>
+      <h1 className="font-bold text-5xl">Affiliate disclosure</h1>
       <p>
         BestBotFor may earn money if we later join an affiliate or referral program and you buy through a link we
         control. That relationship would not change the editorial rank.

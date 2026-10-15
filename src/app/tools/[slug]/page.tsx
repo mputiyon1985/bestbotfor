@@ -44,8 +44,8 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
       <JsonLd data={softwareJsonLd(tool)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
-      <p className="text-sm font-semibold uppercase tracking-[0.14em] text-forest">{tool.category}</p>
-      <h1 className="font-serif text-5xl">{tool.name}</h1>
+      <p className="text-sm font-semibold uppercase tracking-[0.14em] text-accent">{tool.category}</p>
+      <h1 className="font-bold text-5xl">{tool.name}</h1>
       <p className="text-lg">{tool.shortDesc}</p>
       <p className="max-w-2xl text-muted">{tool.longDesc}</p>
       <dl className="grid gap-3 sm:grid-cols-2">
@@ -57,7 +57,7 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
         <Item label="Free tier" value={tool.hasFreeTier ? 'Yes' : 'No'} />
       </dl>
       <p>
-        <OutboundLink slug={tool.slug} className="inline-flex min-h-12 items-center rounded-full bg-forest px-5 font-semibold text-white">
+        <OutboundLink slug={tool.slug} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
           Visit {tool.name}
         </OutboundLink>
       </p>
@@ -69,7 +69,7 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
         <p className="text-sm text-muted">Program note, copied from the vendor’s page: {tool.affiliate.commissionNote}</p>
       ) : null}
       <section>
-        <h2 className="font-serif text-3xl">Jobs it fits</h2>
+        <h2 className="font-semibold text-3xl">Jobs it fits</h2>
         <ul className="mt-3 space-y-3">
           {tool.fits.map((fit) => (
             <li key={fit.taskSlug}>
@@ -83,7 +83,7 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
       </section>
       {comparisons.length > 0 ? (
         <section>
-          <h2 className="font-serif text-3xl">Comparisons</h2>
+          <h2 className="font-semibold text-3xl">Comparisons</h2>
           <ul className="mt-3 space-y-2">
             {comparisons.map(([left, right]) => {
               const other = left === tool.slug ? right : left

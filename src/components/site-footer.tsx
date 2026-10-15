@@ -1,14 +1,15 @@
 import Link from 'next/link'
 import { taskSeeds } from '@/data/catalog'
 import { TAGLINE } from '@/lib/site'
+import { BrandLockup } from './brand-lockup'
 
 export function SiteFooter() {
   return (
     <footer className="mt-16 border-t border-line">
       <div className="mx-auto grid max-w-5xl gap-8 px-4 py-10 md:grid-cols-3">
         <div>
-          <p className="font-serif text-xl">BestBotFor</p>
-          <p className="mt-2 text-sm text-muted">{TAGLINE}</p>
+          <BrandLockup />
+          <p className="mt-3 text-sm text-muted">{TAGLINE}</p>
         </div>
         <nav aria-label="Best for">
           <h2 className="text-sm font-semibold">Best for</h2>

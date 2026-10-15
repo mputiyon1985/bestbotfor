@@ -29,7 +29,7 @@ export function PickerForm({ tasks }: { tasks: CatalogTask[] }) {
       }}
     >
       <fieldset>
-        <legend className="font-serif text-2xl">1. What do you want to do?</legend>
+        <legend className="font-semibold text-2xl">1. What do you want to do?</legend>
         <label htmlFor="task" className="mt-3 block text-sm text-muted">
           Pick the closest job.
         </label>
@@ -49,7 +49,7 @@ export function PickerForm({ tasks }: { tasks: CatalogTask[] }) {
       </fieldset>
 
       <fieldset>
-        <legend className="font-serif text-2xl">2. What can you spend?</legend>
+        <legend className="font-semibold text-2xl">2. What can you spend?</legend>
         <div className="mt-3 grid gap-2">
           {[
             ['free', 'Free only'],
@@ -65,7 +65,7 @@ export function PickerForm({ tasks }: { tasks: CatalogTask[] }) {
       </fieldset>
 
       <fieldset>
-        <legend className="font-serif text-2xl">3. How experienced are you?</legend>
+        <legend className="font-semibold text-2xl">3. How experienced are you?</legend>
         <div className="mt-3 grid gap-2">
           {[
             ['beginner', 'Beginner'],
@@ -80,7 +80,7 @@ export function PickerForm({ tasks }: { tasks: CatalogTask[] }) {
         </div>
       </fieldset>
 
-      <button type="submit" className="min-h-12 w-full rounded-full bg-forest px-6 font-semibold text-white md:w-auto">
+      <button type="submit" className="min-h-12 w-full rounded-full bg-indigo px-6 font-medium text-white md:w-auto">
         See my best bot
       </button>
     </form>
