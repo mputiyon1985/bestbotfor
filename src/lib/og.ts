@@ -7,6 +7,9 @@ import { budgetSchema, parseComparePair, quizSchema, skillSchema, slugSchema } f
 /** CDN caches one card per canonical URL for a day, and may serve it stale for a week. */
 export const OG_CACHE_CONTROL = 'public, s-maxage=86400, stale-while-revalidate=604800'
 
+/** A missing catalog is not a stable "invalid URL". Do not let the CDN remember it. */
+export const OG_UNAVAILABLE_CACHE_CONTROL = 'no-store'
+
 export const OG_CANONICAL_PATH = '/api/og'
 
 export const OG_RATE_LIMIT = 60
@@ -70,9 +73,10 @@ export function ogCopy(
  * Every preview URL collapses to one cache key.
  * Valid shapes: `/api/og`, `kind=compare&pair=`, `kind=result&task&budget&skill`, `kind=task&task`.
  * Anything else, including free-text titles, returns the default path so the CDN stores one redirect.
+ * A missing catalog returns null: the caller serves a fallback image and must not cache a redirect.
  */
-export function canonicalOgPath(searchParams: URLSearchParams, catalog: Catalog | null): string {
-  if (!catalog) return OG_CANONICAL_PATH
+export function canonicalOgPath(searchParams: URLSearchParams, catalog: Catalog | null): string | null {
+  if (!catalog) return null
 
   const kind = searchParams.get('kind')
   if (kind === 'compare') {

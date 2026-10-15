@@ -5,13 +5,23 @@ export class DeadlineError extends Error {
   }
 }
 
-/** Rejects when `work` is still pending after `ms`. The original promise is left running. */
+/**
+ * Rejects when `work` is still pending after `ms`.
+ * The original promise stays observed, so a rejection that arrives after the
+ * deadline does not surface as an unhandled rejection.
+ */
 export function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
-  let timer: ReturnType<typeof setTimeout> | undefined
-  const timeout = new Promise<never>((_, reject) => {
-    timer = setTimeout(() => reject(new DeadlineError()), ms)
-  })
-  return Promise.race([work, timeout]).finally(() => {
-    if (timer) clearTimeout(timer)
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new DeadlineError()), ms)
+    work.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (error: unknown) => {
+        clearTimeout(timer)
+        reject(error instanceof Error ? error : new Error('failed'))
+      },
+    )
   })
 }

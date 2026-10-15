@@ -10,6 +10,7 @@ import {
   OG_DB_BUDGET_MS,
   OG_RATE_LIMIT,
   OG_RATE_WINDOW_MS,
+  OG_UNAVAILABLE_CACHE_CONTROL,
   ogCopy,
   type OgCopy,
 } from '@/lib/og'
@@ -44,9 +45,13 @@ export async function GET(request: Request) {
     })
   }
 
+  if (!catalog) {
+    return brandedOgImage(FALLBACK, OG_UNAVAILABLE_CACHE_CONTROL)
+  }
+
   const canonical = canonicalOgPath(url.searchParams, catalog)
   const current = url.pathname + url.search
-  if (current !== canonical) {
+  if (canonical && current !== canonical) {
     return new NextResponse(null, {
       status: 308,
       headers: {

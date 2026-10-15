@@ -52,7 +52,7 @@ function loadAssets(): Promise<Assets> {
 }
 
 /** Per-page link preview. Static pages use the kit PNG instead. */
-export async function brandedOgImage(copy: OgCopy): Promise<ImageResponse> {
+export async function brandedOgImage(copy: OgCopy, cacheControl = OG_CACHE_CONTROL): Promise<ImageResponse> {
   const { bold, medium, semibold, logo } = await loadAssets()
   return new ImageResponse(
     (
@@ -126,7 +126,7 @@ export async function brandedOgImage(copy: OgCopy): Promise<ImageResponse> {
     ),
     {
       ...OG_SIZE,
-      headers: { 'cache-control': OG_CACHE_CONTROL },
+      headers: { 'cache-control': cacheControl },
       fonts: [
         { name: 'Poppins', data: bold, weight: 700, style: 'normal' },
         { name: 'Poppins', data: medium, weight: 500, style: 'normal' },

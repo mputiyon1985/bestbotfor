@@ -84,7 +84,9 @@ describe('canonicalOgPath', () => {
     expect(canonicalOgPath(new URLSearchParams('kind=task&task=missing'), catalog)).toBe('/api/og')
   })
 
-  it('collapses every url when the catalog is unavailable', () => {
-    expect(canonicalOgPath(new URLSearchParams('kind=compare&pair=chatgpt-vs-claude'), null)).toBe('/api/og')
+  it('does not treat a missing catalog as an invalid url', () => {
+    expect(canonicalOgPath(new URLSearchParams('kind=compare&pair=chatgpt-vs-claude'), null)).toBeNull()
+    expect(canonicalOgPath(new URLSearchParams('kind=result&task=chat&budget=any&skill=beginner'), null)).toBeNull()
+    expect(canonicalOgPath(new URLSearchParams('kind=task&task=chat'), null)).toBeNull()
   })
 })
