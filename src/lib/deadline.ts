@@ -1,11 +1,18 @@
+export class DeadlineError extends Error {
+  constructor() {
+    super('deadline')
+    this.name = 'DeadlineError'
+  }
+}
+
 /**
- * Bound a database call so a cold remote connection cannot hold the response
- * open. The original promise is still observed, so a late rejection is not
- * unhandled after the deadline wins.
+ * Rejects when `work` is still pending after `ms`.
+ * The original promise stays observed, so a rejection that arrives after the
+ * deadline does not surface as an unhandled rejection.
  */
 export function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('deadline')), ms)
+    const timer = setTimeout(() => reject(new DeadlineError()), ms)
     work.then(
       (value) => {
         clearTimeout(timer)

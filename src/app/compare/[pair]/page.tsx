@@ -4,7 +4,8 @@ import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { JsonLd } from '@/components/json-ld'
-import { getCatalog } from '@/lib/catalog'
+import { getToolsBySlugs } from '@/lib/catalog'
+import type { CatalogTool } from '@/lib/catalog-types'
 import { comparisonRows, comparisonSummary } from '@/lib/compare'
 import { deepDive } from '@/lib/deep-dive'
 import { priceLabel, skillLabel } from '@/lib/format'
@@ -17,9 +18,7 @@ export async function generateMetadata({ params }: { params: Promise<{ pair: str
   const { pair } = await params
   const parsed = parseComparePair(pair)
   if (!parsed) return pageMetadata({ title: 'Comparison', description: 'That comparison is not available.', path: `/compare/${pair}`, noIndex: true })
-  const catalog = await getCatalog()
-  const a = catalog.tools.find((tool) => tool.slug === parsed.a)
-  const b = catalog.tools.find((tool) => tool.slug === parsed.b)
+  const [a, b] = await orderedPair(parsed.a, parsed.b)
   if (!a || !b) return pageMetadata({ title: 'Comparison', description: 'That comparison is not available.', path: `/compare/${pair}`, noIndex: true })
   return pageMetadata({
     title: `${a.name} vs ${b.name}`,
@@ -33,9 +32,7 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
   const { pair } = await params
   const parsed = parseComparePair(pair)
   if (!parsed) notFound()
-  const catalog = await getCatalog()
-  const a = catalog.tools.find((tool) => tool.slug === parsed.a)
-  const b = catalog.tools.find((tool) => tool.slug === parsed.b)
+  const [a, b] = await orderedPair(parsed.a, parsed.b)
   if (!a || !b) notFound()
   const rows = comparisonRows(a, b)
   const summary = comparisonSummary(a, b, rows)
@@ -118,4 +115,9 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
       )}
     </article>
   )
+}
+
+async function orderedPair(left: string, right: string): Promise<[CatalogTool | undefined, CatalogTool | undefined]> {
+  const tools = await getToolsBySlugs([left, right])
+  return [tools.find((tool) => tool.slug === left), tools.find((tool) => tool.slug === right)]
 }

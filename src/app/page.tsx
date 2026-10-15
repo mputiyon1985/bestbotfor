@@ -3,7 +3,7 @@ import { headers } from 'next/headers'
 import { JsonLd } from '@/components/json-ld'
 import { PickerForm } from '@/components/picker-form'
 import { comparePairSeeds, taskSeeds } from '@/data/catalog'
-import { getCatalog } from '@/lib/catalog'
+import { listTasks } from '@/lib/catalog'
 import { faqJsonLd } from '@/lib/jsonld'
 import { TAGLINE } from '@/lib/site'
 
@@ -29,16 +29,16 @@ const faqs = [
 ]
 
 export default async function HomePage() {
-  const catalog = await getCatalog()
+  const catalogTasks = await listTasks()
   const nonce = (await headers()).get('x-nonce')
-  const tasks = catalog.tasks.length > 0 ? catalog.tasks : taskSeeds
+  const tasks = catalogTasks.length > 0 ? catalogTasks : taskSeeds
 
   return (
     <div className="space-y-16">
       <JsonLd data={faqJsonLd(faqs)} nonce={nonce} />
       <section className="grid gap-8 md:grid-cols-[1.1fr_0.9fr] md:items-end">
         <div>
-          <h1 className="font-bold text-5xl leading-tight md:text-6xl">{TAGLINE}</h1>
+          <h1 className="font-headline text-5xl leading-tight md:text-6xl">{TAGLINE}</h1>
           <p className="mt-4 max-w-xl text-lg text-muted">
             Tell us the job, your budget, and how experienced you are. You’ll get one AI tool and two alternatives, in plain English.
           </p>

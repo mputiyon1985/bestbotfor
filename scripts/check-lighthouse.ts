@@ -1,44 +1,91 @@
-import { spawnSync } from 'node:child_process'
-import { existsSync, readdirSync } from 'node:fs'
+import { spawn, type ChildProcess } from 'node:child_process'
+import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
+import { chromium } from '@playwright/test'
 
-function findChrome(directory: string): string | null {
-  const stack = [directory]
-  while (stack.length > 0) {
-    const current = stack.pop()
-    if (!current || !existsSync(current)) continue
-    for (const entry of readdirSync(current, { withFileTypes: true })) {
-      const full = path.join(current, entry.name)
-      if (entry.isDirectory()) stack.push(full)
-      else if (entry.name === 'chrome' || entry.name === 'chromium') return full
+const port = process.env.LHCI_PORT || String(4400 + Math.floor(Math.random() * 400))
+process.env.LHCI_PORT = port
+const origin = `http://127.0.0.1:${port}`
+
+function startServer(): ChildProcess {
+  return spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-H', '127.0.0.1', '-p', port], {
+    stdio: 'inherit',
+    env: {
+      ...process.env,
+      TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL || 'file:./data/ci.db',
+      TURSO_AUTH_TOKEN: process.env.TURSO_AUTH_TOKEN || 'local',
+      NEXT_PUBLIC_SITE_URL: origin,
+      // Score the production indexing policy. Preview noindex is covered by e2e.
+      VERCEL_ENV: 'production',
+    },
+  })
+}
+
+async function waitForServer(child: ChildProcess): Promise<void> {
+  const started = Date.now()
+  while (Date.now() - started < 60_000) {
+    if (child.exitCode !== null) throw new Error(`next start exited with ${child.exitCode}`)
+    try {
+      const response = await fetch(origin)
+      if (response.ok) {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        if (child.exitCode !== null) throw new Error(`next start exited with ${child.exitCode}`)
+        return
+      }
+    } catch {
+      // server still booting
     }
+    await new Promise((resolve) => setTimeout(resolve, 400))
   }
-  return null
+  throw new Error('next start did not become ready')
 }
 
-function chromePath(): string | null {
-  if (process.env.CHROME_PATH && existsSync(process.env.CHROME_PATH)) return process.env.CHROME_PATH
-  const roots = [
-    path.join(process.env.HOME ?? '', '.cache', 'ms-playwright'),
-    path.join(process.cwd(), 'node_modules', 'playwright-core', '.local-browsers'),
-  ]
-  for (const root of roots) {
-    const found = findChrome(root)
-    if (found) return found
+async function printMetrics(): Promise<void> {
+  const directory = path.join(process.cwd(), '.lighthouseci')
+  const names = (await readdir(directory)).filter((name) => name.endsWith('.json') && name.includes('lhr'))
+  for (const name of names) {
+    const report = JSON.parse(await readFile(path.join(directory, name), 'utf8')) as {
+      finalDisplayedUrl?: string
+      audits?: Record<string, { numericValue?: number }>
+      categories?: Record<string, { score?: number }>
+    }
+    const lcp = report.audits?.['largest-contentful-paint']?.numericValue
+    const tbt = report.audits?.['total-blocking-time']?.numericValue
+    const performance = report.categories?.performance?.score
+    console.log(
+      `lighthouse ${report.finalDisplayedUrl ?? name}: LCP ${lcp?.toFixed(0) ?? '?'}ms, TBT ${tbt?.toFixed(0) ?? '?'}ms, performance ${performance ?? '?'}`,
+    )
   }
-  return null
 }
 
-const chrome = chromePath()
-if (!chrome) {
-  console.error('Install Playwright Chromium before Lighthouse: npx playwright install chromium')
-  process.exit(1)
+async function main(): Promise<number> {
+  process.env.CHROME_PATH = process.env.CHROME_PATH || chromium.executablePath()
+  const server = startServer()
+  try {
+    await waitForServer(server)
+    await fetch(origin)
+    let exitCode = 0
+    for (const config of ['lighthouserc.cjs', 'lighthouserc.home.cjs']) {
+      const code = await new Promise<number>((resolve, reject) => {
+        const child = spawn('npx', ['--yes', '@lhci/cli@0.15.1', 'autorun', '--config', config], {
+          stdio: 'inherit',
+          env: process.env,
+        })
+        child.on('error', reject)
+        child.on('exit', (status) => resolve(status ?? 1))
+      })
+      if (code !== 0) exitCode = code
+    }
+    await printMetrics()
+    return exitCode
+  } finally {
+    server.kill('SIGTERM')
+  }
 }
 
-// Pinned outside package.json so Lighthouse's transitive advisories do not fail npm audit.
-const result = spawnSync('npx', ['--yes', '@lhci/cli@0.15.1', 'autorun'], {
-  stdio: 'inherit',
-  env: { ...process.env, CHROME_PATH: chrome },
-})
-
-process.exit(result.status ?? 1)
+main()
+  .then((exitCode) => process.exit(exitCode))
+  .catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : error)
+    process.exit(1)
+  })

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { OG_IMAGE_PATH } from './brand'
+import { isProductionDeployment } from './indexing'
 import { getSiteUrl, SITE_NAME, TAGLINE } from './site'
 
 export function pageMetadata(input: {
@@ -16,7 +17,8 @@ export function pageMetadata(input: {
     title: input.absoluteTitle ? { absolute: input.title } : input.title,
     description: input.description,
     alternates: { canonical },
-    robots: input.noIndex ? { index: false, follow: false } : { index: true, follow: true },
+    robots:
+      input.noIndex || !isProductionDeployment() ? { index: false, follow: false } : { index: true, follow: true },
     openGraph: {
       title: input.title,
       description: input.description,

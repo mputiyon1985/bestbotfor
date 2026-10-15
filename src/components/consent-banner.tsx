@@ -1,6 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
+import { analyticsPageView } from '@/lib/analytics-page'
+import { OPEN_CONSENT_EVENT } from './cookie-settings-button'
 
 const COOKIE = 'bbf_consent'
 
@@ -30,12 +33,70 @@ function updateConsent(value: 'granted' | 'denied') {
   })
 }
 
-export function ConsentBanner() {
+type AnalyticsWindow = Window & {
+  dataLayer?: unknown[]
+  gtag?: (...args: unknown[]) => void
+}
+
+function loadGoogleAnalytics(gaId: string) {
+  const analyticsWindow = window as AnalyticsWindow
+  if (typeof analyticsWindow.gtag === 'function' || document.getElementById('ga-src')) return
+  analyticsWindow.dataLayer = analyticsWindow.dataLayer || []
+  const gtag = function gtag() {
+    // gtag.js only processes Arguments objects queued on dataLayer.
+    // eslint-disable-next-line prefer-rest-params
+    analyticsWindow.dataLayer?.push(arguments)
+  } as AnalyticsWindow['gtag']
+  analyticsWindow.gtag = gtag
+  gtag?.('consent', 'default', {
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+    analytics_storage: 'denied',
+    functionality_storage: 'denied',
+    personalization_storage: 'denied',
+    security_storage: 'granted',
+  })
+  gtag?.('set', 'ads_data_redaction', true)
+  gtag?.('set', 'allow_google_signals', false)
+  gtag?.('consent', 'update', {
+    analytics_storage: 'granted',
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+  })
+  gtag?.('js', new Date())
+  gtag?.('config', gaId, { send_page_view: false })
+  const script = document.createElement('script')
+  script.id = 'ga-src'
+  script.async = true
+  script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaId)}`
+  document.head.appendChild(script)
+}
+
+export function ConsentBanner({ gaId }: { gaId: string | null }) {
   const [visible, setVisible] = useState(false)
+  const [tracking, setTracking] = useState(false)
+  const pathname = usePathname()
 
   useEffect(() => {
-    setVisible(readConsent() === null)
-  }, [])
+    const choice = readConsent()
+    setVisible(choice === null)
+    if (choice === 'granted' && gaId) {
+      loadGoogleAnalytics(gaId)
+      setTracking(true)
+    }
+    const open = () => setVisible(true)
+    window.addEventListener(OPEN_CONSENT_EVENT, open)
+    return () => window.removeEventListener(OPEN_CONSENT_EVENT, open)
+  }, [gaId])
+
+  useEffect(() => {
+    if (!tracking) return
+    const gtag = (window as AnalyticsWindow).gtag
+    if (typeof gtag !== 'function') return
+    gtag('event', 'page_view', analyticsPageView({ href: window.location.href, referrer: document.referrer || undefined }))
+  }, [pathname, tracking])
 
   if (!visible) return null
 
@@ -69,6 +130,10 @@ export function ConsentBanner() {
             onClick={() => {
               writeChoice('granted')
               updateConsent('granted')
+              if (gaId) {
+                loadGoogleAnalytics(gaId)
+                setTracking(true)
+              }
               window.dispatchEvent(new Event(CONSENT_EVENT))
               setVisible(false)
             }}

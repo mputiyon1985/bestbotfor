@@ -1,13 +1,13 @@
 import type { MetadataRoute } from 'next'
 import { comparePairSeeds } from '@/data/catalog'
-import { getCatalog } from '@/lib/catalog'
+import { listPublicSlugs } from '@/lib/catalog'
 import { getSiteUrl } from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const site = getSiteUrl()
-  const staticPaths = ['/', '/about', '/newsletter', '/disclosure', '/privacy', '/terms', '/pricing', '/search']
+  const staticPaths = ['/', '/about', '/newsletter', '/disclosure', '/privacy', '/terms', '/pricing', '/search', '/tools']
   const entries: MetadataRoute.Sitemap = staticPaths.map((path) => ({
     url: new URL(path, site).toString(),
     changeFrequency: 'weekly',
@@ -15,12 +15,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }))
 
   try {
-    const catalog = await getCatalog()
-    for (const task of catalog.tasks) {
-      entries.push({ url: new URL(`/best/${task.slug}`, site).toString(), changeFrequency: 'weekly', priority: 0.8 })
+    const catalog = await listPublicSlugs()
+    for (const slug of catalog.tasks) {
+      entries.push({ url: new URL(`/best/${slug}`, site).toString(), changeFrequency: 'weekly', priority: 0.8 })
     }
-    for (const tool of catalog.tools) {
-      entries.push({ url: new URL(`/tools/${tool.slug}`, site).toString(), changeFrequency: 'weekly', priority: 0.7 })
+    for (const slug of catalog.tools) {
+      entries.push({ url: new URL(`/tools/${slug}`, site).toString(), changeFrequency: 'weekly', priority: 0.7 })
     }
   } catch (error) {
     console.error('sitemap catalog unavailable', error instanceof Error ? error.name : 'error')

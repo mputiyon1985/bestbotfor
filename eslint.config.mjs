@@ -12,6 +12,8 @@ export default tseslint.config(
       'test-results/**',
       'next-env.d.ts',
       '.lighthouseci/**',
+      'lighthouserc.cjs',
+      'lighthouserc.home.cjs',
     ],
   },
   eslint.configs.recommended,

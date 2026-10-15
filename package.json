@@ -7,8 +7,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "tsx scripts/prepare-db.ts && next dev",
-    "prebuild": "tsx scripts/prepare-db.ts",
+    "dev": "tsx scripts/prepare-clerk-shell.ts && tsx scripts/prepare-db.ts && next dev",
+    "prebuild": "tsx scripts/prepare-clerk-shell.ts && tsx scripts/prepare-db.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -34,6 +34,7 @@
     "react-dom": "^19.3.1",
     "server-only": "^0.0.1",
     "stripe": "^23.0.0",
+    "wawoff2": "^2.0.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {

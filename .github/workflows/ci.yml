@@ -43,15 +43,15 @@ jobs:
         run: npm run check:bundle
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
-      - name: Lighthouse
-        run: npm run check:lighthouse
-        env:
-          TURSO_DATABASE_URL: file:./data/ci.db
-          TURSO_AUTH_TOKEN: local
-          NEXT_PUBLIC_SITE_URL: http://127.0.0.1:4321
       - name: End-to-end
         run: npm run test:e2e
         env:
           CI: true
           TURSO_DATABASE_URL: file:./data/e2e.db
           NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
+      - name: Lighthouse
+        run: npm run check:lighthouse
+        env:
+          TURSO_DATABASE_URL: file:./data/ci.db
+          TURSO_AUTH_TOKEN: local
+          NEXT_PUBLIC_SITE_URL: http://127.0.0.1:4321

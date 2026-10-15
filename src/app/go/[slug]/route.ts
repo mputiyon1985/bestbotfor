@@ -1,6 +1,6 @@
 import { after, NextResponse } from 'next/server'
 import { toolSeeds } from '@/data/catalog'
-import { getCatalog } from '@/lib/catalog'
+import { getTool } from '@/lib/catalog'
 import { withDeadline } from '@/lib/deadline'
 import { getDb } from '@/lib/db'
 import { clicks } from '@/lib/db/schema'
@@ -36,8 +36,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     allowedHosts: reviewed.allowedHosts,
     limit: () => consumeRateLimit(db, rateLimitKey(ip, 'go'), 60, 60_000),
     loadTool: async () => {
-      const catalog = await getCatalog()
-      const tool = catalog.tools.find((item) => item.slug === slug)
+      const tool = await getTool(slug)
       if (!tool) return null
       return { id: tool.id, url: tool.url, affiliateUrl: tool.affiliate.affiliateUrl }
     },

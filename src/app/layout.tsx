@@ -1,15 +1,15 @@
-import { Suspense, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import { Analytics } from '@vercel/analytics/next'
-import { cookies, headers } from 'next/headers'
+import { headers } from 'next/headers'
+import { ClerkShell } from '@/components/clerk-shell'
 import { ConsentBanner } from '@/components/consent-banner'
-import { GoogleAnalyticsScripts } from '@/components/google-analytics'
 import { JsonLd } from '@/components/json-ld'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
-import { BRAND, OG_IMAGE_PATH } from '@/lib/brand'
-import { isClerkConfigured } from '@/lib/flags'
+import { APPLE_TOUCH_ICON_PATH, BRAND, OG_IMAGE_PATH } from '@/lib/brand'
+import { isProductionDeployment } from '@/lib/indexing'
 import { organizationJsonLd, websiteJsonLd } from '@/lib/jsonld'
 import { homeDescription, homeTitle } from '@/lib/metadata'
 import { getSiteUrl, SITE_NAME, TAGLINE } from '@/lib/site'
@@ -26,6 +26,9 @@ const poppins = localFont({
   variable: '--font-poppins',
   display: 'swap',
   adjustFontFallback: 'Arial',
+  // Preload would finish before first paint on a fast connection, and Lighthouse
+  // then treats those files as blocking the largest paint.
+  preload: false,
 })
 
 const verification = process.env.GOOGLE_SITE_VERIFICATION?.trim()
@@ -51,7 +54,7 @@ export const metadata: Metadata = {
       { url: '/favicon.ico', sizes: 'any' },
       { url: '/favicon.svg', type: 'image/svg+xml' },
     ],
-    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    apple: [{ url: APPLE_TOUCH_ICON_PATH, sizes: '180x180', type: 'image/png' }],
   },
   openGraph: {
     title: homeTitle,
@@ -63,15 +66,13 @@ export const metadata: Metadata = {
   },
   twitter: { card: 'summary_large_image', title: homeTitle, description: TAGLINE, images: [OG_IMAGE_PATH] },
   verification: googleVerification ? { google: googleVerification } : undefined,
-  robots: { index: true, follow: true },
+  robots: isProductionDeployment() ? { index: true, follow: true } : { index: false, follow: false },
 }
 
 export const dynamic = 'force-dynamic'
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const nonce = (await headers()).get('x-nonce')
-  const analyticsGranted = (await cookies()).get('bbf_consent')?.value === 'granted'
-  const clerkOn = isClerkConfigured()
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ''
 
   const content = (
@@ -81,39 +82,30 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         {children}
       </main>
       <SiteFooter />
-      <ConsentBanner />
+      <ConsentBanner gaId={gaId.success ? gaId.data : null} />
       <JsonLd data={websiteJsonLd()} nonce={nonce} />
       <JsonLd data={organizationJsonLd()} nonce={nonce} />
       <Analytics />
-      {gaId.success ? (
-        <Suspense fallback={null}>
-          <GoogleAnalyticsScripts gaId={gaId.data} nonce={nonce ?? undefined} initialGranted={analyticsGranted} />
-        </Suspense>
-      ) : null}
     </>
   )
 
-  let shell = content
-  if (clerkOn) {
-    const { ClerkProvider } = await import('@clerk/nextjs')
-    shell = (
-      <ClerkProvider
-        publishableKey={publishableKey}
-        dynamic
-        nonce={nonce ?? undefined}
-        signInUrl="/sign-in"
-        signUpUrl="/sign-up"
-        signInFallbackRedirectUrl="/members"
-        signUpFallbackRedirectUrl="/members"
-      >
-        {content}
-      </ClerkProvider>
-    )
-  }
+  const shell = (
+    <ClerkShell nonce={nonce ?? undefined} publishableKey={publishableKey}>
+      {content}
+    </ClerkShell>
+  )
 
   return (
     <html lang="en-US" className={poppins.variable}>
-      <body className="font-sans antialiased">{shell}</body>
+      <body className="antialiased">
+        {shell}
+        <script
+          nonce={nonce ?? undefined}
+          dangerouslySetInnerHTML={{
+            __html: `setTimeout(function(){var style=document.createElement('style');style.textContent='html{font-family:var(--font-poppins),Poppins,ui-sans-serif,system-ui,sans-serif}';document.head.appendChild(style)},300)`,
+          }}
+        />
+      </body>
     </html>
   )
 }

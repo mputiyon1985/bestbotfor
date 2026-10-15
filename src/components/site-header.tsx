@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { isClerkConfigured } from '@/lib/flags'
 import { BrandLockup } from './brand-lockup'
-import { MemberButton } from './member-button'
+import { MemberButtonSlot } from './member-button-slot'
 
 export async function SiteHeader() {
   let signedIn = false
@@ -40,7 +40,7 @@ export async function SiteHeader() {
               Sign in
             </Link>
           )}
-          {signedIn ? <MemberButton /> : null}
+          {signedIn ? <MemberButtonSlot /> : null}
         </nav>
         <details className="md:hidden">
           <summary className="min-h-12 cursor-pointer list-none rounded-full border border-line px-4 py-2 text-sm font-semibold">
@@ -57,7 +57,7 @@ export async function SiteHeader() {
             </Link>
             {signedIn ? (
               <div className="min-h-12 py-2">
-                <MemberButton />
+                <MemberButtonSlot />
               </div>
             ) : null}
           </nav>

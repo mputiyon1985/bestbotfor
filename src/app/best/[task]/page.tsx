@@ -5,11 +5,10 @@ import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
-import { getCatalog, getTask } from '@/lib/catalog'
+import { getTask, listTaskCandidates } from '@/lib/catalog'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
 import { breadcrumbJsonLd, faqJsonLd, itemListJsonLd } from '@/lib/jsonld'
 import { pageMetadata } from '@/lib/metadata'
-import { toolsForTask } from '@/lib/recommend'
 import { slugSchema } from '@/lib/validation'
 
 export async function generateMetadata({ params }: { params: Promise<{ task: string }> }): Promise<Metadata> {
@@ -31,8 +30,8 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
   if (!slugSchema.safeParse(slug).success) notFound()
   const task = await getTask(slug)
   if (!task) notFound()
-  const catalog = await getCatalog()
-  const ranked = toolsForTask(catalog, task.slug)
+  const loaded = await listTaskCandidates(task.slug)
+  const ranked = loaded?.tools ?? []
   const top = ranked[0]
   if (!top) notFound()
   const nonce = (await headers()).get('x-nonce')

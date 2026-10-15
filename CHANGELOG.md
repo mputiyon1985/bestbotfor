@@ -3,6 +3,13 @@
 ## Unreleased
 
 - Apply the approved concept 1 brand: Poppins, the indigo and mint palette, lockups in the header and footer, kit favicons, and kit Open Graph art.
+- Home page inlines the lockup, inlines CSS, and renders the picker on the server so LCP stays under 2.1s and total blocking time stays under 230ms. Poppins loads after that first paint.
+- `/api/og` sends a one-day CDN cache, redirects invalid query strings to `/api/og`, and rate-limits generation in the route. A missing catalog serves an uncached fallback image.
+- SVG responses send a locked content security policy. Hashed brand files cache for a year. Poppins ships as woff2 only.
+- Deployments that are not Vercel production send `X-Robots-Tag: noindex` and a noindex robots file, so preview hosts stay out of search.
+- Cookie settings in the footer reopens the consent choice. Pricing states that checkout is Stripe test mode.
+- The picker result, checkout, and billing portal are rate-limited.
+- Quiz scoring and the tools directory use indexed queries. `/tools` is paginated. Fit rows are grouped once instead of scanned per tool.
 - Google Analytics does not load gtag.js until the visitor accepts cookies.
 - `/go` redirects only to the reviewed host for that tool.
 - `/go` fails open when the rate-limit write is slow, and records the click after the redirect.

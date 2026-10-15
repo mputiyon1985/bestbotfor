@@ -53,7 +53,10 @@ export function skillDelta(toolSkill: Skill, userSkill: Skill): number {
   return -18
 }
 
-export function rankTools(tools: ScoreableTool[], answers: { budget: Budget; skill: Skill }): RankedTool[] {
+export function rankTools<T extends ScoreableTool>(
+  tools: T[],
+  answers: { budget: Budget; skill: Skill },
+): Array<T & Pick<RankedTool, 'score' | 'budgetDelta' | 'skillDelta'>> {
   const ranked = tools.map((tool) => {
     const budgetAdjustment = budgetDelta(tool, answers.budget)
     const skillAdjustment = skillDelta(tool.skillLevel, answers.skill)
