@@ -12,9 +12,9 @@ export default function PrivacyPage() {
   return (
     <article className="max-w-2xl space-y-4">
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Privacy', path: '/privacy' }]} />
-      <h1 className="font-serif text-5xl">Privacy policy</h1>
+      <h1 className="font-bold text-5xl">Privacy policy</h1>
       <p>This policy covers bestbotfor.com, a United States site. It was last updated on October 15, 2026.</p>
-      <h2 className="font-serif text-3xl">What we collect</h2>
+      <h2 className="font-semibold text-3xl">What we collect</h2>
       <p>
         If you join the newsletter, we store your email address. When our digest is connected, we also send that email
         address to Beehiiv so they can deliver it. We do not ask for your name on the form.
@@ -34,7 +34,7 @@ export default function PrivacyPage() {
         and a country code when the host provides one. We store a hash of the IP address only if a server salt is
         configured. Otherwise we store no IP. We never store the raw IP address.
       </p>
-      <h2 className="font-serif text-3xl">Cookies and analytics</h2>
+      <h2 className="font-semibold text-3xl">Cookies and analytics</h2>
       <p>
         Analytics cookies are off until you accept the banner. That choice is stored in a first-party cookie named
         bbf_consent. It is a preference cookie, not an advertising cookie.
@@ -47,12 +47,12 @@ export default function PrivacyPage() {
       </p>
       <p>Vercel Analytics is cookieless and does not receive your email or name.</p>
       <p>Clerk and Stripe may set cookies that are required for sign-in and checkout. Those are not advertising cookies.</p>
-      <h2 className="font-serif text-3xl">Sharing</h2>
+      <h2 className="font-semibold text-3xl">Sharing</h2>
       <p>
         We use Clerk for accounts, Stripe for payments, Beehiiv for the digest when it is connected, and Vercel to host
         the site. We do not sell personal information.
       </p>
-      <h2 className="font-serif text-3xl">Your choices</h2>
+      <h2 className="font-semibold text-3xl">Your choices</h2>
       <p>
         You can reject analytics on the banner. You can ask us to delete a newsletter address or a saved pick by emailing
         privacy@bestbotfor.com. Account deletion is also available from the Clerk account button when sign-in is enabled.

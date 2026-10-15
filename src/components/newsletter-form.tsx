@@ -39,7 +39,7 @@ export function NewsletterForm() {
         <label htmlFor="company_website">Company website</label>
         <input id="company_website" name="company_website" type="text" tabIndex={-1} autoComplete="off" />
       </div>
-      <button type="submit" disabled={pending} className="min-h-12 rounded-full bg-forest px-5 font-semibold text-white">
+      <button type="submit" disabled={pending} className="min-h-12 rounded-full bg-indigo px-5 font-medium text-white">
         {pending ? 'Sending…' : 'Sign up'}
       </button>
       <p id="newsletter-status" role="status" className={state.status === 'error' ? 'text-danger' : 'text-muted'}>

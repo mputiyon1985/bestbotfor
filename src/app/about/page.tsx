@@ -13,7 +13,7 @@ export default function AboutPage() {
   return (
     <article className="max-w-2xl space-y-4">
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'About', path: '/about' }]} />
-      <h1 className="font-serif text-5xl">About BestBotFor</h1>
+      <h1 className="font-bold text-5xl">About BestBotFor</h1>
       <p>{TAGLINE}</p>
       <p>
         BestBotFor is a United States guide for people who want a straight answer: which AI tool should I use for this job?

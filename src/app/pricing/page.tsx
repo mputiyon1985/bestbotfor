@@ -20,10 +20,10 @@ export default async function PricingPage() {
   return (
     <article className="max-w-2xl space-y-6">
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Pricing', path: '/pricing' }]} />
-      <h1 className="font-serif text-5xl">Membership</h1>
+      <h1 className="font-bold text-5xl">Membership</h1>
       <p>Members can save picker results and read the longer comparison notes. The public guides stay free.</p>
       {price.available ? (
-        <p className="font-serif text-4xl">{formatStripeAmount(price.unitAmount, price.currency, price.interval)}</p>
+        <p className="font-bold text-4xl">{formatStripeAmount(price.unitAmount, price.currency, price.interval)}</p>
       ) : price.reason === 'unconfigured' ? (
         <p>Membership billing is not available yet. We are not listing a price until Stripe returns one.</p>
       ) : (
@@ -36,13 +36,13 @@ export default async function PricingPage() {
       </ul>
       {price.available && userId ? (
         <form action={checkoutAction}>
-          <button type="submit" className="min-h-12 rounded-full bg-forest px-5 font-semibold text-white">
+          <button type="submit" className="min-h-12 rounded-full bg-indigo px-5 font-medium text-white">
             Continue to checkout
           </button>
         </form>
       ) : null}
       {price.available && !userId ? (
-        <Link href="/sign-in" className="inline-flex min-h-12 items-center rounded-full bg-forest px-5 font-semibold text-white">
+        <Link href="/sign-in" className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
           Sign in to subscribe
         </Link>
       ) : null}
