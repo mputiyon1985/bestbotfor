@@ -35,6 +35,21 @@ test('encoded dot segments under /go do not render the home page', async () => {
   }
 })
 
+test('the tools index is served and still rejects an unsafe slug', async () => {
+  const index = await rawStatus('/tools')
+  expect(index.status).toBe(200)
+  expect(index.body).toContain('AI tools')
+  expect(index.body).not.toContain('not a tool in the catalog')
+
+  const filtered = await rawStatus('/tools?category=chat-assistant')
+  expect(filtered.status).toBe(200)
+  expect(filtered.body).toContain('Chat assistant tools')
+
+  const unsafe = await rawStatus('/tools/%2e%2e')
+  expect(unsafe.status).toBe(404)
+  expect(unsafe.body).toContain('not a tool in the catalog')
+})
+
 test('best and tools reject a slug that is not in the catalog shape', async () => {
   for (const path of ['/best/%2e%2e', '/tools/%2e%2e', '/best/Not_A_Task']) {
     const response = await rawStatus(path)

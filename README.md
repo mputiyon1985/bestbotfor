@@ -4,6 +4,8 @@ Three questions. One best bot.
 
 BestBotFor asks for the job, the budget, and experience, then names one AI tool and two alternatives. The public catalog is free. A membership saves picks and unlocks the longer comparison notes.
 
+`/tools` lists every tool. Category links use `?category=` so a filtered view can be shared, and the page is rendered on the server so the filter works without JavaScript.
+
 Production origin: `https://bestbotfor.com`.
 
 ## Setup

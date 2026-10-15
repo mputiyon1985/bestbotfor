@@ -2,6 +2,7 @@
 
 ## 0.1.0
 
+- `/tools` lists every catalog tool and filters by category with a shareable `?category=` URL.
 - Local `file:` databases create their parent directory before migrate and seed.
 - Search text is removed from Google Analytics page views.
 - The consent banner stays in the page flow so it does not cover focused links.

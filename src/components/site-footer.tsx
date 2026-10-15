@@ -25,6 +25,7 @@ export function SiteFooter() {
         <nav aria-label="Company">
           <h2 className="text-sm font-semibold">Company</h2>
           <ul className="mt-2 space-y-1 text-sm">
+            <li><Link className="underline-offset-4 hover:underline" href="/tools">Tools</Link></li>
             <li><Link className="underline-offset-4 hover:underline" href="/about">About</Link></li>
             <li><Link className="underline-offset-4 hover:underline" href="/disclosure">Affiliate disclosure</Link></li>
             <li><Link className="underline-offset-4 hover:underline" href="/privacy">Privacy</Link></li>

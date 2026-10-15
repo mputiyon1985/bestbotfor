@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 
-const pages = ['/', '/newsletter', '/best/coding', '/result?task=chat&budget=any&skill=beginner']
+const pages = ['/', '/newsletter', '/best/coding', '/tools', '/tools?category=coding', '/result?task=chat&budget=any&skill=beginner']
 
 for (const path of pages) {
   test(`${path} has no axe violations`, async ({ page }) => {
