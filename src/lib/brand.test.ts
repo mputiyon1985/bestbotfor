@@ -1,7 +1,14 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { BRAND, OG_IMAGE_PATH, ORGANIZATION_LOGO_PATH } from './brand'
+import { decompress } from 'wawoff2'
+import {
+  BRAND,
+  HASHED_ASSET_PATHS,
+  MASKABLE_ICON_PATH,
+  OG_IMAGE_PATH,
+  ORGANIZATION_LOGO_PATH,
+} from './brand'
 import { organizationJsonLd } from './jsonld'
 import { getSiteUrl, TAGLINE } from './site'
 
@@ -21,12 +28,28 @@ describe('brand sheet palette', () => {
 
   it('uses the approved tagline and the kit open graph image', () => {
     expect(TAGLINE).toBe('Three questions. One best bot.')
-    expect(OG_IMAGE_PATH).toBe('/og/og-default-1200x630.png')
+    expect(OG_IMAGE_PATH).toMatch(/^\/og\/og-default-1200x630\.[0-9a-f]{8}\.png$/)
     const manifest = readFileSync(path.join(process.cwd(), 'public/site.webmanifest'), 'utf8')
     expect(manifest).toContain(BRAND.indigo)
     expect(manifest).toContain(BRAND.ink)
-    expect(manifest).toContain('/maskable-512.png')
+    expect(manifest).toContain(MASKABLE_ICON_PATH)
     expect(manifest).toContain('Three questions. One best bot.')
+  })
+
+  it('keeps hashed brand files, woff2 fonts, and drops the ttf and screenshot copies', async () => {
+    for (const asset of HASHED_ASSET_PATHS) {
+      expect(asset).toMatch(/\.[0-9a-f]{8}\.(png|svg)$/)
+      expect(existsSync(path.join(process.cwd(), 'public', asset.replace(/^\/+/, '')))).toBe(true)
+    }
+    const fonts = path.join(process.cwd(), 'src/fonts')
+    for (const weight of ['Regular', 'Medium', 'SemiBold', 'Bold']) {
+      expect(existsSync(path.join(fonts, `Poppins-${weight}.woff2`))).toBe(true)
+      expect(existsSync(path.join(fonts, `Poppins-${weight}.ttf`))).toBe(false)
+    }
+    expect(existsSync(path.join(fonts, 'OFL.txt'))).toBe(true)
+    expect(existsSync(path.join(process.cwd(), 'docs/screenshots'))).toBe(false)
+    const decoded = Buffer.from(await decompress(readFileSync(path.join(fonts, 'Poppins-Bold.woff2'))))
+    expect(decoded.subarray(0, 4).toString('hex')).toBe('00010000')
   })
 
   it('points organization structured data at the kit icon', () => {

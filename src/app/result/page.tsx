@@ -4,12 +4,14 @@ import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
-import { getCatalog } from '@/lib/catalog'
+import { recommendQuiz } from '@/lib/catalog'
+import { ACTION_LIMITS, allowRate } from '@/lib/action-limit'
+import { getDb } from '@/lib/db'
+import { rateLimitKey, clientIp } from '@/lib/ip'
 import { budgetLabel, budgetPhrase, priceLabel, skillLabel, skillPhrase } from '@/lib/format'
 import { breadcrumbJsonLd } from '@/lib/jsonld'
 import { memberAccess } from '@/lib/members'
 import { pageMetadata } from '@/lib/metadata'
-import { recommend } from '@/lib/recommend'
 import { absoluteUrl } from '@/lib/site'
 import { firstString, quizSchema } from '@/lib/validation'
 import { savePickAction } from './actions'
@@ -33,8 +35,7 @@ export async function generateMetadata({
       noIndex: true,
     })
   }
-  const catalog = await getCatalog()
-  const result = recommend(catalog, parsed.data)
+  const result = await recommendQuiz(parsed.data)
   const pick = result?.picks[0]
   const title = result && pick ? `Best AI tool for ${result.task.name.toLowerCase()}: ${pick.name}` : 'Your result'
   const description =
@@ -61,7 +62,22 @@ export default async function ResultPage({
     budget: firstString(params.budget),
     skill: firstString(params.skill),
   })
-  const nonce = (await headers()).get('x-nonce')
+  const headerStore = await headers()
+  const nonce = headerStore.get('x-nonce')
+  const allowed = await allowRate(
+    getDb(),
+    rateLimitKey(clientIp(headerStore), 'result'),
+    ACTION_LIMITS.result.limit,
+    ACTION_LIMITS.result.windowMs,
+  )
+  if (!allowed) {
+    return (
+      <div>
+        <h1 className="font-bold text-4xl">Too many results</h1>
+        <p className="mt-3 text-muted">This network has asked for too many picks. Try again in a minute.</p>
+      </div>
+    )
+  }
 
   if (!parsed.success) {
     return (
@@ -75,8 +91,7 @@ export default async function ResultPage({
     )
   }
 
-  const catalog = await getCatalog()
-  const result = recommend(catalog, parsed.data)
+  const result = await recommendQuiz(parsed.data)
   if (!result || result.picks.length === 0) {
     return (
       <div>
@@ -110,9 +125,9 @@ export default async function ResultPage({
       </p>
       <p className="max-w-2xl text-muted">{result.why}</p>
       <dl className="grid gap-3 sm:grid-cols-3">
-        <Fact label="Price" value={priceLabel(top.tool)} />
-        <Fact label="Experience" value={skillLabel[top.tool.skillLevel]} />
-        <Fact label="Free tier" value={top.tool.hasFreeTier ? 'Yes' : 'No'} />
+        <Fact label="Price" value={priceLabel(top)} />
+        <Fact label="Experience" value={skillLabel[top.skillLevel]} />
+        <Fact label="Free tier" value={top.hasFreeTier ? 'Yes' : 'No'} />
       </dl>
       <div className="flex flex-wrap gap-3">
         <OutboundLink slug={top.slug} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
@@ -155,7 +170,7 @@ export default async function ResultPage({
                   </Link>
                 </h3>
                 <p className="mt-2 text-sm text-muted">{alt.notes}</p>
-                <p className="mt-2 text-sm">{priceLabel(alt.tool)}</p>
+                <p className="mt-2 text-sm">{priceLabel(alt)}</p>
                 <OutboundLink slug={alt.slug} className="mt-3 inline-flex min-h-12 items-center font-semibold underline">
                   Visit {alt.name}
                 </OutboundLink>
@@ -186,8 +201,8 @@ export default async function ResultPage({
                       {pick.name}
                     </Link>
                   </th>
-                  <td className="py-3 pr-3">{priceLabel(pick.tool)}</td>
-                  <td className="py-3 pr-3">{skillLabel[pick.tool.skillLevel]}</td>
+                  <td className="py-3 pr-3">{priceLabel(pick)}</td>
+                  <td className="py-3 pr-3">{skillLabel[pick.skillLevel]}</td>
                   <td className="py-3">{pick.fitScore}</td>
                 </tr>
               ))}

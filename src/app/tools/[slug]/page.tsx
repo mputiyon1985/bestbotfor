@@ -6,7 +6,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
 import { comparePairSeeds } from '@/data/catalog'
-import { getCatalog, getTool } from '@/lib/catalog'
+import { getTool, getToolsBySlugs } from '@/lib/catalog'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
 import { breadcrumbJsonLd, softwareJsonLd } from '@/lib/jsonld'
 import { pageMetadata } from '@/lib/metadata'
@@ -31,13 +31,14 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
   if (!slugSchema.safeParse(slug).success) notFound()
   const tool = await getTool(slug)
   if (!tool) notFound()
-  const catalog = await getCatalog()
   const nonce = (await headers()).get('x-nonce')
   const crumbs = [
     { name: 'Home', path: '/' },
     { name: tool.name, path: `/tools/${tool.slug}` },
   ]
   const comparisons = comparePairSeeds.filter(([a, b]) => a === tool.slug || b === tool.slug)
+  const partners = await getToolsBySlugs(comparisons.map(([left, right]) => (left === tool.slug ? right : left)))
+  const partnerName = new Map(partners.map((item) => [item.slug, item.name]))
 
   return (
     <article className="space-y-8">
@@ -87,11 +88,11 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
           <ul className="mt-3 space-y-2">
             {comparisons.map(([left, right]) => {
               const other = left === tool.slug ? right : left
-              const otherTool = catalog.tools.find((item) => item.slug === other)
+              const otherName = partnerName.get(other)
               return (
                 <li key={`${left}-${right}`}>
                   <Link className="underline" href={`/compare/${left}-vs-${right}`}>
-                    {tool.name} vs {otherTool?.name ?? other}
+                    {tool.name} vs {otherName ?? other}
                   </Link>
                 </li>
               )

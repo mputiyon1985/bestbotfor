@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Catalog, CatalogTool } from './catalog-types'
-import { ogCopy } from './og'
+import { canonicalOgPath, ogCopy } from './og'
 
 function tool(slug: string, name: string): CatalogTool {
   return {
@@ -58,5 +58,33 @@ describe('ogCopy', () => {
     const copy = ogCopy({ kind: 'compare', pair: 'not-a-tool-vs-also-missing' }, catalog)
     expect(copy.title).toBe('Comparison')
     expect(copy.subtitle).not.toContain('not-a-tool')
+  })
+})
+
+describe('canonicalOgPath', () => {
+  it('keeps a real compare, result, and task on one url each', () => {
+    expect(canonicalOgPath(new URLSearchParams('kind=compare&pair=chatgpt-vs-claude'), catalog)).toBe(
+      '/api/og?kind=compare&pair=chatgpt-vs-claude',
+    )
+    expect(canonicalOgPath(new URLSearchParams('kind=result&task=chat&budget=any&skill=beginner'), catalog)).toBe(
+      '/api/og?kind=result&task=chat&budget=any&skill=beginner',
+    )
+    expect(canonicalOgPath(new URLSearchParams('kind=task&task=chat'), catalog)).toBe('/api/og?kind=task&task=chat')
+  })
+
+  it('sends invalid, reordered, and free-text params to the default card', () => {
+    expect(canonicalOgPath(new URLSearchParams('title=<script>&subtitle=x'), catalog)).toBe('/api/og')
+    expect(canonicalOgPath(new URLSearchParams('kind=compare&pair=not-a-tool-vs-also-missing'), catalog)).toBe('/api/og')
+    expect(canonicalOgPath(new URLSearchParams('pair=chatgpt-vs-claude&kind=compare'), catalog)).toBe(
+      '/api/og?kind=compare&pair=chatgpt-vs-claude',
+    )
+    expect(canonicalOgPath(new URLSearchParams('kind=result&skill=beginner&budget=any&task=chat&extra=1'), catalog)).toBe(
+      '/api/og?kind=result&task=chat&budget=any&skill=beginner',
+    )
+    expect(canonicalOgPath(new URLSearchParams('kind=task&task=missing'), catalog)).toBe('/api/og')
+  })
+
+  it('collapses every url when the catalog is unavailable', () => {
+    expect(canonicalOgPath(new URLSearchParams('kind=compare&pair=chatgpt-vs-claude'), null)).toBe('/api/og')
   })
 })

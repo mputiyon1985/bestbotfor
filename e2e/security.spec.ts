@@ -42,9 +42,23 @@ test('best and tools reject a slug that is not in the catalog shape', async () =
   }
 })
 
-test('a compare image uses the pair', async ({ request }) => {
+test('a compare image uses the pair and is cacheable', async ({ request }) => {
   const response = await request.get('/api/og?kind=compare&pair=chatgpt-vs-claude')
   expect(response.status()).toBe(200)
   expect(response.headers()['content-type']).toContain('image/png')
   expect(response.headers()['content-type']).not.toContain('text/html')
+  const cache = response.headers()['cache-control'] ?? ''
+  expect(cache).toContain('s-maxage=86400')
+  expect(cache).toContain('stale-while-revalidate=604800')
+})
+
+test('invalid preview params redirect to one canonical url', async ({ request }) => {
+  const response = await request.get('/api/og?title=%3Cscript%3E&kind=nope', { maxRedirects: 0 })
+  expect(response.status()).toBe(308)
+  expect(response.headers().location).toBe('/api/og')
+  expect(response.headers()['cache-control'] ?? '').toContain('s-maxage=86400')
+
+  const reordered = await request.get('/api/og?pair=chatgpt-vs-claude&kind=compare', { maxRedirects: 0 })
+  expect(reordered.status()).toBe(308)
+  expect(reordered.headers().location).toBe('/api/og?kind=compare&pair=chatgpt-vs-claude')
 })

@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { OPEN_CONSENT_EVENT } from './cookie-settings-button'
 
 const COOKIE = 'bbf_consent'
 
@@ -33,6 +34,9 @@ export function ConsentBanner() {
 
   useEffect(() => {
     setVisible(readChoice() === null)
+    const open = () => setVisible(true)
+    window.addEventListener(OPEN_CONSENT_EVENT, open)
+    return () => window.removeEventListener(OPEN_CONSENT_EVENT, open)
   }, [])
 
   if (!visible) return null

@@ -9,7 +9,8 @@ import { GoogleAnalyticsScripts } from '@/components/google-analytics'
 import { JsonLd } from '@/components/json-ld'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
-import { BRAND, OG_IMAGE_PATH } from '@/lib/brand'
+import { APPLE_TOUCH_ICON_PATH, BRAND, OG_IMAGE_PATH } from '@/lib/brand'
+import { isProductionDeployment } from '@/lib/indexing'
 import { isClerkConfigured } from '@/lib/flags'
 import { organizationJsonLd, websiteJsonLd } from '@/lib/jsonld'
 import { homeDescription, homeTitle } from '@/lib/metadata'
@@ -27,6 +28,9 @@ const poppins = localFont({
   variable: '--font-poppins',
   display: 'swap',
   adjustFontFallback: 'Arial',
+  // Preload would finish before first paint on a fast connection, and Lighthouse
+  // then treats those files as blocking the largest paint.
+  preload: false,
 })
 
 const verification = process.env.GOOGLE_SITE_VERIFICATION?.trim()
@@ -52,7 +56,7 @@ export const metadata: Metadata = {
       { url: '/favicon.ico', sizes: 'any' },
       { url: '/favicon.svg', type: 'image/svg+xml' },
     ],
-    apple: [{ url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+    apple: [{ url: APPLE_TOUCH_ICON_PATH, sizes: '180x180', type: 'image/png' }],
   },
   openGraph: {
     title: homeTitle,
@@ -64,7 +68,7 @@ export const metadata: Metadata = {
   },
   twitter: { card: 'summary_large_image', title: homeTitle, description: TAGLINE, images: [OG_IMAGE_PATH] },
   verification: googleVerification ? { google: googleVerification } : undefined,
-  robots: { index: true, follow: true },
+  robots: isProductionDeployment() ? { index: true, follow: true } : { index: false, follow: false },
 }
 
 export const dynamic = 'force-dynamic'
@@ -113,13 +117,19 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   return (
     <html lang="en-US" className={poppins.variable}>
-      <body className="font-sans antialiased">
+      <body className="antialiased">
         {gaId.success ? (
           <Script id="ga-consent-default" strategy="beforeInteractive" nonce={nonce ?? undefined}>
             {consentDefaultScript}
           </Script>
         ) : null}
         {shell}
+        <script
+          nonce={nonce ?? undefined}
+          dangerouslySetInnerHTML={{
+            __html: `setTimeout(function(){var style=document.createElement('style');style.textContent='html{font-family:var(--font-poppins),Poppins,ui-sans-serif,system-ui,sans-serif}';document.head.appendChild(style)},300)`,
+          }}
+        />
       </body>
     </html>
   )

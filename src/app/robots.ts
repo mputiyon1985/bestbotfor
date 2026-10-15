@@ -1,7 +1,11 @@
 import type { MetadataRoute } from 'next'
+import { isProductionDeployment } from '@/lib/indexing'
 import { getSiteUrl } from '@/lib/site'
 
 export default function robots(): MetadataRoute.Robots {
+  if (!isProductionDeployment()) {
+    return { rules: [{ userAgent: '*', disallow: '/' }] }
+  }
   const site = getSiteUrl()
   const disallow = ['/go/', '/api/', '/members', '/sign-in', '/sign-up']
   return {

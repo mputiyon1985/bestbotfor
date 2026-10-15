@@ -1,33 +1,73 @@
+import { NextResponse } from 'next/server'
 import { getCatalog } from '@/lib/catalog'
+import { getDb } from '@/lib/db'
+import { withDeadline } from '@/lib/deadline'
+import { clientIp, rateLimitKey } from '@/lib/ip'
 import { brandedOgImage } from '@/lib/og-card'
-import { ogCopy } from '@/lib/og'
-import { z } from 'zod'
+import {
+  canonicalOgPath,
+  OG_CACHE_CONTROL,
+  OG_DB_BUDGET_MS,
+  OG_RATE_LIMIT,
+  OG_RATE_WINDOW_MS,
+  ogCopy,
+  type OgCopy,
+} from '@/lib/og'
+import { gateOgRequest } from '@/lib/og-request'
+import { consumeRateLimit } from '@/lib/rate-limit'
+import { TAGLINE } from '@/lib/site'
 
 export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
-const querySchema = z.object({
-  kind: z.enum(['compare', 'result', 'task']).optional(),
-  pair: z.string().max(180).optional(),
-  task: z.string().max(80).optional(),
-  budget: z.string().max(20).optional(),
-  skill: z.string().max(20).optional(),
-  title: z.string().max(120).optional(),
-  subtitle: z.string().max(180).optional(),
-})
+const FALLBACK: OgCopy = { title: TAGLINE, subtitle: 'One pick and two alternatives.' }
 
 export async function GET(request: Request) {
   const url = new URL(request.url)
-  const parsed = querySchema.safeParse({
-    kind: url.searchParams.get('kind') ?? undefined,
-    pair: url.searchParams.get('pair') ?? undefined,
-    task: url.searchParams.get('task') ?? undefined,
-    budget: url.searchParams.get('budget') ?? undefined,
-    skill: url.searchParams.get('skill') ?? undefined,
-    title: url.searchParams.get('title') ?? undefined,
-    subtitle: url.searchParams.get('subtitle') ?? undefined,
-  })
-  const input = parsed.success ? parsed.data : {}
-  const catalog = await getCatalog()
-  const copy = ogCopy(input, catalog)
+  const [gate, catalog] = await Promise.all([
+    gateOgRequest(
+      (async () => {
+        const db = getDb()
+        return consumeRateLimit(db, rateLimitKey(clientIp(request.headers), 'og'), OG_RATE_LIMIT, OG_RATE_WINDOW_MS)
+      })(),
+    ),
+    withDeadline(getCatalog(), OG_DB_BUDGET_MS).catch((error: unknown) => {
+      console.error('og catalog failed', error instanceof Error ? error.name : 'error')
+      return null
+    }),
+  ])
+
+  if (gate === 'limit') {
+    return new NextResponse('Too many preview requests. Try again in a minute.', {
+      status: 429,
+      headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
+    })
+  }
+
+  const canonical = canonicalOgPath(url.searchParams, catalog)
+  const current = url.pathname + url.search
+  if (current !== canonical) {
+    return new NextResponse(null, {
+      status: 308,
+      headers: {
+        location: canonical,
+        'cache-control': OG_CACHE_CONTROL,
+      },
+    })
+  }
+
+  const copy = catalog
+    ? ogCopy(
+        {
+          kind: url.searchParams.get('kind') ?? undefined,
+          pair: url.searchParams.get('pair') ?? undefined,
+          task: url.searchParams.get('task') ?? undefined,
+          budget: url.searchParams.get('budget') ?? undefined,
+          skill: url.searchParams.get('skill') ?? undefined,
+        },
+        catalog,
+      )
+    : FALLBACK
+
   return brandedOgImage(copy)
 }

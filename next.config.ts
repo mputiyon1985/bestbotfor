@@ -1,4 +1,22 @@
 import type { NextConfig } from 'next'
+import {
+  ANDROID_CHROME_192_PATH,
+  APPLE_TOUCH_ICON_PATH,
+  FAVICON_16_PATH,
+  FAVICON_32_PATH,
+  FAVICON_48_PATH,
+  HASHED_ASSET_CACHE_CONTROL,
+  HASHED_ASSET_PATHS,
+  LOGO_DARK_PATH,
+  LOGO_DARK_RASTER_PATH,
+  LOGO_LIGHT_PATH,
+  LOGO_LIGHT_RASTER_PATH,
+  MASKABLE_ICON_PATH,
+  OG_IMAGE_PATH,
+  OG_IMAGE_SVG_PATH,
+  ORGANIZATION_LOGO_PATH,
+  SVG_CONTENT_SECURITY_POLICY,
+} from './src/lib/brand'
 
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -13,17 +31,46 @@ const securityHeaders = [
   { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
 ]
 
+const legacyAssetRedirects: { source: string; destination: string }[] = [
+  { source: '/opengraph-image', destination: OG_IMAGE_PATH },
+  { source: '/icon.svg', destination: '/favicon.svg' },
+  { source: '/manifest.webmanifest', destination: '/site.webmanifest' },
+  { source: '/brand/bestbotfor-lockup-light.svg', destination: LOGO_LIGHT_PATH },
+  { source: '/brand/bestbotfor-lockup-dark.svg', destination: LOGO_DARK_PATH },
+  { source: '/brand/bestbotfor-lockup-light@2x.png', destination: LOGO_LIGHT_RASTER_PATH },
+  { source: '/brand/bestbotfor-lockup-dark@2x.png', destination: LOGO_DARK_RASTER_PATH },
+  { source: '/og/og-default-1200x630.png', destination: OG_IMAGE_PATH },
+  { source: '/og/og-default-1200x630.svg', destination: OG_IMAGE_SVG_PATH },
+  { source: '/apple-touch-icon.png', destination: APPLE_TOUCH_ICON_PATH },
+  { source: '/android-chrome-192.png', destination: ANDROID_CHROME_192_PATH },
+  { source: '/android-chrome-512.png', destination: ORGANIZATION_LOGO_PATH },
+  { source: '/maskable-512.png', destination: MASKABLE_ICON_PATH },
+  { source: '/favicon-16.png', destination: FAVICON_16_PATH },
+  { source: '/favicon-32.png', destination: FAVICON_32_PATH },
+  { source: '/favicon-48.png', destination: FAVICON_48_PATH },
+]
+
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: {
+    // Tailwind CSS is small enough to inline, so the first paint does not wait on a stylesheet.
+    inlineCss: true,
+  },
   async redirects() {
-    return [
-      { source: '/opengraph-image', destination: '/og/og-default-1200x630.png', permanent: true },
-      { source: '/icon.svg', destination: '/favicon.svg', permanent: true },
-      { source: '/manifest.webmanifest', destination: '/site.webmanifest', permanent: true },
-    ]
+    return legacyAssetRedirects.map((redirect) => ({ ...redirect, permanent: true }))
   },
   async headers() {
-    return [{ source: '/:path*', headers: securityHeaders }]
+    return [
+      { source: '/:path*', headers: securityHeaders },
+      {
+        source: '/:path*.svg',
+        headers: [{ key: 'Content-Security-Policy', value: SVG_CONTENT_SECURITY_POLICY }],
+      },
+      ...HASHED_ASSET_PATHS.map((source) => ({
+        source,
+        headers: [{ key: 'Cache-Control', value: HASHED_ASSET_CACHE_CONTROL }],
+      })),
+    ]
   },
 }
 

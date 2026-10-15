@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { comparePairSeeds } from '@/data/catalog'
-import { getCatalog } from '@/lib/catalog'
+import { listTasks } from '@/lib/catalog'
 import { budgetLabel, skillLabel } from '@/lib/format'
 import { pageMetadata } from '@/lib/metadata'
 import { listSavedPicks, memberAccess, stripeCustomerIdForUser } from '@/lib/members'
@@ -22,12 +22,14 @@ export default async function MembersPage({
   const access = await memberAccess()
   const params = await searchParams
   const checkout = typeof params.checkout === 'string' ? params.checkout : ''
+  const notice = typeof params.notice === 'string' ? params.notice : ''
 
   if (!access.allowed) {
     return (
       <article className="max-w-2xl space-y-4">
         <h1 className="font-bold text-5xl">Members</h1>
         {checkout === 'success' ? <p>Payment is processing. Membership opens when Stripe confirms the subscription.</p> : null}
+        {notice === 'rate' ? <p role="alert">Too many billing portal attempts. Try again in an hour.</p> : null}
         {access.reason === 'billing-disabled' ? (
           <p>Membership billing is not available on this server yet.</p>
         ) : (
@@ -41,13 +43,14 @@ export default async function MembersPage({
   }
 
   const picks = await listSavedPicks(access.userId)
-  const catalog = await getCatalog()
+  const taskList = await listTasks()
   const customer = await stripeCustomerIdForUser(access.userId)
 
   return (
     <article className="space-y-8">
       <h1 className="font-bold text-5xl">Your membership</h1>
       <p>Your subscription is active. Saved picks and the comparison notes are open.</p>
+      {notice === 'rate' ? <p role="alert">Too many billing portal attempts. Try again in an hour.</p> : null}
       {customer ? (
         <form action={portalAction}>
           <button type="submit" className="min-h-12 rounded-full border border-ink px-5 font-semibold">
@@ -64,7 +67,7 @@ export default async function MembersPage({
         ) : (
           <ul className="mt-3 space-y-2">
             {picks.map((pick) => {
-              const task = catalog.tasks.find((item) => item.slug === pick.taskSlug)
+              const task = taskList.find((item) => item.slug === pick.taskSlug)
               const href = `/result?task=${pick.taskSlug}&budget=${pick.budget}&skill=${pick.skill}`
               return (
                 <li key={pick.id}>

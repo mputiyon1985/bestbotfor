@@ -35,3 +35,8 @@ jobs:
           CI: true
           TURSO_DATABASE_URL: file:./data/e2e.db
           NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
+      - name: Home page Lighthouse budget
+        run: npm run check:lighthouse
+        env:
+          TURSO_DATABASE_URL: file:./data/ci.db
+          NEXT_PUBLIC_SITE_URL: http://127.0.0.1:4321

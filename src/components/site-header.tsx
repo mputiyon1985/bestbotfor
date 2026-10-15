@@ -1,7 +1,6 @@
 import Link from 'next/link'
 import { isClerkConfigured } from '@/lib/flags'
 import { BrandLockup } from './brand-lockup'
-import { MemberButton } from './member-button'
 
 export async function SiteHeader() {
   let signedIn = false
@@ -10,6 +9,8 @@ export async function SiteHeader() {
     const session = await auth()
     signedIn = Boolean(session.userId)
   }
+
+  const MemberButton = signedIn ? (await import('./member-button')).MemberButton : null
 
   const links = [
     { href: '/best/coding', label: 'Best for' },
@@ -40,7 +41,7 @@ export async function SiteHeader() {
               Sign in
             </Link>
           )}
-          {signedIn ? <MemberButton /> : null}
+          {MemberButton ? <MemberButton /> : null}
         </nav>
         <details className="md:hidden">
           <summary className="min-h-12 cursor-pointer list-none rounded-full border border-line px-4 py-2 text-sm font-semibold">
@@ -55,7 +56,7 @@ export async function SiteHeader() {
             <Link href={signedIn ? '/members' : '/sign-in'} className="min-h-12 py-2 font-semibold">
               {signedIn ? 'Members' : 'Sign in'}
             </Link>
-            {signedIn ? (
+            {MemberButton ? (
               <div className="min-h-12 py-2">
                 <MemberButton />
               </div>

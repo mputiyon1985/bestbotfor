@@ -12,6 +12,8 @@ export function isUnsafeCatalogPath(rawUrl: string): boolean {
   const match = CATALOG_ROOT.exec(path)
   if (!match) return false
   const rest = match[2] ?? ''
+  // The tools directory is a real page. Job and redirect routes still require one slug.
+  if (match[1] === 'tools' && (rest === '' || rest === '/')) return false
   const segment = /^\/([^/]+)\/?$/.exec(rest)
   if (!segment?.[1]) return true
   let decoded = segment[1]

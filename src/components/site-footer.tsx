@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { taskSeeds } from '@/data/catalog'
 import { TAGLINE } from '@/lib/site'
 import { BrandLockup } from './brand-lockup'
+import { CookieSettingsButton } from './cookie-settings-button'
 
 export function SiteFooter() {
   return (
@@ -29,6 +30,8 @@ export function SiteFooter() {
             <li><Link className="underline-offset-4 hover:underline" href="/about">About</Link></li>
             <li><Link className="underline-offset-4 hover:underline" href="/disclosure">Affiliate disclosure</Link></li>
             <li><Link className="underline-offset-4 hover:underline" href="/privacy">Privacy</Link></li>
+            <li><CookieSettingsButton /></li>
+            <li><Link className="underline-offset-4 hover:underline" href="/tools">Tools</Link></li>
             <li><Link className="underline-offset-4 hover:underline" href="/terms">Terms</Link></li>
             <li><Link className="underline-offset-4 hover:underline" href="/newsletter">Newsletter</Link></li>
             <li><Link className="underline-offset-4 hover:underline" href="/pricing">Pricing</Link></li>

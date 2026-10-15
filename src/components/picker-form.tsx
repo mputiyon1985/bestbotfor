@@ -1,33 +1,9 @@
-'use client'
-
-import { useRef } from 'react'
-import { track } from '@/lib/analytics'
 import type { CatalogTask } from '@/lib/catalog-types'
 
+/** Server-rendered. A client form was hydrating on every home visit and adding blocking time. */
 export function PickerForm({ tasks }: { tasks: CatalogTask[] }) {
-  const started = useRef(false)
-
-  function start() {
-    if (started.current) return
-    started.current = true
-    track('quiz_start')
-  }
-
   return (
-    <form
-      action="/result"
-      method="get"
-      className="space-y-8 rounded-3xl border border-line bg-card p-6 shadow-sm md:p-8"
-      onFocus={start}
-      onSubmit={(event) => {
-        const data = new FormData(event.currentTarget)
-        track('quiz_complete', {
-          task: String(data.get('task') ?? ''),
-          budget: String(data.get('budget') ?? ''),
-          skill: String(data.get('skill') ?? ''),
-        })
-      }}
-    >
+    <form action="/result" method="get" className="space-y-8 rounded-3xl border border-line bg-card p-6 shadow-sm md:p-8">
       <fieldset>
         <legend className="font-semibold text-2xl">1. What do you want to do?</legend>
         <label htmlFor="task" className="mt-3 block text-sm text-muted">

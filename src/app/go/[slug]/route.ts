@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { getCatalog } from '@/lib/catalog'
+import { getTool } from '@/lib/catalog'
 import { getDb } from '@/lib/db'
 import { clicks } from '@/lib/db/schema'
 import { clientIp, countryCode, hashIp, rateLimitKey, sameOriginPath } from '@/lib/ip'
@@ -32,8 +32,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   }
   if (!limited.ok) return text('Too many clicks from this network. Try again in a minute.', 429)
 
-  const catalog = await getCatalog()
-  const tool = catalog.tools.find((item) => item.slug === slug) ?? null
+  const tool = await getTool(slug)
   const decision = decideRedirect({
     tool: tool ? { url: tool.url, affiliateUrl: tool.affiliate.affiliateUrl } : null,
   })
