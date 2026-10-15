@@ -25,3 +25,7 @@ export function withDeadline<T>(work: Promise<T>, ms: number): Promise<T> {
     )
   })
 }
+
+export function isDeadline(error: unknown): boolean {
+  return error instanceof Error && error.message === 'deadline'
+}

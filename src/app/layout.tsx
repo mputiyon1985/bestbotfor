@@ -1,17 +1,15 @@
-import { Suspense, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
 import { Analytics } from '@vercel/analytics/next'
 import { headers } from 'next/headers'
-import Script from 'next/script'
-import { ConsentBanner, consentDefaultScript } from '@/components/consent-banner'
-import { GoogleAnalyticsScripts } from '@/components/google-analytics'
+import { ClerkShell } from '@/components/clerk-shell'
+import { ConsentBanner } from '@/components/consent-banner'
 import { JsonLd } from '@/components/json-ld'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
 import { APPLE_TOUCH_ICON_PATH, BRAND, OG_IMAGE_PATH } from '@/lib/brand'
 import { isProductionDeployment } from '@/lib/indexing'
-import { isClerkConfigured } from '@/lib/flags'
 import { organizationJsonLd, websiteJsonLd } from '@/lib/jsonld'
 import { homeDescription, homeTitle } from '@/lib/metadata'
 import { getSiteUrl, SITE_NAME, TAGLINE } from '@/lib/site'
@@ -75,7 +73,6 @@ export const dynamic = 'force-dynamic'
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const nonce = (await headers()).get('x-nonce')
-  const clerkOn = isClerkConfigured()
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ''
 
   const content = (
@@ -85,44 +82,22 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         {children}
       </main>
       <SiteFooter />
-      <ConsentBanner />
+      <ConsentBanner gaId={gaId.success ? gaId.data : null} />
       <JsonLd data={websiteJsonLd()} nonce={nonce} />
       <JsonLd data={organizationJsonLd()} nonce={nonce} />
       <Analytics />
-      {gaId.success ? (
-        <Suspense fallback={null}>
-          <GoogleAnalyticsScripts gaId={gaId.data} nonce={nonce ?? undefined} />
-        </Suspense>
-      ) : null}
     </>
   )
 
-  let shell = content
-  if (clerkOn) {
-    const { ClerkProvider } = await import('@clerk/nextjs')
-    shell = (
-      <ClerkProvider
-        publishableKey={publishableKey}
-        dynamic
-        nonce={nonce ?? undefined}
-        signInUrl="/sign-in"
-        signUpUrl="/sign-up"
-        signInFallbackRedirectUrl="/members"
-        signUpFallbackRedirectUrl="/members"
-      >
-        {content}
-      </ClerkProvider>
-    )
-  }
+  const shell = (
+    <ClerkShell nonce={nonce ?? undefined} publishableKey={publishableKey}>
+      {content}
+    </ClerkShell>
+  )
 
   return (
     <html lang="en-US" className={poppins.variable}>
       <body className="antialiased">
-        {gaId.success ? (
-          <Script id="ga-consent-default" strategy="beforeInteractive" nonce={nonce ?? undefined}>
-            {consentDefaultScript}
-          </Script>
-        ) : null}
         {shell}
         <script
           nonce={nonce ?? undefined}

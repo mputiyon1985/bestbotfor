@@ -15,6 +15,8 @@ function startServer(): ChildProcess {
       TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL || 'file:./data/ci.db',
       TURSO_AUTH_TOKEN: process.env.TURSO_AUTH_TOKEN || 'local',
       NEXT_PUBLIC_SITE_URL: origin,
+      // Score the production indexing policy. Preview noindex is covered by e2e.
+      VERCEL_ENV: 'production',
     },
   })
 }
@@ -25,7 +27,11 @@ async function waitForServer(child: ChildProcess): Promise<void> {
     if (child.exitCode !== null) throw new Error(`next start exited with ${child.exitCode}`)
     try {
       const response = await fetch(origin)
-      if (response.ok) return
+      if (response.ok) {
+        await new Promise((resolve) => setTimeout(resolve, 200))
+        if (child.exitCode !== null) throw new Error(`next start exited with ${child.exitCode}`)
+        return
+      }
     } catch {
       // server still booting
     }
@@ -58,14 +64,18 @@ async function main(): Promise<number> {
   try {
     await waitForServer(server)
     await fetch(origin)
-    const exitCode = await new Promise<number>((resolve, reject) => {
-      const child = spawn('npx', ['--yes', '@lhci/cli@0.15.1', 'autorun'], {
-        stdio: 'inherit',
-        env: process.env,
+    let exitCode = 0
+    for (const config of ['lighthouserc.cjs', 'lighthouserc.home.cjs']) {
+      const code = await new Promise<number>((resolve, reject) => {
+        const child = spawn('npx', ['--yes', '@lhci/cli@0.15.1', 'autorun', '--config', config], {
+          stdio: 'inherit',
+          env: process.env,
+        })
+        child.on('error', reject)
+        child.on('exit', (status) => resolve(status ?? 1))
       })
-      child.on('error', reject)
-      child.on('exit', (code) => resolve(code ?? 1))
-    })
+      if (code !== 0) exitCode = code
+    }
     await printMetrics()
     return exitCode
   } finally {

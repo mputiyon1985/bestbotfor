@@ -1,9 +1,10 @@
 const port = process.env.LHCI_PORT || '4321'
+const base = `http://127.0.0.1:${port}`
 
 module.exports = {
   ci: {
     collect: {
-      url: [`http://127.0.0.1:${port}/`],
+      url: [`${base}/`, `${base}/best/coding`, `${base}/tools/cursor`],
       numberOfRuns: 1,
       settings: {
         chromeFlags: '--no-sandbox --disable-dev-shm-usage',
@@ -12,8 +13,10 @@ module.exports = {
     },
     assert: {
       assertions: {
-        'largest-contentful-paint': ['error', { maxNumericValue: 2099 }],
-        'total-blocking-time': ['error', { maxNumericValue: 229 }],
+        'categories:performance': ['error', { minScore: 0.95 }],
+        'categories:accessibility': ['error', { minScore: 0.95 }],
+        'categories:best-practices': ['error', { minScore: 0.95 }],
+        'categories:seo': ['error', { minScore: 0.95 }],
       },
     },
     upload: {

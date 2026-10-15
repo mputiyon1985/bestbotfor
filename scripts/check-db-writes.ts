@@ -1,0 +1,82 @@
+import { readdir, readFile } from 'node:fs/promises'
+import path from 'node:path'
+
+const ALLOWED = new Set([
+  'src/lib/rate-limit.ts',
+  'src/lib/newsletter.ts',
+  'src/lib/stripe-webhook.ts',
+  'src/lib/members.ts',
+  'src/app/go/[slug]/route.ts',
+  'src/lib/db/migrate.ts',
+  'scripts/seed.ts',
+  'scripts/migrate.ts',
+])
+
+const ROOTS = ['src', 'scripts', 'drizzle']
+
+function isWrite(line: string): boolean {
+  if (/\b(?:db|client)\s*\.\s*(?:insert|update|delete|execute)\s*\(/.test(line)) return true
+  if (/\$client\s*\.\s*execute\s*\(/.test(line)) return true
+  if (/\bexecuteMultiple\s*\(/.test(line)) return true
+  if (/\bINSERT\s+INTO\b/i.test(line)) return true
+  if (/\bDELETE\s+FROM\b/i.test(line)) return true
+  if (/\bDO\s+UPDATE\s+SET\b/i.test(line)) return true
+  if (/^\s*\.(?:insert|update|delete)\s*\(/.test(line)) return true
+  return false
+}
+
+function skipped(relative: string): boolean {
+  if (relative.endsWith('.test.ts')) return true
+  if (relative.startsWith('src/test/')) return true
+  return false
+}
+
+async function filesIn(directory: string): Promise<string[]> {
+  const found: string[] = []
+  let entries
+  try {
+    entries = await readdir(directory, { withFileTypes: true })
+  } catch {
+    return found
+  }
+  for (const entry of entries) {
+    const full = path.join(directory, entry.name)
+    if (entry.isDirectory()) {
+      if (entry.name === 'node_modules' || entry.name === '.next') continue
+      found.push(...(await filesIn(full)))
+      continue
+    }
+    if (!/\.(?:ts|tsx|sql)$/.test(entry.name)) continue
+    found.push(full)
+  }
+  return found
+}
+
+async function main(): Promise<void> {
+  const hits: string[] = []
+  for (const root of ROOTS) {
+    for (const full of await filesIn(path.join(process.cwd(), root))) {
+      const relative = path.relative(process.cwd(), full)
+      if (skipped(relative)) continue
+      const text = await readFile(full, 'utf8')
+      const lines = text.split('\n')
+      lines.forEach((line, index) => {
+        if (!isWrite(line)) return
+        if (ALLOWED.has(relative)) return
+        hits.push(`${relative}:${index + 1}`)
+      })
+    }
+  }
+
+  if (hits.length > 0) {
+    console.error('Database writes are only allowed in the reviewed files. Found:')
+    for (const hit of hits) console.error(hit)
+    process.exit(1)
+  }
+  console.log('Database writes stay inside the allowlist.')
+}
+
+main().catch((error: unknown) => {
+  console.error(error instanceof Error ? error.message : 'DB write check failed')
+  process.exit(1)
+})

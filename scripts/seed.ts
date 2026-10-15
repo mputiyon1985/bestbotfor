@@ -1,8 +1,11 @@
 import { comparePairSeeds, taskSeeds, toolSeeds } from '../src/data/catalog'
 import { getDb } from '../src/lib/db/client'
 import { affiliatePrograms, tasks, toolTasks, tools } from '../src/lib/db/schema'
+import { reviewedToolUrl } from '../src/lib/redirect'
 
 export async function seed(): Promise<void> {
+for (const tool of toolSeeds) reviewedToolUrl(tool)
+
 const db = getDb()
 
 for (const task of taskSeeds) {

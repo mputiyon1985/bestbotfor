@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { isClerkConfigured } from '@/lib/flags'
 import { BrandLockup } from './brand-lockup'
+import { MemberButtonSlot } from './member-button-slot'
 
 export async function SiteHeader() {
   let signedIn = false
@@ -9,8 +10,6 @@ export async function SiteHeader() {
     const session = await auth()
     signedIn = Boolean(session.userId)
   }
-
-  const MemberButton = signedIn ? (await import('./member-button')).MemberButton : null
 
   const links = [
     { href: '/best/coding', label: 'Best for' },
@@ -41,7 +40,7 @@ export async function SiteHeader() {
               Sign in
             </Link>
           )}
-          {MemberButton ? <MemberButton /> : null}
+          {signedIn ? <MemberButtonSlot /> : null}
         </nav>
         <details className="md:hidden">
           <summary className="min-h-12 cursor-pointer list-none rounded-full border border-line px-4 py-2 text-sm font-semibold">
@@ -56,9 +55,9 @@ export async function SiteHeader() {
             <Link href={signedIn ? '/members' : '/sign-in'} className="min-h-12 py-2 font-semibold">
               {signedIn ? 'Members' : 'Sign in'}
             </Link>
-            {MemberButton ? (
+            {signedIn ? (
               <div className="min-h-12 py-2">
-                <MemberButton />
+                <MemberButtonSlot />
               </div>
             ) : null}
           </nav>

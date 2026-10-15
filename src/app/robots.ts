@@ -2,6 +2,8 @@ import type { MetadataRoute } from 'next'
 import { isProductionDeployment } from '@/lib/indexing'
 import { getSiteUrl } from '@/lib/site'
 
+export const dynamic = 'force-dynamic'
+
 export default function robots(): MetadataRoute.Robots {
   if (!isProductionDeployment()) {
     return { rules: [{ userAgent: '*', disallow: '/' }] }

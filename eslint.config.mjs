@@ -13,6 +13,7 @@ export default tseslint.config(
       'next-env.d.ts',
       '.lighthouseci/**',
       'lighthouserc.cjs',
+      'lighthouserc.home.cjs',
     ],
   },
   eslint.configs.recommended,
@@ -20,6 +21,15 @@ export default tseslint.config(
   {
     rules: {
       '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+    },
+  },
+  {
+    files: ['lighthouserc.cjs'],
+    languageOptions: {
+      globals: {
+        module: 'readonly',
+        process: 'readonly',
+      },
     },
   },
 )

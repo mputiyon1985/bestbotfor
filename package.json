@@ -7,8 +7,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "tsx scripts/prepare-db.ts && next dev",
-    "prebuild": "tsx scripts/prepare-db.ts",
+    "dev": "tsx scripts/prepare-clerk-shell.ts && tsx scripts/prepare-db.ts && next dev",
+    "prebuild": "tsx scripts/prepare-clerk-shell.ts && tsx scripts/prepare-db.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -18,6 +18,10 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
     "check:stripe-keys": "tsx scripts/check-no-live-stripe-keys.ts",
+    "check:gitleaks": "tsx scripts/check-gitleaks.ts",
+    "check:bundle": "tsx scripts/check-client-bundle.ts",
+    "check:db-writes": "tsx scripts/check-db-writes.ts",
+    "check:members": "tsx scripts/check-member-routes.ts",
     "check:lighthouse": "tsx scripts/check-lighthouse.ts"
   },
   "dependencies": {

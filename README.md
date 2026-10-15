@@ -32,12 +32,12 @@ npm run dev
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | Clerk. Both must be set or accounts stay off |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID` | Stripe test mode. All three are required before billing turns on |
 | `BEEHIIV_API_KEY`, `BEEHIIV_PUBLICATION_ID` | Optional. Unset stores newsletter emails locally |
-| `NEXT_PUBLIC_GA_ID` | Optional GA4 measurement ID. Consent defaults to denied |
+| `NEXT_PUBLIC_GA_ID` | Optional GA4 measurement ID. gtag.js loads only after the visitor accepts |
 | `GOOGLE_SITE_VERIFICATION` | Optional Search Console token |
 
 Stripe billing accepts a test secret key only. CI fails if a live-mode Stripe key prefix appears anywhere in the tree. The webhook rejects live-mode events. Point Stripe’s test webhook at `/api/stripe/webhook`.
 
-`/go/[slug]` redirects to the official URL stored for that tool. It ignores query strings and affiliate URLs.
+`/go/[slug]` redirects to the official URL stored for that tool only when the host is on the reviewed list in the seed. It ignores query strings and affiliate URLs. A rate-limit or catalog timeout still redirects; the click row is written after the response.
 
 ## Scripts
 
@@ -46,6 +46,9 @@ npm run lint
 npm run typecheck
 npm test
 npm run check:stripe-keys
+npm run check:gitleaks
+npm run check:db-writes
+npm run check:members
 npm run build
 npm run test:e2e
 ```
