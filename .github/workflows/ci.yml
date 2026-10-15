@@ -38,6 +38,7 @@ jobs:
         env:
           TURSO_DATABASE_URL: file:./data/ci.db
           NEXT_PUBLIC_SITE_URL: https://bestbotfor.com
+          NEXT_PUBLIC_GA_ID: G-TESTCONSENT
       - name: Client bundle token scan
         run: npm run check:bundle
       - name: Install Playwright

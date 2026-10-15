@@ -9,6 +9,7 @@ function isGoogleRequest(url: string): boolean {
   }
   if (host.includes('googletagmanager')) return true
   if (host.includes('doubleclick')) return true
+  if (host === 'gstatic.com' || host.endsWith('.gstatic.com')) return true
   return host.includes('google') && host.endsWith('.com')
 }
 

@@ -39,9 +39,11 @@ export type WebhookResult = { status: number; body: Record<string, unknown> }
 
 /**
  * Verify the Stripe signature before touching the body as JSON.
- * The event id is inserted first. A retry sees the conflict and returns 200
- * without applying the change again. If applying fails, the event row is
- * removed so Stripe can retry safely.
+ * The event id is claimed first with processedAt 0. The timestamp is set
+ * only after the subscription write succeeds. A retry of a finished event
+ * returns 200 without applying again. A retry of an unfinished claim still
+ * applies, including when the timeout cleanup could not delete the row.
+ * If applying fails, the event row is removed so Stripe can retry safely.
  */
 export async function handleStripeWebhook(input: {
   rawBody: string
@@ -95,14 +97,18 @@ export async function handleStripeWebhook(input: {
 async function applyWebhook(db: Database, event: Stripe.Event): Promise<'ok' | 'duplicate'> {
   const inserted = await db
     .insert(stripeEvents)
-    .values({ id: event.id, type: event.type, processedAt: Date.now() })
+    .values({ id: event.id, type: event.type, processedAt: 0 })
     .onConflictDoNothing()
     .returning({ id: stripeEvents.id })
 
-  if (inserted.length === 0) return 'duplicate'
+  if (inserted.length === 0) {
+    const existing = await db.select().from(stripeEvents).where(eq(stripeEvents.id, event.id))
+    if (existing[0] && existing[0].processedAt > 0) return 'duplicate'
+  }
 
   try {
     await applyEvent(db, event)
+    await db.update(stripeEvents).set({ processedAt: Date.now() }).where(eq(stripeEvents.id, event.id))
   } catch (error) {
     await db.delete(stripeEvents).where(eq(stripeEvents.id, event.id))
     throw error

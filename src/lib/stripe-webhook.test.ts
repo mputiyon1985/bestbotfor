@@ -94,6 +94,26 @@ describe('handleStripeWebhook', () => {
     await close()
   })
 
+  it('applies the subscription when a previous claim was left unfinished', async () => {
+    const { db, close } = await createTestDatabase()
+    const event = subscriptionEvent('evt_unfinished')
+    await db.insert(stripeEvents).values({ id: event.id, type: event.type, processedAt: 0 })
+    const result = await handleStripeWebhook({
+      rawBody: JSON.stringify(event),
+      signature: 'valid',
+      db,
+      stripe: stripeStub([event]),
+      secret: SECRET,
+    })
+    expect(result).toEqual({ status: 200, body: { received: true } })
+    const rows = await db.select().from(subscriptions).where(eq(subscriptions.stripeSubscriptionId, 'sub_123'))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ clerkUserId: 'user_1', status: 'active' })
+    const saved = await db.select().from(stripeEvents).where(eq(stripeEvents.id, event.id))
+    expect(saved[0]?.processedAt).toBeGreaterThan(0)
+    await close()
+  })
+
   it('records a subscription when a delayed checkout payment succeeds', async () => {
     const { db, close } = await createTestDatabase()
     const event = {
