@@ -1,10 +1,13 @@
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import type Stripe from 'stripe'
 import { z } from 'zod'
 import type { Database } from './db'
 import { stripeEvents, subscriptions } from './db/schema'
 import { getDb } from './db'
+import { isDeadline, withDeadline } from './deadline'
 import { getStripe, stripeWebhookSecret } from './stripe'
+
+const WEBHOOK_DB_BUDGET_MS = 2_000
 
 const checkoutSchema = z.object({
   mode: z.string().optional(),
@@ -36,9 +39,11 @@ export type WebhookResult = { status: number; body: Record<string, unknown> }
 
 /**
  * Verify the Stripe signature before touching the body as JSON.
- * The event id is inserted first. A retry sees the conflict and returns 200
- * without applying the change again. If applying fails, the event row is
- * removed so Stripe can retry safely.
+ * The event id is claimed first with processedAt 0. The timestamp is set
+ * only after the subscription write succeeds. A retry of a finished event
+ * returns 200 without applying again. A retry of an unfinished claim still
+ * applies, including when the timeout cleanup could not delete the row.
+ * If applying fails, the event row is removed so Stripe can retry safely.
  */
 export async function handleStripeWebhook(input: {
   rawBody: string
@@ -46,6 +51,7 @@ export async function handleStripeWebhook(input: {
   db?: Database
   stripe?: Stripe | null
   secret?: string | null
+  deadlineMs?: number
 }): Promise<WebhookResult> {
   const stripe = input.stripe === undefined ? getStripe() : input.stripe
   const secret = input.secret === undefined ? stripeWebhookSecret() : input.secret
@@ -68,25 +74,46 @@ export async function handleStripeWebhook(input: {
   }
 
   const db = input.db ?? getDb()
+  const deadlineMs = input.deadlineMs ?? WEBHOOK_DB_BUDGET_MS
+
+  try {
+    const outcome = await withDeadline(applyWebhook(db, event), deadlineMs)
+    if (outcome === 'duplicate') return { status: 200, body: { received: true, duplicate: true } }
+    return { status: 200, body: { received: true } }
+  } catch (error) {
+    if (isDeadline(error)) {
+      try {
+        await withDeadline(db.delete(stripeEvents).where(eq(stripeEvents.id, event.id)), Math.min(deadlineMs, 300))
+      } catch (cleanup) {
+        console.error('stripe webhook cleanup failed', cleanup instanceof Error ? cleanup.name : 'error')
+      }
+      return { status: 500, body: { error: 'webhook-timeout' } }
+    }
+    console.error('stripe webhook apply failed', event.type)
+    throw error
+  }
+}
+
+async function applyWebhook(db: Database, event: Stripe.Event): Promise<'ok' | 'duplicate'> {
   const inserted = await db
     .insert(stripeEvents)
-    .values({ id: event.id, type: event.type, processedAt: Date.now() })
+    .values({ id: event.id, type: event.type, processedAt: 0 })
     .onConflictDoNothing()
     .returning({ id: stripeEvents.id })
 
   if (inserted.length === 0) {
-    return { status: 200, body: { received: true, duplicate: true } }
+    const existing = await db.select().from(stripeEvents).where(eq(stripeEvents.id, event.id))
+    if (existing[0] && existing[0].processedAt > 0) return 'duplicate'
   }
 
   try {
     await applyEvent(db, event)
+    await db.update(stripeEvents).set({ processedAt: Date.now() }).where(eq(stripeEvents.id, event.id))
   } catch (error) {
     await db.delete(stripeEvents).where(eq(stripeEvents.id, event.id))
-    console.error('stripe webhook apply failed', event.type)
     throw error
   }
-
-  return { status: 200, body: { received: true } }
+  return 'ok'
 }
 
 async function applyEvent(db: Database, event: Stripe.Event): Promise<void> {
@@ -139,14 +166,9 @@ async function upsertSubscription(
   },
 ): Promise<void> {
   const now = Date.now()
-  const existing = await db
-    .select()
-    .from(subscriptions)
-    .where(eq(subscriptions.stripeSubscriptionId, input.subscriptionId))
-    .limit(1)
-  const current = existing[0]
-  if (!current) {
-    await db.insert(subscriptions).values({
+  await db
+    .insert(subscriptions)
+    .values({
       clerkUserId: input.clerkUserId,
       stripeCustomerId: input.customerId,
       stripeSubscriptionId: input.subscriptionId,
@@ -155,17 +177,15 @@ async function upsertSubscription(
       currentPeriodEnd: input.periodEnd,
       updatedAt: now,
     })
-    return
-  }
-  await db
-    .update(subscriptions)
-    .set({
-      clerkUserId: input.clerkUserId ?? current.clerkUserId,
-      stripeCustomerId: input.customerId ?? current.stripeCustomerId,
-      stripePriceId: input.priceId ?? current.stripePriceId,
-      status: input.status,
-      currentPeriodEnd: input.periodEnd ?? current.currentPeriodEnd,
-      updatedAt: now,
+    .onConflictDoUpdate({
+      target: subscriptions.stripeSubscriptionId,
+      set: {
+        clerkUserId: sql`coalesce(excluded.clerk_user_id, ${subscriptions.clerkUserId})`,
+        stripeCustomerId: sql`coalesce(excluded.stripe_customer_id, ${subscriptions.stripeCustomerId})`,
+        stripePriceId: sql`coalesce(excluded.stripe_price_id, ${subscriptions.stripePriceId})`,
+        status: input.status,
+        currentPeriodEnd: sql`coalesce(excluded.current_period_end, ${subscriptions.currentPeriodEnd})`,
+        updatedAt: now,
+      },
     })
-    .where(eq(subscriptions.stripeSubscriptionId, input.subscriptionId))
 }

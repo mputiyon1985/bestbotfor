@@ -23,6 +23,7 @@ export default defineConfig({
       TURSO_DATABASE_URL: databaseUrl,
       TURSO_AUTH_TOKEN: process.env.TURSO_AUTH_TOKEN || 'local',
       NEXT_PUBLIC_SITE_URL: siteUrl,
+      NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID || 'G-TESTCONSENT',
     },
   },
 })

@@ -17,9 +17,31 @@ export function redactAnalyticsUrl(href: string): string {
   return url.toString()
 }
 
-/** GA must not send its own page view. The app sends a redacted one instead. */
+/**
+ * Queued before gtag.js loads. This runs only after consent, so the library
+ * is not fetched while analytics_storage is still denied.
+ */
 export function googleAnalyticsBootstrap(gaId: string): string {
   return `
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('consent', 'default', {
+  ad_storage: 'denied',
+  ad_user_data: 'denied',
+  ad_personalization: 'denied',
+  analytics_storage: 'denied',
+  functionality_storage: 'denied',
+  personalization_storage: 'denied',
+  security_storage: 'granted'
+});
+gtag('set', 'ads_data_redaction', true);
+gtag('set', 'allow_google_signals', false);
+gtag('consent', 'update', {
+  analytics_storage: 'granted',
+  ad_storage: 'denied',
+  ad_user_data: 'denied',
+  ad_personalization: 'denied'
+});
 gtag('js', new Date());
 gtag('config', '${gaId}', { send_page_view: false });
 `

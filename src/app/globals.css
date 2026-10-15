@@ -61,6 +61,14 @@
 
 html {
   scroll-behavior: smooth;
+  /* System face for the first paint. Poppins is applied after the largest paint. */
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Keeps the home heading on the system face so a later Poppins swap cannot move LCP. */
+.font-headline {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-weight: 700;
 }
 
 body {

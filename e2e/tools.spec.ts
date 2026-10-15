@@ -1,7 +1,7 @@
-import { expect, test, type Page } from '@playwright/test'
-import { comparePairSeeds } from '../src/data/catalog'
-import { toolsForTask } from '../src/lib/recommend'
-import { filterTools, toolCategories } from '../src/lib/tool-index'
+import { expect, test } from '@playwright/test'
+import { toolSeeds } from '../src/data/catalog'
+import { TOOLS_PAGE_SIZE } from '../src/lib/catalog-read'
+import { categorySlug, toolCategories } from '../src/lib/tool-index'
 import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
 
 const catalog = catalogFromSeeds()
@@ -10,38 +10,48 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-async function itemListNames(page: Page): Promise<string[]> {
-  const payloads = await page.locator('script[type="application/ld+json"]').allTextContents()
-  const itemList = payloads
-    .map((payload) => JSON.parse(payload) as { '@type'?: string; itemListElement?: { name: string }[] })
-    .find((data) => data['@type'] === 'ItemList')
-  return itemList?.itemListElement?.map((item) => item.name) ?? []
+function pageCount(total: number): number {
+  return Math.max(1, Math.ceil(total / TOOLS_PAGE_SIZE))
 }
 
-test('lists every catalog tool with metadata and an item list', async ({ page }) => {
+test('lists a page of catalog tools and links to the next page', async ({ page }) => {
   const ordered = [...catalog.tools].sort((a, b) => a.name.localeCompare(b.name))
   const first = ordered[0]
   expect(first).toBeTruthy()
   if (!first) return
+  const pages = pageCount(ordered.length)
 
   await page.goto('/tools')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('AI tools')
-  await expect(page).toHaveTitle('AI tools · BestBotFor')
-  await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /Every AI tool in the BestBotFor catalog/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tools')
+  await expect(page).toHaveTitle('Tools · BestBotFor')
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /one page at a time/)
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/tools$/)
-  await expect(page.getByText(`Showing ${catalog.tools.length} of ${catalog.tools.length} tools.`)).toBeVisible()
+  await expect(page.getByText(`${ordered.length} tools. Page 1 of ${pages}.`)).toBeVisible()
 
   const tools = page.getByRole('list', { name: 'Tools' }).getByRole('listitem')
-  await expect(tools).toHaveCount(catalog.tools.length)
+  await expect(tools).toHaveCount(Math.min(TOOLS_PAGE_SIZE, ordered.length))
   await expect(page.getByRole('link', { name: first.name, exact: true })).toHaveAttribute('href', `/tools/${first.slug}`)
-  expect(await itemListNames(page)).toEqual(ordered.map((tool) => tool.name))
+
+  if (pages > 1) {
+    await page.getByRole('link', { name: 'Next page' }).click()
+    await expect(page).toHaveURL(/\/tools\?page=2$/)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tools')
+    const second = ordered[TOOLS_PAGE_SIZE]
+    expect(second).toBeTruthy()
+    if (!second) return
+    await expect(page.getByRole('link', { name: second.name, exact: true })).toBeVisible()
+    await expect(page.getByRole('link', { name: first.name, exact: true })).toHaveCount(0)
+  }
 })
 
 test('filters by a catalog category with a shareable URL and without JavaScript', async ({ browser }) => {
   const category = toolCategories(catalog.tools)[0]
   expect(category).toBeTruthy()
   if (!category) return
-  const expected = filterTools(catalog.tools, category)
+  const expected = catalog.tools
+    .filter((tool) => categorySlug(tool.category) === category.slug)
+    .sort((a, b) => a.name.localeCompare(b.name))
+  const pages = pageCount(expected.length)
 
   const context = await browser.newContext({ javaScriptEnabled: false })
   const page = await context.newPage()
@@ -52,11 +62,14 @@ test('filters by a catalog category with a shareable URL and without JavaScript'
       .getByRole('link', { name: new RegExp(`^${escapeRegExp(category.name)}`) })
       .click()
     await expect(page).toHaveURL(new RegExp(`/tools\\?category=${category.slug}$`))
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText(`${category.name} tools`)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tools')
+    await expect(page).toHaveTitle(`${category.name} tools · BestBotFor`)
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', new RegExp(`/tools\\?category=${category.slug}$`))
-    await expect(page.getByText(`Showing ${expected.length} of ${catalog.tools.length} tools.`)).toBeVisible()
-    await expect(page.getByRole('list', { name: 'Tools' }).getByRole('listitem')).toHaveCount(expected.length)
-    expect(await itemListNames(page)).toEqual(expected.map((tool) => tool.name))
+    await expect(page.getByText(`${expected.length} ${category.name} tools. Page 1 of ${pages}.`)).toBeVisible()
+    await expect(page.getByRole('list', { name: 'Tools' }).getByRole('listitem')).toHaveCount(
+      Math.min(TOOLS_PAGE_SIZE, expected.length),
+    )
+    await expect(page.getByRole('link', { name: expected[0]?.name ?? '', exact: true })).toBeVisible()
   } finally {
     await context.close()
   }
@@ -66,13 +79,16 @@ test('an unknown category does not echo the query', async ({ page }) => {
   const unknown = 'not-a-real-category'
   expect(toolCategories(catalog.tools).some((category) => category.slug === unknown)).toBe(false)
   await page.goto(`/tools?category=${unknown}`)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('AI tools')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tools')
   await expect(page.getByText('That category is not in the catalog.')).toBeVisible()
   await expect(page.getByText(unknown)).toHaveCount(0)
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
+  await expect(page.getByRole('list', { name: 'Tools' })).toHaveCount(0)
 })
 
 test('best, compare, tool profiles, and the sitemap follow the seed', async ({ page, request }) => {
+  const { comparePairSeeds } = await import('../src/data/catalog')
+  const { toolsForTask } = await import('../src/lib/recommend')
   const task = catalog.tasks.find((item) => item.slug === 'coding')
   const ranked = toolsForTask(catalog, 'coding')
   const top = ranked[0]
@@ -97,7 +113,7 @@ test('best, compare, tool profiles, and the sitemap follow the seed', async ({ p
   await page.goto(`/compare/${left.slug}-vs-${right.slug}`)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(`${left.name} vs ${right.name}`)
 
-  const profile = catalog.tools[catalog.tools.length - 1]
+  const profile = toolSeeds[toolSeeds.length - 1]
   expect(profile).toBeTruthy()
   if (!profile) return
   await page.goto(`/tools/${profile.slug}`)

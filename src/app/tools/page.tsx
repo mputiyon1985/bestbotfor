@@ -1,96 +1,152 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
-import { JsonLd } from '@/components/json-ld'
-import { getCatalog } from '@/lib/catalog'
-import { priceLabel } from '@/lib/format'
-import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/jsonld'
+import { listToolCategoryCounts, listToolPage } from '@/lib/catalog'
 import { pageMetadata } from '@/lib/metadata'
-import { toolsIndexModel, toolsIndexPath, type ToolCategory } from '@/lib/tool-index'
+import { categorySlug, type ToolCategory } from '@/lib/tool-index'
 import { firstString } from '@/lib/validation'
+
+const MAX_CATEGORY_QUERY = 80
+const INDEX_DESCRIPTION = 'Every AI tool in the BestBotFor catalog, one page at a time.'
 
 type SearchParams = Record<string, string | string[] | undefined>
 
+type ResolvedCategory = {
+  categories: ToolCategory[]
+  selected: ToolCategory | null
+  unknown: boolean
+  total: number
+}
+
+function pageNumber(value: string): number {
+  const parsed = Number(value)
+  if (!Number.isInteger(parsed) || parsed < 1) return 1
+  return parsed
+}
+
+function toolsPath(category: string | null, page: number): string {
+  const params = new URLSearchParams()
+  if (category) params.set('category', category)
+  if (page > 1) params.set('page', String(page))
+  const query = params.toString()
+  return query ? `/tools?${query}` : '/tools'
+}
+
+async function resolveCategory(raw: string): Promise<ResolvedCategory> {
+  const counts = await listToolCategoryCounts()
+  const categories = counts
+    .map((row) => ({ name: row.category.trim(), slug: categorySlug(row.category), count: row.total }))
+    .filter((row) => row.slug)
+    .sort((a, b) => a.name.localeCompare(b.name))
+  const total = categories.reduce((sum, row) => sum + row.count, 0)
+  const trimmed = raw.trim()
+  if (!trimmed) return { categories, selected: null, unknown: false, total }
+  if (trimmed.length > MAX_CATEGORY_QUERY) return { categories, selected: null, unknown: true, total }
+  const slug = categorySlug(trimmed)
+  const selected =
+    categories.find((category) => category.slug === slug || category.name.toLowerCase() === trimmed.toLowerCase()) ??
+    null
+  return { categories, selected, unknown: !selected, total }
+}
+
 export async function generateMetadata({ searchParams }: { searchParams: Promise<SearchParams> }): Promise<Metadata> {
   const params = await searchParams
-  const catalog = await getCatalog()
-  const model = toolsIndexModel(catalog.tools, firstString(params.category))
+  const page = pageNumber(firstString(params.page))
+  const resolved = await resolveCategory(firstString(params.category))
+  if (resolved.unknown) {
+    return pageMetadata({
+      title: 'Tools',
+      description: INDEX_DESCRIPTION,
+      path: '/tools',
+      noIndex: true,
+    })
+  }
+  const category = resolved.selected
+  const title = category
+    ? page > 1
+      ? `${category.name} tools, page ${page}`
+      : `${category.name} tools`
+    : page > 1
+      ? `Tools, page ${page}`
+      : 'Tools'
+  const description = category
+    ? `${category.name} tools in the BestBotFor catalog, one page at a time.`
+    : INDEX_DESCRIPTION
   return pageMetadata({
-    title: model.title,
-    description: model.description,
-    path: model.path,
-    noIndex: model.noIndex,
+    title,
+    description,
+    path: toolsPath(category?.slug ?? null, page),
   })
 }
 
 export default async function ToolsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
   const params = await searchParams
-  const catalog = await getCatalog()
-  const model = toolsIndexModel(catalog.tools, firstString(params.category))
-  const nonce = (await headers()).get('x-nonce')
-  const crumbs = [
-    { name: 'Home', path: '/' },
-    { name: 'Tools', path: '/tools' },
-    ...(model.selected ? [{ name: model.selected.name, path: model.path }] : []),
-  ]
-  const shown = model.tools.length
-  const total = catalog.tools.length
+  const page = pageNumber(firstString(params.page))
+  const resolved = await resolveCategory(firstString(params.category))
+  const listing = resolved.unknown ? null : await listToolPage(page, resolved.selected?.name ?? null)
+  const selected = resolved.selected
 
   return (
-    <article className="space-y-8">
-      <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
-      {model.unknown ? null : <JsonLd data={itemListJsonLd(model.itemListName, model.path, model.tools)} nonce={nonce} />}
-      <Breadcrumbs items={crumbs} />
+    <div className="space-y-8">
+      <Breadcrumbs
+        items={[
+          { name: 'Home', path: '/' },
+          { name: 'Tools', path: '/tools' },
+          ...(selected ? [{ name: selected.name, path: toolsPath(selected.slug, 1) }] : []),
+        ]}
+      />
       <header className="space-y-3">
-        <h1 className="font-bold text-5xl leading-tight">{model.heading}</h1>
-        <p className="max-w-2xl text-lg">{model.description}</p>
-        <p className="text-sm text-muted">
-          {model.unknown
+        <h1 className="font-bold text-5xl">Tools</h1>
+        <p className="text-muted">
+          {resolved.unknown
             ? 'That category is not in the catalog.'
-            : `Showing ${shown} of ${total} ${total === 1 ? 'tool' : 'tools'}.`}
+            : listing
+              ? `${listing.total} ${selected ? `${selected.name} ` : ''}${listing.total === 1 ? 'tool' : 'tools'}. Page ${listing.page} of ${listing.pageCount}.`
+              : 'No tools are in the catalog yet.'}
         </p>
       </header>
       <nav aria-label="Filter by category">
         <ul className="flex flex-wrap gap-2">
           <li>
-            <CategoryLink category={null} current={!model.selected && !model.unknown} count={total} />
+            <CategoryLink category={null} current={!selected && !resolved.unknown} count={resolved.total} />
           </li>
-          {model.categories.map((category) => (
+          {resolved.categories.map((category) => (
             <li key={category.slug}>
-              <CategoryLink category={category} current={model.selected?.slug === category.slug} count={category.count} />
+              <CategoryLink category={category} current={selected?.slug === category.slug} count={category.count} />
             </li>
           ))}
         </ul>
       </nav>
-      {model.tools.length === 0 ? (
-        <p>{model.unknown ? 'Choose a category above to see the tools in the catalog.' : 'No tools are in the catalog yet.'}</p>
-      ) : (
-        <ul aria-label="Tools" className="space-y-3">
-          {model.tools.map((tool) => (
-            <li key={tool.slug} className="rounded-2xl border border-line bg-card px-4 py-4">
-              <h2 className="font-semibold text-2xl">
-                <Link href={`/tools/${tool.slug}`} className="underline decoration-line underline-offset-4 hover:decoration-accent">
-                  {tool.name}
-                </Link>
-              </h2>
-              <p className="text-sm text-muted">{tool.vendor}</p>
-              <p className="mt-2 max-w-2xl">{tool.shortDesc}</p>
-              <dl className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-                <div>
-                  <dt className="inline font-semibold">Category </dt>
-                  <dd className="inline">{tool.category}</dd>
-                </div>
-                <div>
-                  <dt className="inline font-semibold">Price </dt>
-                  <dd className="inline">{priceLabel(tool)}</dd>
-                </div>
-              </dl>
+      {listing && listing.tools.length === 0 ? <p>No tools are in the catalog yet.</p> : null}
+      {listing && listing.tools.length > 0 ? (
+        <ul aria-label="Tools" className="grid gap-3 sm:grid-cols-2">
+          {listing.tools.map((tool) => (
+            <li key={tool.slug} className="rounded-2xl border border-line px-4 py-3">
+              <Link href={`/tools/${tool.slug}`} className="font-semibold underline-offset-4 hover:underline">
+                {tool.name}
+              </Link>
+              <span className="mt-1 block text-sm text-muted">
+                {tool.category}. {tool.shortDesc}
+              </span>
             </li>
           ))}
         </ul>
-      )}
-    </article>
+      ) : null}
+      {listing ? (
+        <nav aria-label="Pages" className="flex flex-wrap items-center gap-4 text-sm font-semibold">
+          {listing.page > 1 ? (
+            <Link className="underline" href={toolsPath(selected?.slug ?? null, listing.page - 1)}>
+              Previous page
+            </Link>
+          ) : null}
+          {listing.page < listing.pageCount ? (
+            <Link className="underline" href={toolsPath(selected?.slug ?? null, listing.page + 1)}>
+              Next page
+            </Link>
+          ) : null}
+        </nav>
+      ) : null}
+    </div>
   )
 }
 
@@ -107,7 +163,7 @@ function CategoryLink({
   const label = `${count} ${count === 1 ? 'tool' : 'tools'}`
   return (
     <Link
-      href={category ? toolsIndexPath(category) : '/tools'}
+      href={category ? toolsPath(category.slug, 1) : '/tools'}
       aria-current={current ? 'page' : undefined}
       className={`inline-flex min-h-12 items-center rounded-full border px-4 text-sm font-semibold ${
         current ? 'border-indigo bg-indigo text-white' : 'border-line bg-card hover:border-accent'

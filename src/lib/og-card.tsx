@@ -1,8 +1,9 @@
 import { readFile } from 'node:fs/promises'
 import path from 'node:path'
 import { ImageResponse } from 'next/og'
+import { decompress } from 'wawoff2'
 import { BRAND, LOGO_DARK_RASTER_PATH } from './brand'
-import type { OgCopy } from './og'
+import { OG_CACHE_CONTROL, type OgCopy } from './og'
 
 export const OG_SIZE = { width: 1200, height: 630 }
 
@@ -22,14 +23,24 @@ type Assets = {
 
 let assets: Promise<Assets> | null = null
 
+function publicFile(publicPath: string): string {
+  return path.join(process.cwd(), 'public', publicPath.replace(/^\/+/, ''))
+}
+
+async function truetypeFromWoff2(file: string): Promise<Buffer> {
+  const compressed = await readFile(file)
+  const decoded = await decompress(compressed)
+  return Buffer.from(decoded)
+}
+
 function loadAssets(): Promise<Assets> {
   if (!assets) {
     const root = process.cwd()
     assets = Promise.all([
-      readFile(path.join(root, 'src/fonts/Poppins-Bold.ttf')),
-      readFile(path.join(root, 'src/fonts/Poppins-Medium.ttf')),
-      readFile(path.join(root, 'src/fonts/Poppins-SemiBold.ttf')),
-      readFile(path.join(root, 'public', LOGO_DARK_RASTER_PATH)),
+      truetypeFromWoff2(path.join(root, 'src/fonts/Poppins-Bold.woff2')),
+      truetypeFromWoff2(path.join(root, 'src/fonts/Poppins-Medium.woff2')),
+      truetypeFromWoff2(path.join(root, 'src/fonts/Poppins-SemiBold.woff2')),
+      readFile(publicFile(LOGO_DARK_RASTER_PATH)),
     ]).then(([bold, medium, semibold, logo]) => ({
       bold,
       medium,
@@ -41,7 +52,7 @@ function loadAssets(): Promise<Assets> {
 }
 
 /** Per-page link preview. Static pages use the kit PNG instead. */
-export async function brandedOgImage(copy: OgCopy): Promise<ImageResponse> {
+export async function brandedOgImage(copy: OgCopy, cacheControl = OG_CACHE_CONTROL): Promise<ImageResponse> {
   const { bold, medium, semibold, logo } = await loadAssets()
   return new ImageResponse(
     (
@@ -115,6 +126,7 @@ export async function brandedOgImage(copy: OgCopy): Promise<ImageResponse> {
     ),
     {
       ...OG_SIZE,
+      headers: { 'cache-control': cacheControl },
       fonts: [
         { name: 'Poppins', data: bold, weight: 700, style: 'normal' },
         { name: 'Poppins', data: medium, weight: 500, style: 'normal' },

@@ -1,12 +1,12 @@
 import { comparePairSeeds } from '@/data/catalog'
-import { getCatalog } from '@/lib/catalog'
+import { listTasks, listToolSummaries } from '@/lib/catalog'
 import { getSiteUrl, TAGLINE } from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const site = getSiteUrl()
-  const catalog = await getCatalog()
+  const [taskList, toolList] = await Promise.all([listTasks(), listToolSummaries()])
   const lines = [
     '# BestBotFor',
     '',
@@ -15,14 +15,14 @@ export async function GET() {
     'BestBotFor recommends one AI tool and two alternatives from three questions: the job, the budget, and experience.',
     '',
     '## Guides',
-    ...catalog.tasks.map((task) => `- [Best AI tool for ${task.name}](${site}/best/${task.slug}): ${task.description}`),
+    ...taskList.map((task) => `- [Best AI tool for ${task.name}](${site}/best/${task.slug}): ${task.description}`),
     '',
     '## Comparisons',
     ...comparePairSeeds.map(([a, b]) => `- [${a} vs ${b}](${site}/compare/${a}-vs-${b})`),
     '',
     '## Tools',
-    `- [All tools](${site}/tools): the full catalog. Filter with \`?category=\`.`,
-    ...catalog.tools.map((tool) => `- [${tool.name}](${site}/tools/${tool.slug}): ${tool.shortDesc}`),
+    `- [All tools](${site}/tools): the catalog, one page at a time. Filter with \`?category=\`.`,
+    ...toolList.map((tool) => `- [${tool.name}](${site}/tools/${tool.slug}): ${tool.shortDesc}`),
     '',
     '## Policies',
     `- [About](${site}/about)`,

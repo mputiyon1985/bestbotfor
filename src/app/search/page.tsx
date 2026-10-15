@@ -1,9 +1,8 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
-import { getCatalog } from '@/lib/catalog'
+import { searchCatalog } from '@/lib/catalog'
 import { pageMetadata } from '@/lib/metadata'
-import { searchTools } from '@/lib/recommend'
 import { searchQuerySchema } from '@/lib/validation'
 
 export async function generateMetadata({
@@ -30,8 +29,7 @@ export default async function SearchPage({
   const params = await searchParams
   const raw = typeof params.q === 'string' ? params.q : ''
   const parsed = searchQuerySchema.safeParse(raw)
-  const catalog = await getCatalog()
-  const results = parsed.success ? searchTools(catalog, parsed.data) : []
+  const results = parsed.success ? await searchCatalog(parsed.data) : []
 
   return (
     <div className="space-y-6">

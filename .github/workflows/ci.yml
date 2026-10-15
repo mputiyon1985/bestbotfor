@@ -5,18 +5,29 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 22
           cache: npm
       - run: npm ci
       - name: Refuse live Stripe keys
         run: npm run check:stripe-keys
+      - name: Gitleaks
+        run: npm run check:gitleaks
+      - name: Database write allowlist
+        run: npm run check:db-writes
+      - name: Member route protection
+        run: npm run check:members
       - name: Audit
         run: npm audit --audit-level=high
       - run: npm run lint
@@ -27,6 +38,9 @@ jobs:
         env:
           TURSO_DATABASE_URL: file:./data/ci.db
           NEXT_PUBLIC_SITE_URL: https://bestbotfor.com
+          NEXT_PUBLIC_GA_ID: G-TESTCONSENT
+      - name: Client bundle token scan
+        run: npm run check:bundle
       - name: Install Playwright
         run: npx playwright install --with-deps chromium
       - name: End-to-end
@@ -35,3 +49,9 @@ jobs:
           CI: true
           TURSO_DATABASE_URL: file:./data/e2e.db
           NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
+      - name: Lighthouse
+        run: npm run check:lighthouse
+        env:
+          TURSO_DATABASE_URL: file:./data/ci.db
+          TURSO_AUTH_TOKEN: local
+          NEXT_PUBLIC_SITE_URL: http://127.0.0.1:4321

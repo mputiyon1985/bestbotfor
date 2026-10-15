@@ -1,7 +1,10 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { ACTION_LIMITS, allowRate } from '@/lib/action-limit'
+import { getDb } from '@/lib/db'
 import { isClerkConfigured } from '@/lib/flags'
+import { rateLimitKey } from '@/lib/ip'
 import { stripeCustomerIdForUser } from '@/lib/members'
 import { isStripeHostedUrl } from '@/lib/redirect'
 import { absoluteUrl } from '@/lib/site'
@@ -14,6 +17,13 @@ export async function checkoutAction(): Promise<void> {
   const stripe = getStripe()
   const price = stripePriceId()
   if (!stripe || !price || !userId) redirect('/pricing')
+  const allowed = await allowRate(
+    getDb(),
+    rateLimitKey(userId, 'checkout'),
+    ACTION_LIMITS.checkout.limit,
+    ACTION_LIMITS.checkout.windowMs,
+  )
+  if (!allowed) redirect('/pricing?notice=rate')
 
   const customer = await stripeCustomerIdForUser(userId)
   const session = await stripe.checkout.sessions.create({

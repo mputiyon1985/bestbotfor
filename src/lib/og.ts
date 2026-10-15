@@ -2,7 +2,19 @@ import { comparisonRows, comparisonSummary } from './compare'
 import type { Catalog } from './catalog-types'
 import { budgetPhrase, skillPhrase } from './format'
 import { TAGLINE } from './site'
-import { budgetSchema, parseComparePair, skillSchema, slugSchema } from './validation'
+import { budgetSchema, parseComparePair, quizSchema, skillSchema, slugSchema } from './validation'
+
+/** CDN caches one card per canonical URL for a day, and may serve it stale for a week. */
+export const OG_CACHE_CONTROL = 'public, s-maxage=86400, stale-while-revalidate=604800'
+
+/** A missing catalog is not a stable "invalid URL". Do not let the CDN remember it. */
+export const OG_UNAVAILABLE_CACHE_CONTROL = 'no-store'
+
+export const OG_CANONICAL_PATH = '/api/og'
+
+export const OG_RATE_LIMIT = 60
+export const OG_RATE_WINDOW_MS = 60_000
+export const OG_DB_BUDGET_MS = 800
 
 export type OgCopy = { title: string; subtitle: string }
 
@@ -55,4 +67,50 @@ export function ogCopy(
     title: input.title?.trim() || FALLBACK.title,
     subtitle: input.subtitle?.trim() || FALLBACK.subtitle,
   }
+}
+
+/**
+ * Every preview URL collapses to one cache key.
+ * Valid shapes: `/api/og`, `kind=compare&pair=`, `kind=result&task&budget&skill`, `kind=task&task`.
+ * Anything else, including free-text titles, returns the default path so the CDN stores one redirect.
+ * A missing catalog returns null: the caller serves a fallback image and must not cache a redirect.
+ */
+export function canonicalOgPath(searchParams: URLSearchParams, catalog: Catalog | null): string | null {
+  if (!catalog) return null
+
+  const kind = searchParams.get('kind')
+  if (kind === 'compare') {
+    const parsed = parseComparePair(searchParams.get('pair') ?? '')
+    if (!parsed) return OG_CANONICAL_PATH
+    const a = catalog.tools.find((tool) => tool.slug === parsed.a)
+    const b = catalog.tools.find((tool) => tool.slug === parsed.b)
+    if (!a || !b) return OG_CANONICAL_PATH
+    return `${OG_CANONICAL_PATH}?kind=compare&pair=${parsed.a}-vs-${parsed.b}`
+  }
+
+  if (kind === 'result') {
+    const quiz = quizSchema.safeParse({
+      task: searchParams.get('task') ?? '',
+      budget: searchParams.get('budget') ?? '',
+      skill: searchParams.get('skill') ?? '',
+    })
+    if (!quiz.success) return OG_CANONICAL_PATH
+    if (!catalog.tasks.some((task) => task.slug === quiz.data.task)) return OG_CANONICAL_PATH
+    const query = new URLSearchParams({
+      kind: 'result',
+      task: quiz.data.task,
+      budget: quiz.data.budget,
+      skill: quiz.data.skill,
+    })
+    return `${OG_CANONICAL_PATH}?${query.toString()}`
+  }
+
+  if (kind === 'task') {
+    const slug = slugSchema.safeParse(searchParams.get('task') ?? '')
+    if (!slug.success) return OG_CANONICAL_PATH
+    if (!catalog.tasks.some((task) => task.slug === slug.data)) return OG_CANONICAL_PATH
+    return `${OG_CANONICAL_PATH}?kind=task&task=${slug.data}`
+  }
+
+  return OG_CANONICAL_PATH
 }

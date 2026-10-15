@@ -24,6 +24,8 @@ export type ToolSeed = {
   name: string
   vendor: string
   url: string
+  /** Exact public hosts this tool may redirect to. Reviewed with the seed. */
+  allowedHosts: readonly string[]
   category: string
   shortDesc: string
   longDesc: string

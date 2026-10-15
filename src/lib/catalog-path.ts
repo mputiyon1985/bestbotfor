@@ -14,8 +14,8 @@ export function isUnsafeCatalogPath(rawUrl: string): boolean {
   if (!match) return false
   const root = match[1]
   const rest = match[2] ?? ''
-  // /tools is the catalog index. /go and /best still require one slug.
-  if (rest === '' || rest === '/') return root !== 'tools'
+  // The tools directory is a real page. Job and redirect routes still require one slug.
+  if (root === 'tools' && (rest === '' || rest === '/')) return false
   const segment = /^\/([^/]+)\/?$/.exec(rest)
   if (!segment?.[1]) return true
   let decoded = segment[1]

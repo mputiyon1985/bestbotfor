@@ -7,8 +7,8 @@
     "node": ">=22"
   },
   "scripts": {
-    "dev": "tsx scripts/prepare-db.ts && next dev",
-    "prebuild": "tsx scripts/prepare-db.ts",
+    "dev": "tsx scripts/prepare-clerk-shell.ts && tsx scripts/prepare-db.ts && next dev",
+    "prebuild": "tsx scripts/prepare-clerk-shell.ts && tsx scripts/prepare-db.ts",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
@@ -17,7 +17,12 @@
     "test:e2e": "playwright test",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
-    "check:stripe-keys": "tsx scripts/check-no-live-stripe-keys.ts"
+    "check:stripe-keys": "tsx scripts/check-no-live-stripe-keys.ts",
+    "check:gitleaks": "tsx scripts/check-gitleaks.ts",
+    "check:bundle": "tsx scripts/check-client-bundle.ts",
+    "check:db-writes": "tsx scripts/check-db-writes.ts",
+    "check:members": "tsx scripts/check-member-routes.ts",
+    "check:lighthouse": "tsx scripts/check-lighthouse.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.16",
@@ -29,6 +34,7 @@
     "react-dom": "^19.3.1",
     "server-only": "^0.0.1",
     "stripe": "^23.0.0",
+    "wawoff2": "^2.0.1",
     "zod": "^4.6.7"
   },
   "devDependencies": {

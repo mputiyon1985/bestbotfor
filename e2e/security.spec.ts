@@ -45,13 +45,13 @@ test('the tools index is served and still rejects an unsafe slug', async () => {
 
   const index = await rawStatus('/tools')
   expect(index.status).toBe(200)
-  expect(index.body).toContain('AI tools')
-  expect(index.body).toContain(`Showing ${catalog.tools.length} of ${catalog.tools.length}`)
+  expect(index.body).toContain('Tools')
+  expect(index.body).toContain(`${catalog.tools.length} tools. Page 1 of`)
   expect(index.body).not.toContain('not a tool in the catalog')
 
   const filtered = await rawStatus(`/tools?category=${category.slug}`)
   expect(filtered.status).toBe(200)
-  expect(filtered.body).toContain(`${category.name} tools`)
+  expect(filtered.body).toContain(`${category.count} ${category.name} tools. Page 1 of`)
 
   const unsafe = await rawStatus('/tools/%2e%2e')
   expect(unsafe.status).toBe(404)
@@ -65,9 +65,23 @@ test('best and tools reject a slug that is not in the catalog shape', async () =
   }
 })
 
-test('a compare image uses the pair', async ({ request }) => {
+test('a compare image uses the pair and is cacheable', async ({ request }) => {
   const response = await request.get('/api/og?kind=compare&pair=chatgpt-vs-claude')
   expect(response.status()).toBe(200)
   expect(response.headers()['content-type']).toContain('image/png')
   expect(response.headers()['content-type']).not.toContain('text/html')
+  const cache = response.headers()['cache-control'] ?? ''
+  expect(cache).toContain('s-maxage=86400')
+  expect(cache).toContain('stale-while-revalidate=604800')
+})
+
+test('invalid preview params redirect to one canonical url', async ({ request }) => {
+  const response = await request.get('/api/og?title=%3Cscript%3E&kind=nope', { maxRedirects: 0 })
+  expect(response.status()).toBe(308)
+  expect(response.headers().location).toBe('/api/og')
+  expect(response.headers()['cache-control'] ?? '').toContain('s-maxage=86400')
+
+  const reordered = await request.get('/api/og?pair=chatgpt-vs-claude&kind=compare', { maxRedirects: 0 })
+  expect(reordered.status()).toBe(308)
+  expect(reordered.headers().location).toBe('/api/og?kind=compare&pair=chatgpt-vs-claude')
 })

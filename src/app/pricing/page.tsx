@@ -13,14 +13,26 @@ export const metadata: Metadata = pageMetadata({
   path: '/pricing',
 })
 
-export default async function PricingPage() {
+export default async function PricingPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
   const price = await getPublicPrice()
   const userId = await currentClerkUserId()
+  const params = await searchParams
+  const notice = typeof params.notice === 'string' ? params.notice : ''
 
   return (
     <article className="max-w-2xl space-y-6">
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Pricing', path: '/pricing' }]} />
       <h1 className="font-bold text-5xl">Membership</h1>
+      <p role="note" className="rounded-2xl border border-line bg-mist px-4 py-3 text-sm">
+        Checkout uses Stripe test mode. No real charges occur.
+      </p>
+      {notice === 'rate' ? (
+        <p role="alert">Too many checkout attempts from this account. Try again in an hour.</p>
+      ) : null}
       <p>Members can save picker results and read the longer comparison notes. The public guides stay free.</p>
       {price.available ? (
         <p className="font-bold text-4xl">{formatStripeAmount(price.unitAmount, price.currency, price.interval)}</p>

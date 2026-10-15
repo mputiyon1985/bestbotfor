@@ -2,10 +2,12 @@ import { clerkMiddleware } from '@clerk/nextjs/server'
 import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server'
 import { buildContentSecurityPolicy, securityHeaders } from '@/lib/csp'
 import { isClerkConfigured } from '@/lib/flags'
+import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from '@/lib/indexing'
 
 function applySecurity(response: NextResponse, nonce: string): NextResponse {
   const csp = buildContentSecurityPolicy(nonce, process.env.NODE_ENV !== 'production')
   response.headers.set('Content-Security-Policy', csp)
+  if (!isProductionDeployment()) response.headers.set('X-Robots-Tag', PREVIEW_ROBOTS_TAG)
   for (const [key, value] of Object.entries(securityHeaders())) {
     response.headers.set(key, value)
   }
