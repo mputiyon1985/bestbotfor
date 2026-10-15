@@ -1,0 +1,106 @@
+import type { Metadata } from 'next'
+import Link from 'next/link'
+import { comparePairSeeds } from '@/data/catalog'
+import { getCatalog } from '@/lib/catalog'
+import { budgetLabel, skillLabel } from '@/lib/format'
+import { pageMetadata } from '@/lib/metadata'
+import { listSavedPicks, memberAccess, stripeCustomerIdForUser } from '@/lib/members'
+import { portalAction } from './actions'
+
+export const metadata: Metadata = pageMetadata({
+  title: 'Members',
+  description: 'Saved picks and membership status for BestBotFor.',
+  path: '/members',
+  noIndex: true,
+})
+
+export default async function MembersPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>
+}) {
+  const access = await memberAccess()
+  const params = await searchParams
+  const checkout = typeof params.checkout === 'string' ? params.checkout : ''
+
+  if (!access.allowed) {
+    return (
+      <article className="max-w-2xl space-y-4">
+        <h1 className="font-serif text-5xl">Members</h1>
+        {checkout === 'success' ? <p>Payment is processing. Membership opens when Stripe confirms the subscription.</p> : null}
+        {access.reason === 'billing-disabled' ? (
+          <p>Membership billing is not available on this server yet.</p>
+        ) : (
+          <p>An active membership is required for saved picks and the longer comparison notes.</p>
+        )}
+        <Link href="/pricing" className="inline-flex min-h-12 items-center font-semibold underline">
+          View pricing
+        </Link>
+      </article>
+    )
+  }
+
+  const picks = await listSavedPicks(access.userId)
+  const catalog = await getCatalog()
+  const customer = await stripeCustomerIdForUser(access.userId)
+
+  return (
+    <article className="space-y-8">
+      <h1 className="font-serif text-5xl">Your membership</h1>
+      <p>Your subscription is active. Saved picks and the comparison notes are open.</p>
+      {customer ? (
+        <form action={portalAction}>
+          <button type="submit" className="min-h-12 rounded-full border border-ink px-5 font-semibold">
+            Manage billing
+          </button>
+        </form>
+      ) : (
+        <p className="text-sm text-muted">The billing portal appears after Stripe sends a customer id.</p>
+      )}
+      <section>
+        <h2 className="font-serif text-3xl">Saved picks</h2>
+        {picks.length === 0 ? (
+          <p className="mt-2 text-muted">You have not saved a pick yet. Run the picker and choose “Save this pick.”</p>
+        ) : (
+          <ul className="mt-3 space-y-2">
+            {picks.map((pick) => {
+              const task = catalog.tasks.find((item) => item.slug === pick.taskSlug)
+              const href = `/result?task=${pick.taskSlug}&budget=${pick.budget}&skill=${pick.skill}`
+              return (
+                <li key={pick.id}>
+                  <Link className="underline" href={href}>
+                    {task?.name ?? pick.taskSlug}
+                  </Link>
+                  <span className="text-muted">
+                    {' '}
+                    — {budgetLabel[pick.budget as 'free' | 'low' | 'any'] ?? pick.budget},{' '}
+                    {skillLabel[pick.skill as 'beginner' | 'intermediate' | 'pro'] ?? pick.skill}
+                  </span>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+      </section>
+      <section>
+        <h2 className="font-serif text-3xl">Deep dives</h2>
+        <ul className="mt-3 space-y-2">
+          {comparePairSeeds.map(([a, b]) => (
+            <li key={`${a}-${b}`}>
+              <Link className="underline" href={`/compare/${a}-vs-${b}`}>
+                {titleCase(a)} vs {titleCase(b)}
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
+    </article>
+  )
+}
+
+function titleCase(slug: string): string {
+  return slug
+    .split('-')
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(' ')
+}

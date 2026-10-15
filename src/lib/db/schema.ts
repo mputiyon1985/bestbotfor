@@ -1,0 +1,106 @@
+import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+
+export const tools = sqliteTable('tools', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  slug: text('slug').notNull().unique(),
+  name: text('name').notNull(),
+  vendor: text('vendor').notNull(),
+  url: text('url').notNull(),
+  category: text('category').notNull(),
+  shortDesc: text('short_desc').notNull(),
+  longDesc: text('long_desc').notNull(),
+  pricingModel: text('pricing_model').notNull(),
+  priceFromUsd: integer('price_from_usd'),
+  hasFreeTier: integer('has_free_tier', { mode: 'boolean' }).notNull(),
+  skillLevel: text('skill_level').notNull(),
+  platforms: text('platforms').notNull(),
+  lastVerifiedAt: text('last_verified_at').notNull(),
+  status: text('status').notNull(),
+})
+
+export const tasks = sqliteTable('tasks', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  slug: text('slug').notNull().unique(),
+  name: text('name').notNull(),
+  category: text('category').notNull(),
+  description: text('description').notNull(),
+})
+
+export const toolTasks = sqliteTable('tool_tasks', {
+  toolId: integer('tool_id').notNull(),
+  taskId: integer('task_id').notNull(),
+  fitScore: integer('fit_score').notNull(),
+  notes: text('notes').notNull(),
+})
+
+/**
+ * Affiliate URL is stored so a future enrollment can be recorded.
+ * /go never reads affiliate_url. Redirects use tools.url only.
+ */
+export const affiliatePrograms = sqliteTable('affiliate_programs', {
+  toolId: integer('tool_id').primaryKey(),
+  hasProgram: integer('has_program', { mode: 'boolean' }).notNull(),
+  network: text('network'),
+  sourceUrl: text('source_url'),
+  status: text('status').notNull(),
+  affiliateUrl: text('affiliate_url'),
+  commissionNote: text('commission_note'),
+  verifiedAt: text('verified_at'),
+})
+
+export const clicks = sqliteTable('clicks', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  toolId: integer('tool_id').notNull(),
+  page: text('page').notNull(),
+  ts: integer('ts').notNull(),
+  country: text('country'),
+  ipHash: text('ip_hash'),
+})
+
+export const subscribers = sqliteTable('subscribers', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  email: text('email').notNull().unique(),
+  createdAt: integer('created_at').notNull(),
+  destination: text('destination').notNull(),
+  beehiivId: text('beehiiv_id'),
+})
+
+export const subscriptions = sqliteTable(
+  'subscriptions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    clerkUserId: text('clerk_user_id'),
+    stripeCustomerId: text('stripe_customer_id'),
+    stripeSubscriptionId: text('stripe_subscription_id').unique(),
+    stripePriceId: text('stripe_price_id'),
+    status: text('status').notNull(),
+    currentPeriodEnd: integer('current_period_end'),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [index('subscriptions_user_idx').on(table.clerkUserId)],
+)
+
+export const stripeEvents = sqliteTable('stripe_events', {
+  id: text('id').primaryKey(),
+  type: text('type').notNull(),
+  processedAt: integer('processed_at').notNull(),
+})
+
+export const savedPicks = sqliteTable(
+  'saved_picks',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    clerkUserId: text('clerk_user_id').notNull(),
+    taskSlug: text('task_slug').notNull(),
+    budget: text('budget').notNull(),
+    skill: text('skill').notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [index('saved_picks_user_idx').on(table.clerkUserId)],
+)
+
+export const rateLimits = sqliteTable('rate_limits', {
+  key: text('key').primaryKey(),
+  count: integer('count').notNull(),
+  resetAt: integer('reset_at').notNull(),
+})
