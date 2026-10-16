@@ -62,20 +62,27 @@ const toolRows = await db.select().from(tools)
 const taskId = new Map(taskRows.map((row) => [row.slug, row.id]))
 const toolId = new Map(toolRows.map((row) => [row.slug, row.id]))
 
-await db.delete(toolTasks)
-
 for (const tool of toolSeeds) {
   const id = toolId.get(tool.slug)
   if (!id) throw new Error(`Missing tool id for ${tool.slug}`)
   for (const fit of tool.fits) {
     const task = taskId.get(fit.task)
     if (!task) throw new Error(`Unknown task ${fit.task} on ${tool.slug}`)
-    await db.insert(toolTasks).values({
-      toolId: id,
-      taskId: task,
-      fitScore: fit.score,
-      notes: fit.notes,
-    })
+    await db
+      .insert(toolTasks)
+      .values({
+        toolId: id,
+        taskId: task,
+        fitScore: fit.score,
+        notes: fit.notes,
+      })
+      .onConflictDoUpdate({
+        target: [toolTasks.toolId, toolTasks.taskId],
+        set: {
+          fitScore: fit.score,
+          notes: fit.notes,
+        },
+      })
   }
 
   await db

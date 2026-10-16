@@ -1,4 +1,4 @@
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 export const tools = sqliteTable('tools', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -26,12 +26,19 @@ export const tasks = sqliteTable('tasks', {
   description: text('description').notNull(),
 })
 
-export const toolTasks = sqliteTable('tool_tasks', {
-  toolId: integer('tool_id').notNull(),
-  taskId: integer('task_id').notNull(),
-  fitScore: integer('fit_score').notNull(),
-  notes: text('notes').notNull(),
-})
+export const toolTasks = sqliteTable(
+  'tool_tasks',
+  {
+    toolId: integer('tool_id').notNull(),
+    taskId: integer('task_id').notNull(),
+    fitScore: integer('fit_score').notNull(),
+    notes: text('notes').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.toolId, table.taskId] }),
+    uniqueIndex('tool_tasks_tool_task_unique').on(table.toolId, table.taskId),
+  ],
+)
 
 /**
  * Affiliate URL is stored so a future enrollment can be recorded.
