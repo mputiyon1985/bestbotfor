@@ -11,6 +11,7 @@ import { deepDive } from '@/lib/deep-dive'
 import { priceLabel, skillLabel } from '@/lib/format'
 import { breadcrumbJsonLd, faqJsonLd } from '@/lib/jsonld'
 import { memberAccess } from '@/lib/members'
+import { compareDescription } from '@/lib/descriptions'
 import { pageMetadata } from '@/lib/metadata'
 import { parseComparePair } from '@/lib/validation'
 
@@ -22,7 +23,7 @@ export async function generateMetadata({ params }: { params: Promise<{ pair: str
   if (!a || !b) return pageMetadata({ title: 'Comparison', description: 'That comparison is not available.', path: `/compare/${pair}`, noIndex: true })
   return pageMetadata({
     title: `${a.name} vs ${b.name}`,
-    description: `${a.name} vs ${b.name}: which AI tool fits the job, in one line, with a side-by-side table.`,
+    description: compareDescription(a.name, b.name),
     path: `/compare/${a.slug}-vs-${b.slug}`,
     imagePath: `/api/og?kind=compare&pair=${a.slug}-vs-${b.slug}`,
   })

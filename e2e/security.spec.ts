@@ -28,7 +28,17 @@ test('the home page sends a nonce content security policy', async ({ request }) 
   expect(policy).toContain("object-src 'none'")
 })
 
+const HOME_MARKER = 'The right AI in 30 seconds'
+
 test('encoded dot segments do not render the home page', async () => {
+  const home = await rawStatus('/')
+  expect(home.status).toBe(200)
+  expect(home.body).toContain(HOME_MARKER)
+  // The same assertion used on 404s must fail when the body is the home page.
+  expect(() => {
+    expect(home.body).not.toContain(HOME_MARKER)
+  }).toThrow()
+
   for (const path of [
     '/go/%2e%2e',
     '/go/%2E%2E',
@@ -47,7 +57,7 @@ test('encoded dot segments do not render the home page', async () => {
     const response = await rawStatus(path)
     expect(response.status, path).toBe(404)
     expect(response.body, path).toContain('not a tool in the catalog')
-    expect(response.body, path).not.toContain('The right AI in 30 seconds')
+    expect(response.body, path).not.toContain(HOME_MARKER)
   }
 })
 

@@ -15,7 +15,7 @@ export async function generateMetadata({
   const path = query ? `/search?q=${encodeURIComponent(query)}` : '/search'
   return pageMetadata({
     title: query ? `Search: ${query.slice(0, 80)}` : 'Search tools',
-    description: 'Search the BestBotFor catalog by tool name, vendor, or job.',
+    description: 'Search the BestBotFor catalog by tool name, vendor, or job. Or answer three questions and get the right AI in 30 seconds.',
     path,
     noIndex: true,
   })

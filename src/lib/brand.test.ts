@@ -35,7 +35,7 @@ describe('brand sheet palette', () => {
 
   it('uses the approved tagline and the kit open graph image', () => {
     expect(TAGLINE).toBe('The right AI in 30 seconds.')
-    expect(homeTitle).toBe('BestBotFor | The right AI in 30 seconds')
+    expect(homeTitle).toBe('BestBotFor — The right AI in 30 seconds.')
     expect(OG_IMAGE_PATH).toBe('/og/og-default-1200x630.676bae0e.png')
     expect(OG_IMAGE_SVG_PATH).toBe('/og/og-default-1200x630.1ab473e6.svg')
     expect(existsSync(path.join(process.cwd(), 'public', OG_HEADLINE_TEMPLATE_PATH.replace(/^\/+/, '')))).toBe(true)
