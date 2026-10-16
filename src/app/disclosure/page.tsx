@@ -27,6 +27,7 @@ export default function DisclosurePage() {
         we do not invent one.
       </p>
       <p>Recommendations are opinions based on the catalog, not a promise that a tool will work for your project.</p>
+      <p>Tool logos and icons are trademarks of their owners. They are used on BestBotFor for identification only and do not imply endorsement.</p>
     </article>
   )
 }

@@ -26,6 +26,10 @@ export function recommend(catalog: Catalog, answers: QuizAnswers): Recommendatio
         priceFromUsd: tool.priceFromUsd,
         fitScore: fit.score,
         notes: fit.notes,
+        quizEligible: tool.quizEligible,
+        editorial: tool.editorial,
+        pros: tool.pros,
+        cons: tool.cons,
       },
     ]
   })

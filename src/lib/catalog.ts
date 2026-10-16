@@ -5,21 +5,23 @@ import { asc, eq } from 'drizzle-orm'
 import { assembleCatalog, readPublicSlugs, readTaskCandidates, readTasks, readToolCategoryCounts, readToolPage, readToolSummaries, readToolsBySlugs, scoreQuiz, searchToolSummaries } from './catalog-read'
 import type { Catalog, CatalogTask, CatalogTool } from './catalog-types'
 import { getDb } from './db'
-import { affiliatePrograms, tasks, toolTasks, tools } from './db/schema'
+import { affiliatePrograms, tasks, toolProsCons, toolScores, toolTasks, tools } from './db/schema'
 import type { QuizAnswers } from './validation'
 
 async function loadCatalog(): Promise<Catalog> {
   const db = getDb()
-  const [taskRows, toolRows, fitRows, affiliateRows] = await Promise.all([
+  const [taskRows, toolRows, fitRows, affiliateRows, scoreRows, proConRows] = await Promise.all([
     db.select().from(tasks).orderBy(asc(tasks.name)),
     db.select().from(tools).orderBy(asc(tools.name)),
     db.select().from(toolTasks),
     db.select().from(affiliatePrograms),
+    db.select().from(toolScores),
+    db.select().from(toolProsCons),
   ])
-  return assembleCatalog(taskRows, toolRows, fitRows, affiliateRows)
+  return assembleCatalog(taskRows, toolRows, fitRows, affiliateRows, scoreRows, proConRows)
 }
 
-export const getCatalog = unstable_cache(loadCatalog, ['catalog-v2'], { revalidate: 3600 })
+export const getCatalog = unstable_cache(loadCatalog, ['catalog-v4'], { revalidate: 3600 })
 
 export async function getTool(slug: string): Promise<CatalogTool | undefined> {
   const [tool] = await readToolsBySlugs(getDb(), [slug])

@@ -3,8 +3,10 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { ProsConsSection, ScoreSection } from '@/components/editorial'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
+import { ToolLogo } from '@/components/tool-logo'
 import { comparePairSeeds } from '@/data/catalog'
 import { getTool, getToolsBySlugs } from '@/lib/catalog'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
@@ -42,12 +44,15 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
   const partnerName = new Map(partners.map((item) => [item.slug, item.name]))
 
   return (
-    <article className="space-y-8">
+    <article className="min-w-0 space-y-8 break-words">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
       <JsonLd data={softwareJsonLd(tool)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
       <p className="text-sm font-semibold uppercase tracking-[0.14em] text-accent">{tool.category}</p>
-      <h1 className="font-bold text-5xl">{tool.name}</h1>
+      <div className="flex min-w-0 items-start gap-3">
+        <ToolLogo name={tool.name} slug={tool.slug} />
+        <h1 className="min-w-0 break-words font-bold text-5xl">{tool.name}</h1>
+      </div>
       <p className="text-lg">{tool.shortDesc}</p>
       <p className="max-w-2xl text-muted">{tool.longDesc}</p>
       <dl className="grid gap-3 sm:grid-cols-2">
@@ -70,6 +75,8 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
       {tool.affiliate.commissionNote ? (
         <p className="text-sm text-muted">Program note, copied from the vendor’s page: {tool.affiliate.commissionNote}</p>
       ) : null}
+      <ScoreSection editorial={tool.editorial} />
+      <ProsConsSection pros={tool.pros} cons={tool.cons} />
       <section>
         <h2 className="font-semibold text-3xl">Jobs it fits</h2>
         <ul className="mt-3 space-y-3">

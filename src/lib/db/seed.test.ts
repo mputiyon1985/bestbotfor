@@ -1,16 +1,26 @@
 import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { count, eq } from 'drizzle-orm'
+import { and, count, eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { taskSeeds, toolSeeds } from '@/data/catalog'
 import { seed } from '../../../scripts/seed'
 import { getDb, resetDbCache } from './client'
 import { applyMigrations } from './migrate'
-import { affiliatePrograms, clicks, tasks, toolTasks, tools } from './schema'
+import { generateMetadata as toolMetadata } from '@/app/tools/[slug]/page'
+import { editorialSeeds } from '@/data/scores-pros-cons.seed'
+import { keptProsConsSeeds, ratingSeeds, supplementalProsConsSeeds, unratedSlugs } from '@/data/scores-v23.seed'
+import { affiliatePrograms, clicks, tasks, toolProsCons, toolScores, toolTasks, tools } from './schema'
 
 const previousUrl = process.env.TURSO_DATABASE_URL
 const previousToken = process.env.TURSO_AUTH_TOKEN
+const previousPrune = process.env.SEED_PRUNE
+
+function pointTotal(rows: { pros: unknown[]; cons: unknown[] }[]): number {
+  return rows.reduce((total, row) => total + row.pros.length + row.cons.length, 0)
+}
+
+const prosConsTotal = pointTotal(editorialSeeds) + pointTotal(supplementalProsConsSeeds)
 const directories: string[] = []
 
 afterEach(async () => {
@@ -24,6 +34,8 @@ afterEach(async () => {
   else process.env.TURSO_DATABASE_URL = previousUrl
   if (previousToken === undefined) delete process.env.TURSO_AUTH_TOKEN
   else process.env.TURSO_AUTH_TOKEN = previousToken
+  if (previousPrune === undefined) delete process.env.SEED_PRUNE
+  else process.env.SEED_PRUNE = previousPrune
   await Promise.all(directories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })))
 })
 
@@ -175,5 +187,368 @@ describe('catalog seed', () => {
     const eleven = afterSeed.find((row) => pair(row) === 'elevenlabs:music')
     expect(eleven?.fitScore).toBe(86)
     expect(eleven?.notes).toBe('Eleven Music generates songs with vocals; commercial use needs a paid plan.')
+  })
+
+  it('replaces v2.3 scores and drops score rows for tools that are not rated', async () => {
+    await useTempDatabase()
+    await seed()
+    const db = getDb()
+    const toolRows = await db.select().from(tools)
+    const claude = toolRows.find((row) => row.slug === 'claude')
+    expect(claude).toBeTruthy()
+    if (!claude) return
+    await db.insert(toolScores).values({
+      toolId: 999_999,
+      features: 1,
+      value: 1,
+      ease: 1,
+      quality: 1,
+      overall: 1,
+      rationale: 'Keep this sentinel score.',
+      sources: '["https://example.com"]',
+      reviewedAt: '2026-10-16',
+    })
+    await db.insert(toolProsCons).values({
+      toolId: 999_999,
+      kind: 'pro',
+      position: 1,
+      body: 'Keep this sentinel point.',
+      sourceUrl: 'https://example.com',
+    })
+    await db.update(toolScores).set({ rationale: 'stale rationale' }).where(eq(toolScores.toolId, claude.id))
+
+    process.env.SEED_PRUNE = '1'
+    await seed()
+
+    const scores = await db.select().from(toolScores)
+    const points = await db.select().from(toolProsCons)
+    const expectedPoints = prosConsTotal + 1
+    expect(scores).toHaveLength(ratingSeeds.length)
+    expect(points).toHaveLength(expectedPoints)
+    const claudeRating = ratingSeeds.find((row) => row.slug === 'claude')
+    const restored = scores.find((row) => row.toolId === claude.id)
+    expect(restored?.rationale).toBe(claudeRating?.rationale)
+    expect(restored?.overall).toBe(claudeRating?.overall)
+    expect(restored?.sources).toBe('[]')
+    expect(restored?.categoryRankDisplay).toBe(claudeRating?.categoryRankDisplay)
+    expect(restored?.note).toBe(claudeRating?.note ?? '')
+    const windsurf = toolRows.find((row) => row.slug === 'windsurf')
+    expect(windsurf?.name).toBe('Devin Desktop (formerly Windsurf)')
+    expect(windsurf?.vendor).toBe('Cognition')
+    expect(windsurf?.url).toBe('https://devin.ai/desktop')
+    expect(windsurf?.needsVerification).toBe(false)
+    expect(scores.some((row) => row.toolId === windsurf?.id)).toBe(true)
+    expect(points.some((row) => row.toolId === windsurf?.id && row.body.includes('Tab completions'))).toBe(true)
+    const relevance = toolRows.find((row) => row.slug === 'relevance-ai')
+    expect(relevance?.hasFreeTier).toBe(false)
+    expect(relevance?.priceFromUsd).toBe(19)
+    expect(scores.some((row) => row.toolId === relevance?.id)).toBe(false)
+    const relevancePoints = editorialSeeds.find((row) => row.slug === 'relevance-ai')
+    expect(relevancePoints).toBeTruthy()
+    const storedRelevance = points.filter((row) => row.toolId === relevance?.id)
+    expect(storedRelevance.filter((row) => row.kind === 'pro').map((row) => row.body)).toEqual(
+      relevancePoints?.pros.map((point) => point.text),
+    )
+    expect(storedRelevance.filter((row) => row.kind === 'con').map((row) => row.body)).toEqual(
+      relevancePoints?.cons.map((point) => point.text),
+    )
+    expect(scores.some((row) => row.toolId === 999_999)).toBe(false)
+    expect(points.some((row) => row.toolId === 999_999 && row.body === 'Keep this sentinel point.')).toBe(true)
+    const claudePros = points.filter((row) => row.toolId === claude.id && row.kind === 'pro')
+    const v1Pros = keptProsConsSeeds.find((row) => row.slug === 'claude')?.pros.map((point) => point.text)
+    expect(claudePros.map((row) => row.body)).toEqual(v1Pros)
+  })
+
+  it('rates exactly the CSV slugs', async () => {
+    await useTempDatabase()
+    await seed()
+    const db = getDb()
+    const toolRows = await db.select().from(tools)
+    const bySlug = new Map(toolRows.map((row) => [row.slug, row]))
+    const cursor = bySlug.get('cursor')
+    const windsurf = bySlug.get('windsurf')
+    const chatgpt = bySlug.get('chatgpt')
+    expect(cursor).toBeTruthy()
+    expect(windsurf).toBeTruthy()
+    expect(chatgpt).toBeTruthy()
+    if (!cursor || !windsurf || !chatgpt) return
+
+    const scores = await db.select().from(toolScores)
+    const points = await db.select().from(toolProsCons)
+    const idToSlug = new Map(toolRows.map((row) => [row.id, row.slug]))
+    const rated = scores.map((row) => idToSlug.get(row.toolId)).sort()
+    const csvSlugs = ratingSeeds.map((row) => row.slug).sort()
+    const v1Slugs = new Set(editorialSeeds.map((row) => row.slug))
+    expect(ratingSeeds).toHaveLength(91)
+    expect(unratedSlugs).toHaveLength(68)
+    expect(rated).toEqual(csvSlugs)
+    expect(new Set(rated)).toEqual(new Set(csvSlugs))
+    expect(csvSlugs).toContain('cursor')
+    expect(csvSlugs).toContain('windsurf')
+    expect(scores.every((row) => row.sources === '[]')).toBe(true)
+    expect(JSON.stringify(scores)).not.toContain('pcmag.com')
+    expect(JSON.stringify(scores)).not.toContain('techradar.com')
+    expect(JSON.stringify(scores)).not.toContain('evidence.jsonl')
+    expect(JSON.stringify(scores)).not.toContain('third_party')
+    expect(JSON.stringify(scores)).not.toContain('source_urls')
+    expect(scores.some((row) => row.toolId === cursor.id)).toBe(true)
+    expect(scores.some((row) => row.toolId === windsurf.id)).toBe(true)
+    expect(points.filter((row) => row.toolId === cursor.id && row.kind === 'pro').map((row) => row.body)).toEqual(
+      supplementalProsConsSeeds.find((row) => row.slug === 'cursor')?.pros.map((point) => point.text),
+    )
+    expect(points.filter((row) => row.toolId === windsurf.id && row.kind === 'con').map((row) => row.body)).toEqual(
+      supplementalProsConsSeeds.find((row) => row.slug === 'windsurf')?.cons.map((point) => point.text),
+    )
+    for (const slug of ['grok', 'semantic-scholar'] as const) {
+      expect(points.some((row) => row.toolId === bySlug.get(slug)?.id), slug).toBe(false)
+    }
+    expect(scores.some((row) => row.toolId === chatgpt.id)).toBe(true)
+    const kept = keptProsConsSeeds.length
+    const removedSlugs = editorialSeeds.filter((row) => !csvSlugs.includes(row.slug))
+    expect(kept).toBe(87)
+    expect(removedSlugs).toHaveLength(59)
+    expect(ratingSeeds.filter((row) => !v1Slugs.has(row.slug)).map((row) => row.slug).sort()).toEqual([
+      'cursor',
+      'grok',
+      'semantic-scholar',
+      'windsurf',
+    ])
+    const keptPoints = keptProsConsSeeds.reduce((total, row) => total + row.pros.length + row.cons.length, 0)
+    const unratedPoints = removedSlugs.reduce((total, row) => total + row.pros.length + row.cons.length, 0)
+    expect(keptPoints).toBe(439)
+    expect(unratedPoints).toBe(296)
+    expect(points).toHaveLength(keptPoints + unratedPoints + pointTotal(supplementalProsConsSeeds))
+
+    for (const slug of unratedSlugs) {
+      const tool = bySlug.get(slug)
+      expect(tool, slug).toBeTruthy()
+      expect(scores.some((row) => row.toolId === tool?.id), slug).toBe(false)
+      const v1 = editorialSeeds.find((row) => row.slug === slug)
+      const stored = points.filter((row) => row.toolId === tool?.id)
+      expect(stored.filter((row) => row.kind === 'pro').map((row) => row.body), slug).toEqual(v1?.pros.map((point) => point.text) ?? [])
+      expect(stored.filter((row) => row.kind === 'con').map((row) => row.body), slug).toEqual(v1?.cons.map((point) => point.text) ?? [])
+      expect(ratingSeeds.some((row) => row.slug === slug), slug).toBe(false)
+    }
+    expect(windsurf.name).toBe('Devin Desktop (formerly Windsurf)')
+    expect(windsurf.vendor).toBe('Cognition')
+    expect(windsurf.url).toBe('https://devin.ai/desktop')
+    expect(windsurf.needsVerification).toBe(false)
+    expect(windsurf.priceFromUsd).toBe(20)
+    expect(windsurf.hasFreeTier).toBe(true)
+    expect(cursor.priceFromUsd).toBe(8)
+    expect(cursor.hasFreeTier).toBe(true)
+    expect(cursor.longDesc).toContain('Pro $20 is for legacy subscribers only')
+
+    const relevance = bySlug.get('relevance-ai')
+    const seeded = toolSeeds.find((tool) => tool.slug === 'relevance-ai')
+    expect(seeded?.hasFreeTier).toBe(false)
+    expect(seeded?.pricingModel).toBe('paid')
+    expect(seeded?.priceFromUsd).toBe(19)
+    expect(relevance?.hasFreeTier).toBe(false)
+    expect(relevance?.pricingModel).toBe('paid')
+    expect(relevance?.priceFromUsd).toBe(19)
+
+    const sql = await readFile(path.join(process.cwd(), 'drizzle/0007_drop_non_forge_scores.sql'), 'utf8')
+    const named = [...new Set([...sql.matchAll(/slug IN \('([^']+)'\)/g)].map((match) => match[1]))]
+    expect(named).toEqual(['cursor'])
+    await db.$client.executeMultiple(sql)
+    const deleted = await db.select().from(toolScores)
+    expect(deleted.some((row) => row.toolId === cursor.id)).toBe(false)
+    expect(deleted.some((row) => row.toolId === chatgpt.id)).toBe(true)
+    await seed()
+    const restoredRows = await db.select().from(tools)
+    const restoredIds = new Map(restoredRows.map((row) => [row.id, row.slug]))
+    const restoredCursor = restoredRows.find((row) => row.slug === 'cursor')
+    const restoredScores = await db.select().from(toolScores)
+    const restored = restoredScores.map((row) => restoredIds.get(row.toolId)).sort()
+    const restoredPoints = await db.select().from(toolProsCons)
+    expect(restored).toEqual(csvSlugs)
+    expect(restoredPoints.filter((row) => row.toolId === restoredCursor?.id && row.kind === 'pro').map((row) => row.body)).toEqual(
+      supplementalProsConsSeeds.find((row) => row.slug === 'cursor')?.pros.map((point) => point.text),
+    )
+    const cursorScore = restoredScores.find((row) => row.toolId === restoredCursor?.id)
+    expect(cursorScore?.overall).toBe(ratingSeeds.find((row) => row.slug === 'cursor')?.overall)
+    expect(cursorScore?.sources).toBe('[]')
+
+    const fresh = await seed()
+    expect(fresh).toEqual({
+      scoresInserted: 0,
+      scoresUpdated: 91,
+      scoresRemoved: 0,
+      prosInserted: 0,
+      prosUpdated: prosConsTotal,
+      prosRemoved: 0,
+    })
+
+    const previousEnv = process.env.VERCEL_ENV
+    process.env.VERCEL_ENV = 'production'
+    try {
+      const meta = await toolMetadata({ params: Promise.resolve({ slug: 'windsurf' }) })
+      expect(meta.robots).toEqual({ index: true, follow: true })
+      expect(meta.title).toBe('Devin Desktop (formerly Windsurf)')
+      expect(String(meta.alternates?.canonical)).toBe('https://bestbotfor.com/tools/windsurf')
+    } finally {
+      if (previousEnv === undefined) delete process.env.VERCEL_ENV
+      else process.env.VERCEL_ENV = previousEnv
+    }
+  })
+
+  it('counts v1 inserts, updates, and deletes, and replaces stale Cursor and Windsurf scores', async () => {
+    await useTempDatabase()
+    const fresh = await seed()
+    expect(fresh).toEqual({
+      scoresInserted: 91,
+      scoresUpdated: 0,
+      scoresRemoved: 0,
+      prosInserted: prosConsTotal,
+      prosUpdated: 0,
+      prosRemoved: 0,
+    })
+
+    const db = getDb()
+    const toolRows = await db.select().from(tools)
+    const bySlug = new Map(toolRows.map((row) => [row.slug, row]))
+    await db.delete(toolScores)
+    await db.delete(toolProsCons)
+    for (const row of editorialSeeds) {
+      const id = bySlug.get(row.slug)?.id
+      expect(id, row.slug).toBeTruthy()
+      if (!id) return
+      await db.insert(toolScores).values({
+        toolId: id,
+        features: row.features,
+        value: row.value,
+        ease: row.ease,
+        quality: row.quality,
+        overall: row.overall,
+        rationale: row.rationale,
+        sources: '["https://example.com/stale"]',
+        reviewedAt: row.reviewedAt,
+      })
+      const points = [
+        ...row.pros.map((point, index) => ({ kind: 'pro' as const, position: index + 1, body: point.text, sourceUrl: point.sourceUrl })),
+        ...row.cons.map((point, index) => ({ kind: 'con' as const, position: index + 1, body: point.text, sourceUrl: point.sourceUrl })),
+      ]
+      for (const point of points) {
+        await db.insert(toolProsCons).values({ toolId: id, ...point })
+      }
+    }
+
+    process.env.SEED_PRUNE = '1'
+    const fromV1 = await seed()
+    expect(fromV1).toEqual({
+      scoresInserted: 4,
+      scoresUpdated: 87,
+      scoresRemoved: 59,
+      prosInserted: pointTotal(supplementalProsConsSeeds),
+      prosUpdated: pointTotal(editorialSeeds),
+      prosRemoved: 0,
+    })
+
+    const cursor = bySlug.get('cursor')
+    const windsurf = bySlug.get('windsurf')
+    const perplexity = bySlug.get('perplexity')
+    const relevance = bySlug.get('relevance-ai')
+    expect(cursor && windsurf && perplexity && relevance).toBeTruthy()
+    if (!cursor || !windsurf || !perplexity || !relevance) return
+    const stale = {
+      features: 1,
+      value: 1,
+      ease: 1,
+      quality: 1,
+      overall: 1,
+      rationale: 'Stale score that the v2.3 seed must not leave in place.',
+      sources: '["https://stale.example/old"]',
+      reviewedAt: '2020-01-01',
+    }
+    await db.update(toolScores).set(stale).where(eq(toolScores.toolId, cursor.id))
+    await db.update(toolScores).set(stale).where(eq(toolScores.toolId, windsurf.id))
+    await db.insert(toolScores).values({ toolId: perplexity.id, ...stale })
+    await db.insert(toolScores).values({ toolId: relevance.id, ...stale })
+    await db
+      .update(toolProsCons)
+      .set({ body: 'Stale cursor pro that the next seed replaces.', sourceUrl: 'https://stale.example/cursor' })
+      .where(and(eq(toolProsCons.toolId, cursor.id), eq(toolProsCons.kind, 'pro'), eq(toolProsCons.position, 1)))
+    await db
+      .update(toolProsCons)
+      .set({ body: 'Stale windsurf pro that the next seed replaces.', sourceUrl: 'https://stale.example/windsurf' })
+      .where(and(eq(toolProsCons.toolId, windsurf.id), eq(toolProsCons.kind, 'pro'), eq(toolProsCons.position, 1)))
+    await db.insert(toolProsCons).values({
+      toolId: perplexity.id,
+      kind: 'pro',
+      position: 1,
+      body: 'Stale unrated pro that must stay.',
+      sourceUrl: 'https://stale.example/perplexity',
+    })
+
+    const replaced = await seed()
+    expect(replaced).toEqual({
+      scoresInserted: 0,
+      scoresUpdated: 91,
+      scoresRemoved: 2,
+      prosInserted: 0,
+      prosUpdated: prosConsTotal,
+      prosRemoved: 0,
+    })
+
+    const scores = await db.select().from(toolScores)
+    const points = await db.select().from(toolProsCons)
+    const idToSlug = new Map(toolRows.map((row) => [row.id, row.slug]))
+    const rated = scores.map((row) => idToSlug.get(row.toolId)).sort()
+    expect(rated).toEqual(ratingSeeds.map((row) => row.slug).sort())
+    for (const slug of unratedSlugs) {
+      const tool = bySlug.get(slug)
+      expect(scores.some((row) => row.toolId === tool?.id), slug).toBe(false)
+      const v1 = editorialSeeds.find((row) => row.slug === slug)
+      const bodies = points.filter((row) => row.toolId === tool?.id).map((row) => row.body)
+      for (const point of [...(v1?.pros ?? []), ...(v1?.cons ?? [])]) {
+        expect(bodies, slug).toContain(point.text)
+      }
+    }
+    expect(points.some((row) => row.toolId === perplexity.id && row.body === 'Stale unrated pro that must stay.')).toBe(true)
+    for (const slug of ['cursor', 'windsurf'] as const) {
+      const tool = bySlug.get(slug)
+      const score = scores.find((row) => row.toolId === tool?.id)
+      const expected = ratingSeeds.find((row) => row.slug === slug)
+      const seededPoints = supplementalProsConsSeeds.find((row) => row.slug === slug)
+      expect(score?.overall).toBe(expected?.overall)
+      expect(score?.rationale).toBe(expected?.rationale)
+      expect(score?.sources).toBe('[]')
+      expect(score?.reviewedAt).toBe(expected?.reviewedAt)
+      expect(points.some((row) => row.toolId === tool?.id && row.body.startsWith('Stale'))).toBe(false)
+      expect(points.filter((row) => row.toolId === tool?.id && row.kind === 'pro').map((row) => row.body)).toEqual(
+        seededPoints?.pros.map((point) => point.text),
+      )
+    }
+    expect(JSON.stringify(scores)).not.toContain('stale.example')
+    expect(points.filter((row) => row.sourceUrl.includes('stale.example'))).toHaveLength(1)
+  })
+
+  it('upserts scores and leaves rows that are not in the file unless SEED_PRUNE=1', async () => {
+    delete process.env.SEED_PRUNE
+    await useTempDatabase()
+    await seed()
+    const db = getDb()
+    const claude = (await db.select().from(tools)).find((row) => row.slug === 'claude')
+    expect(claude).toBeTruthy()
+    if (!claude) return
+    await db.insert(toolScores).values({
+      toolId: 999_999,
+      features: 1,
+      value: 1,
+      ease: 1,
+      quality: 1,
+      overall: 1,
+      rationale: 'Keep this extra score.',
+      sources: '[]',
+      reviewedAt: '2026-10-16',
+    })
+    await db.update(toolScores).set({ rationale: 'stale rationale' }).where(eq(toolScores.toolId, claude.id))
+    const counts = await seed()
+    expect(counts.scoresRemoved).toBe(0)
+    const scores = await db.select().from(toolScores)
+    expect(scores).toHaveLength(ratingSeeds.length + 1)
+    expect(scores.some((row) => row.toolId === 999_999)).toBe(true)
+    expect(scores.find((row) => row.toolId === claude.id)?.rationale).toBe(ratingSeeds.find((row) => row.slug === 'claude')?.rationale)
   })
 })

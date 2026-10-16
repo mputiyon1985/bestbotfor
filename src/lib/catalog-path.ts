@@ -12,7 +12,7 @@ export const CATALOG_REJECT_MESSAGE = 'That address is not a tool in the catalog
  * turns `/go/%2e%2e` into `/` and would hide the traversal this check exists
  * to catch. Absolute URLs are accepted because some hosts pass `req.url` that way.
  */
-function requestPath(rawUrl: string): string {
+export function requestPath(rawUrl: string): string {
   const noHash = rawUrl.split('#')[0] ?? rawUrl
   const queryAt = noHash.indexOf('?')
   const withoutQuery = queryAt === -1 ? noHash : noHash.slice(0, queryAt)

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { ToolLogo } from '@/components/tool-logo'
 import { listToolCategoryCounts, listToolPage } from '@/lib/catalog'
 import { pageMetadata } from '@/lib/metadata'
 import { categorySlug, type ToolCategory } from '@/lib/tool-index'
@@ -9,7 +10,7 @@ import { isToolsPageInRange, parseToolsPage } from '@/lib/tools-page'
 import { firstString } from '@/lib/validation'
 
 const MAX_CATEGORY_QUERY = 80
-const INDEX_DESCRIPTION = 'Every AI tool in the BestBotFor catalog, one page at a time.'
+const INDEX_DESCRIPTION = 'Every AI tool in the BestBotFor catalog with price, free tier and skill level. Not sure which one? Get the right AI in 30 seconds.'
 
 type SearchParams = Record<string, string | string[] | undefined>
 
@@ -108,13 +109,16 @@ export default async function ToolsPage({ searchParams }: { searchParams: Promis
               : 'No tools are in the catalog yet.'}
         </p>
       </header>
-      <nav aria-label="Filter by category">
-        <ul className="flex flex-wrap gap-2">
-          <li>
+      <nav
+        aria-label="Filter by category"
+        className="min-w-0 max-md:overflow-x-auto max-md:overflow-y-hidden max-md:overscroll-x-contain max-md:px-2 max-md:py-2"
+      >
+        <ul className="flex flex-wrap gap-2 max-md:w-max max-md:flex-nowrap">
+          <li className="max-md:shrink-0">
             <CategoryLink category={null} current={!selected && !resolved.unknown} count={resolved.total} />
           </li>
           {resolved.categories.map((category) => (
-            <li key={category.slug}>
+            <li key={category.slug} className="max-md:shrink-0">
               <CategoryLink category={category} current={selected?.slug === category.slug} count={category.count} />
             </li>
           ))}
@@ -124,13 +128,16 @@ export default async function ToolsPage({ searchParams }: { searchParams: Promis
       {listing && listing.tools.length > 0 ? (
         <ul aria-label="Tools" className="grid gap-3 sm:grid-cols-2">
           {listing.tools.map((tool) => (
-            <li key={tool.slug} className="rounded-2xl border border-line px-4 py-3">
-              <Link href={`/tools/${tool.slug}`} className="font-semibold underline-offset-4 hover:underline">
-                {tool.name}
-              </Link>
-              <span className="mt-1 block text-sm text-muted">
-                {tool.category}. {tool.shortDesc}
-              </span>
+            <li key={tool.slug} className="flex min-w-0 items-start gap-3 rounded-2xl border border-line px-4 py-3">
+              <ToolLogo name={tool.name} slug={tool.slug} />
+              <div className="min-w-0">
+                <Link href={`/tools/${tool.slug}`} className="font-semibold underline-offset-4 hover:underline">
+                  {tool.name}
+                </Link>
+                <span className="mt-1 block text-sm text-muted">
+                  {tool.category}. {tool.shortDesc}
+                </span>
+              </div>
             </li>
           ))}
         </ul>
@@ -138,12 +145,12 @@ export default async function ToolsPage({ searchParams }: { searchParams: Promis
       {listing ? (
         <nav aria-label="Pages" className="flex flex-wrap items-center gap-4 text-sm font-semibold">
           {listing.page > 1 ? (
-            <Link className="underline" href={toolsPath(selected?.slug ?? null, listing.page - 1)}>
+            <Link className="inline-flex min-h-12 items-center justify-center rounded-full border border-line bg-card px-4 hover:border-accent" href={toolsPath(selected?.slug ?? null, listing.page - 1)}>
               Previous page
             </Link>
           ) : null}
           {listing.page < listing.pageCount ? (
-            <Link className="underline" href={toolsPath(selected?.slug ?? null, listing.page + 1)}>
+            <Link className="inline-flex min-h-12 items-center justify-center rounded-full border border-line bg-card px-4 hover:border-accent" href={toolsPath(selected?.slug ?? null, listing.page + 1)}>
               Next page
             </Link>
           ) : null}
@@ -168,7 +175,7 @@ function CategoryLink({
     <Link
       href={category ? toolsPath(category.slug, 1) : '/tools'}
       aria-current={current ? 'page' : undefined}
-      className={`inline-flex min-h-12 items-center rounded-full border px-4 text-sm font-semibold ${
+      className={`relative inline-flex min-h-12 items-center rounded-full border px-4 text-sm font-semibold max-md:scroll-mx-3 max-md:whitespace-nowrap ${
         current ? 'border-indigo bg-indigo text-white' : 'border-line bg-card hover:border-accent'
       }`}
     >

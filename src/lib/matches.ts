@@ -1,18 +1,18 @@
+import { isPageInRange, parsePageNumber } from './page-number'
 import { MIN_QUIZ_FIT_SCORE, quizBudgetFit, rankTools, type QuizPick, type RankBudget, type ScoreableTool } from './scoring'
+import type { Skill } from './validation'
 
 export const matchBudgetLabel: Record<RankBudget, string> = {
   free: 'Free only',
   low: 'Low cost',
-  mid: 'Mid cost',
   any: 'Any budget',
 }
 
-export const matchBudgets: RankBudget[] = ['any', 'free', 'low', 'mid']
-import { isPageInRange, parsePageNumber } from './page-number'
-import type { Skill } from './validation'
+/** Same choices as the quiz. A mid band is not offered. */
+export const matchBudgets: RankBudget[] = ['any', 'free', 'low']
 
-/** Five tools per all-matches page, after the quiz shortlist of one pick plus five. */
-export const MATCHES_PAGE_SIZE = 5
+/** Six tools per all-matches page. */
+export const MATCHES_PAGE_SIZE = 6
 
 /** Public all-matches order uses one skill so the URL does not split by experience. */
 export const MATCHES_SKILL: Skill = 'beginner'
@@ -22,11 +22,12 @@ export function seeAllMatchesLabel(count: number): string {
 }
 
 /**
- * Every tool that clears the minimum fit, ranked like the quiz for this budget.
- * Free, low, and mid keep only tools inside that budget. Any keeps the full list.
+ * Every quiz-eligible tool that clears the minimum fit, ranked like the quiz
+ * for this budget. Free and low keep only tools inside that budget. Any keeps
+ * the full eligible list. Archived tools stay on their own pages.
  */
 export function listMatches<T extends ScoreableTool>(tools: T[], budget: RankBudget): QuizPick<T>[] {
-  const qualified = tools.filter((tool) => tool.fitScore >= MIN_QUIZ_FIT_SCORE)
+  const qualified = tools.filter((tool) => tool.fitScore >= MIN_QUIZ_FIT_SCORE && tool.quizEligible !== false)
   const ranked = rankTools(qualified, { budget, skill: MATCHES_SKILL }).map((tool) => ({
     ...tool,
     budgetFit: quizBudgetFit(tool, budget),

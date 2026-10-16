@@ -5,10 +5,25 @@ import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
+import { ToolLogo } from '@/components/tool-logo'
 import { getTask, listTaskCandidates } from '@/lib/catalog'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
 import { breadcrumbJsonLd, faqJsonLd, itemListJsonLd } from '@/lib/jsonld'
 import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
+import {
+  BEST_GUIDE_FIT_LEGEND,
+  BEST_GUIDE_TOOL_COUNT,
+  bestGuideCrumb,
+  bestGuideDescription,
+  bestGuideFitAnswer,
+  bestGuideHeading,
+  bestGuideLead,
+  bestGuideListName,
+  bestGuideQuestion,
+  bestGuideTitle,
+  taskGerund,
+} from '@/lib/descriptions'
+import { matchesPath } from '@/lib/matches'
 import { pageMetadata } from '@/lib/metadata'
 import { slugSchema } from '@/lib/validation'
 
@@ -20,8 +35,8 @@ export async function generateMetadata({ params }: { params: Promise<{ task: str
   const task = await getTask(slug)
   if (!task) return pageMetadata({ title: 'Not found', description: 'That guide is not in the catalog.', path: `/best/${slug}`, noIndex: true })
   return pageMetadata({
-    title: `Best AI tool for ${task.name.toLowerCase()}`,
-    description: `The best AI tool for ${task.name.toLowerCase()} in our catalog, plus the closest alternatives. ${task.description}`,
+    title: bestGuideTitle(task.name),
+    description: bestGuideDescription(task.name),
     path: `/best/${task.slug}`,
   })
 }
@@ -40,8 +55,8 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
   const freeOption = ranked.find((tool) => tool.hasFreeTier)
   const faqs = [
     {
-      question: `What is the best AI tool for ${task.name.toLowerCase()}?`,
-      answer: `${top.name} is the top pick in this catalog for ${task.name.toLowerCase()}. ${top.notes}`,
+      question: bestGuideQuestion(task.name),
+      answer: `${bestGuideFitAnswer(task.name, top.name)} ${top.notes}`,
     },
     {
       question: 'Is there a free option?',
@@ -56,18 +71,20 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
   ]
   const crumbs = [
     { name: 'Home', path: '/' },
-    { name: `Best for ${task.name.toLowerCase()}`, path: `/best/${task.slug}` },
+    { name: bestGuideCrumb(task.name), path: `/best/${task.slug}` },
   ]
+  const shown = ranked.slice(0, BEST_GUIDE_TOOL_COUNT)
+  const listLabel = `Tools ranked for ${taskGerund(task.name)}`
 
   return (
     <article className="space-y-8">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
-      <JsonLd data={itemListJsonLd(`Best AI tools for ${task.name.toLowerCase()}`, `/best/${task.slug}`, ranked.slice(0, 5))} nonce={nonce} />
+      <JsonLd data={itemListJsonLd(bestGuideListName(task.name), `/best/${task.slug}`, shown)} nonce={nonce} />
       <JsonLd data={faqJsonLd(faqs)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
-      <h1 className="font-bold text-5xl leading-tight">Best AI tool for {task.name.toLowerCase()}</h1>
+      <h1 className="font-bold text-5xl leading-tight">{bestGuideHeading(task.name)}</h1>
       <p className="text-lg">
-        The best AI tool for {task.name.toLowerCase()} is {top.name}. {top.shortDesc}
+        {bestGuideLead(task.name, top.name)} {top.shortDesc}
       </p>
       <p className="text-sm text-muted">Last reviewed {verified}. Prices change, so confirm them on the vendor’s site.</p>
       <p>
@@ -75,32 +92,62 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
           Visit {top.name}
         </OutboundLink>
       </p>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
-          <caption className="sr-only">Tools ranked for {task.name}</caption>
-          <thead>
-            <tr className="border-b border-line">
-              <th scope="col" className="py-2 pr-3">Tool</th>
-              <th scope="col" className="py-2 pr-3">Fit</th>
-              <th scope="col" className="py-2 pr-3">Price</th>
-              <th scope="col" className="py-2">Why it is here</th>
-            </tr>
-          </thead>
-          <tbody>
-            {ranked.slice(0, 5).map((tool) => (
-              <tr key={tool.slug} className="border-b border-line align-top">
-                <th scope="row" className="py-3 pr-3 font-semibold">
-                  <Link href={`/tools/${tool.slug}`} className="underline">
-                    {tool.name}
-                  </Link>
-                </th>
-                <td className="py-3 pr-3">{tool.fitScore}</td>
-                <td className="py-3 pr-3">{priceLabel(tool)}</td>
-                <td className="py-3">{tool.notes}</td>
+      <div className="min-w-0 space-y-4">
+        <p id="fit-legend" className="text-sm text-muted">{BEST_GUIDE_FIT_LEGEND}</p>
+        <ul aria-label={listLabel} className="grid gap-3 md:hidden">
+          {shown.map((tool) => (
+            <li key={tool.slug} className="min-w-0 rounded-2xl border border-line p-4">
+              <div className="flex min-w-0 items-center gap-3">
+                <ToolLogo name={tool.name} slug={tool.slug} />
+                <Link href={`/tools/${tool.slug}`} className="flex min-h-11 min-w-0 flex-1 items-center break-words font-semibold underline">
+                  {tool.name}
+                </Link>
+              </div>
+              <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 text-sm">
+                <dt className="font-semibold" aria-describedby="fit-legend">Fit</dt>
+                <dd><FitMatch score={tool.fitScore} /></dd>
+                <dt className="font-semibold">Price</dt>
+                <dd className="min-w-0 break-words">{priceLabel(tool)}</dd>
+              </dl>
+              <p className="mt-3 break-words text-sm">{tool.notes}</p>
+            </li>
+          ))}
+        </ul>
+        <div className="hidden min-w-0 md:block">
+          <table className="w-full table-fixed border-collapse text-left text-sm">
+            <caption className="sr-only">{listLabel}</caption>
+            <thead>
+              <tr className="border-b border-line">
+                <th scope="col" className="py-2 pr-3">Tool</th>
+                <th scope="col" aria-describedby="fit-legend" className="w-36 whitespace-nowrap py-2 pr-3">Fit</th>
+                <th scope="col" className="w-44 py-2 pr-3">Price</th>
+                <th scope="col" className="py-2">Why it is here</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {shown.map((tool) => (
+                <tr key={tool.slug} className="border-b border-line align-top">
+                  <th scope="row" className="py-3 pr-3 font-semibold">
+                    <span className="flex min-w-0 items-center gap-3">
+                      <ToolLogo name={tool.name} slug={tool.slug} />
+                      <Link href={`/tools/${tool.slug}`} className="flex min-h-11 min-w-0 flex-1 items-center break-words underline">
+                        {tool.name}
+                      </Link>
+                    </span>
+                  </th>
+                  <td className="py-3 pr-3"><FitMatch score={tool.fitScore} /></td>
+                  <td className="break-words py-3 pr-3">{priceLabel(tool)}</td>
+                  <td className="break-words py-3">{tool.notes}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <p>
+          <Link href={matchesPath(task.slug, 'any', 1)} className="inline-flex min-h-11 items-center font-semibold underline">
+            See all matches
+          </Link>
+        </p>
       </div>
       <section>
         <h2 className="font-semibold text-3xl">Questions</h2>
@@ -114,8 +161,16 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
         </dl>
       </section>
       <p className="text-sm text-muted">
-        Want this personalized? <Link className="underline" href="/">Answer the three questions</Link>.
+        Want this personalized? <Link className="underline" href="/">Get your own pick in 30 seconds</Link>: answer three questions.
       </p>
     </article>
+  )
+}
+
+function FitMatch({ score }: { score: number }) {
+  return (
+    <span className="inline-flex whitespace-nowrap rounded-full bg-mist px-2.5 py-1 text-sm font-semibold">
+      {`${score}% match`}
+    </span>
   )
 }

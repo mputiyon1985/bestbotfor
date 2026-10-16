@@ -58,13 +58,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: homeTitle,
-    description: TAGLINE,
+    description: homeDescription,
+    url: getSiteUrl(),
     siteName: SITE_NAME,
     locale: 'en_US',
     type: 'website',
     images: [ogImage],
   },
-  twitter: { card: 'summary_large_image', title: homeTitle, description: TAGLINE, images: [OG_IMAGE_PATH] },
+  twitter: { card: 'summary_large_image', title: homeTitle, description: TAGLINE, images: [ogImage] },
   verification: googleVerification ? { google: googleVerification } : undefined,
   robots: isProductionDeployment() ? { index: true, follow: true } : { index: false, follow: false },
 }
@@ -78,7 +79,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const content = (
     <>
       <SiteHeader />
-      <main id="main" className="mx-auto min-h-[70vh] max-w-5xl px-4 py-10">
+      <main id="main" className="mx-auto min-h-[70vh] min-w-0 max-w-5xl px-4 pt-14 pb-10 md:py-10">
         {children}
       </main>
       <SiteFooter />
@@ -102,7 +103,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <script
           nonce={nonce ?? undefined}
           dangerouslySetInnerHTML={{
-            __html: `setTimeout(function(){var style=document.createElement('style');style.textContent='html{font-family:var(--font-poppins),Poppins,ui-sans-serif,system-ui,sans-serif}';document.head.appendChild(style)},300)`,
+            __html: `setTimeout(function(){var style=document.createElement('style');style.textContent='html{font-family:var(--font-poppins),bbf-metric,ui-sans-serif,system-ui,sans-serif}';document.head.appendChild(style)},300)`,
           }}
         />
       </body>

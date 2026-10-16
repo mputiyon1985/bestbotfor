@@ -1,9 +1,17 @@
 /** Apex production origin. Used when NEXT_PUBLIC_SITE_URL is missing or invalid. */
 export const DEFAULT_SITE_URL = 'https://bestbotfor.com'
 
-export const TAGLINE = 'Three questions. One best bot.'
+export const TAGLINE = 'The right AI in 30 seconds.'
 
 export const SITE_NAME = 'BestBotFor'
+
+/**
+ * Sitewide switch for the BestBotFor score: the heading, category rank,
+ * stars, numeric score, criteria bars, note, and maintenance notice.
+ * Pros and cons stay visible either way. True publishes the v2.3 ratings.
+ * A code constant on purpose, so no environment variable is required.
+ */
+export const SHOW_SCORES: boolean = true
 
 /**
  * Canonical origin for sitemap, Open Graph, and JSON-LD.

@@ -11,9 +11,10 @@ const ALLOWED = new Set([
   'scripts/seed.ts',
   'scripts/migrate.ts',
   'drizzle/0004_retire_quiz_fits.sql',
+  'drizzle/0007_drop_non_forge_scores.sql',
   // Sponsorship rows are inserted from src/lib/stripe-webhook.ts.
-  // 0005 is reviewed DDL for stripe_events and sponsorships.
-  'drizzle/0005_sponsorships.sql',
+  // 0009 is reviewed DDL for stripe_events and sponsorships.
+  'drizzle/0009_sponsorships.sql',
 ])
 
 const ROOTS = ['src', 'scripts', 'drizzle']

@@ -1,6 +1,7 @@
 import { comparisonRows, comparisonSummary } from './compare'
 import type { Catalog } from './catalog-types'
 import { budgetPhrase, skillPhrase } from './format'
+import { omitScoreText } from './score-visibility'
 import { TAGLINE } from './site'
 import { budgetSchema, parseComparePair, quizSchema, skillSchema, slugSchema } from './validation'
 
@@ -18,7 +19,7 @@ export const OG_DB_BUDGET_MS = 800
 
 export type OgCopy = { title: string; subtitle: string }
 
-const FALLBACK: OgCopy = { title: TAGLINE, subtitle: 'One pick and up to five alternatives.' }
+const FALLBACK: OgCopy = { title: TAGLINE, subtitle: 'One pick and up to six alternatives.' }
 
 /**
  * Open Graph copy comes from the catalog. `kind=compare` uses the pair.
@@ -26,6 +27,22 @@ const FALLBACK: OgCopy = { title: TAGLINE, subtitle: 'One pick and up to five al
  * a fallback when no catalog match exists.
  */
 export function ogCopy(
+  input: {
+    kind?: string
+    pair?: string
+    task?: string
+    budget?: string
+    skill?: string
+    title?: string
+    subtitle?: string
+  },
+  catalog: Catalog,
+): OgCopy {
+  const copy = ogCopyFromCatalog(input, catalog)
+  return { title: omitScoreText(copy.title), subtitle: omitScoreText(copy.subtitle) }
+}
+
+function ogCopyFromCatalog(
   input: {
     kind?: string
     pair?: string

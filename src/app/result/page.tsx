@@ -5,39 +5,25 @@ import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
-import { listTaskCandidates, recommendQuiz } from '@/lib/catalog'
-import { listMatches, matchBudgetLabel, matchesPageRequest, matchesPath, pageOfMatches, seeAllMatchesLabel } from '@/lib/matches'
+import { ToolLogo } from '@/components/tool-logo'
+import { EditorialCompact } from '@/components/editorial'
+import { recommendQuiz } from '@/lib/catalog'
+import { matchBudgetLabel, matchesPath, seeAllMatchesLabel } from '@/lib/matches'
+import { allMatchesRequest, searchParamsToUrl } from '@/lib/result-request'
+import { matchesPageTitle, matchesRobots, quizResultRobots, quizResultTitle } from '@/lib/result-index'
 import { AllMatches } from './all-matches'
-import { ACTION_LIMITS, allowRate } from '@/lib/action-limit'
 import { getDb } from '@/lib/db'
-import { rateLimitKey, clientIp } from '@/lib/ip'
 import { budgetLabel, budgetPhrase, fewStrongOptionsLabel, overBudgetLabel, priceLabel, skillLabel, skillPhrase } from '@/lib/format'
+import { QUIZ_ALTERNATIVE_COUNT } from '@/lib/scoring'
 import { breadcrumbJsonLd } from '@/lib/jsonld'
 import { memberAccess } from '@/lib/members'
 import { pageMetadata } from '@/lib/metadata'
 import { absoluteUrl } from '@/lib/site'
-import { firstString, matchBudgetSchema, quizSchema, slugSchema } from '@/lib/validation'
+import { firstString, quizSchema } from '@/lib/validation'
 import { savePickAction } from './actions'
 
 async function loadAllMatches(params: Record<string, string | string[] | undefined>) {
-  const taskSlug = firstString(params.task)
-  if (!slugSchema.safeParse(taskSlug).success) return null
-  const rawBudget = firstString(params.budget)
-  const parsedBudget = rawBudget === '' ? { success: true as const, data: 'any' as const } : matchBudgetSchema.safeParse(rawBudget)
-  if (!parsedBudget.success) return null
-  const loaded = await listTaskCandidates(taskSlug)
-  if (!loaded) return null
-  const matches = listMatches(loaded.tools, parsedBudget.data)
-  const requested = matchesPageRequest(firstString(params.page), matches.length)
-  if (!requested) return null
-  return {
-    task: loaded.task,
-    budget: parsedBudget.data,
-    total: matches.length,
-    tools: pageOfMatches(matches, requested.page),
-    page: requested.page,
-    pageCount: requested.pageCount,
-  }
+  return allMatchesRequest(getDb(), searchParamsToUrl(params))
 }
 
 export async function generateMetadata({
@@ -52,14 +38,14 @@ export async function generateMetadata({
     const loaded = await loadAllMatches(params)
     if (!loaded) notFound()
     const path = matchesPath(loaded.task.slug, loaded.budget, loaded.page)
-    const title =
-      loaded.page > 1
-        ? `All matches for ${loaded.task.name.toLowerCase()}, page ${loaded.page}`
-        : `All matches for ${loaded.task.name.toLowerCase()}`
+    const robots = matchesRobots(loaded.budget)
+    const title = matchesPageTitle(loaded.task.name, loaded.budget, loaded.page)
     return pageMetadata({
       title,
-      description: `${loaded.total} tools with a strong fit for ${loaded.task.name.toLowerCase()}, ranked for ${matchBudgetLabel[loaded.budget].toLowerCase()}.`,
+      description: `${loaded.total} tools with a strong fit for ${loaded.task.name}, ranked for ${matchBudgetLabel[loaded.budget].toLowerCase()}.`,
       path,
+      noIndex: !robots.index,
+      follow: robots.follow,
       pagination: {
         previous: loaded.page > 1 ? matchesPath(loaded.task.slug, loaded.budget, loaded.page - 1) : null,
         next: loaded.page < loaded.pageCount ? matchesPath(loaded.task.slug, loaded.budget, loaded.page + 1) : null,
@@ -74,24 +60,28 @@ export async function generateMetadata({
   if (!parsed.success) {
     return pageMetadata({
       title: 'Your result',
-      description: 'Answer the three questions to get a best AI tool and up to five alternatives.',
+      description: 'Answer three questions (task, budget, experience) and get the right AI tool for the job plus up to six alternatives, in about 30 seconds.',
       path: '/result',
       noIndex: true,
     })
   }
   const result = await recommendQuiz(parsed.data)
+  if (!result) notFound()
   const pick = result?.picks[0]
-  const title = result && pick ? `Best AI tool for ${result.task.name.toLowerCase()}: ${pick.name}` : 'Your result'
+  const title = result && pick ? quizResultTitle(result.task.name, pick.name) : 'Your result'
   const description =
     result && pick
       ? `${pick.name} is the top pick for ${result.task.name.toLowerCase()} ${budgetPhrase(parsed.data.budget)} for ${skillPhrase(parsed.data.skill)}.`
       : 'No matching tools for that combination.'
   const query = new URLSearchParams(parsed.data).toString()
+  const robots = quizResultRobots()
   return pageMetadata({
     title,
     description,
     path: `/result?${query}`,
     imagePath: `/api/og?kind=result&${query}`,
+    noIndex: !robots.index,
+    follow: robots.follow,
   })
 }
 
@@ -125,20 +115,6 @@ export default async function ResultPage({
     skill: firstString(params.skill),
   })
   const nonce = headerStore.get('x-nonce')
-  const allowed = await allowRate(
-    getDb(),
-    rateLimitKey(clientIp(headerStore), 'result'),
-    ACTION_LIMITS.result.limit,
-    ACTION_LIMITS.result.windowMs,
-  )
-  if (!allowed) {
-    return (
-      <div>
-        <h1 className="font-bold text-4xl">Too many results</h1>
-        <p className="mt-3 text-muted">This network has asked for too many picks. Try again in a minute.</p>
-      </div>
-    )
-  }
 
   if (!parsed.success) {
     return (
@@ -153,17 +129,7 @@ export default async function ResultPage({
   }
 
   const result = await recommendQuiz(parsed.data)
-  if (!result) {
-    return (
-      <div>
-        <h1 className="font-bold text-4xl">No tool in the catalog fits that job yet</h1>
-        <p className="mt-3 text-muted">Try a nearby job from the list on the home page.</p>
-        <Link href="/" className="mt-6 inline-flex min-h-12 items-center font-semibold underline">
-          Start over
-        </Link>
-      </div>
-    )
-  }
+  if (!result) notFound()
 
   const [top, ...alternatives] = result.picks
   if (!top) {
@@ -186,16 +152,20 @@ export default async function ResultPage({
   ]
 
   return (
-    <article className="space-y-10">
+    <article className="min-w-0 space-y-10 break-words">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
       <p className="text-sm font-semibold uppercase tracking-[0.14em] text-accent">Your pick</p>
-      <h1 className="font-bold text-5xl leading-tight">{top.name}</h1>
+      <div className="flex min-w-0 items-start gap-3">
+        <ToolLogo name={top.name} slug={top.slug} />
+        <h1 className="min-w-0 font-bold text-5xl leading-tight break-words">{top.name}</h1>
+      </div>
       <p className="max-w-2xl text-lg">
         Best bot for {result.task.name.toLowerCase()}, {budgetLabel[parsed.data.budget].toLowerCase()}, {skillLabel[parsed.data.skill].toLowerCase()}: {top.name}.
       </p>
       {top.budgetFit === 'over' ? <p className="text-sm font-semibold text-accent">{overBudgetLabel}</p> : null}
       <p className="max-w-2xl text-muted">{top.reason}</p>
+      <EditorialCompact editorial={top.editorial} pros={top.pros} cons={top.cons} />
       <dl className="grid gap-3 sm:grid-cols-3">
         <Fact label="Price" value={priceLabel(top)} />
         <Fact label="Experience" value={skillLabel[top.skillLevel]} />
@@ -234,13 +204,17 @@ export default async function ResultPage({
           <ul className="mt-4 grid gap-4 md:grid-cols-2">
             {alternatives.map((alt) => (
               <li key={alt.slug} className="rounded-2xl border border-line bg-card p-4">
-                <h3 className="font-semibold text-2xl">
-                  <Link href={`/tools/${alt.slug}`} className="underline-offset-4 hover:underline">
-                    {alt.name}
-                  </Link>
-                </h3>
+                <div className="flex min-w-0 items-start gap-3">
+                  <ToolLogo name={alt.name} slug={alt.slug} />
+                  <h3 className="min-w-0 font-semibold text-2xl">
+                    <Link href={`/tools/${alt.slug}`} className="underline-offset-4 hover:underline">
+                      {alt.name}
+                    </Link>
+                  </h3>
+                </div>
                 {alt.budgetFit === 'over' ? <p className="mt-2 text-sm font-semibold text-accent">{overBudgetLabel}</p> : null}
                 <p className="mt-2 text-sm text-muted">{alt.reason}</p>
+                <EditorialCompact editorial={alt.editorial} pros={alt.pros} cons={alt.cons} />
                 <p className="mt-2 text-sm">{priceLabel(alt)}</p>
                 <OutboundLink slug={alt.slug} className="mt-3 inline-flex min-h-12 items-center font-semibold underline">
                   Visit {alt.name}
@@ -249,10 +223,10 @@ export default async function ResultPage({
             ))}
           </ul>
         ) : null}
-        {alternatives.length < 5 ? <p className="mt-4 text-muted">{fewStrongOptionsLabel}</p> : null}
+        {alternatives.length < QUIZ_ALTERNATIVE_COUNT ? <p className="mt-4 text-muted">{fewStrongOptionsLabel}</p> : null}
         {result.matchCount > 0 ? (
           <p className="mt-4">
-            <Link className="font-semibold underline" href={matchesPath(result.task.slug, 'any', 1)}>
+            <Link className="font-semibold underline" href={matchesPath(result.task.slug, parsed.data.budget, 1)}>
               {seeAllMatchesLabel(result.matchCount)}
             </Link>
           </p>
@@ -261,8 +235,30 @@ export default async function ResultPage({
 
       <section>
         <h2 className="font-semibold text-3xl">Side by side</h2>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
+        <ul className="mt-4 grid gap-3 md:hidden">
+          {result.picks.map((pick) => (
+            <li key={pick.slug} className="min-w-0 rounded-2xl border border-line p-4">
+              <h3 className="font-semibold text-xl">
+                <Link href={`/tools/${pick.slug}`} className="inline-flex min-h-12 items-center break-words underline">
+                  {pick.name}
+                </Link>
+              </h3>
+              {pick.budgetFit === 'over' ? (
+                <p className="text-xs font-semibold uppercase tracking-wide text-accent">{overBudgetLabel}</p>
+              ) : null}
+              <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
+                <dt className="font-semibold">Price</dt>
+                <dd className="break-words">{priceLabel(pick)}</dd>
+                <dt className="font-semibold">Experience</dt>
+                <dd>{skillLabel[pick.skillLevel]}</dd>
+                <dt className="font-semibold">Fit</dt>
+                <dd>{pick.fitScore}</dd>
+              </dl>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 hidden min-w-0 max-w-full md:block">
+          <table className="w-full table-fixed border-collapse text-left text-sm">
             <caption className="sr-only">Comparison of the top pick and alternatives</caption>
             <thead>
               <tr className="border-b border-line">
@@ -275,7 +271,7 @@ export default async function ResultPage({
             <tbody>
               {result.picks.map((pick) => (
                 <tr key={pick.slug} className="border-b border-line">
-                  <th scope="row" className="py-3 pr-3 font-semibold">
+                  <th scope="row" className="break-words py-3 pr-3 font-semibold">
                     <Link href={`/tools/${pick.slug}`} className="underline">
                       {pick.name}
                     </Link>
@@ -283,8 +279,8 @@ export default async function ResultPage({
                       <span className="mt-1 block text-xs font-semibold uppercase tracking-wide text-accent">{overBudgetLabel}</span>
                     ) : null}
                   </th>
-                  <td className="py-3 pr-3">{priceLabel(pick)}</td>
-                  <td className="py-3 pr-3">{skillLabel[pick.skillLevel]}</td>
+                  <td className="break-words py-3 pr-3">{priceLabel(pick)}</td>
+                  <td className="break-words py-3 pr-3">{skillLabel[pick.skillLevel]}</td>
                   <td className="py-3">{pick.fitScore}</td>
                 </tr>
               ))}
@@ -293,8 +289,9 @@ export default async function ResultPage({
         </div>
       </section>
 
-      <p className="text-sm text-muted">
-        Share this page: <a className="underline" href={absoluteUrl(sharePath)}>{absoluteUrl(sharePath)}</a>
+      <p className="min-w-0 text-sm break-words text-muted">
+        Share this page:{' '}
+        <a className="underline [overflow-wrap:anywhere]" href={absoluteUrl(sharePath)}>{absoluteUrl(sharePath)}</a>
       </p>
       <p className="text-sm text-muted">
         The button goes to the tool’s own site. We are not adding an affiliate code. See the{' '}

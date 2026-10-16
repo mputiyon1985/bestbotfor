@@ -13,6 +13,7 @@ export default tseslint.config(
       'next-env.d.ts',
       '.lighthouseci/**',
       'lighthouserc.cjs',
+      'lighthouserc.quiz.cjs',
       'lighthouserc.home.cjs',
     ],
   },

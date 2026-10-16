@@ -1,0 +1,6 @@
+{
+  "$comment": "Non-secret DB identifiers for the build-time guard in src/lib/db/guard.ts. prodHosts: hostnames of the production Turso DB (only VERCEL_ENV=production may migrate/seed them). nonProductionAllowedHosts: the only remote hosts Preview/Development builds may migrate/seed.",
+  "prodHosts": [],
+  "prodDbNames": ["bestbotfor"],
+  "nonProductionAllowedHosts": ["bestbotfor-preview-test-mputiyon1985.aws-us-east-1.turso.io"]
+}

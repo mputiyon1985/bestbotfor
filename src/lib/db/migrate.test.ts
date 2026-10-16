@@ -43,6 +43,19 @@ describe('sqlite file directories', () => {
     const ids = recorded.rows.map((row) => String(row.id))
     expect(ids).toContain('0003_tool_tasks_unique.sql')
     expect(ids).toContain('0004_retire_quiz_fits.sql')
+    expect(ids).toContain('0005_tool_scores_pros_cons.sql')
+    expect(ids).toContain('0006_tool_needs_verification.sql')
+    expect(ids).toContain('0007_drop_non_forge_scores.sql')
+    expect(ids).toContain('0008_ratings_v23.sql')
+    const columns = await client.execute('PRAGMA table_info(tools)')
+    expect(columns.rows.some((row) => row.name === 'needs_verification')).toBe(true)
+    const scoreColumns = await client.execute('PRAGMA table_info(tool_scores)')
+    const scoreNames = scoreColumns.rows.map((row) => String(row.name))
+    expect(scoreNames).toEqual(expect.arrayContaining(['primary_category', 'category_rank_display', 'tie_group', 'note', 'rating_status', 'quiz_eligible']))
+    const tables = await client.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('tool_scores', 'tool_pros_cons') ORDER BY name",
+    )
+    expect(tables.rows.map((row) => String(row.name))).toEqual(['tool_pros_cons', 'tool_scores'])
     await client.execute({
       sql: 'DELETE FROM schema_migrations WHERE id = ?',
       args: ['0004_retire_quiz_fits.sql'],
@@ -68,7 +81,7 @@ describe('sqlite file directories', () => {
     third.close()
   })
 
-  it('applies 0005_sponsorships.sql after 0004 and keeps stripe_events', async () => {
+  it('applies 0009_sponsorships.sql after 0008_ratings_v23.sql and keeps stripe_events', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'bestbotfor-sponsor-migrate-'))
     directories.push(root)
     const url = `file:${path.join(root, 'migrate.db')}`
@@ -76,12 +89,23 @@ describe('sqlite file directories', () => {
     const client = createClient({ url })
     const recorded = await client.execute('SELECT id FROM schema_migrations ORDER BY id')
     const ids = recorded.rows.map((row) => String(row.id))
-    expect(ids).toContain('0004_retire_quiz_fits.sql')
-    expect(ids).toContain('0005_sponsorships.sql')
+    expect(ids).toEqual([
+      '0001_init.sql',
+      '0002_catalog_indexes.sql',
+      '0003_tool_tasks_unique.sql',
+      '0004_retire_quiz_fits.sql',
+      '0005_tool_scores_pros_cons.sql',
+      '0006_tool_needs_verification.sql',
+      '0007_drop_non_forge_scores.sql',
+      '0008_ratings_v23.sql',
+      '0009_sponsorships.sql',
+    ])
     const tables = await client.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('stripe_events', 'sponsorships') ORDER BY name",
     )
     expect(tables.rows.map((row) => String(row.name))).toEqual(['sponsorships', 'stripe_events'])
+    const columns = await client.execute('PRAGMA table_info(sponsorships)')
+    expect(columns.rows.map((row) => String(row.name))).toContain('stripe_checkout_session_id')
     client.close()
   })
 })

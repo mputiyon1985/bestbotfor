@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { comparePairSeeds } from '@/data/catalog'
+import { comparePairSeeds, toolSeeds } from '@/data/catalog'
 import { listTasks } from '@/lib/catalog'
 import { budgetLabel, skillLabel } from '@/lib/format'
 import { pageMetadata } from '@/lib/metadata'
@@ -91,7 +91,7 @@ export default async function MembersPage({
           {comparePairSeeds.map(([a, b]) => (
             <li key={`${a}-${b}`}>
               <Link className="underline" href={`/compare/${a}-vs-${b}`}>
-                {titleCase(a)} vs {titleCase(b)}
+                {toolName.get(a) ?? a} vs {toolName.get(b) ?? b}
               </Link>
             </li>
           ))}
@@ -101,9 +101,4 @@ export default async function MembersPage({
   )
 }
 
-function titleCase(slug: string): string {
-  return slug
-    .split('-')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
-}
+const toolName = new Map(toolSeeds.map((tool) => [tool.slug, tool.name]))

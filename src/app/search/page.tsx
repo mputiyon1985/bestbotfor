@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { ToolLogo } from '@/components/tool-logo'
 import { searchCatalog } from '@/lib/catalog'
 import { pageMetadata } from '@/lib/metadata'
 import { searchQuerySchema } from '@/lib/validation'
@@ -15,7 +16,7 @@ export async function generateMetadata({
   const path = query ? `/search?q=${encodeURIComponent(query)}` : '/search'
   return pageMetadata({
     title: query ? `Search: ${query.slice(0, 80)}` : 'Search tools',
-    description: 'Search the BestBotFor catalog by tool name, vendor, or job.',
+    description: 'Search the BestBotFor catalog by tool name, vendor, or job. Or answer three questions and get the right AI in 30 seconds.',
     path,
     noIndex: true,
   })
@@ -55,11 +56,14 @@ export default async function SearchPage({
       {parsed.success && results.length === 0 ? <p>No tools matched that search.</p> : null}
       <ul className="space-y-3">
         {results.map((tool) => (
-          <li key={tool.slug}>
-            <Link href={`/tools/${tool.slug}`} className="font-semibold underline">
-              {tool.name}
-            </Link>
-            <span className="text-muted"> — {tool.shortDesc}</span>
+          <li key={tool.slug} className="flex min-w-0 items-start gap-3">
+            <ToolLogo name={tool.name} slug={tool.slug} />
+            <div className="min-w-0">
+              <Link href={`/tools/${tool.slug}`} className="font-semibold underline">
+                {tool.name}
+              </Link>
+              <span className="text-muted"> — {tool.shortDesc}</span>
+            </div>
           </li>
         ))}
       </ul>

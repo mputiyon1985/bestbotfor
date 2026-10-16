@@ -2,10 +2,38 @@
 
 ## Unreleased
 
-- Sponsor Checkout on `/sponsor` sells a featured `/best/[task]` slot ($99 per week or $299 per month) and a newsletter slot ($49 per issue). Prices are server config. Checkout disables Managed Payments for these advertising placements and leaves automatic tax unset. Live Stripe keys stay refused unless the live flag is set to true, and that flag ships off.
+- Sponsor Checkout on `/sponsor` sells a featured `/best/[task]` slot ($99 per week or $299 per month) and a newsletter slot ($49 per issue). Prices are server config. Checkout disables Managed Payments for these advertising placements and leaves automatic tax unset. Live Stripe keys stay refused unless the live flag is set to true, and that flag ships off. The sponsorship tables land in `drizzle/0009_sponsorships.sql`, after main’s `0008_ratings_v23.sql`.
+- `/how-we-rate` no longer says every score links to its sources. It says we keep the evidence and sources for each score on file and review them quarterly.
+- `SHOW_SCORES` is true, so the v2.3 ratings render through that flag. Rated tool pages lead with the category rank from `category_rank_display`, for example `#3 of 12 in Coding`. A shared tie group prefixes that line with `Tied · ` and keeps each tool’s own rank. The rank is hidden for the single-tool categories backend, design, games, and productivity. Four bars follow (Quality, Features, Value, Ease), the overall score is secondary and links to `/how-we-rate`, and a filled note is shown. Quiz and all-matches cards show the same rank line and overall score without the bars. Turning the flag off hides the heading, rank, stars, bars, note, and maintenance notice together. Pros and cons stay. Pages still do not emit AggregateRating.
+- Ratings v2.3 replace the v1 scores in one seed transaction. From the scores already in production, that is 4 score rows inserted (`cursor`, `grok`, `semantic-scholar`, `windsurf`), 87 score rows updated, and 59 score rows removed. Pros and cons point rows: 0 inserted, 735 updated, 0 removed. The seed does not delete any pros or cons row, so tools unrated in v2.3 keep theirs and those still render. A second run updates the 91 score rows and 735 point rows and removes nothing. Unrated tools are left with no score row and hide the score and rank. Cursor and Windsurf are rated, so a stale score for either is replaced by the v2.3 row. Evidence and source URL columns are not stored on the score row and are not rendered.
+- Cursor’s current plans are Free $0, Plus $8 (Grok models only), and Premium $30 (third-party models billed extra). Pro $20 is for legacy subscribers only.
+- Relevance AI stays without a free plan. Pro is $19 a month billed yearly.
+- Windsurf stays at `/tools/windsurf` and at `/compare/cursor-vs-windsurf`. The name is Devin Desktop (formerly Windsurf), the vendor is Cognition, the site is https://devin.ai/desktop, and pricing is Free $0 and Pro $20 at https://devin.ai/pricing. `devin.ai` is the only allowed host. `windsurf.com` is not. Cursor and Windsurf now have v2.3 scores and no pros or cons.
+- Scores come from the approved v2.3 file. Pros and cons stay the v1 text for every tool that has them, rated or not. Migration `0007` already deleted the sample Cursor score. The seed writes Cursor’s v2.3 score back and does not restore Cursor pros or cons.
+- The tagline is “The right AI in 30 seconds.” The home title is “BestBotFor — The right AI in 30 seconds.”
+- The home eyebrow says “Answer 3 quick questions.”
+- The not-found page sets its own title, “Page not found | BestBotFor”, its own description, and `noindex, nofollow`. It does not reuse the home canonical or the home social titles.
+- Pages publish `og:url` as the absolute canonical URL.
+- Sub-page Open Graph and Twitter titles end with “| BestBotFor”. The home `og:description` reuses the home meta description. Best-of titles read “Best AI for making music”.
+- Best-of pages use that gerund in the heading, lead, breadcrumb, FAQ, list name, and meta description (“Best AI tool for making music”). Score bars are a valid description list, and Lighthouse scores a rated tool page.
+- Home explains the three questions, and the public meta descriptions use the 30-second pick.
+- The default Open Graph and Twitter image is the new 1200×630 card, `og-default-1200x630.676bae0e.png`.
+- The quiz result shows one pick and up to six alternatives that clear a fit score of 50. When fewer qualify, the page still says few strong options exist.
+- All-matches pages list six tools and show “Showing 1–6 of N” with numbered page links. Budget filters stay noindex, rel prev/next and the canonical rules are unchanged, and a page past the end is still a 404.
+- Unrated tools hide the ratings section. Pages do not emit AggregateRating or Review schema.
+- Pros and cons render as text on the tool page, and a shorter version renders on result cards, only when a still-rated tool has v1 rows. Source URLs stay in the database and are not shown.
+- Flowise and Roo Code stay live and show “Unmaintained (repo archived)”. They are left out of quiz picks and alternatives.
+- NotebookLM’s public name is Gemini Notebook and its site is https://notebooklm.google/plans. `notebooklm.google` stays on the allowlist. Craft’s category is Productivity. SE Ranking’s category is SEO.
+- Tool pages show a bar for features, value, ease, and quality next to the overall stars.
+- Quiz results, all-matches lists, and tool pages keep the stars, score bars, pros and cons, and numbered pagination inside the screen at 375, 390, and 768 pixels. Pagination links are at least 44 pixels tall, and text stays at least 12 pixels.
+- Text links in the breadcrumbs, best-of lists, footer, and tablet header keep a 44 pixel tap height. Page controls are full-size buttons. The header sits clear of the breadcrumb and “Back to the questions” on a phone, and “See my best bot” stays on screen at 390 pixels.
+- Encoded and raw dot segments return 404 from a Vercel route and from the app server. The global `URL` constructor and `http.Server` are no longer patched.
+- Quiz result URLs and budget-filtered match lists are `noindex, follow`. `/result?task=X&view=all` page 1 stays indexable and in the sitemap. Lighthouse scores SEO on that indexable list. The production-env check asserts the quiz and budget-filtered pages render `noindex, follow`.
+- The first paint uses a metric-matched fallback for every Poppins weight, so the delayed swap does not reflow the tools directory.
+- “See all N matches” keeps the quiz budget. Match and quiz titles use the task’s own name.
 - `/tools` page numbers that are not a real page return 404, including category filters, so each indexable canonical belongs to one page.
 - Encoded dot segments under `/go`, `/best`, and `/tools` return 404 instead of the home page. `/go` responses send `X-Robots-Tag: noindex, nofollow`.
-- The catalog seed runs in one transaction and still only upserts. It does not delete rows.
+- The catalog seed runs in one transaction. It upserts the catalog, replaces score rows for v2.3-rated tools, deletes score rows for every other tool, and does not delete pros or cons.
 - Expand the catalog with 108 reviewed tools. Affiliate status on the new tools stays unknown, and outbound links stay on official sites.
 - `/tools` stays paginated and filters by category with a shareable `?category=` URL. Every catalog tool lists the hosts `/go` may redirect to.
 - Apply the approved concept 1 brand: Poppins, the indigo and mint palette, lockups in the header and footer, kit favicons, and kit Open Graph art.

@@ -9,6 +9,7 @@ const pages = [
   '/sponsor',
   '/newsletter',
   '/best/coding',
+  '/tools/chatgpt',
   '/tools',
   category ? `/tools?category=${category.slug}` : '/tools',
   '/result?task=chat&budget=any&skill=beginner',

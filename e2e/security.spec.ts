@@ -1,7 +1,24 @@
 import { request as httpRequest } from 'node:http'
 import { expect, test } from '@playwright/test'
+import { homeDescription, homeTitle, notFoundDescription, notFoundTitle } from '../src/lib/metadata'
 import { toolCategories } from '../src/lib/tool-index'
 import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
+
+function documentTitle(html: string): string {
+  return html.match(/<title>([^<]*)<\/title>/)?.[1] ?? ''
+}
+
+function metaContent(html: string, attr: 'name' | 'property', key: string): string {
+  const tags = [...html.matchAll(/<meta\b[^>]*>/gi)].map((match) => match[0])
+  const tag = tags.find((item) => new RegExp(`\\b${attr}=["']${key}["']`, 'i').test(item))
+  return tag?.match(/\bcontent=["']([^"']*)["']/i)?.[1] ?? ''
+}
+
+function robotsDirectives(html: string): string[] {
+  return [...html.matchAll(/<meta\b[^>]*>/gi)]
+    .filter((match) => /name=["']robots["']/i.test(match[0]))
+    .map((match) => match[0].match(/content=["']([^"']*)["']/i)?.[1] ?? '')
+}
 
 function rawStatus(path: string): Promise<{ status: number; body: string }> {
   const base = new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://127.0.0.1:3000')
@@ -28,13 +45,75 @@ test('the home page sends a nonce content security policy', async ({ request }) 
   expect(policy).toContain("object-src 'none'")
 })
 
-test('encoded dot segments under /go do not render the home page', async () => {
-  for (const path of ['/go/%2e%2e', '/go/%2E%2E', '/go/..', '/go/%2e%2e/', '/go/%252e%252e', '/go/foo/../../../']) {
+const HOME_MARKER = 'The right AI in 30 seconds'
+
+test('encoded dot segments do not render the home page', async () => {
+  const home = await rawStatus('/')
+  expect(home.status).toBe(200)
+  expect(home.body).toContain(HOME_MARKER)
+  // The same assertion used on 404s must fail when the body is the home page.
+  expect(() => {
+    expect(home.body).not.toContain(HOME_MARKER)
+  }).toThrow()
+
+  for (const path of [
+    '/go/%2e%2e',
+    '/go/%2E%2E',
+    '/go/..',
+    '/go/%2e%2e/',
+    '/go/%252e%252e',
+    '/go/foo/../../../',
+    '/go/.%2e',
+    '/go/%2e.',
+    '/best/%2e%2e',
+    '/tools/%2e%2e',
+    '/compare/%2e%2e',
+    '/about/%2e%2e',
+    '/pricing/%2E%2E',
+  ]) {
     const response = await rawStatus(path)
     expect(response.status, path).toBe(404)
     expect(response.body, path).toContain('not a tool in the catalog')
-    expect(response.body, path).not.toContain('Three questions')
+    expect(response.body, path).not.toContain(HOME_MARKER)
+    expect(documentTitle(response.body), path).not.toBe(homeTitle)
+    expect(response.body, path).not.toContain(notFoundTitle)
   }
+})
+
+test('a missing page is the not-found screen, not the home page', async () => {
+  const home = await rawStatus('/')
+  expect(home.status).toBe(200)
+  expect(documentTitle(home.body)).toBe(homeTitle)
+  expect(home.body).not.toContain(notFoundTitle)
+  // The footer repeats the tagline on both pages, so the document title is what separates them.
+  expect(home.body).toContain(HOME_MARKER)
+  expect(() => {
+    expect(documentTitle(home.body)).toBe(notFoundTitle)
+  }).toThrow()
+  expect(() => {
+    expect(documentTitle(home.body)).not.toBe(homeTitle)
+  }).toThrow()
+
+  const missing = await rawStatus('/this-page-does-not-exist')
+  expect(missing.status).toBe(404)
+  expect(documentTitle(missing.body)).toBe(notFoundTitle)
+  expect(documentTitle(missing.body)).not.toBe(homeTitle)
+  expect(missing.body).toContain('That page is not in the catalog.')
+  expect(missing.body).toContain(HOME_MARKER)
+  const robots = robotsDirectives(missing.body)
+  expect(robots.length).toBeGreaterThan(0)
+  expect(robots.every((content) => content.includes('noindex'))).toBe(true)
+  expect(robots).toContain('noindex, nofollow')
+  expect(missing.body).not.toMatch(/<link rel="canonical"/)
+  expect(metaContent(missing.body, 'property', 'og:url')).toBe('')
+  expect(metaContent(missing.body, 'name', 'description')).toBe(notFoundDescription)
+  expect(metaContent(missing.body, 'name', 'description')).not.toBe(homeDescription)
+  expect(metaContent(missing.body, 'property', 'og:title')).toBe(notFoundTitle)
+  expect(metaContent(missing.body, 'property', 'og:title')).not.toBe(homeTitle)
+  expect(metaContent(missing.body, 'name', 'twitter:title')).toBe(notFoundTitle)
+  expect(metaContent(missing.body, 'name', 'twitter:title')).not.toBe(homeTitle)
+  expect(metaContent(missing.body, 'property', 'og:description')).toBe(notFoundDescription)
+  expect(metaContent(missing.body, 'name', 'twitter:description')).toBe(notFoundDescription)
 })
 
 test('the tools index is served and still rejects an unsafe slug', async () => {
@@ -56,6 +135,43 @@ test('the tools index is served and still rejects an unsafe slug', async () => {
   const unsafe = await rawStatus('/tools/%2e%2e')
   expect(unsafe.status).toBe(404)
   expect(unsafe.body).toContain('not a tool in the catalog')
+})
+
+test('a result 404 has one robots meta', async () => {
+  for (const path of [
+    '/result?task=marketing&budget=any&skill=beginner',
+    '/result?task=chat&view=other',
+    '/result?task=missing&view=all',
+    '/result?task=chat&view=all&page=99',
+    '/result?task=chat&view=all&budget=mid',
+  ]) {
+    const response = await rawStatus(path)
+    expect(response.status, path).toBe(404)
+    expect(documentTitle(response.body), path).toBe(notFoundTitle)
+    expect(response.body, path).toContain(notFoundDescription)
+    expect(robotsDirectives(response.body), path).toEqual(['noindex, nofollow'])
+    expect(response.body, path).not.toMatch(/<link rel="canonical"/)
+  }
+})
+
+test('a tripped quiz rate limit returns 429 with Retry-After', async ({ request }) => {
+  test.setTimeout(120_000)
+  const headers = { 'x-forwarded-for': `2001:db8::${Date.now().toString(16)}` }
+  const path = '/result?task=chat&budget=any&skill=beginner'
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const response = await request.get(path, { headers })
+    expect(response.status(), `attempt ${attempt + 1}`).toBe(200)
+  }
+  const blocked = await request.get(path, { headers })
+  expect(blocked.status()).toBe(429)
+  const retryAfter = Number(blocked.headers()['retry-after'])
+  expect(Number.isInteger(retryAfter)).toBe(true)
+  expect(retryAfter).toBeGreaterThan(0)
+  const body = await blocked.text()
+  expect(body).toContain('Too many results')
+  expect(robotsDirectives(body)).toEqual(['noindex, nofollow'])
+  const matches = await request.get('/result?task=chat&view=all', { headers })
+  expect(matches.status()).toBe(200)
 })
 
 test('best and tools reject a slug that is not in the catalog shape', async () => {

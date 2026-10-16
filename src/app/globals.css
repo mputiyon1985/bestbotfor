@@ -59,10 +59,65 @@
   --color-focus: var(--focus);
 }
 
+/*
+ * next/font only emits a fallback for Poppins Regular, and local(Arial) is
+ * missing on Linux CI. These faces cover each shipped weight and also accept
+ * Liberation Sans, so the delayed Poppins swap does not reflow text.
+ * Overrides come from next's fallback formula (src/fonts/Poppins-*.woff2).
+ */
+@font-face {
+  font-family: bbf-metric;
+  src: local(Arial), local('Liberation Sans Regular'), local('LiberationSans');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+  ascent-override: 92.83%;
+  descent-override: 30.94%;
+  line-gap-override: 8.84%;
+  size-adjust: 113.11%;
+}
+
+@font-face {
+  font-family: bbf-metric;
+  src: local(Arial), local('Liberation Sans Regular'), local('LiberationSans');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+  ascent-override: 91.82%;
+  descent-override: 30.61%;
+  line-gap-override: 8.74%;
+  size-adjust: 114.36%;
+}
+
+@font-face {
+  font-family: bbf-metric;
+  src: local(Arial), local('Liberation Sans Regular'), local('LiberationSans');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+  ascent-override: 90.85%;
+  descent-override: 30.28%;
+  line-gap-override: 8.65%;
+  size-adjust: 115.57%;
+}
+
+@font-face {
+  font-family: bbf-metric;
+  src: local(Arial), local('Liberation Sans Regular'), local('LiberationSans');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+  ascent-override: 89.77%;
+  descent-override: 29.92%;
+  line-gap-override: 8.55%;
+  size-adjust: 116.97%;
+}
+
 html {
   scroll-behavior: smooth;
-  /* System face for the first paint. Poppins is applied after the largest paint. */
-  font-family: ui-sans-serif, system-ui, sans-serif;
+  /* Metric-matched face first. Poppins is applied after the largest paint. */
+  font-family: bbf-metric, ui-sans-serif, system-ui, sans-serif;
+  font-synthesis: none;
 }
 
 /* Keeps the home heading on the system face so a later Poppins swap cannot move LCP. */
@@ -77,6 +132,7 @@ body {
   font-size: 1.0625rem;
   font-weight: 400;
   line-height: 1.6;
+  overflow-wrap: anywhere;
 }
 
 :focus-visible {

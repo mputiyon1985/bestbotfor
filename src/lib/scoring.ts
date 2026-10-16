@@ -1,8 +1,8 @@
 import { skillLabel } from './format'
 import type { Budget, Skill } from './validation'
 
-/** Quiz budgets, plus the mid band used by the all-matches filter. */
-export type RankBudget = Budget | 'mid'
+/** All-matches uses the same budgets as the quiz. */
+export type RankBudget = Budget
 
 /**
  * Editorial fit is the base score (0-100). Budget and skill add a bounded
@@ -24,6 +24,8 @@ export type ScoreableTool = {
   priceFromUsd: number | null
   fitScore: number
   notes: string
+  /** False drops the tool from the quiz pick and its alternatives. Omitted means eligible. */
+  quizEligible?: boolean
 }
 
 export type RankedTool = ScoreableTool & {
@@ -34,12 +36,8 @@ export type RankedTool = ScoreableTool & {
 
 const LOW_BUDGET_USD = 30
 
-/** A mid budget includes a known paid price above the low cap and at or under this amount. */
-export const MID_BUDGET_USD = 100
-
 function paidCap(budget: RankBudget): number | null {
   if (budget === 'low') return LOW_BUDGET_USD
-  if (budget === 'mid') return MID_BUDGET_USD
   return null
 }
 
@@ -85,8 +83,11 @@ export function rankTools<T extends ScoreableTool>(
   return ranked
 }
 
-/** Maximum shortlist: one pick plus up to five alternatives. */
-export const QUIZ_RESULT_COUNT = 6
+/** Maximum shortlist: one pick plus up to six alternatives. */
+export const QUIZ_RESULT_COUNT = 7
+
+/** Alternatives under the top pick. The few-options line shows when fewer qualify. */
+export const QUIZ_ALTERNATIVE_COUNT = QUIZ_RESULT_COUNT - 1
 
 /** Tools below this editorial fit are not shown on the quiz result. */
 export const MIN_QUIZ_FIT_SCORE = 50
@@ -96,8 +97,8 @@ export type BudgetFit = 'within' | 'over' | 'unknown'
 /**
  * A tool is inside the budget when the user can start it without crossing
  * the budget they chose. "Any" accepts every tool. "Free" uses the free-tier
- * flag. "Low" also accepts a known paid price at or under $30. "Mid" raises
- * that cap to $100. A missing price is unknown, not over budget.
+ * flag. "Low" also accepts a known paid price at or under $30. A missing
+ * price is unknown, not over budget.
  */
 export function quizBudgetFit(
   tool: Pick<ScoreableTool, 'pricingModel' | 'hasFreeTier' | 'priceFromUsd'>,
@@ -128,7 +129,7 @@ export type QuizPick<T extends ScoreableTool> = T &
 
 /**
  * Keep tools that clear the minimum fit, rank them by fit plus the budget and
- * skill adjustments, and return at most one pick and five alternatives.
+ * skill adjustments, and return at most one pick and six alternatives.
  * A tool just over budget can appear only when it clears that minimum.
  * The list is not padded when fewer tools qualify.
  */
@@ -136,7 +137,7 @@ export function selectQuizPicks<T extends ScoreableTool>(
   tools: T[],
   answers: { budget: RankBudget; skill: Skill },
 ): QuizPick<T>[] {
-  const qualified = tools.filter((tool) => tool.fitScore >= MIN_QUIZ_FIT_SCORE)
+  const qualified = tools.filter((tool) => tool.fitScore >= MIN_QUIZ_FIT_SCORE && tool.quizEligible !== false)
   return rankTools(qualified, answers)
     .slice(0, QUIZ_RESULT_COUNT)
     .map((tool) => ({

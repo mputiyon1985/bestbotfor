@@ -30,6 +30,10 @@ function tool(slug: string, name: string): CatalogTool {
       commissionNote: null,
       affiliateUrl: null,
     },
+    editorial: null,
+    pros: [],
+    cons: [],
+    quizEligible: true,
   }
 }
 
