@@ -2,6 +2,7 @@ import { expect, test, type Locator } from '@playwright/test'
 import { comparePairSeeds, toolSeeds } from '../src/data/catalog'
 import { TOOLS_PAGE_SIZE } from '../src/lib/catalog-read'
 import { TOOL_LOGO_MARK_FILL, TOOL_LOGO_SIZE } from '../src/lib/logo-source'
+import { BEST_GUIDE_TOOL_COUNT } from '../src/lib/descriptions'
 import { toolsForTask } from '../src/lib/recommend'
 import { categorySlug, toolCategories } from '../src/lib/tool-index'
 import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
@@ -316,7 +317,7 @@ test('best, compare, tool profiles, and the sitemap follow the seed', async ({ p
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Best AI tool for writing code')
   await expect(page.getByText(`The best AI tool for writing code is ${top.name}.`)).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Best for writing code')
-  for (const tool of ranked.slice(0, 5)) {
+  for (const tool of ranked.slice(0, BEST_GUIDE_TOOL_COUNT)) {
     await expect(page.getByRole('link', { name: tool.name, exact: true })).toBeVisible()
   }
 
