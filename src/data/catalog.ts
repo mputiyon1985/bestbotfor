@@ -315,7 +315,7 @@ export const toolSeeds: ToolSeed[] = [
     name: 'Devin Desktop (formerly Windsurf)',
     vendor: 'Cognition',
     url: 'https://devin.ai/desktop',
-    allowedHosts: ['devin.ai', 'windsurf.com'],
+    allowedHosts: ['devin.ai'],
     category: 'Coding assistant',
     shortDesc: 'An AI editor with an agent that can take a task across several files.',
     longDesc:
@@ -2534,12 +2534,12 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
-  // pricing verified 2026-10-15 at https://notebooklm.google/plans | budget fit: free | best for: sources, study, audio-overviews
+  // pricing verified 2026-10-16 at https://notebooklm.google/plans | budget fit: free | best for: sources, study, audio-overviews
   tool({
     slug: 'notebooklm',
-    name: 'Gemini Notebook (NotebookLM)',
+    name: 'Gemini Notebook',
     vendor: 'Google',
-    url: 'https://notebooklm.google',
+    url: 'https://notebooklm.google/plans',
     allowedHosts: ['notebooklm.google'],
     category: 'Research',
     shortDesc: 'Google’s source-grounded notebook (renamed from NotebookLM in July 2026).',

@@ -4,7 +4,14 @@ import { affiliatePrograms, tasks, toolProsCons, toolScores, toolTasks, tools } 
 import { listMatches } from './matches'
 import { selectQuizPicks } from './scoring'
 import type { Catalog, CatalogFit, CatalogTask, CatalogTool, PricingModel } from './catalog-types'
-import type { EditorialScore, ProCon } from './editorial'
+import {
+  categoryToolCounts,
+  hidesCategoryRank,
+  sharesTieGroup,
+  tieGroupCounts,
+  type EditorialScore,
+  type ProCon,
+} from './editorial'
 import type { QuizAnswers, Skill } from './validation'
 import { z } from 'zod'
 
@@ -52,6 +59,7 @@ export type TaskCandidate = {
   editorial: EditorialScore | null
   pros: ProCon[]
   cons: ProCon[]
+  quizEligible: boolean
 }
 
 function platformsOf(value: string): string[] {
@@ -73,11 +81,7 @@ function groupProsCons(rows: ProConRow[]): Map<number, ProConRow[]> {
   return grouped
 }
 
-function editorialOf(score: ScoreRow | undefined, points: ProConRow[] | undefined): {
-  editorial: EditorialScore | null
-  pros: ProCon[]
-  cons: ProCon[]
-} {
+function pointsOf(points: ProConRow[] | undefined): { pros: ProCon[]; cons: ProCon[] } {
   const pros: ProCon[] = []
   const cons: ProCon[] = []
   for (const point of [...(points ?? [])].sort((a, b) => a.position - b.position || a.kind.localeCompare(b.kind))) {
@@ -89,20 +93,49 @@ function editorialOf(score: ScoreRow | undefined, points: ProConRow[] | undefine
     if (point.kind === 'con') cons.push(item)
     else if (point.kind === 'pro') pros.push(item)
   }
+  return { pros, cons }
+}
+
+function ratingContext(scoreRows: ReadonlyArray<Pick<ScoreRow, 'primaryCategory' | 'tieGroup'>>) {
   return {
-    editorial: score
-      ? {
-          features: score.features,
-          value: score.value,
-          ease: score.ease,
-          quality: score.quality,
-          overall: score.overall,
-          rationale: score.rationale,
-          reviewedAt: score.reviewedAt,
-        }
-      : null,
+    categoryCounts: categoryToolCounts(scoreRows),
+    tieCounts: tieGroupCounts(scoreRows),
+  }
+}
+
+function editorialOf(
+  score: ScoreRow | undefined,
+  points: ProConRow[] | undefined,
+  context: ReturnType<typeof ratingContext>,
+): {
+  editorial: EditorialScore | null
+  pros: ProCon[]
+  cons: ProCon[]
+  quizEligible: boolean
+} {
+  const { pros, cons } = pointsOf(points)
+  if (!score) return { editorial: null, pros, cons, quizEligible: true }
+  return {
+    editorial: {
+      features: score.features,
+      value: score.value,
+      ease: score.ease,
+      quality: score.quality,
+      overall: score.overall,
+      rationale: score.rationale,
+      reviewedAt: score.reviewedAt,
+      primaryCategory: score.primaryCategory,
+      categoryRankDisplay: score.categoryRankDisplay,
+      tieGroup: score.tieGroup,
+      tied: sharesTieGroup(score.tieGroup, context.tieCounts),
+      hideRank: hidesCategoryRank(score.primaryCategory, context.categoryCounts),
+      note: score.note,
+      ratingStatus: score.ratingStatus,
+      quizEligible: score.quizEligible,
+    },
     pros,
     cons,
+    quizEligible: score.quizEligible,
   }
 }
 
@@ -130,6 +163,7 @@ export function assembleCatalog(
   const affiliateByTool = new Map(affiliateRows.map((row) => [row.toolId, row]))
   const scoreByTool = new Map(scoreRows.map((row) => [row.toolId, row]))
   const prosByTool = groupProsCons(proConRows)
+  const context = ratingContext(scoreRows)
   const fitsByTool = new Map<number, FitRow[]>()
   for (const fit of fitRows) {
     const list = fitsByTool.get(fit.toolId)
@@ -154,6 +188,7 @@ export function assembleCatalog(
         affiliateByTool.get(tool.id),
         scoreByTool.get(tool.id),
         prosByTool.get(tool.id),
+        context,
       ),
     )
 
@@ -167,6 +202,7 @@ function toolRecord(
   affiliate: AffiliateRow | undefined,
   score: ScoreRow | undefined,
   points: ProConRow[] | undefined,
+  context: ReturnType<typeof ratingContext>,
 ): CatalogTool {
   const fits: CatalogFit[] = fitRows
     .map((fit) => {
@@ -198,18 +234,21 @@ function toolRecord(
     lastVerifiedAt: tool.lastVerifiedAt,
     fits,
     affiliate: affiliateOf(affiliate),
-    ...(tool.needsVerification ? { editorial: null, pros: [], cons: [] } : editorialOf(score, points)),
+    ...(tool.needsVerification
+      ? { editorial: null, pros: [], cons: [], quizEligible: true }
+      : editorialOf(score, points, context)),
   }
 }
 
 async function hydrateTools(db: Database, rows: ToolRow[]): Promise<CatalogTool[]> {
   if (rows.length === 0) return []
   const ids = rows.map((row) => row.id)
-  const [fitRows, affiliateRows, scoreRows, proConRows] = await Promise.all([
+  const [fitRows, affiliateRows, scoreRows, proConRows, rankRows] = await Promise.all([
     db.select().from(toolTasks).where(inArray(toolTasks.toolId, ids)),
     db.select().from(affiliatePrograms).where(inArray(affiliatePrograms.toolId, ids)),
     db.select().from(toolScores).where(inArray(toolScores.toolId, ids)),
     db.select().from(toolProsCons).where(inArray(toolProsCons.toolId, ids)),
+    db.select({ primaryCategory: toolScores.primaryCategory, tieGroup: toolScores.tieGroup }).from(toolScores),
   ])
   const taskIds = [...new Set(fitRows.map((fit) => fit.taskId))]
   const taskRows = taskIds.length > 0 ? await db.select().from(tasks).where(inArray(tasks.id, taskIds)) : []
@@ -223,8 +262,17 @@ async function hydrateTools(db: Database, rows: ToolRow[]): Promise<CatalogTool[
     if (list) list.push(fit)
     else fitsByTool.set(fit.toolId, [fit])
   }
+  const context = ratingContext(rankRows)
   return rows.map((row) =>
-    toolRecord(row, fitsByTool.get(row.id) ?? [], taskById, affiliateByTool.get(row.id), scoreByTool.get(row.id), prosByTool.get(row.id)),
+    toolRecord(
+      row,
+      fitsByTool.get(row.id) ?? [],
+      taskById,
+      affiliateByTool.get(row.id),
+      scoreByTool.get(row.id),
+      prosByTool.get(row.id),
+      context,
+    ),
   )
 }
 
@@ -326,8 +374,12 @@ export async function readTaskCandidates(
   const ids = rows.map((row) => row.id)
   const scoreRows = ids.length === 0 ? [] : await db.select().from(toolScores).where(inArray(toolScores.toolId, ids))
   const proConRows = ids.length === 0 ? [] : await db.select().from(toolProsCons).where(inArray(toolProsCons.toolId, ids))
+  const rankRows = await db
+    .select({ primaryCategory: toolScores.primaryCategory, tieGroup: toolScores.tieGroup })
+    .from(toolScores)
   const scoreByTool = new Map(scoreRows.map((row) => [row.toolId, row]))
   const prosByTool = groupProsCons(proConRows)
+  const context = ratingContext(rankRows)
 
   const candidates: TaskCandidate[] = rows.map((row) => ({
     slug: row.slug,
@@ -341,8 +393,8 @@ export async function readTaskCandidates(
     fitScore: row.fitScore,
     notes: row.notes,
     ...(row.needsVerification
-      ? { editorial: null, pros: [], cons: [] }
-      : editorialOf(scoreByTool.get(row.id), prosByTool.get(row.id))),
+      ? { editorial: null, pros: [], cons: [], quizEligible: true }
+      : editorialOf(scoreByTool.get(row.id), prosByTool.get(row.id), context)),
   }))
   candidates.sort((a, b) => b.fitScore - a.fitScore || a.name.localeCompare(b.name))
   return {

@@ -33,6 +33,7 @@ function tool(slug: string, name: string): CatalogTool {
     editorial: null,
     pros: [],
     cons: [],
+    quizEligible: true,
   }
 }
 

@@ -18,6 +18,14 @@ const editorial: EditorialScore = {
   overall: 4.3,
   rationale: 'Equal-weight average of features, value, ease, and quality.',
   reviewedAt: '2026-10-16',
+  primaryCategory: 'chat',
+  categoryRankDisplay: '#1 of 2 in Chat',
+  tieGroup: '',
+  tied: false,
+  hideRank: false,
+  note: 'regular price not published; value neutral',
+  ratingStatus: 'Active',
+  quizEligible: true,
 }
 
 const proText = 'Free plan includes unlimited everyday text chats.'
@@ -59,34 +67,32 @@ function quietTool(slug: string, name: string): CatalogTool {
     editorial,
     pros,
     cons,
+    quizEligible: true,
   }
 }
 
 describe('SHOW_SCORES', () => {
-  it('ships off, and the helper reports both states', () => {
-    expect(SHOW_SCORES).toBe(false)
-    expect(scoresPublished()).toBe(false)
+  it('ships on, and the helper reports both states', () => {
+    expect(SHOW_SCORES).toBe(true)
+    expect(scoresPublished()).toBe(true)
     expect(scoresPublished(true)).toBe(true)
     expect(scoresPublished(false)).toBe(false)
   })
 
-  it('hides the score view by default and returns it when the flag is on', () => {
-    expect(publicScore(editorial)).toBeNull()
+  it('returns the score view while the flag is on and hides it when the flag is off', () => {
     expect(publicScore(editorial, false)).toBeNull()
     expect(publicScore(null, true)).toBeNull()
 
-    const view = publicScore(editorial, true)
+    const view = publicScore(editorial)
     expect(view?.heading).toBe('BestBotFor score')
-    expect(view?.howWeScoreHeading).toBe('How we score')
-    expect(view?.howWeScore).toContain('not a user review')
     expect(view?.overallText).toBe('4.3 out of 5')
     expect(view?.ariaLabel).toBe('Rated 4.3 out of 5')
     expect(view?.fills).toEqual([1, 1, 1, 1, 0.3])
     expect(view?.criteria.map((part) => [part.label, part.text])).toEqual([
+      ['Quality', '4'],
       ['Features', '4'],
       ['Value', '4'],
       ['Ease', '5'],
-      ['Quality', '4'],
     ])
     expect(view?.rationale).toBe(editorial.rationale)
   })
@@ -99,22 +105,23 @@ describe('SHOW_SCORES', () => {
     )
 
     const meta = pageMetadata({ title: 'ChatGPT', description: scoredCopy, path: '/tools/chatgpt' })
-    const serialized = JSON.stringify(meta)
-    expect(meta.description).toBe('ChatGPT by OpenAI.')
-    expect(serialized).not.toContain('out of 5')
-    expect(serialized).not.toContain('BestBotFor score')
-    expect(serialized).not.toContain('How we score')
-    expect(serialized).not.toContain('Rated')
+    expect(meta.description).toBe(scoredCopy)
   })
 
-  it('keeps rating schema when the flag is on and drops it when the flag is off', () => {
+  it('never emits AggregateRating, and drops score phrases from JSON-LD only while the flag is off', () => {
     const data = {
       '@type': 'SoftwareApplication',
       name: 'ChatGPT',
       description: scoredCopy,
       aggregateRating: { '@type': 'AggregateRating', ratingValue: '4.6', bestRating: '5' },
     }
-    expect(jsonLdForPage(data, true)).toEqual(data)
+    const shown = jsonLdForPage(data, true)
+    const shownText = JSON.stringify(shown)
+    expect(shown).not.toHaveProperty('aggregateRating')
+    expect(shownText).not.toContain('ratingValue')
+    expect(shownText).not.toContain('bestRating')
+    expect(shownText).toContain('out of 5')
+
     const hidden = jsonLdForPage(data, false)
     const encoded = JSON.stringify(hidden)
     expect(hidden).not.toHaveProperty('aggregateRating')
@@ -127,32 +134,34 @@ describe('SHOW_SCORES', () => {
     const markup = html(createElement(JsonLd, { data, nonce: null }))
     expect(markup).not.toContain('aggregateRating')
     expect(markup).not.toContain('ratingValue')
-    expect(markup).not.toContain('out of 5')
   })
 
-  it('drops a score sentence from the compare preview while the flag is off', () => {
+  it('keeps a score sentence in the compare preview while the flag is on', () => {
     const catalog: Catalog = {
       tasks: [],
       tools: [quietTool('chatgpt', 'ChatGPT'), quietTool('claude', 'Claude')],
     }
     const hidden = ogCopy({ kind: 'compare', pair: 'chatgpt-vs-claude' }, catalog)
     expect(hidden.title).toBe('ChatGPT vs Claude')
-    expect(hidden.subtitle).not.toContain('out of 5')
+    expect(hidden.subtitle).toContain('out of 5')
     expect(hidden.subtitle).toContain('ChatGPT')
     expect(hidden.subtitle).toContain('Claude')
   })
 
   it('renders pros and cons without the score component while the flag is off', () => {
-    expect(html(createElement(ScoreSection, { editorial }))).toBe('')
-    expect(html(createElement(StarRating, { score: editorial.overall }))).toBe('')
+    expect(html(createElement(ScoreSection, { editorial, showScores: false }))).toBe('')
+    expect(html(createElement(StarRating, { score: editorial.overall, showScores: false }))).toBe('')
 
-    const card = html(createElement(EditorialCompact, { editorial, pros, cons }))
+    const card = html(createElement(EditorialCompact, { editorial, pros, cons, showScores: false }))
     expect(card).toContain('Pros:')
     expect(card).toContain(proText)
     expect(card).toContain('Cons:')
     expect(card).toContain(conText)
     expect(card).not.toContain('data-star-rating')
     expect(card).not.toContain('data-score-section')
+    expect(card).not.toContain('data-category-rank')
+    expect(card).not.toContain('#1 of 2 in Chat')
+    expect(card).not.toContain('Tied')
     expect(card).not.toContain('BestBotFor score')
     expect(card).not.toContain('out of 5')
 
@@ -167,22 +176,56 @@ describe('SHOW_SCORES', () => {
     const section = html(createElement(ScoreSection, { editorial, showScores: true }))
     expect(section).toContain('data-score-section')
     expect(section).toContain('BestBotFor score')
-    expect(section).toContain('How we score')
-    expect(section).toContain('not a user review')
+    expect(section).not.toContain('How we score')
+    expect(section).toContain('#1 of 2 in Chat')
+    expect(section).toContain('href="/how-we-rate"')
     expect(section).toContain('4.3 out of 5')
     expect(section).toContain('Rated 4.3 out of 5')
     expect(section).toContain('data-star-fill="0.3"')
-    expect(section).toContain('data-criterion="features"')
-    expect(section).toContain('Features 4 out of 5')
+    expect(section).toContain('data-criterion="quality"')
+    expect(section).toContain('Quality 4 out of 5')
     expect(section).toContain('Ease 5 out of 5')
+    expect(section).toContain('data-score-note')
+    expect(section).toContain(editorial.note)
     expect(section).toContain(editorial.rationale)
+    expect(section).not.toContain('chatgpt.com/pricing')
+    expect(section).not.toContain('evidence.jsonl')
 
     const card = html(createElement(EditorialCompact, { editorial, pros, cons, showScores: true }))
     expect(card).toContain('data-star-rating')
     expect(card).toContain('Rated 4.3 out of 5')
+    expect(card).toContain('#1 of 2 in Chat')
     expect(card).toContain('Pros:')
     expect(card).toContain(proText)
+    expect(card).not.toContain('chatgpt.com/pricing')
     expect(card).not.toContain('data-score-section')
     expect(card).not.toContain('data-criterion')
+
+    const tied = {
+      ...editorial,
+      categoryRankDisplay: '#2 of 4 in Chat',
+      tieGroup: 'chat-T2',
+      tied: true,
+    }
+    const tiedSection = html(createElement(ScoreSection, { editorial: tied, showScores: true }))
+    expect(tiedSection).toContain('data-tie="true"')
+    expect(tiedSection).toContain('Tied · ')
+    expect(tiedSection).toContain('#2 of 4 in Chat')
+    const tiedHidden = html(createElement(ScoreSection, { editorial: tied, showScores: false }))
+    expect(tiedHidden).toBe('')
+    const tiedCard = html(createElement(EditorialCompact, { editorial: tied, pros, cons, showScores: false }))
+    expect(tiedCard).not.toContain('data-category-rank')
+    expect(tiedCard).not.toContain('#2 of 4 in Chat')
+    expect(tiedCard).not.toContain('Tied')
+
+    const single = html(
+      createElement(ScoreSection, {
+        editorial: { ...editorial, hideRank: true, categoryRankDisplay: '#1 of 1 in Productivity' },
+        showScores: true,
+      }),
+    )
+    expect(single).toContain('data-score-section')
+    expect(single).not.toContain('data-category-rank')
+    expect(single).not.toContain('#1 of 1 in Productivity')
   })
 })

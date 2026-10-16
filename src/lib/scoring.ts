@@ -24,6 +24,8 @@ export type ScoreableTool = {
   priceFromUsd: number | null
   fitScore: number
   notes: string
+  /** False drops the tool from the quiz pick and its alternatives. Omitted means eligible. */
+  quizEligible?: boolean
 }
 
 export type RankedTool = ScoreableTool & {
@@ -139,7 +141,7 @@ export function selectQuizPicks<T extends ScoreableTool>(
   tools: T[],
   answers: { budget: RankBudget; skill: Skill },
 ): QuizPick<T>[] {
-  const qualified = tools.filter((tool) => tool.fitScore >= MIN_QUIZ_FIT_SCORE)
+  const qualified = tools.filter((tool) => tool.fitScore >= MIN_QUIZ_FIT_SCORE && tool.quizEligible !== false)
   return rankTools(qualified, answers)
     .slice(0, QUIZ_RESULT_COUNT)
     .map((tool) => ({

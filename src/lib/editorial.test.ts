@@ -1,23 +1,34 @@
 import { describe, expect, it } from 'vitest'
 import { editorialRowsFromCsv, editorialSeeds } from '@/data/scores-pros-cons.seed'
+import { keptProsConsSeeds, ratingSeeds, unratedSlugs } from '@/data/scores-v23.seed'
 import { toolSeeds } from '@/data/catalog'
 import { softwareJsonLd } from './jsonld'
 import type { CatalogTool } from './catalog-types'
-import { HOW_WE_SCORE, SCORE_WEIGHTS, UNRATED_SLUGS, overallScore, ratingAriaLabel, starFills, validateEditorialSeeds } from './editorial'
+import {
+  SCORE_WEIGHTS,
+  SINGLE_TOOL_CATEGORIES,
+  UNMAINTAINED_NOTICE,
+  categoryToolCounts,
+  overallScore,
+  ratingAriaLabel,
+  starFills,
+  validateEditorialSeeds,
+  validateProsConsSeeds,
+  validateRatingSeeds,
+} from './editorial'
 import { catalogFromSeeds } from '@/test/catalog-from-seeds'
 import { recommend } from './recommend'
+import { selectQuizPicks } from './scoring'
 
 const slugs = new Set(toolSeeds.map((tool) => tool.slug))
 
 describe('BestBotFor score', () => {
   it('weights the four parts and rounds half up to one decimal', () => {
-    expect(SCORE_WEIGHTS.features + SCORE_WEIGHTS.value + SCORE_WEIGHTS.ease + SCORE_WEIGHTS.quality).toBe(100)
-    expect(overallScore({ features: 4, value: 4, ease: 5, quality: 4 })).toBe(4.3)
+    expect(SCORE_WEIGHTS.quality + SCORE_WEIGHTS.features + SCORE_WEIGHTS.value + SCORE_WEIGHTS.ease).toBe(100)
+    expect(SCORE_WEIGHTS).toEqual({ quality: 40, features: 25, value: 20, ease: 15 })
+    expect(overallScore({ features: 4, value: 4, ease: 5, quality: 4 })).toBe(4.2)
     expect(overallScore({ features: 4, value: 4, ease: 4, quality: 4 })).toBe(4)
-    expect(overallScore({ features: 4, value: 3, ease: 3, quality: 4 })).toBe(3.5)
-    expect(HOW_WE_SCORE).toContain('25%')
-    expect(HOW_WE_SCORE).toContain('equally')
-    expect(HOW_WE_SCORE).toContain('not a user review')
+    expect(overallScore({ features: 4, value: 3, ease: 3, quality: 4 })).toBe(3.7)
   })
 
   it('fills four stars and 30% of the fifth for 4.3', () => {
@@ -37,31 +48,40 @@ describe('BestBotFor score', () => {
   })
 
   it('accepts the checked seed and rejects invented or incomplete rows', () => {
-    expect(editorialSeeds).toHaveLength(146)
-    expect(UNRATED_SLUGS).toHaveLength(13)
-    expect(UNRATED_SLUGS).toContain('cursor')
-    expect(UNRATED_SLUGS).toContain('windsurf')
-    expect(editorialSeeds.some((row) => row.slug === 'cursor' || row.slug === 'windsurf')).toBe(false)
+    expect(ratingSeeds).toHaveLength(91)
+    expect(unratedSlugs).toHaveLength(68)
+    expect(ratingSeeds.find((row) => row.slug === 'grok')?.rationale).toBe('')
+    expect(ratingSeeds.find((row) => row.slug === 'semantic-scholar')?.rationale).toBe('')
+    expect(unratedSlugs).not.toContain('cursor')
+    expect(unratedSlugs).not.toContain('windsurf')
+    expect(unratedSlugs).toContain('perplexity')
+    expect(unratedSlugs).toContain('se-ranking')
     expect(toolSeeds).toHaveLength(159)
-    const rated = new Set(editorialSeeds.map((row) => row.slug))
-    expect([...slugs].filter((slug) => !rated.has(slug)).sort()).toEqual([...UNRATED_SLUGS].sort())
+    const rated = new Set(ratingSeeds.map((row) => row.slug))
+    expect([...slugs].filter((slug) => !rated.has(slug)).sort()).toEqual([...unratedSlugs])
+    expect(JSON.stringify(ratingSeeds)).not.toContain('pcmag.com')
+    expect(JSON.stringify(ratingSeeds)).not.toContain('techradar.com')
+    expect(JSON.stringify(ratingSeeds)).not.toContain('evidence.jsonl')
+    expect(JSON.stringify(ratingSeeds)).not.toContain('http')
+    expect(JSON.stringify(ratingSeeds)).not.toContain('third_party')
+    expect(JSON.stringify(ratingSeeds)).not.toContain('source_urls')
     expect(JSON.stringify(editorialSeeds)).not.toContain('pcmag.com')
-    expect(JSON.stringify(editorialSeeds)).not.toContain('techradar.com')
     expect(JSON.stringify(editorialSeeds)).not.toContain('third_party')
     expect(JSON.stringify(editorialSeeds)).not.toContain('source_urls')
     const blocked = new Set(toolSeeds.filter((tool) => tool.needsVerification).map((tool) => tool.slug))
     expect(blocked.size).toBe(0)
-    expect(() => validateEditorialSeeds(editorialSeeds, slugs, blocked)).not.toThrow()
-    for (const row of editorialSeeds) {
+    expect(() => validateRatingSeeds(ratingSeeds, slugs)).not.toThrow()
+    expect(() => validateProsConsSeeds(keptProsConsSeeds, slugs)).not.toThrow()
+    for (const row of ratingSeeds) {
       expect(row.overall).toBe(overallScore(row))
-      expect(row.pros).toHaveLength(3)
-      expect(row.cons.length).toBeGreaterThanOrEqual(2)
-      expect(row.cons.length).toBeLessThanOrEqual(3)
-      expect(row.pros.every((point) => point.sourceUrl.startsWith('https://'))).toBe(true)
-      expect(row.cons.every((point) => point.sourceUrl.startsWith('https://'))).toBe(true)
-      expect(UNRATED_SLUGS).not.toContain(row.slug)
+      expect(unratedSlugs).not.toContain(row.slug)
     }
-    const claude = editorialSeeds.find((row) => row.slug === 'claude')
+    const singles = [...categoryToolCounts(ratingSeeds).entries()]
+      .filter(([, count]) => count === 1)
+      .map(([category]) => category)
+      .sort()
+    expect(singles).toEqual([...SINGLE_TOOL_CATEGORIES].sort())
+    const claude = keptProsConsSeeds.find((row) => row.slug === 'claude')
     expect(claude?.pros.every((point) => point.sourceUrl === 'https://claude.com/pricing')).toBe(true)
     const loaded = editorialRowsFromCsv(
       'slug,features,value,ease,quality,overall,rationale,pro1,pro1_source,pro2,pro2_source,pro3,pro3_source,con1,con1_source,con2,con2_source,con3,con3_source,third_party_sources,source_urls,reviewed_at,batch\n' +
@@ -74,10 +94,10 @@ describe('BestBotFor score', () => {
       /needs verification/,
     )
 
-    const base = editorialSeeds[0]
+    const base = loaded[0]
     expect(base).toBeTruthy()
     if (!base) return
-    expect(() => validateEditorialSeeds([{ ...base, overall: 1 }], slugs)).toThrow(/equal-weight average/)
+    expect(() => validateEditorialSeeds([{ ...base, overall: 1 }], slugs)).toThrow(/weighted average/)
     expect(() => validateEditorialSeeds([{ ...base, slug: 'not-a-tool' }], slugs)).toThrow(/unknown tool/)
     expect(() => validateEditorialSeeds([{ ...base, pros: base.pros.slice(0, 2) }], slugs)).toThrow(/pros/)
     expect(() => validateEditorialSeeds([{ ...base, cons: base.cons.slice(0, 1) }], slugs)).toThrow(/cons/)
@@ -88,9 +108,11 @@ describe('BestBotFor score', () => {
   })
 
   it('does not emit AggregateRating or Review schema for an editorial score', () => {
-    const scored = editorialSeeds.find((row) => row.slug === 'claude')
+    const scored = ratingSeeds.find((row) => row.slug === 'claude')
+    const points = keptProsConsSeeds.find((row) => row.slug === 'claude')
     expect(scored).toBeTruthy()
-    if (!scored) return
+    expect(points).toBeTruthy()
+    if (!scored || !points) return
     const tool = {
       id: 1,
       slug: 'claude',
@@ -123,9 +145,18 @@ describe('BestBotFor score', () => {
         overall: scored.overall,
         rationale: scored.rationale,
         reviewedAt: scored.reviewedAt,
+        primaryCategory: scored.primaryCategory,
+        categoryRankDisplay: scored.categoryRankDisplay,
+        tieGroup: scored.tieGroup,
+        tied: scored.tieGroup.length > 0,
+        hideRank: false,
+        note: scored.note,
+        ratingStatus: scored.ratingStatus,
+        quizEligible: scored.quizEligible,
       },
-      pros: scored.pros.map((point) => ({ kind: 'pro' as const, text: point.text, sourceUrl: point.sourceUrl })),
-      cons: scored.cons.map((point) => ({ kind: 'con' as const, text: point.text, sourceUrl: point.sourceUrl })),
+      pros: points.pros.map((point) => ({ kind: 'pro' as const, text: point.text, sourceUrl: point.sourceUrl })),
+      cons: points.cons.map((point) => ({ kind: 'con' as const, text: point.text, sourceUrl: point.sourceUrl })),
+      quizEligible: scored.quizEligible,
     } satisfies CatalogTool
     const json = softwareJsonLd(tool)
     const serialized = JSON.stringify(json)
@@ -143,7 +174,7 @@ describe('BestBotFor score', () => {
     expect(windsurf?.name).toBe('Devin Desktop (formerly Windsurf)')
     expect(windsurf?.vendor).toBe('Cognition')
     expect(windsurf?.url).toBe('https://devin.ai/desktop')
-    expect(windsurf?.allowedHosts).toContain('devin.ai')
+    expect(windsurf?.allowedHosts).toEqual(['devin.ai'])
     expect(windsurf?.priceFromUsd).toBe(20)
     expect(windsurf?.hasFreeTier).toBe(true)
     expect(windsurf?.needsVerification).toBeFalsy()
@@ -164,32 +195,110 @@ describe('BestBotFor score', () => {
     expect(relevance?.longDesc).toContain('Pro is $19 a month billed yearly')
 
     const catalog = catalogFromSeeds()
-    for (const slug of UNRATED_SLUGS) {
+    for (const slug of unratedSlugs) {
       const tool = catalog.tools.find((item) => item.slug === slug)
+      const v1 = editorialSeeds.find((row) => row.slug === slug)
       expect(tool?.editorial, slug).toBeNull()
-      expect(tool?.pros, slug).toEqual([])
-      expect(tool?.cons, slug).toEqual([])
+      expect(tool?.pros.map((point) => point.text), slug).toEqual(v1?.pros.map((point) => point.text) ?? [])
+      expect(tool?.cons.map((point) => point.text), slug).toEqual(v1?.cons.map((point) => point.text) ?? [])
+      expect(tool?.quizEligible, slug).toBe(true)
     }
+    const unratedWithPoints = catalog.tools.find((tool) => tool.slug === 'relevance-ai')
+    expect(unratedWithPoints?.editorial).toBeNull()
+    expect(unratedWithPoints?.pros.length).toBeGreaterThan(0)
+    expect(unratedWithPoints?.cons.length).toBeGreaterThan(0)
     const ratedWindsurf = catalog.tools.find((tool) => tool.slug === 'windsurf')
     expect(ratedWindsurf?.name).toBe('Devin Desktop (formerly Windsurf)')
-    expect(ratedWindsurf?.editorial).toBeNull()
+    expect(ratedWindsurf?.editorial?.overall).toBe(ratingSeeds.find((row) => row.slug === 'windsurf')?.overall)
     expect(ratedWindsurf?.pros).toEqual([])
     expect(ratedWindsurf?.cons).toEqual([])
+    expect(ratedWindsurf?.editorial?.hideRank).toBe(false)
+    expect(ratedWindsurf?.editorial?.categoryRankDisplay).toBe('#10 of 12 in Coding')
+    expect(ratedWindsurf?.editorial?.tied).toBe(true)
     const ratedCursor = catalog.tools.find((tool) => tool.slug === 'cursor')
-    expect(ratedCursor?.editorial).toBeNull()
+    expect(ratedCursor?.editorial?.categoryRankDisplay).toBe('#2 of 12 in Coding')
+    expect(ratedCursor?.editorial?.tied).toBe(true)
     expect(ratedCursor?.pros).toEqual([])
-    expect(ratedCursor?.cons).toEqual([])
+
+    const gemini = catalog.tools.find((tool) => tool.slug === 'gemini')
+    const grokTool = catalog.tools.find((tool) => tool.slug === 'grok')
+    expect(gemini?.editorial?.tieGroup).toBe('chat-T2')
+    expect(grokTool?.editorial?.tieGroup).toBe('chat-T2')
+    expect(gemini?.editorial?.tied).toBe(true)
+    expect(grokTool?.editorial?.tied).toBe(true)
+    expect(catalog.tools.find((tool) => tool.slug === 'claude')?.editorial?.tied).toBe(false)
+
+    for (const slug of ['supabase', 'beautiful-ai', 'inworld', 'craft']) {
+      const tool = catalog.tools.find((item) => item.slug === slug)
+      expect(tool?.editorial?.hideRank, slug).toBe(true)
+      expect(tool?.editorial?.categoryRankDisplay, slug).toMatch(/#1 of 1 in /)
+    }
+    expect(catalog.tools.find((tool) => tool.slug === 'craft')?.category).toBe('Productivity')
+    expect(catalog.tools.find((tool) => tool.slug === 'se-ranking')?.category).toBe('SEO')
+    expect(toolSeeds.find((tool) => tool.slug === 'se-ranking')?.fits[0]?.task).toBe('seo')
+    expect(toolSeeds.find((tool) => tool.slug === 'notebooklm')).toMatchObject({
+      name: 'Gemini Notebook',
+      url: 'https://notebooklm.google/plans',
+      allowedHosts: ['notebooklm.google'],
+    })
+
+    const chatgpt = catalog.tools.find((tool) => tool.slug === 'chatgpt')
+    expect(chatgpt?.editorial?.note).toBe('regular price not published; value neutral')
+    const scholar = catalog.tools.find((tool) => tool.slug === 'semantic-scholar')
+    expect(scholar?.editorial?.note).toContain('quality floor')
+
+    const flowise = catalog.tools.find((tool) => tool.slug === 'flowise')
+    const roo = catalog.tools.find((tool) => tool.slug === 'roo-code')
+    expect(flowise?.editorial?.ratingStatus).toBe(UNMAINTAINED_NOTICE)
+    expect(roo?.editorial?.ratingStatus).toBe(UNMAINTAINED_NOTICE)
+    expect(flowise?.quizEligible).toBe(false)
+    expect(roo?.quizEligible).toBe(false)
 
     const freeAgents = recommend(catalog, { task: 'agents', budget: 'free', skill: 'beginner' })
     expect(freeAgents?.picks.length).toBeGreaterThan(0)
+    expect(freeAgents?.picks.some((pick) => pick.slug === 'flowise')).toBe(false)
     const retired = freeAgents?.picks.find((pick) => pick.slug === 'relevance-ai')
     if (retired) expect(retired.budgetFit).toBe('over')
     expect(freeAgents?.picks.some((pick) => pick.budgetFit === 'within' && pick.hasFreeTier)).toBe(true)
 
+    const coding = recommend(catalog, { task: 'coding', budget: 'any', skill: 'intermediate' })
+    expect(coding?.picks.some((pick) => pick.slug === 'roo-code')).toBe(false)
+    expect(coding?.picks[0]?.slug).not.toBe('roo-code')
+
+    const excluded = selectQuizPicks(
+      [
+        {
+          slug: 'roo-code',
+          name: 'Roo Code',
+          skillLevel: 'intermediate',
+          pricingModel: 'freemium',
+          hasFreeTier: true,
+          priceFromUsd: null,
+          fitScore: 99,
+          notes: 'Would have won.',
+          quizEligible: false,
+        },
+        {
+          slug: 'zed',
+          name: 'Zed',
+          skillLevel: 'intermediate',
+          pricingModel: 'freemium',
+          hasFreeTier: true,
+          priceFromUsd: null,
+          fitScore: 60,
+          notes: 'Still eligible.',
+        },
+      ],
+      { budget: 'any', skill: 'intermediate' },
+    )
+    expect(excluded.map((pick) => pick.slug)).toEqual(['zed'])
+
     const chat = recommend(catalog, { task: 'chat', budget: 'any', skill: 'beginner' })
     const grok = chat?.picks.find((pick) => pick.slug === 'grok')
-    expect(grok?.tool.editorial).toBeNull()
+    expect(grok?.tool.editorial?.tied).toBe(true)
     expect(grok?.tool.pros).toEqual([])
+    const perplexity = chat?.picks.find((pick) => pick.slug === 'perplexity')
+    expect(perplexity?.tool.editorial).toBeNull()
     expect(chat?.picks.some((pick) => pick.tool.editorial)).toBe(true)
   })
 })

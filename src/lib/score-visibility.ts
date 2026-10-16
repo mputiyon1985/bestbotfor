@@ -1,4 +1,4 @@
-import { HOW_WE_SCORE, ratingAriaLabel, starFills, type EditorialScore } from './editorial'
+import { ratingAriaLabel, starFills, type EditorialScore } from './editorial'
 import { SHOW_SCORES } from './site'
 
 export const SCORE_HEADING = 'BestBotFor score'
@@ -7,15 +7,13 @@ export const HOW_WE_SCORE_HEADING = 'How we score'
 const RATING_KEYS = new Set(['aggregateRating', 'ratingValue', 'reviewRating', 'bestRating', 'worstRating'])
 
 export type PublicCriterion = {
-  label: 'Features' | 'Value' | 'Ease' | 'Quality'
+  label: 'Quality' | 'Features' | 'Value' | 'Ease'
   value: number
   text: string
 }
 
 export type PublicScore = {
   heading: typeof SCORE_HEADING
-  howWeScoreHeading: typeof HOW_WE_SCORE_HEADING
-  howWeScore: string
   overall: number
   ariaLabel: string
   overallText: string
@@ -37,10 +35,10 @@ export function publicScore(
   if (!showScores || !editorial) return null
   const criteria = (
     [
+      ['Quality', editorial.quality],
       ['Features', editorial.features],
       ['Value', editorial.value],
       ['Ease', editorial.ease],
-      ['Quality', editorial.quality],
     ] as const
   ).map(([label, value]): PublicCriterion => {
     const text = formatScore(value)
@@ -48,8 +46,6 @@ export function publicScore(
   })
   return {
     heading: SCORE_HEADING,
-    howWeScoreHeading: HOW_WE_SCORE_HEADING,
-    howWeScore: HOW_WE_SCORE,
     overall: editorial.overall,
     ariaLabel: ratingAriaLabel(editorial.overall),
     overallText: `${formatScore(editorial.overall)} out of 5`,
@@ -74,20 +70,19 @@ export function omitScoreText(text: string, showScores: boolean = scoresPublishe
     .trim()
 }
 
-/** Drops rating schema and score phrases. Other JSON-LD fields stay. */
+/** Drops AggregateRating fields always. Score phrases in other strings stay while the flag is on. */
 export function jsonLdForPage(data: unknown, showScores: boolean = scoresPublished()): unknown {
-  if (showScores) return data
-  return stripScores(data)
+  return stripScores(data, showScores)
 }
 
-function stripScores(value: unknown): unknown {
-  if (typeof value === 'string') return omitScoreText(value, false)
-  if (Array.isArray(value)) return value.map((item) => stripScores(item))
+function stripScores(value: unknown, showScores: boolean): unknown {
+  if (typeof value === 'string') return omitScoreText(value, showScores)
+  if (Array.isArray(value)) return value.map((item) => stripScores(item, showScores))
   if (!value || typeof value !== 'object') return value
   const out: Record<string, unknown> = {}
   for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
     if (RATING_KEYS.has(key)) continue
-    out[key] = stripScores(child)
+    out[key] = stripScores(child, showScores)
   }
   return out
 }

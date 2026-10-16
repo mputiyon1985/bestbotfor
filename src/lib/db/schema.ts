@@ -43,8 +43,9 @@ export const toolTasks = sqliteTable(
 )
 
 /**
- * One editorial rubric per tool. overall is the equal-weight average documented
- * in src/lib/editorial.ts. sources stays an empty list: source_urls and third-party
+ * One editorial rubric per tool. overall is the weighted average documented
+ * in src/lib/editorial.ts (quality 40, features 25, value 20, ease 15).
+ * sources stays an empty list: evidence_ref, source_urls, and third-party
  * columns are not stored. Per-point source URLs stay on tool_pros_cons and are not rendered.
  * This is not a user review.
  */
@@ -58,6 +59,12 @@ export const toolScores = sqliteTable('tool_scores', {
   rationale: text('rationale').notNull(),
   sources: text('sources').notNull(),
   reviewedAt: text('reviewed_at').notNull(),
+  primaryCategory: text('primary_category').notNull().default(''),
+  categoryRankDisplay: text('category_rank_display').notNull().default(''),
+  tieGroup: text('tie_group').notNull().default(''),
+  note: text('note').notNull().default(''),
+  ratingStatus: text('rating_status').notNull().default(''),
+  quizEligible: integer('quiz_eligible', { mode: 'boolean' }).notNull().default(true),
 })
 
 /** Three pros and two or three cons. position is 1-based within kind. */
