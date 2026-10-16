@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { ProsConsSection, ScoreSection } from '@/components/editorial'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
 import { comparePairSeeds } from '@/data/catalog'
@@ -70,6 +71,8 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
       {tool.affiliate.commissionNote ? (
         <p className="text-sm text-muted">Program note, copied from the vendor’s page: {tool.affiliate.commissionNote}</p>
       ) : null}
+      <ScoreSection editorial={tool.editorial} />
+      <ProsConsSection pros={tool.pros} cons={tool.cons} />
       <section>
         <h2 className="font-semibold text-3xl">Jobs it fits</h2>
         <ul className="mt-3 space-y-3">

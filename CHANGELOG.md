@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- The quiz result shows one pick and up to six alternatives that clear a fit score of 50. When fewer qualify, the page still says few strong options exist.
+- All-matches pages list six tools and show “Showing 1–6 of N” with numbered page links. Budget filters stay noindex, rel prev/next and the canonical rules are unchanged, and a page past the end is still a 404.
+- Tool pages can show a BestBotFor score from 0 to 5, with a fractional star, the features/value/ease/quality rubric, and a short note on how the weighted average is calculated. The score is editorial. Pages do not emit AggregateRating or Review schema.
+- Pros and cons render on the tool page, and a shorter version renders on result cards, only when a tool has verified rows with source URLs.
+- `src/data/scores-pros-cons.seed.ts` loads those rows. The seed validates them and upserts. It does not delete other rows. The file currently covers Claude, ChatGPT, and Cursor, checked against each vendor’s docs or pricing page on October 16, 2026.
 - Encoded and raw dot segments return 404 from a Vercel route and from the app server. The global `URL` constructor and `http.Server` are no longer patched.
 - Quiz result URLs and budget-filtered match lists are `noindex, follow`. `/result?task=X&view=all` page 1 stays indexable and in the sitemap. Lighthouse scores SEO on that indexable list. The production-env check asserts the quiz and budget-filtered pages render `noindex, follow`.
 - The first paint uses a metric-matched fallback for every Poppins weight, so the delayed swap does not reflow the tools directory.

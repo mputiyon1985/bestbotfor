@@ -9,7 +9,7 @@ export const budgetLabel: Record<Budget, string> = {
 /** Shown on a shortlisted tool that sits outside the chosen budget. */
 export const overBudgetLabel = 'Just over budget'
 
-/** Shown when fewer than five alternatives clear the minimum fit. */
+/** Shown when fewer than six alternatives clear the minimum fit. */
 export const fewStrongOptionsLabel = 'Few strong options exist for this yet.'
 
 export const skillLabel: Record<Skill, string> = {

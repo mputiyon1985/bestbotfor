@@ -1,3 +1,4 @@
+import type { EditorialScore, ProCon } from './editorial'
 import type { Skill } from './validation'
 
 export type PricingModel = 'free' | 'freemium' | 'paid'
@@ -65,6 +66,10 @@ export type CatalogTool = {
   lastVerifiedAt: string
   fits: CatalogFit[]
   affiliate: AffiliateSeed & { affiliateUrl: string | null }
+  /** Null when this tool has no verified editorial score. */
+  editorial: EditorialScore | null
+  pros: ProCon[]
+  cons: ProCon[]
 }
 
 export type Catalog = {

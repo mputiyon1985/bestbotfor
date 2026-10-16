@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
 import { listMatches, MATCHES_PAGE_SIZE, matchesPath, seeAllMatchesLabel } from '../src/lib/matches'
+import { paginationItems, showingLabel } from '../src/lib/pagination'
 import type { ScoreableTool } from '../src/lib/scoring'
 
 function candidates(task: string): ScoreableTool[] {
@@ -37,6 +38,10 @@ test('the quiz links to every match and the pages stay in rank order', async ({ 
   await expect(page.locator('link[rel="next"]')).toHaveAttribute('href', /\/result\?task=chat&view=all&page=2$/)
   await expect(page.locator('link[rel="prev"]')).toHaveCount(0)
 
+  await expect(page.getByText(showingLabel(1, MATCHES_PAGE_SIZE, matches.length))).toBeVisible()
+  const pages = page.getByRole('navigation', { name: 'Pages' })
+  await expect(pages.getByRole('link', { name: 'Page 2' })).toHaveAttribute('href', '/result?task=chat&view=all&page=2')
+
   const list = page.getByRole('list', { name: 'Matches' })
   await expect(list.getByRole('listitem')).toHaveCount(MATCHES_PAGE_SIZE)
   for (const tool of first) {
@@ -49,6 +54,7 @@ test('the quiz links to every match and the pages stay in rank order', async ({ 
   await expect(page).toHaveURL(/\/result\?task=chat&view=all&page=2$/)
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/result\?task=chat&view=all&page=2$/)
   await expect(page.locator('link[rel="prev"]')).toHaveAttribute('href', /\/result\?task=chat&view=all$/)
+  await expect(page.getByText(showingLabel(2, MATCHES_PAGE_SIZE, matches.length))).toBeVisible()
   const pageTwo = page.getByRole('list', { name: 'Matches' })
   await expect(pageTwo.getByRole('listitem')).toHaveCount(second.length)
   await expect(pageTwo.getByRole('heading', { level: 2, name: second[0]?.name ?? '', exact: true })).toBeVisible()
@@ -92,13 +98,49 @@ test('a budget filter is a real link and keeps its own canonical', async ({ brow
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/result\?task=music&view=all&budget=free$/)
     await expect(page.getByRole('heading', { level: 2, name: 'SOUNDRAW', exact: true })).toHaveCount(0)
 
-    await page.goto(matchesPath('music', 'low', 2))
-    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/result\?task=music&view=all&budget=low&page=2$/)
-    await expect(page.locator('link[rel="prev"]')).toHaveAttribute('href', /\/result\?task=music&view=all&budget=low$/)
+    await page.goto(matchesPath('music', 'low', 1))
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/result\?task=music&view=all&budget=low$/)
     await expect(page.getByRole('heading', { level: 2, name: 'SOUNDRAW', exact: true })).toBeVisible()
+
+    const codingLow = listMatches(candidates('coding'), 'low')
+    expect(codingLow.length).toBeGreaterThan(MATCHES_PAGE_SIZE)
+    await page.goto(matchesPath('coding', 'low', 2))
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/result\?task=coding&view=all&budget=low&page=2$/)
+    await expect(page.locator('link[rel="prev"]')).toHaveAttribute('href', /\/result\?task=coding&view=all&budget=low$/)
   } finally {
     await context.close()
   }
+})
+
+test('numbered pages cover the ends and the last page', async ({ page }) => {
+  const matches = listMatches(candidates('coding'), 'any')
+  const pageCount = Math.ceil(matches.length / MATCHES_PAGE_SIZE)
+  expect(pageCount).toBeGreaterThan(3)
+  const firstWindow = paginationItems(1, pageCount)
+  expect(firstWindow).toContain('ellipsis')
+
+  await page.goto(matchesPath('coding', 'any', 1))
+  await expect(page.getByText(showingLabel(1, MATCHES_PAGE_SIZE, matches.length))).toBeVisible()
+  const nav = page.getByRole('navigation', { name: 'Pages' })
+  for (const item of firstWindow) {
+    if (item === 'ellipsis') await expect(nav.getByText('…', { exact: true }).first()).toBeVisible()
+    else await expect(nav.getByRole('link', { name: `Page ${item}` })).toHaveAttribute('href', matchesPath('coding', 'any', item))
+  }
+
+  await nav.getByRole('link', { name: `Page ${pageCount}` }).click()
+  await expect(page).toHaveURL(new RegExp(`/result\\?task=coding&view=all&page=${pageCount}$`))
+  await expect(page.getByText(showingLabel(pageCount, MATCHES_PAGE_SIZE, matches.length))).toBeVisible()
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', new RegExp(`/result\\?task=coding&view=all&page=${pageCount}$`))
+  await expect(page.locator('link[rel="prev"]')).toHaveAttribute('href', new RegExp(`/result\\?task=coding&view=all&page=${pageCount - 1}$`))
+  await expect(page.locator('link[rel="next"]')).toHaveCount(0)
+  const lastWindow = paginationItems(pageCount, pageCount)
+  expect(lastWindow[0]).toBe(1)
+  expect(lastWindow.at(-1)).toBe(pageCount)
+  expect(lastWindow).toContain('ellipsis')
+  await expect(page.getByRole('navigation', { name: 'Pages' }).getByRole('link', { name: 'Page 1' })).toHaveAttribute(
+    'href',
+    matchesPath('coding', 'any', 1),
+  )
 })
 
 test('page=1 shares the unpaged canonical, and bad pages are 404', async ({ page, request }) => {
@@ -115,6 +157,7 @@ test('page=1 shares the unpaged canonical, and bad pages are 404', async ({ page
     '/result?task=chat&view=all&page=1.5',
     '/result?task=chat&view=all&page=01',
     '/result?task=chat&view=all&page=99',
+    '/result?task=music&view=all&budget=low&page=2',
     '/result?task=chat&view=all&budget=free&page=99',
     '/result?task=chat&view=all&budget=mid&page=0',
     '/result?task=missing&view=all',

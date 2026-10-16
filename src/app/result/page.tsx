@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
+import { EditorialCompact } from '@/components/editorial'
 import { listTaskCandidates, recommendQuiz } from '@/lib/catalog'
 import { listMatches, matchBudgetLabel, matchesPageRequest, matchesPath, pageOfMatches, seeAllMatchesLabel } from '@/lib/matches'
 import { matchesPageTitle, matchesRobots, quizResultRobots, quizResultTitle } from '@/lib/result-index'
@@ -13,6 +14,7 @@ import { ACTION_LIMITS, allowRate } from '@/lib/action-limit'
 import { getDb } from '@/lib/db'
 import { rateLimitKey, clientIp } from '@/lib/ip'
 import { budgetLabel, budgetPhrase, fewStrongOptionsLabel, overBudgetLabel, priceLabel, skillLabel, skillPhrase } from '@/lib/format'
+import { QUIZ_ALTERNATIVE_COUNT } from '@/lib/scoring'
 import { breadcrumbJsonLd } from '@/lib/jsonld'
 import { memberAccess } from '@/lib/members'
 import { pageMetadata } from '@/lib/metadata'
@@ -75,7 +77,7 @@ export async function generateMetadata({
   if (!parsed.success) {
     return pageMetadata({
       title: 'Your result',
-      description: 'Answer the three questions to get a best AI tool and up to five alternatives.',
+      description: 'Answer the three questions to get a best AI tool and up to six alternatives.',
       path: '/result',
       noIndex: true,
     })
@@ -200,6 +202,7 @@ export default async function ResultPage({
       </p>
       {top.budgetFit === 'over' ? <p className="text-sm font-semibold text-accent">{overBudgetLabel}</p> : null}
       <p className="max-w-2xl text-muted">{top.reason}</p>
+      <EditorialCompact editorial={top.editorial} pros={top.pros} cons={top.cons} />
       <dl className="grid gap-3 sm:grid-cols-3">
         <Fact label="Price" value={priceLabel(top)} />
         <Fact label="Experience" value={skillLabel[top.skillLevel]} />
@@ -245,6 +248,7 @@ export default async function ResultPage({
                 </h3>
                 {alt.budgetFit === 'over' ? <p className="mt-2 text-sm font-semibold text-accent">{overBudgetLabel}</p> : null}
                 <p className="mt-2 text-sm text-muted">{alt.reason}</p>
+                <EditorialCompact editorial={alt.editorial} pros={alt.pros} cons={alt.cons} />
                 <p className="mt-2 text-sm">{priceLabel(alt)}</p>
                 <OutboundLink slug={alt.slug} className="mt-3 inline-flex min-h-12 items-center font-semibold underline">
                   Visit {alt.name}
@@ -253,7 +257,7 @@ export default async function ResultPage({
             ))}
           </ul>
         ) : null}
-        {alternatives.length < 5 ? <p className="mt-4 text-muted">{fewStrongOptionsLabel}</p> : null}
+        {alternatives.length < QUIZ_ALTERNATIVE_COUNT ? <p className="mt-4 text-muted">{fewStrongOptionsLabel}</p> : null}
         {result.matchCount > 0 ? (
           <p className="mt-4">
             <Link className="font-semibold underline" href={matchesPath(result.task.slug, parsed.data.budget, 1)}>

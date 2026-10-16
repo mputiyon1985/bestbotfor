@@ -18,7 +18,7 @@ export const OG_DB_BUDGET_MS = 800
 
 export type OgCopy = { title: string; subtitle: string }
 
-const FALLBACK: OgCopy = { title: TAGLINE, subtitle: 'One pick and up to five alternatives.' }
+const FALLBACK: OgCopy = { title: TAGLINE, subtitle: 'One pick and up to six alternatives.' }
 
 /**
  * Open Graph copy comes from the catalog. `kind=compare` uses the pair.

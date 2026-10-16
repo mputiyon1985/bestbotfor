@@ -43,6 +43,11 @@ describe('sqlite file directories', () => {
     const ids = recorded.rows.map((row) => String(row.id))
     expect(ids).toContain('0003_tool_tasks_unique.sql')
     expect(ids).toContain('0004_retire_quiz_fits.sql')
+    expect(ids).toContain('0005_tool_scores_pros_cons.sql')
+    const tables = await client.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('tool_scores', 'tool_pros_cons') ORDER BY name",
+    )
+    expect(tables.rows.map((row) => String(row.name))).toEqual(['tool_pros_cons', 'tool_scores'])
     await client.execute({
       sql: 'DELETE FROM schema_migrations WHERE id = ?',
       args: ['0004_retire_quiz_fits.sql'],

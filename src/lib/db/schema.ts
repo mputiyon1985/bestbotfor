@@ -41,6 +41,35 @@ export const toolTasks = sqliteTable(
 )
 
 /**
+ * One editorial rubric per tool. overall is the weighted average documented
+ * in src/lib/editorial.ts. This is not a user review.
+ */
+export const toolScores = sqliteTable('tool_scores', {
+  toolId: integer('tool_id').primaryKey(),
+  features: real('features').notNull(),
+  value: real('value').notNull(),
+  ease: real('ease').notNull(),
+  quality: real('quality').notNull(),
+  overall: real('overall').notNull(),
+  rationale: text('rationale').notNull(),
+  sources: text('sources').notNull(),
+  reviewedAt: text('reviewed_at').notNull(),
+})
+
+/** Three pros and two or three cons. position is 1-based within kind. */
+export const toolProsCons = sqliteTable(
+  'tool_pros_cons',
+  {
+    toolId: integer('tool_id').notNull(),
+    kind: text('kind').notNull(),
+    position: integer('position').notNull(),
+    body: text('body').notNull(),
+    sourceUrl: text('source_url').notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.toolId, table.kind, table.position] })],
+)
+
+/**
  * Affiliate URL is stored so a future enrollment can be recorded.
  * /go never reads affiliate_url. Redirects use tools.url only.
  */
