@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import { resolveToolLogo } from '@/lib/tool-logo'
+import { monogramFontSize, resolveToolLogo } from '@/lib/tool-logo'
 
 /**
  * Official mark when we have a self-hosted tile, otherwise the first letter
@@ -23,8 +23,8 @@ export function ToolLogo({ name, slug }: { name: string; slug: string }) {
     <span
       role="img"
       aria-label={logo.alt}
-      className="inline-flex shrink-0 items-center justify-center rounded-[8px] bg-indigo font-semibold text-white"
-      style={{ width: logo.width, height: logo.height, fontSize: 18 }}
+      className="inline-flex shrink-0 items-center justify-center rounded-[8px] bg-indigo font-semibold leading-none text-white"
+      style={{ width: logo.width, height: logo.height, fontSize: monogramFontSize(logo.width) }}
     >
       <span aria-hidden="true">{logo.letter}</span>
     </span>

@@ -109,13 +109,16 @@ export default async function ToolsPage({ searchParams }: { searchParams: Promis
               : 'No tools are in the catalog yet.'}
         </p>
       </header>
-      <nav aria-label="Filter by category">
-        <ul className="flex flex-wrap gap-2">
-          <li>
+      <nav
+        aria-label="Filter by category"
+        className="min-w-0 max-md:overflow-x-auto max-md:overflow-y-hidden max-md:overscroll-x-contain max-md:px-2 max-md:py-2"
+      >
+        <ul className="flex flex-wrap gap-2 max-md:w-max max-md:flex-nowrap">
+          <li className="max-md:shrink-0">
             <CategoryLink category={null} current={!selected && !resolved.unknown} count={resolved.total} />
           </li>
           {resolved.categories.map((category) => (
-            <li key={category.slug}>
+            <li key={category.slug} className="max-md:shrink-0">
               <CategoryLink category={category} current={selected?.slug === category.slug} count={category.count} />
             </li>
           ))}
@@ -172,7 +175,7 @@ function CategoryLink({
     <Link
       href={category ? toolsPath(category.slug, 1) : '/tools'}
       aria-current={current ? 'page' : undefined}
-      className={`inline-flex min-h-12 items-center rounded-full border px-4 text-sm font-semibold ${
+      className={`relative inline-flex min-h-12 items-center rounded-full border px-4 text-sm font-semibold max-md:scroll-mx-3 max-md:whitespace-nowrap ${
         current ? 'border-indigo bg-indigo text-white' : 'border-line bg-card hover:border-accent'
       }`}
     >
