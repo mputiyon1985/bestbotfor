@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "routes": [
+    {
+      "src": "^(?:.*?)(?:^|/)(?:\\.|%2[eE]|%252[eE]|%25252[eE]){1,2}(?:/|%2[fF]|%5[cC]|$).*$",
+      "status": 404,
+      "headers": {
+        "cache-control": "no-store",
+        "content-type": "text/plain; charset=utf-8",
+        "x-robots-tag": "noindex, nofollow"
+      }
+    }
+  ]
+}

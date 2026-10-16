@@ -46,4 +46,21 @@ describe('preview indexing', () => {
       follow: true,
     })
   })
+
+  it('can noindex a production page and still follow its links', () => {
+    process.env.VERCEL_ENV = 'production'
+    expect(pageMetadata({ title: 'Your result', description: 'Pick', path: '/result?task=chat', noIndex: true, follow: true }).robots).toEqual({
+      index: false,
+      follow: true,
+    })
+    expect(pageMetadata({ title: 'Search', description: 'Search', path: '/search', noIndex: true }).robots).toEqual({
+      index: false,
+      follow: false,
+    })
+    process.env.VERCEL_ENV = 'preview'
+    expect(pageMetadata({ title: 'Your result', description: 'Pick', path: '/result?task=chat', noIndex: true, follow: true }).robots).toEqual({
+      index: false,
+      follow: false,
+    })
+  })
 })

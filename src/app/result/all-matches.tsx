@@ -5,6 +5,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { priceLabel } from '@/lib/format'
 import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/jsonld'
 import { matchBudgetLabel, matchBudgets, matchesPath } from '@/lib/matches'
+import { matchesPageTitle } from '@/lib/result-index'
 import type { CatalogTask } from '@/lib/catalog-types'
 import type { QuizPick, RankBudget, ScoreableTool } from '@/lib/scoring'
 
@@ -40,7 +41,7 @@ export function AllMatches({
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
       <JsonLd data={itemListJsonLd(`Matches for ${task.name.toLowerCase()}`, path, tools)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
-      <h1 className="font-bold text-5xl leading-tight">All matches for {task.name.toLowerCase()}</h1>
+      <h1 className="font-bold text-5xl leading-tight">{matchesPageTitle(task.name, budget, page)}</h1>
       <p className="text-muted">
         {total} {noun} with a strong fit. Page {page} of {pageCount}. Ranked for {matchBudgetLabel[budget].toLowerCase()}.
       </p>

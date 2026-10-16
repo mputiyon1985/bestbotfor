@@ -58,14 +58,39 @@ async function printMetrics(): Promise<void> {
   }
 }
 
+function robotsContent(html: string): string {
+  const tag = html.match(/<meta\b[^>]*\bname=["']robots["'][^>]*>/i)?.[0]
+  const content = tag?.match(/\bcontent=["']([^"']+)["']/i)?.[1]
+  if (!content) throw new Error('missing robots meta')
+  return content
+}
+
+async function assertProductionRobots(): Promise<void> {
+  const cases: Array<{ path: string; content: string }> = [
+    { path: '/result?task=chat&view=all', content: 'index, follow' },
+    { path: '/result?task=seo&view=all', content: 'index, follow' },
+    { path: '/result?task=chat&budget=any&skill=beginner', content: 'noindex, follow' },
+    { path: '/result?task=seo&budget=free&skill=beginner', content: 'noindex, follow' },
+    { path: '/result?task=seo&view=all&budget=free', content: 'noindex, follow' },
+  ]
+  for (const item of cases) {
+    const response = await fetch(`${origin}${item.path}`)
+    if (!response.ok) throw new Error(`${item.path} returned ${response.status}`)
+    const content = robotsContent(await response.text())
+    if (content !== item.content) {
+      throw new Error(`${item.path} robots meta was "${content}", expected "${item.content}"`)
+    }
+  }
+}
+
 async function main(): Promise<number> {
   process.env.CHROME_PATH = process.env.CHROME_PATH || chromium.executablePath()
   const server = startServer()
   try {
     await waitForServer(server)
-    await fetch(origin)
+    await assertProductionRobots()
     let exitCode = 0
-    for (const config of ['lighthouserc.cjs', 'lighthouserc.home.cjs']) {
+    for (const config of ['lighthouserc.cjs', 'lighthouserc.quiz.cjs', 'lighthouserc.home.cjs']) {
       const code = await new Promise<number>((resolve, reject) => {
         const child = spawn('npx', ['--yes', '@lhci/cli@0.15.1', 'autorun', '--config', config], {
           stdio: 'inherit',

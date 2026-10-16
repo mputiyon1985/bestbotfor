@@ -1,7 +1,8 @@
 import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
 import type { Database } from './db/client'
 import { affiliatePrograms, tasks, toolTasks, tools } from './db/schema'
-import { MIN_QUIZ_FIT_SCORE, selectQuizPicks } from './scoring'
+import { listMatches } from './matches'
+import { selectQuizPicks } from './scoring'
 import type { Catalog, CatalogFit, CatalogTask, CatalogTool, PricingModel } from './catalog-types'
 import type { QuizAnswers, Skill } from './validation'
 import { z } from 'zod'
@@ -273,7 +274,7 @@ export async function scoreQuiz(db: Database, answers: QuizAnswers) {
   if (!loaded || loaded.tools.length === 0) return null
   const picks = selectQuizPicks(loaded.tools, answers)
   const leader = picks[0]
-  const matchCount = loaded.tools.filter((tool) => tool.fitScore >= MIN_QUIZ_FIT_SCORE).length
+  const matchCount = listMatches(loaded.tools, answers.budget).length
   return { task: loaded.task, picks, answers, why: leader ? leader.reason : '', matchCount }
 }
 

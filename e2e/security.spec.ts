@@ -28,8 +28,22 @@ test('the home page sends a nonce content security policy', async ({ request }) 
   expect(policy).toContain("object-src 'none'")
 })
 
-test('encoded dot segments under /go do not render the home page', async () => {
-  for (const path of ['/go/%2e%2e', '/go/%2E%2E', '/go/..', '/go/%2e%2e/', '/go/%252e%252e', '/go/foo/../../../']) {
+test('encoded dot segments do not render the home page', async () => {
+  for (const path of [
+    '/go/%2e%2e',
+    '/go/%2E%2E',
+    '/go/..',
+    '/go/%2e%2e/',
+    '/go/%252e%252e',
+    '/go/foo/../../../',
+    '/go/.%2e',
+    '/go/%2e.',
+    '/best/%2e%2e',
+    '/tools/%2e%2e',
+    '/compare/%2e%2e',
+    '/about/%2e%2e',
+    '/pricing/%2E%2E',
+  ]) {
     const response = await rawStatus(path)
     expect(response.status, path).toBe(404)
     expect(response.body, path).toContain('not a tool in the catalog')

@@ -31,7 +31,8 @@ test('the quiz links to every match and the pages stay in rank order', async ({ 
   await page.goto('/result?task=chat&budget=any&skill=beginner')
   await page.getByRole('link', { name: seeAllMatchesLabel(matches.length) }).click()
   await expect(page).toHaveURL(/\/result\?task=chat&view=all$/)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('All matches for chat and brainstorm')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Chat and brainstorm matches')
+  await expect(page).toHaveTitle('Chat and brainstorm matches · BestBotFor')
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/result\?task=chat&view=all$/)
   await expect(page.locator('link[rel="next"]')).toHaveAttribute('href', /\/result\?task=chat&view=all&page=2$/)
   await expect(page.locator('link[rel="prev"]')).toHaveCount(0)
@@ -54,6 +55,26 @@ test('the quiz links to every match and the pages stay in rank order', async ({ 
   await expect(pageTwo.getByRole('heading', { level: 2, name: first[0]?.name ?? '', exact: true })).toHaveCount(0)
 })
 
+test('the see-all link keeps the quiz budget', async ({ page }) => {
+  const free = listMatches(candidates('music'), 'free')
+  const low = listMatches(candidates('music'), 'low')
+  expect(free.length).toBeGreaterThan(0)
+  expect(low.length).toBeGreaterThan(free.length)
+
+  await page.goto('/result?task=music&budget=free&skill=beginner')
+  await expect(page.getByRole('link', { name: seeAllMatchesLabel(free.length) })).toHaveAttribute(
+    'href',
+    matchesPath('music', 'free', 1),
+  )
+
+  await page.goto('/result?task=music&budget=low&skill=beginner')
+  await expect(page.getByRole('link', { name: seeAllMatchesLabel(low.length) })).toHaveAttribute(
+    'href',
+    matchesPath('music', 'low', 1),
+  )
+  await expect(page).toHaveTitle(/Make music: /)
+})
+
 test('a budget filter is a real link and keeps its own canonical', async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false })
   const page = await context.newPage()
@@ -66,6 +87,8 @@ test('a budget filter is a real link and keeps its own canonical', async ({ brow
     await page.goto(matchesPath('music', 'any', 1))
     await page.getByRole('navigation', { name: 'Filter by budget' }).getByRole('link', { name: 'Free only' }).click()
     await expect(page).toHaveURL(/\/result\?task=music&view=all&budget=free$/)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Make music matches, free only')
+    await expect(page).toHaveTitle('Make music matches, free only · BestBotFor')
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/result\?task=music&view=all&budget=free$/)
     await expect(page.getByRole('heading', { level: 2, name: 'SOUNDRAW', exact: true })).toHaveCount(0)
 

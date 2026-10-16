@@ -57,6 +57,28 @@ npm run test:e2e
 
 End-to-end tests build the production server themselves through Playwright. Set `TURSO_DATABASE_URL=file:./data/e2e.db` and `NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000` if you run them outside CI.
 
+## Encoded dot segments
+
+`/go/%2e%2e`, `/best/%2e%2e`, and `/compare/%2e%2e` were answering 200 with the home page. Vercel normalizes `%2e` and `..` before Next.js starts, and `new URL()` does the same inside the app, so the proxy never sees the raw path. Patching the global `URL` constructor or `http.Server` caught it only on a Node server we control, and it changed URL parsing for Clerk, Stripe, and libsql.
+
+Two scoped checks replace that:
+
+- `vercel.json` has one route. Its `src` is the incoming pathname, matched on Vercel’s edge before the app, and the response is 404. `next start` does not apply `vercel.json`. The pattern lives in `DOT_SEGMENT_ROUTE_SRC` and the unit tests run it against those paths, plus `/tools/%2e%2e`, mixed forms (`%2E%2E`, `.%2e`, `%2e.`), and ordinary URLs such as `/go/chatgpt` and `/favicon.ico`. That is the edge check we can run without calling production.
+- The proxy rejects a raw path when the host still provides one. `npm start` reads `req.url` before Next parses it. That listener is this app’s server only.
+
+After the change is merged and production is deployed, confirm the edge with `curl --path-as-is`. Do not run these from CI. Each status must be `404`. A `200` means the edge still served the home page.
+
+```bash
+curl --path-as-is -s -o /dev/null -w '%{http_code}\n' 'https://bestbotfor.com/go/%2e%2e'
+curl --path-as-is -s -o /dev/null -w '%{http_code}\n' 'https://bestbotfor.com/best/%2e%2e'
+curl --path-as-is -s -o /dev/null -w '%{http_code}\n' 'https://bestbotfor.com/compare/%2e%2e'
+curl --path-as-is -s -o /dev/null -w '%{http_code}\n' 'https://bestbotfor.com/tools/%2e%2e'
+curl --path-as-is -s -o /dev/null -w '%{http_code}\n' 'https://bestbotfor.com/about/%2e%2e'
+curl --path-as-is -s -o /dev/null -w '%{http_code}\n' 'https://bestbotfor.com/go/.%2e'
+curl --path-as-is -s -o /dev/null -w '%{http_code}\n' 'https://bestbotfor.com/go/%2E%2E'
+curl --path-as-is -s 'https://bestbotfor.com/go/%2e%2e' | head
+```
+
 ## Deploy
 
 Set the environment variables above on the host. Use a Turso database URL and `TURSO_AUTH_TOKEN`. Set `NEXT_PUBLIC_SITE_URL=https://bestbotfor.com`. Run `npm run build`. The build applies migrations and seeds the catalog before `next build`.

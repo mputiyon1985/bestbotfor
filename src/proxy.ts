@@ -1,6 +1,7 @@
 import { clerkMiddleware } from '@clerk/nextjs/server'
 import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server'
 import { CATALOG_REJECT_MESSAGE, CATALOG_REJECT_PATH, isUnsafeCatalogPath } from '@/lib/catalog-path'
+import { hasDotSegment } from '@/lib/dot-segment'
 import { buildContentSecurityPolicy, securityHeaders } from '@/lib/csp'
 import { isClerkConfigured } from '@/lib/flags'
 import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from '@/lib/indexing'
@@ -29,14 +30,24 @@ function isMembersPath(pathname: string): boolean {
   return pathname === '/members' || pathname.startsWith('/members/')
 }
 
-function catalogCandidate(request: NextRequest): boolean {
-  if (request.nextUrl.pathname === CATALOG_REJECT_PATH) return true
-  if (isUnsafeCatalogPath(request.url) || isUnsafeCatalogPath(request.nextUrl.pathname)) return true
+function rawPaths(request: NextRequest): string[] {
+  const values = [request.url, `${request.nextUrl.pathname}${request.nextUrl.search}`]
   for (const name of ['x-matched-path', 'x-invoke-path', 'next-url']) {
     const value = request.headers.get(name)
-    if (value && isUnsafeCatalogPath(value)) return true
+    if (value) values.push(value)
   }
-  return false
+  return values
+}
+
+/**
+ * Dot segments are rejected on every path, not only the catalog. Encoded
+ * forms collapse to `/` inside `new URL()` and on Vercel's edge, so this
+ * check only helps when the host still passes the raw path. The `vercel.json`
+ * route covers that edge. `scripts/serve.ts` covers local `next` parsing.
+ */
+function catalogCandidate(request: NextRequest): boolean {
+  if (request.nextUrl.pathname === CATALOG_REJECT_PATH) return true
+  return rawPaths(request).some((value) => hasDotSegment(value) || isUnsafeCatalogPath(value))
 }
 
 function rejectCatalogPath(request: NextRequest): NextResponse | null {

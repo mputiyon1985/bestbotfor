@@ -10,6 +10,8 @@ export function pageMetadata(input: {
   absoluteTitle?: boolean
   imagePath?: string
   noIndex?: boolean
+  /** Used with noIndex. Off by default so error and search pages stay nofollow. */
+  follow?: boolean
   pagination?: { previous?: string | null; next?: string | null }
 }): Metadata {
   const canonical = new URL(input.path, getSiteUrl()).toString()
@@ -21,8 +23,7 @@ export function pageMetadata(input: {
     description: input.description,
     alternates: { canonical },
     pagination: previous || next ? { previous, next } : undefined,
-    robots:
-      input.noIndex || !isProductionDeployment() ? { index: false, follow: false } : { index: true, follow: true },
+    robots: pageRobots(input),
     openGraph: {
       title: input.title,
       description: input.description,
@@ -39,6 +40,12 @@ export function pageMetadata(input: {
       images: [image],
     },
   }
+}
+
+function pageRobots(input: { noIndex?: boolean; follow?: boolean }): { index: boolean; follow: boolean } {
+  if (!isProductionDeployment()) return { index: false, follow: false }
+  if (input.noIndex) return { index: false, follow: input.follow === true }
+  return { index: true, follow: true }
 }
 
 export const homeTitle = `${SITE_NAME} — ${TAGLINE}`

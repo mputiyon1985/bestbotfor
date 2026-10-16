@@ -102,7 +102,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         <script
           nonce={nonce ?? undefined}
           dangerouslySetInnerHTML={{
-            __html: `setTimeout(function(){var style=document.createElement('style');style.textContent='html{font-family:var(--font-poppins),Poppins,ui-sans-serif,system-ui,sans-serif}';document.head.appendChild(style)},300)`,
+            __html: `setTimeout(function(){var style=document.createElement('style');style.textContent='html{font-family:var(--font-poppins),bbf-metric,ui-sans-serif,system-ui,sans-serif}';document.head.appendChild(style)},300)`,
           }}
         />
       </body>
