@@ -42,11 +42,11 @@ export function AllMatches({
   const noun = total === 1 ? 'match' : 'matches'
 
   return (
-    <article className="space-y-8">
+    <article className="min-w-0 space-y-8 break-words">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
       <JsonLd data={itemListJsonLd(`Matches for ${task.name.toLowerCase()}`, path, tools)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
-      <h1 className="font-bold text-5xl leading-tight">{matchesPageTitle(task.name, budget, page)}</h1>
+      <h1 className="break-words font-bold text-5xl leading-tight">{matchesPageTitle(task.name, budget, page)}</h1>
       <p className="text-muted">
         {total} {noun} with a strong fit. Page {page} of {pageCount}. Ranked for {matchBudgetLabel[budget].toLowerCase()}.
       </p>
@@ -87,9 +87,9 @@ export function AllMatches({
           ))}
         </ul>
       ) : null}
-      <nav aria-label="Pages" className="space-y-4 text-sm font-semibold">
+      <nav aria-label="Pages" className="max-w-full space-y-4 text-sm font-semibold">
         <p>{showingLabel(page, MATCHES_PAGE_SIZE, total)}</p>
-        <ol className="flex flex-wrap items-center gap-2">
+        <ol className="flex max-w-full flex-wrap items-center gap-2">
           {paginationItems(page, pageCount).map((item, index) =>
             item === 'ellipsis' ? (
               <li key={`ellipsis-${index}`} aria-hidden="true" className="px-1 text-muted">
@@ -111,14 +111,14 @@ export function AllMatches({
             ),
           )}
         </ol>
-        <div className="flex flex-wrap items-center gap-4">
+        <div className="flex max-w-full flex-wrap items-center gap-4">
           {page > 1 ? (
-            <Link className="underline" href={matchesPath(task.slug, budget, page - 1)}>
+            <Link className="inline-flex min-h-12 items-center underline" href={matchesPath(task.slug, budget, page - 1)}>
               Previous page
             </Link>
           ) : null}
           {page < pageCount ? (
-            <Link className="underline" href={matchesPath(task.slug, budget, page + 1)}>
+            <Link className="inline-flex min-h-12 items-center underline" href={matchesPath(task.slug, budget, page + 1)}>
               Next page
             </Link>
           ) : null}

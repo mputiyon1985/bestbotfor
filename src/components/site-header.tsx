@@ -24,9 +24,9 @@ export async function SiteHeader() {
       <a className="skip-link" href="#main">
         Skip to content
       </a>
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-4">
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-4">
         <BrandLockup />
-        <nav aria-label="Primary" className="hidden items-center gap-5 md:flex">
+        <nav aria-label="Primary" className="hidden min-w-0 max-w-full flex-wrap items-center justify-end gap-x-5 gap-y-2 md:flex">
           {links.map((link) => (
             <Link key={link.href} href={link.href} className="text-sm font-semibold text-ink underline-offset-4 hover:underline">
               {link.label}

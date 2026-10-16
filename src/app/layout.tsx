@@ -78,7 +78,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const content = (
     <>
       <SiteHeader />
-      <main id="main" className="mx-auto min-h-[70vh] max-w-5xl px-4 py-10">
+      <main id="main" className="mx-auto min-h-[70vh] min-w-0 max-w-5xl px-4 py-10">
         {children}
       </main>
       <SiteFooter />

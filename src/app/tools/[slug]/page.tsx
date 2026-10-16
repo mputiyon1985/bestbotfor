@@ -43,12 +43,12 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
   const partnerName = new Map(partners.map((item) => [item.slug, item.name]))
 
   return (
-    <article className="space-y-8">
+    <article className="min-w-0 space-y-8 break-words">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
       <JsonLd data={softwareJsonLd(tool)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
       <p className="text-sm font-semibold uppercase tracking-[0.14em] text-accent">{tool.category}</p>
-      <h1 className="font-bold text-5xl">{tool.name}</h1>
+      <h1 className="break-words font-bold text-5xl">{tool.name}</h1>
       <p className="text-lg">{tool.shortDesc}</p>
       <p className="max-w-2xl text-muted">{tool.longDesc}</p>
       <dl className="grid gap-3 sm:grid-cols-2">

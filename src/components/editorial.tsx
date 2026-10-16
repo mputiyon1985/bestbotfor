@@ -7,7 +7,7 @@ const STAR_PATH =
 export function StarRating({ score }: { score: number }) {
   const fills = starFills(score)
   return (
-    <span role="img" aria-label={ratingAriaLabel(score)} className="inline-flex items-center gap-0.5">
+    <span role="img" aria-label={ratingAriaLabel(score)} className="inline-flex max-w-full flex-wrap items-center gap-0.5">
       {fills.map((fill, index) => (
         <span key={index} data-star-fill={fill} className="relative inline-block h-5 w-5">
           <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-soft">
@@ -35,7 +35,7 @@ export function EditorialCompact({
 }) {
   if (!editorial && pros.length === 0 && cons.length === 0) return null
   return (
-    <div className="mt-3 space-y-2">
+    <div data-pros-cons="compact" className="mt-3 min-w-0 space-y-2 break-words">
       {editorial ? <StarRating score={editorial.overall} /> : null}
       <ProsConsCompact pros={pros} cons={cons} />
     </div>
@@ -45,7 +45,7 @@ export function EditorialCompact({
 export function ProsConsCompact({ pros, cons }: { pros: ProCon[]; cons: ProCon[] }) {
   if (pros.length === 0 && cons.length === 0) return null
   return (
-    <div className="text-sm">
+    <div className="min-w-0 break-words text-sm">
       {pros.length > 0 ? (
         <p>
           <span className="font-semibold">Pros: </span>
@@ -71,7 +71,7 @@ export function ScoreSection({ editorial }: { editorial: EditorialScore | null }
     ['Quality', editorial.quality],
   ] as const
   return (
-    <section aria-labelledby="score-heading" className="space-y-4">
+    <section aria-labelledby="score-heading" className="min-w-0 space-y-4">
       <h2 id="score-heading" className="font-semibold text-3xl">
         BestBotFor score
       </h2>
@@ -79,7 +79,7 @@ export function ScoreSection({ editorial }: { editorial: EditorialScore | null }
         <StarRating score={editorial.overall} />
         <p className="font-semibold">{formatScore(editorial.overall)} out of 5</p>
       </div>
-      <dl className="max-w-xl space-y-3">
+      <dl className="max-w-xl min-w-0 space-y-3">
         {parts.map(([label, value]) => (
           <CriterionBar key={label} label={label} value={value} />
         ))}
@@ -97,7 +97,7 @@ export function ScoreSection({ editorial }: { editorial: EditorialScore | null }
 export function ProsConsSection({ pros, cons }: { pros: ProCon[]; cons: ProCon[] }) {
   if (pros.length === 0 && cons.length === 0) return null
   return (
-    <section aria-labelledby="pros-cons-heading" className="space-y-4">
+    <section aria-labelledby="pros-cons-heading" data-pros-cons="full" className="min-w-0 space-y-4 break-words">
       <h2 id="pros-cons-heading" className="font-semibold text-3xl">
         Pros and cons
       </h2>
@@ -114,7 +114,7 @@ function PointList({ title, points }: { title: string; points: ProCon[] }) {
       <ul className="mt-2 space-y-3">
         {points.map((point) => (
           <li key={`${point.kind}-${point.text}`}>
-            <p>{point.text}</p>
+            <p className="break-words">{point.text}</p>
           </li>
         ))}
       </ul>
@@ -126,13 +126,13 @@ function CriterionBar({ label, value }: { label: string; value: number }) {
   const width = Math.min(100, Math.max(0, (value / 5) * 100))
   const text = formatScore(value)
   return (
-    <div>
+    <div data-criterion-row className="min-w-0">
       <div className="flex items-baseline justify-between gap-3">
         <dt className="text-sm font-semibold">{label}</dt>
         <dd className="text-sm font-semibold">{text}</dd>
       </div>
       <div
-        className="mt-1 h-2 overflow-hidden rounded-full bg-mist"
+        className="mt-1 h-2 w-full min-w-0 overflow-hidden rounded-full bg-mist"
         role="meter"
         aria-label={`${label} ${text} out of 5`}
         aria-valuemin={0}

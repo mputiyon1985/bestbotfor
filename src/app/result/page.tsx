@@ -192,11 +192,11 @@ export default async function ResultPage({
   ]
 
   return (
-    <article className="space-y-10">
+    <article className="min-w-0 space-y-10 break-words">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
       <p className="text-sm font-semibold uppercase tracking-[0.14em] text-accent">Your pick</p>
-      <h1 className="font-bold text-5xl leading-tight">{top.name}</h1>
+      <h1 className="font-bold text-5xl leading-tight break-words">{top.name}</h1>
       <p className="max-w-2xl text-lg">
         Best bot for {result.task.name.toLowerCase()}, {budgetLabel[parsed.data.budget].toLowerCase()}, {skillLabel[parsed.data.skill].toLowerCase()}: {top.name}.
       </p>
@@ -269,8 +269,30 @@ export default async function ResultPage({
 
       <section>
         <h2 className="font-semibold text-3xl">Side by side</h2>
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full min-w-[36rem] border-collapse text-left text-sm">
+        <ul className="mt-4 grid gap-3 md:hidden">
+          {result.picks.map((pick) => (
+            <li key={pick.slug} className="min-w-0 rounded-2xl border border-line p-4">
+              <h3 className="font-semibold text-xl">
+                <Link href={`/tools/${pick.slug}`} className="inline-flex min-h-12 items-center break-words underline">
+                  {pick.name}
+                </Link>
+              </h3>
+              {pick.budgetFit === 'over' ? (
+                <p className="text-xs font-semibold uppercase tracking-wide text-accent">{overBudgetLabel}</p>
+              ) : null}
+              <dl className="mt-2 grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 text-sm">
+                <dt className="font-semibold">Price</dt>
+                <dd className="break-words">{priceLabel(pick)}</dd>
+                <dt className="font-semibold">Experience</dt>
+                <dd>{skillLabel[pick.skillLevel]}</dd>
+                <dt className="font-semibold">Fit</dt>
+                <dd>{pick.fitScore}</dd>
+              </dl>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-4 hidden min-w-0 max-w-full md:block">
+          <table className="w-full table-fixed border-collapse text-left text-sm">
             <caption className="sr-only">Comparison of the top pick and alternatives</caption>
             <thead>
               <tr className="border-b border-line">
@@ -283,7 +305,7 @@ export default async function ResultPage({
             <tbody>
               {result.picks.map((pick) => (
                 <tr key={pick.slug} className="border-b border-line">
-                  <th scope="row" className="py-3 pr-3 font-semibold">
+                  <th scope="row" className="break-words py-3 pr-3 font-semibold">
                     <Link href={`/tools/${pick.slug}`} className="underline">
                       {pick.name}
                     </Link>
@@ -291,8 +313,8 @@ export default async function ResultPage({
                       <span className="mt-1 block text-xs font-semibold uppercase tracking-wide text-accent">{overBudgetLabel}</span>
                     ) : null}
                   </th>
-                  <td className="py-3 pr-3">{priceLabel(pick)}</td>
-                  <td className="py-3 pr-3">{skillLabel[pick.skillLevel]}</td>
+                  <td className="break-words py-3 pr-3">{priceLabel(pick)}</td>
+                  <td className="break-words py-3 pr-3">{skillLabel[pick.skillLevel]}</td>
                   <td className="py-3">{pick.fitScore}</td>
                 </tr>
               ))}
@@ -301,8 +323,9 @@ export default async function ResultPage({
         </div>
       </section>
 
-      <p className="text-sm text-muted">
-        Share this page: <a className="underline" href={absoluteUrl(sharePath)}>{absoluteUrl(sharePath)}</a>
+      <p className="min-w-0 text-sm break-words text-muted">
+        Share this page:{' '}
+        <a className="underline [overflow-wrap:anywhere]" href={absoluteUrl(sharePath)}>{absoluteUrl(sharePath)}</a>
       </p>
       <p className="text-sm text-muted">
         The button goes to the tool’s own site. We are not adding an affiliate code. See the{' '}
