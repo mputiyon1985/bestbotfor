@@ -5,6 +5,15 @@ import { ACTION_LIMITS } from '../src/lib/action-limit'
  * Sentinel's check: 40 requests, 4 at a time, at a valid quiz URL.
  * A slow or healthy catalog must not answer 503. The limiter must still fire.
  */
+test('one valid quiz answers in under 1.5s', async ({ request }) => {
+  const headers = { 'x-forwarded-for': `2001:db8:1::${Date.now().toString(16)}` }
+  const started = Date.now()
+  const response = await request.get('/result?task=chat&budget=any&skill=beginner', { headers })
+  const elapsed = Date.now() - started
+  expect(response.status()).toBe(200)
+  expect(elapsed, `single /result took ${elapsed}ms`).toBeLessThan(1_500)
+})
+
 test('40 valid quizzes at 4 concurrent return no 503s and some 429s', async () => {
   test.setTimeout(120_000)
   const baseURL = process.env.NEXT_PUBLIC_SITE_URL || 'http://127.0.0.1:3000'

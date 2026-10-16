@@ -4,15 +4,15 @@ import { ACTION_LIMITS } from '@/lib/action-limit'
 import { CATALOG_REJECT_MESSAGE, CATALOG_REJECT_PATH, isUnsafeCatalogPath } from '@/lib/catalog-path'
 import { hasDotSegment } from '@/lib/dot-segment'
 import { buildContentSecurityPolicy, securityHeaders } from '@/lib/csp'
-import { getDb } from '@/lib/db/client'
+import { getDb, peekCachedTaskSlugs } from '@/lib/db/client'
 import { isClerkConfigured } from '@/lib/flags'
 import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from '@/lib/indexing'
 import { clientIp, rateLimitKey } from '@/lib/ip'
-import { consumeResultRateLimit } from '@/lib/rate-limit'
+import { consumeLocalRateLimit, persistResultRateLimit } from '@/lib/rate-limit'
 import { acceptResultFault, faultedResultWork } from '@/lib/result-fault'
 import { decideResultGate } from '@/lib/result-gate'
 import { resultNotFoundHeaders, resultNotFoundHtml, resultRateLimitHeaders, resultRateLimitHtml, resultUnavailableHeaders, resultUnavailableHtml } from '@/lib/result-http'
-import { resultOfflineStatus, resultRequestStatus } from '@/lib/result-request'
+import { cachedQuizStatus, resultOfflineStatus, resultRequestStatus } from '@/lib/result-request'
 
 function applySecurity(response: NextResponse, nonce: string): NextResponse {
   const csp = buildContentSecurityPolicy(nonce, process.env.NODE_ENV !== 'production')
@@ -95,9 +95,11 @@ function resultFault(request: NextRequest) {
  * second robots meta. Invalid task and budget values do not need the catalog.
  * Quiz views that pass the catalog check are rate limited with 429 and Retry-After.
  * When the catalog lookup fails or times out, the page's catalog read runs here.
- * A miss is this same 404. A thrown read is 503. A read that only runs long renders the page.
+ * A cached task list skips that retry. A miss is this same 404. A thrown read is 503.
+ * A read that only runs long renders the page. The shared limiter write is not
+ * awaited: the in-memory counter decides, and waitUntil records the row after.
  */
-async function gateResult(request: NextRequest): Promise<NextResponse | null> {
+async function gateResult(request: NextRequest, event: NextFetchEvent): Promise<NextResponse | null> {
   if (request.nextUrl.pathname !== '/result') return null
   if (request.method !== 'GET' && request.method !== 'HEAD') return null
   const params = request.nextUrl.searchParams
@@ -107,19 +109,20 @@ async function gateResult(request: NextRequest): Promise<NextResponse | null> {
     return applySecurity(new NextResponse(resultNotFoundHtml(), { status: 404, headers: resultNotFoundHeaders() }), nonce)
   }
   const fault = resultFault(request)
-  const readCatalog = () => resultRequestStatus(getDb(), params)
+  const db = getDb()
+  const readCatalog = () => resultRequestStatus(db, params)
+  const cachedStatus = fault ? null : cachedQuizStatus(peekCachedTaskSlugs(db), params)
   const decision = await decideResultGate({
     view: params.get('view') ?? '',
+    cachedStatus: cachedStatus ?? undefined,
     lookup: faultedResultWork(fault, 'lookup', () => (offline === 'ok' ? Promise.resolve('ok') : readCatalog())),
     pageLookup: faultedResultWork(fault, 'page', readCatalog),
-    limit: faultedResultWork(fault, 'limit', () =>
-      consumeResultRateLimit(
-        getDb(),
-        rateLimitKey(clientIp(request.headers), 'result'),
-        ACTION_LIMITS.result.limit,
-        ACTION_LIMITS.result.windowMs,
-      ),
-    ),
+    limit: faultedResultWork(fault, 'limit', () => {
+      const key = rateLimitKey(clientIp(request.headers), 'result')
+      const local = consumeLocalRateLimit(key, ACTION_LIMITS.result.limit, ACTION_LIMITS.result.windowMs)
+      if (local.ok) event.waitUntil(persistResultRateLimit(db, key, ACTION_LIMITS.result.limit, ACTION_LIMITS.result.windowMs))
+      return Promise.resolve(local)
+    }),
   })
   if (decision.type === 'not-found') {
     return applySecurity(new NextResponse(resultNotFoundHtml(), { status: 404, headers: resultNotFoundHeaders() }), nonce)
@@ -139,7 +142,7 @@ async function gateResult(request: NextRequest): Promise<NextResponse | null> {
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const rejected = rejectCatalogPath(request)
   if (rejected) return rejected
-  const gated = await gateResult(request)
+  const gated = await gateResult(request, event)
   if (gated) return gated
   if (!isClerkConfigured()) {
     if (isMembersPath(request.nextUrl.pathname)) {
