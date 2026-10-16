@@ -1,5 +1,6 @@
 import { mkdir, readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
+import { requireSafeDbTarget } from './guard'
 import { createClient } from '@libsql/client'
 
 /**
@@ -32,6 +33,7 @@ export async function ensureSqliteDirectory(url: string): Promise<void> {
 }
 
 export async function applyMigrations(url: string, authToken?: string): Promise<void> {
+  requireSafeDbTarget(url)
   const fileDatabase = url.startsWith('file:')
   if (fileDatabase) await ensureSqliteDirectory(url)
   const client = createClient({
