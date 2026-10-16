@@ -11,7 +11,7 @@ export async function consumeRateLimit(
   limit: number,
   windowMs: number,
   now = Date.now(),
-): Promise<{ ok: boolean; remaining: number }> {
+): Promise<{ ok: boolean; remaining: number; resetAt: number }> {
   const resetAt = now + windowMs
   const result = await db.$client.execute({
     sql: `
@@ -26,12 +26,20 @@ export async function consumeRateLimit(
           WHEN rate_limits.reset_at <= ? THEN ?
           ELSE rate_limits.reset_at
         END
-      RETURNING count
+      RETURNING count, reset_at
     `,
     args: [key, resetAt, now, now, resetAt],
   })
   const count = Number(result.rows[0]?.count ?? 0)
-  if (!Number.isFinite(count) || count <= 0) return { ok: false, remaining: 0 }
+  const storedReset = Number(result.rows[0]?.reset_at ?? resetAt)
+  const windowEnd = Number.isFinite(storedReset) ? storedReset : resetAt
+  if (!Number.isFinite(count) || count <= 0) return { ok: false, remaining: 0, resetAt: windowEnd }
   const ok = count <= limit
-  return { ok, remaining: ok ? limit - count : 0 }
+  return { ok, remaining: ok ? limit - count : 0, resetAt: windowEnd }
+}
+
+/** Seconds for a Retry-After header. At least one second, rounded up. */
+export function retryAfterSeconds(resetAt: number, now = Date.now()): number {
+  if (!Number.isFinite(resetAt)) return 1
+  return Math.max(1, Math.ceil((resetAt - now) / 1000))
 }

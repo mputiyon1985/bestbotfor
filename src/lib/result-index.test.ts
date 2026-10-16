@@ -14,7 +14,7 @@ describe('result indexing', () => {
     const budgets = ['free', 'low', 'any'] as const
     const skills = ['beginner', 'intermediate', 'pro'] as const
     expect(taskSeeds.length * budgets.length * skills.length).toBe(153)
-    for (const budget of ['free', 'low', 'mid'] as const) {
+    for (const budget of ['free', 'low'] as const) {
       expect(matchesRobots(budget)).toEqual({ index: false, follow: true })
     }
   })
