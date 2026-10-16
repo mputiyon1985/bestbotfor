@@ -212,7 +212,7 @@ describe('catalog seed', () => {
 
     const scores = await db.select().from(toolScores)
     const points = await db.select().from(toolProsCons)
-    const expectedPoints = keptProsConsSeeds.reduce((total, row) => total + row.pros.length + row.cons.length, 0)
+    const expectedPoints = editorialSeeds.reduce((total, row) => total + row.pros.length + row.cons.length, 0) + 1
     expect(scores).toHaveLength(ratingSeeds.length)
     expect(points).toHaveLength(expectedPoints)
     const claudeRating = ratingSeeds.find((row) => row.slug === 'claude')
@@ -233,9 +233,17 @@ describe('catalog seed', () => {
     expect(relevance?.hasFreeTier).toBe(false)
     expect(relevance?.priceFromUsd).toBe(19)
     expect(scores.some((row) => row.toolId === relevance?.id)).toBe(false)
-    expect(points.some((row) => row.toolId === relevance?.id)).toBe(false)
+    const relevancePoints = editorialSeeds.find((row) => row.slug === 'relevance-ai')
+    expect(relevancePoints).toBeTruthy()
+    const storedRelevance = points.filter((row) => row.toolId === relevance?.id)
+    expect(storedRelevance.filter((row) => row.kind === 'pro').map((row) => row.body)).toEqual(
+      relevancePoints?.pros.map((point) => point.text),
+    )
+    expect(storedRelevance.filter((row) => row.kind === 'con').map((row) => row.body)).toEqual(
+      relevancePoints?.cons.map((point) => point.text),
+    )
     expect(scores.some((row) => row.toolId === 999_999)).toBe(false)
-    expect(points.some((row) => row.toolId === 999_999)).toBe(false)
+    expect(points.some((row) => row.toolId === 999_999 && row.body === 'Keep this sentinel point.')).toBe(true)
     const claudePros = points.filter((row) => row.toolId === claude.id && row.kind === 'pro')
     const v1Pros = keptProsConsSeeds.find((row) => row.slug === 'claude')?.pros.map((point) => point.text)
     expect(claudePros.map((row) => row.body)).toEqual(v1Pros)
@@ -289,16 +297,19 @@ describe('catalog seed', () => {
       'windsurf',
     ])
     const keptPoints = keptProsConsSeeds.reduce((total, row) => total + row.pros.length + row.cons.length, 0)
-    const removedPoints = removedSlugs.reduce((total, row) => total + row.pros.length + row.cons.length, 0)
+    const unratedPoints = removedSlugs.reduce((total, row) => total + row.pros.length + row.cons.length, 0)
     expect(keptPoints).toBe(439)
-    expect(removedPoints).toBe(296)
-    expect(points).toHaveLength(keptPoints)
+    expect(unratedPoints).toBe(296)
+    expect(points).toHaveLength(keptPoints + unratedPoints)
 
     for (const slug of unratedSlugs) {
       const tool = bySlug.get(slug)
       expect(tool, slug).toBeTruthy()
       expect(scores.some((row) => row.toolId === tool?.id), slug).toBe(false)
-      expect(points.some((row) => row.toolId === tool?.id), slug).toBe(false)
+      const v1 = editorialSeeds.find((row) => row.slug === slug)
+      const stored = points.filter((row) => row.toolId === tool?.id)
+      expect(stored.filter((row) => row.kind === 'pro').map((row) => row.body), slug).toEqual(v1?.pros.map((point) => point.text) ?? [])
+      expect(stored.filter((row) => row.kind === 'con').map((row) => row.body), slug).toEqual(v1?.cons.map((point) => point.text) ?? [])
       expect(ratingSeeds.some((row) => row.slug === slug), slug).toBe(false)
     }
     expect(windsurf.name).toBe('Devin Desktop (formerly Windsurf)')
@@ -346,7 +357,7 @@ describe('catalog seed', () => {
       scoresUpdated: 91,
       scoresRemoved: 0,
       prosInserted: 0,
-      prosUpdated: 439,
+      prosUpdated: 735,
       prosRemoved: 0,
     })
 
@@ -370,7 +381,7 @@ describe('catalog seed', () => {
       scoresInserted: 91,
       scoresUpdated: 0,
       scoresRemoved: 0,
-      prosInserted: 439,
+      prosInserted: 735,
       prosUpdated: 0,
       prosRemoved: 0,
     })
@@ -410,8 +421,8 @@ describe('catalog seed', () => {
       scoresUpdated: 87,
       scoresRemoved: 59,
       prosInserted: 0,
-      prosUpdated: 439,
-      prosRemoved: 296,
+      prosUpdated: 735,
+      prosRemoved: 0,
     })
 
     const cursor = bySlug.get('cursor')
@@ -452,7 +463,7 @@ describe('catalog seed', () => {
       toolId: perplexity.id,
       kind: 'pro',
       position: 1,
-      body: 'Stale unrated pro that must be removed.',
+      body: 'Stale unrated pro that must stay.',
       sourceUrl: 'https://stale.example/perplexity',
     })
 
@@ -462,8 +473,8 @@ describe('catalog seed', () => {
       scoresUpdated: 91,
       scoresRemoved: 2,
       prosInserted: 0,
-      prosUpdated: 439,
-      prosRemoved: 3,
+      prosUpdated: 735,
+      prosRemoved: 0,
     })
 
     const scores = await db.select().from(toolScores)
@@ -474,8 +485,13 @@ describe('catalog seed', () => {
     for (const slug of unratedSlugs) {
       const tool = bySlug.get(slug)
       expect(scores.some((row) => row.toolId === tool?.id), slug).toBe(false)
-      expect(points.some((row) => row.toolId === tool?.id), slug).toBe(false)
+      const v1 = editorialSeeds.find((row) => row.slug === slug)
+      const bodies = points.filter((row) => row.toolId === tool?.id).map((row) => row.body)
+      for (const point of [...(v1?.pros ?? []), ...(v1?.cons ?? [])]) {
+        expect(bodies, slug).toContain(point.text)
+      }
     }
+    expect(points.some((row) => row.toolId === perplexity.id && row.body === 'Stale unrated pro that must stay.')).toBe(true)
     for (const slug of ['cursor', 'windsurf'] as const) {
       const tool = bySlug.get(slug)
       const score = scores.find((row) => row.toolId === tool?.id)
@@ -484,9 +500,9 @@ describe('catalog seed', () => {
       expect(score?.rationale).toBe(expected?.rationale)
       expect(score?.sources).toBe('[]')
       expect(score?.reviewedAt).toBe(expected?.reviewedAt)
-      expect(points.some((row) => row.toolId === tool?.id)).toBe(false)
+      expect(points.some((row) => row.toolId === tool?.id && row.body.startsWith('Stale'))).toBe(true)
     }
     expect(JSON.stringify(scores)).not.toContain('stale.example')
-    expect(JSON.stringify(points)).not.toContain('stale.example')
+    expect(points.filter((row) => row.sourceUrl.includes('stale.example'))).toHaveLength(3)
   })
 })

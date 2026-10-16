@@ -7,8 +7,8 @@ import type { RatingSeed } from '@/lib/editorial'
 /**
  * Approved ratings v2.3. Evidence, source URL, and third-party columns are
  * present in the file and are dropped here. They are not stored on the score
- * row and not rendered. Pros and cons text stays on the v1 seed, and only for
- * slugs this file actually rates.
+ * row and not rendered. Pros and cons text stays on the v1 seed for every
+ * tool that has it, including tools this file leaves unrated.
  */
 const csvPath = path.join(process.cwd(), 'src/data/scores-v2.3.csv')
 
@@ -36,10 +36,10 @@ export const ratingSeeds: RatingSeed[] = ratingRowsFromCsv(readFileSync(csvPath,
 
 const rated = new Set(ratingSeeds.map((row) => row.slug))
 
-/** v1 pros and cons whose tool is still rated in v2.3. Newly rated tools have none. */
+/** v1 pros and cons for tools v2.3 still rates. Unrated tools keep their own v1 rows too. */
 export const keptProsConsSeeds = v1EditorialSeeds.filter((row) => rated.has(row.slug))
 
-/** Catalog tools with no v2.3 score. The ratings section stays hidden. */
+/** Catalog tools with no v2.3 score. The score and rank stay hidden; pros and cons stay. */
 export const unratedSlugs = toolSeeds
   .map((tool) => tool.slug)
   .filter((slug) => !rated.has(slug))

@@ -197,11 +197,16 @@ describe('BestBotFor score', () => {
     const catalog = catalogFromSeeds()
     for (const slug of unratedSlugs) {
       const tool = catalog.tools.find((item) => item.slug === slug)
+      const v1 = editorialSeeds.find((row) => row.slug === slug)
       expect(tool?.editorial, slug).toBeNull()
-      expect(tool?.pros, slug).toEqual([])
-      expect(tool?.cons, slug).toEqual([])
+      expect(tool?.pros.map((point) => point.text), slug).toEqual(v1?.pros.map((point) => point.text) ?? [])
+      expect(tool?.cons.map((point) => point.text), slug).toEqual(v1?.cons.map((point) => point.text) ?? [])
       expect(tool?.quizEligible, slug).toBe(true)
     }
+    const unratedWithPoints = catalog.tools.find((tool) => tool.slug === 'relevance-ai')
+    expect(unratedWithPoints?.editorial).toBeNull()
+    expect(unratedWithPoints?.pros.length).toBeGreaterThan(0)
+    expect(unratedWithPoints?.cons.length).toBeGreaterThan(0)
     const ratedWindsurf = catalog.tools.find((tool) => tool.slug === 'windsurf')
     expect(ratedWindsurf?.name).toBe('Devin Desktop (formerly Windsurf)')
     expect(ratedWindsurf?.editorial?.overall).toBe(ratingSeeds.find((row) => row.slug === 'windsurf')?.overall)

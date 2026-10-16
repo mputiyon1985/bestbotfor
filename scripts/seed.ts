@@ -9,7 +9,8 @@ export type RatingWriteCounts = {
   prosRemoved: number
 }
 import { comparePairSeeds, taskSeeds, toolSeeds } from '../src/data/catalog'
-import { keptProsConsSeeds, ratingSeeds } from '../src/data/scores-v23.seed'
+import { editorialSeeds } from '../src/data/scores-pros-cons.seed'
+import { ratingSeeds } from '../src/data/scores-v23.seed'
 import { getDb } from '../src/lib/db/client'
 import { affiliatePrograms, tasks, toolProsCons, toolScores, toolTasks, tools } from '../src/lib/db/schema'
 import { validateProsConsSeeds, validateRatingSeeds } from '../src/lib/editorial'
@@ -22,14 +23,10 @@ const db = getDb()
 
 const knownSlugs = new Set(toolSeeds.map((tool) => tool.slug))
 validateRatingSeeds(ratingSeeds, knownSlugs)
-validateProsConsSeeds(keptProsConsSeeds, knownSlugs)
-const ratedSlugs = new Set(ratingSeeds.map((row) => row.slug))
-for (const entry of keptProsConsSeeds) {
-  if (!ratedSlugs.has(entry.slug)) throw new Error(`${entry.slug} keeps pros and cons without a v2.3 score`)
-}
+validateProsConsSeeds(editorialSeeds, knownSlugs)
 
 // One transaction. Catalog rows that are not in this seed stay in place.
-// Score rows and pros/cons are rewritten so only v2.3-rated tools keep them.
+// Score rows stay only for v2.3-rated tools. Pros and cons are upserted and never deleted.
 const counts: RatingWriteCounts = {
   scoresInserted: 0,
   scoresUpdated: 0,
@@ -194,26 +191,21 @@ if (remainingScores.length !== ratedIds.length || remainingScores.some((row) => 
   throw new Error('Seed left a score row for a tool that v2.3 does not rate')
 }
 
-const keptIds: number[] = []
-const keptIdSet = new Set<number>()
-const keptPointKeys: string[] = []
-for (const entry of keptProsConsSeeds) {
+const pointKeys: string[] = []
+for (const entry of editorialSeeds) {
   const id = toolId.get(entry.slug)
   if (!id) throw new Error(`Missing tool id for pros and cons ${entry.slug}`)
-  keptIds.push(id)
-  keptIdSet.add(id)
-  entry.pros.forEach((_, index) => keptPointKeys.push(`${id}:pro:${index + 1}`))
-  entry.cons.forEach((_, index) => keptPointKeys.push(`${id}:con:${index + 1}`))
+  entry.pros.forEach((_, index) => pointKeys.push(`${id}:pro:${index + 1}`))
+  entry.cons.forEach((_, index) => pointKeys.push(`${id}:con:${index + 1}`))
 }
 const existingPoints = await tx
   .select({ toolId: toolProsCons.toolId, kind: toolProsCons.kind, position: toolProsCons.position })
   .from(toolProsCons)
 const existingPointKeys = new Set(existingPoints.map((row) => `${row.toolId}:${row.kind}:${row.position}`))
-const keptPointSet = new Set(keptPointKeys)
-counts.prosInserted = keptPointKeys.filter((key) => !existingPointKeys.has(key)).length
-counts.prosUpdated = keptPointKeys.filter((key) => existingPointKeys.has(key)).length
-counts.prosRemoved = [...existingPointKeys].filter((key) => !keptPointSet.has(key)).length
-for (const entry of keptProsConsSeeds) {
+counts.prosInserted = pointKeys.filter((key) => !existingPointKeys.has(key)).length
+counts.prosUpdated = pointKeys.filter((key) => existingPointKeys.has(key)).length
+counts.prosRemoved = 0
+for (const entry of editorialSeeds) {
   const id = toolId.get(entry.slug)
   if (!id) throw new Error(`Missing tool id for pros and cons ${entry.slug}`)
   const points = [
@@ -229,11 +221,6 @@ for (const entry of keptProsConsSeeds) {
         set: { body: point.body, sourceUrl: point.sourceUrl },
       })
   }
-}
-await tx.delete(toolProsCons).where(notInArray(toolProsCons.toolId, keptIds))
-const remainingPoints = await tx.select({ toolId: toolProsCons.toolId }).from(toolProsCons)
-if (remainingPoints.some((row) => !keptIdSet.has(row.toolId))) {
-  throw new Error('Seed left pros or cons for a tool that v2.3 does not rate')
 }
 
 const storedPrograms = await tx.select().from(affiliatePrograms)

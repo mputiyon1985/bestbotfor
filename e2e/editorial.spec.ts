@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { editorialSeeds } from '../src/data/scores-pros-cons.seed'
 import { keptProsConsSeeds, ratingSeeds, unratedSlugs } from '../src/data/scores-v23.seed'
 import { ratingAriaLabel, starFills } from '../src/lib/editorial'
 import { toolSeeds } from '../src/data/catalog'
@@ -59,18 +60,26 @@ test('a scored tool shows fractional stars, the rubric, and no review schema', a
   expect(combined).not.toContain('out of 5')
 })
 
-test('blank tools hide the score and the pros', async ({ page }) => {
+test('unrated tools hide the score and keep pros and cons', async ({ page }) => {
   test.setTimeout(180_000)
   expect(unratedSlugs).toHaveLength(68)
   for (const slug of unratedSlugs) {
     const tool = toolSeeds.find((item) => item.slug === slug)
+    const v1 = editorialSeeds.find((row) => row.slug === slug)
     await page.goto(`/tools/${slug}`)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(tool?.name ?? slug)
     await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'How we score' })).toHaveCount(0)
     await expect(page.locator('[data-category-rank]')).toHaveCount(0)
     await expect(page.locator('[data-score-note]')).toHaveCount(0)
-    await expect(page.getByRole('heading', { name: 'Pros and cons' })).toHaveCount(0)
+    await expect(page.locator('[data-score-section]')).toHaveCount(0)
+    if (v1) {
+      await expect(page.getByRole('heading', { name: 'Pros and cons' })).toBeVisible()
+      await expect(page.getByText(v1.pros[0]?.text ?? '', { exact: false })).toBeVisible()
+      await expect(page.getByText(v1.cons[0]?.text ?? '', { exact: false })).toBeVisible()
+    } else {
+      await expect(page.getByRole('heading', { name: 'Pros and cons' })).toHaveCount(0)
+    }
     await expect(page.getByRole('img', { name: /Rated/ })).toHaveCount(0)
     await expect(page.getByRole('link', { name: 'Source', exact: true })).toHaveCount(0)
     const html = await page.content()
@@ -186,6 +195,15 @@ test('windsurf stays at its slug, cursor and relevance show the reviewed prices,
   await expect(page.getByText('$19 and up')).toBeVisible()
   await expect(page.getByText('No', { exact: true })).toBeVisible()
   await expect(page.getByText('The free plan is retired. Pro is $19 a month billed yearly.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toHaveCount(0)
+  await expect(page.locator('[data-score-section]')).toHaveCount(0)
+  await expect(page.locator('[data-category-rank]')).toHaveCount(0)
+  const relevancePoints = editorialSeeds.find((row) => row.slug === 'relevance-ai')
+  expect(relevancePoints?.pros.length).toBeGreaterThan(0)
+  await expect(page.getByRole('heading', { name: 'Pros and cons' })).toBeVisible()
+  await expect(page.getByText(relevancePoints?.pros[0]?.text ?? '', { exact: false })).toBeVisible()
+  await expect(page.getByText(relevancePoints?.cons[0]?.text ?? '', { exact: false })).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Source', exact: true })).toHaveCount(0)
   html = await page.content()
   expect(html).not.toContain('relevanceai.com/docs')
   expect(html).not.toContain('third_party')

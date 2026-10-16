@@ -238,7 +238,7 @@ export function validateRatingSeeds(rows: RatingSeed[], knownSlugs: ReadonlySet<
   }
 }
 
-/** v1 pros and cons kept for tools that v2.3 still rates. Does not re-check the old equal-weight overall. */
+/** v1 pros and cons, including tools v2.3 does not rate. Does not re-check the old equal-weight overall. */
 export function validateProsConsSeeds(rows: EditorialSeed[], knownSlugs: ReadonlySet<string>): void {
   const seen = new Set<string>()
   for (const row of rows) {
