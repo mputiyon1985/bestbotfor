@@ -2,11 +2,10 @@
 
 ## Unreleased
 
-- Forge’s CSV now rates 148 tools, including Cursor and Windsurf. The same upsert seed writes `tool_scores` and `tool_pros_cons` in one transaction. `source_urls` and third-party columns are still dropped and are not rendered. The 11 tools without a row hide the score and the pros and cons. No new migration deletes rows.
-- Windsurf stays at `/tools/windsurf` and at `/compare/cursor-vs-windsurf`. The name is Devin Desktop (formerly Windsurf), the vendor is Cognition, the site is https://devin.ai/desktop, and pricing is Free $0 and Pro $20 at https://devin.ai/pricing. `devin.ai` is an allowed host.
+- Windsurf stays at `/tools/windsurf` and at `/compare/cursor-vs-windsurf`. The name is Devin Desktop (formerly Windsurf), the vendor is Cognition, the site is https://devin.ai/desktop, and pricing is Free $0 and Pro $20 at https://devin.ai/pricing. `devin.ai` is an allowed host. Cursor and Windsurf stay out of `tool_scores` and `tool_pros_cons` until the next rubric. The rated set remains the 146 slugs already on main.
 - Cursor’s current plans are Free $0, Plus $8 (Grok models only), and Premium $30 (third-party models billed extra). Pro $20 is for legacy subscribers only.
 - Relevance AI stays without a free plan. Pro is $19 a month billed yearly.
-- Scores and pros/cons come only from Forge’s CSV. Migration `0007` still deletes a Cursor score from the earlier sample. The seed upserts the CSV row afterward, so Cursor stays rated.
+- Scores and pros/cons come only from Forge’s CSV. Migration `0007` deletes the sample Cursor score and its pros and cons, the only slug that was seeded and is not in that file.
 - The tagline is “The right AI in 30 seconds.” The home title is “BestBotFor — The right AI in 30 seconds.”
 - The home eyebrow says “Answer 3 quick questions.”
 - The not-found page sets its own title, “Page not found | BestBotFor”, its own description, and `noindex, nofollow`. It does not reuse the home canonical or the home social titles.

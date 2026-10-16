@@ -224,7 +224,8 @@ describe('catalog seed', () => {
     expect(windsurf?.vendor).toBe('Cognition')
     expect(windsurf?.url).toBe('https://devin.ai/desktop')
     expect(windsurf?.needsVerification).toBe(false)
-    expect(scores.some((row) => row.toolId === windsurf?.id)).toBe(true)
+    expect(scores.some((row) => row.toolId === windsurf?.id)).toBe(false)
+    expect(points.some((row) => row.toolId === windsurf?.id)).toBe(false)
     const relevance = toolRows.find((row) => row.slug === 'relevance-ai')
     expect(relevance?.hasFreeTier).toBe(false)
     expect(relevance?.priceFromUsd).toBe(19)
@@ -255,23 +256,25 @@ describe('catalog seed', () => {
     const idToSlug = new Map(toolRows.map((row) => [row.id, row.slug]))
     const rated = scores.map((row) => idToSlug.get(row.toolId)).sort()
     const csvSlugs = editorialSeeds.map((row) => row.slug).sort()
-    expect(editorialSeeds).toHaveLength(148)
+    expect(editorialSeeds).toHaveLength(146)
     expect(rated).toEqual(csvSlugs)
     expect(new Set(rated)).toEqual(new Set(csvSlugs))
+    expect(csvSlugs).not.toContain('cursor')
+    expect(csvSlugs).not.toContain('windsurf')
     expect(scores.every((row) => row.sources === '[]')).toBe(true)
     expect(JSON.stringify(scores)).not.toContain('pcmag.com')
     expect(JSON.stringify(scores)).not.toContain('techradar.com')
     expect(JSON.stringify(scores)).not.toContain('third_party')
     expect(JSON.stringify(scores)).not.toContain('source_urls')
-    expect(scores.some((row) => row.toolId === cursor.id)).toBe(true)
-    expect(scores.some((row) => row.toolId === windsurf.id)).toBe(true)
+    expect(scores.some((row) => row.toolId === cursor.id)).toBe(false)
+    expect(scores.some((row) => row.toolId === windsurf.id)).toBe(false)
+    expect(points.some((row) => row.toolId === cursor.id)).toBe(false)
+    expect(points.some((row) => row.toolId === windsurf.id)).toBe(false)
     expect(scores.some((row) => row.toolId === chatgpt.id)).toBe(true)
-    expect(points.some((row) => row.toolId === cursor.id && row.kind === 'pro')).toBe(true)
-    expect(points.some((row) => row.toolId === windsurf.id && row.kind === 'con')).toBe(true)
 
-    expect(UNRATED_SLUGS).toHaveLength(11)
-    expect(UNRATED_SLUGS).not.toContain('windsurf')
-    expect(UNRATED_SLUGS).not.toContain('cursor')
+    expect(UNRATED_SLUGS).toHaveLength(13)
+    expect(UNRATED_SLUGS).toContain('windsurf')
+    expect(UNRATED_SLUGS).toContain('cursor')
     for (const slug of UNRATED_SLUGS) {
       const tool = bySlug.get(slug)
       expect(tool, slug).toBeTruthy()
@@ -298,11 +301,32 @@ describe('catalog seed', () => {
     expect(relevance?.pricingModel).toBe('paid')
     expect(relevance?.priceFromUsd).toBe(19)
 
-    // Migration 0007 still deletes a cursor score. The upsert seed writes the CSV row back.
+    await db.insert(toolScores).values({
+      toolId: cursor.id,
+      features: 4,
+      value: 3,
+      ease: 3,
+      quality: 4,
+      overall: 3.6,
+      rationale: 'Sample score that is not in the Forge CSV.',
+      sources: '[]',
+      reviewedAt: '2026-10-16',
+    })
+    await db.insert(toolProsCons).values({
+      toolId: cursor.id,
+      kind: 'pro',
+      position: 1,
+      body: 'Sample pro that is not in the Forge CSV.',
+      sourceUrl: 'https://cursor.com/docs',
+    })
     const sql = await readFile(path.join(process.cwd(), 'drizzle/0007_drop_non_forge_scores.sql'), 'utf8')
     await db.$client.executeMultiple(sql)
     const deleted = await db.select().from(toolScores)
+    const deletedPoints = await db.select().from(toolProsCons)
+    const deletedRated = deleted.map((row) => idToSlug.get(row.toolId)).sort()
+    expect(deletedRated).toEqual(csvSlugs)
     expect(deleted.some((row) => row.toolId === cursor.id)).toBe(false)
+    expect(deletedPoints.some((row) => row.toolId === cursor.id)).toBe(false)
     expect(deleted.some((row) => row.toolId === chatgpt.id)).toBe(true)
     await seed()
     const restoredRows = await db.select().from(tools)
@@ -311,7 +335,7 @@ describe('catalog seed', () => {
     const restored = (await db.select().from(toolScores)).map((row) => restoredIds.get(row.toolId)).sort()
     const restoredPoints = await db.select().from(toolProsCons)
     expect(restored).toEqual(csvSlugs)
-    expect(restoredPoints.some((row) => row.toolId === restoredCursor?.id)).toBe(true)
+    expect(restoredPoints.some((row) => row.toolId === restoredCursor?.id)).toBe(false)
 
     const previousEnv = process.env.VERCEL_ENV
     process.env.VERCEL_ENV = 'production'
