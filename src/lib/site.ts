@@ -6,6 +6,14 @@ export const TAGLINE = 'The right AI in 30 seconds.'
 export const SITE_NAME = 'BestBotFor'
 
 /**
+ * Sitewide switch for the BestBotFor score: the heading, stars, numeric
+ * score, criteria bars, and the "How we score" note. Pros and cons stay
+ * visible either way. Set this to true to publish scores again.
+ * A code constant on purpose, so no environment variable is required.
+ */
+export const SHOW_SCORES: boolean = false
+
+/**
  * Canonical origin for sitemap, Open Graph, and JSON-LD.
  * http is accepted only for localhost so tests and local dev can set a site URL.
  */

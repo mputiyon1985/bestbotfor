@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { OG_IMAGE_PATH } from './brand'
 import { isProductionDeployment } from './indexing'
+import { omitScoreText } from './score-visibility'
 import { absoluteUrl, getSiteUrl, SITE_NAME, TAGLINE } from './site'
 
 export function pageMetadata(input: {
@@ -14,31 +15,33 @@ export function pageMetadata(input: {
   follow?: boolean
   pagination?: { previous?: string | null; next?: string | null }
 }): Metadata {
+  const title = omitScoreText(input.title)
+  const description = omitScoreText(input.description)
   const canonical = new URL(input.path, getSiteUrl()).toString()
   const image = input.imagePath ?? OG_IMAGE_PATH
   const previous = input.pagination?.previous ? absoluteUrl(input.pagination.previous) : undefined
   const next = input.pagination?.next ? absoluteUrl(input.pagination.next) : undefined
-  const branded = socialTitle(input.title)
+  const branded = socialTitle(title)
   return {
-    title: input.absoluteTitle ? { absolute: input.title } : input.title,
-    description: input.description,
+    title: input.absoluteTitle ? { absolute: title } : title,
+    description,
     alternates: { canonical },
     pagination: previous || next ? { previous, next } : undefined,
     robots: pageRobots(input),
     openGraph: {
       title: branded,
-      description: input.description,
+      description,
       url: canonical,
       siteName: SITE_NAME,
       locale: 'en_US',
       type: 'website',
-      images: [{ url: image, width: 1200, height: 630, alt: input.title }],
+      images: [{ url: image, width: 1200, height: 630, alt: title }],
     },
     twitter: {
       card: 'summary_large_image',
       title: branded,
-      description: input.description,
-      images: [{ url: image, width: 1200, height: 630, alt: input.title }],
+      description,
+      images: [{ url: image, width: 1200, height: 630, alt: title }],
     },
   }
 }

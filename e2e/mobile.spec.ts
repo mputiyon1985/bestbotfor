@@ -3,13 +3,13 @@ import { expect, test } from '@playwright/test'
 const WIDTHS = [375, 390, 768] as const
 
 const PAGES = [
-  { name: 'result', path: '/result?task=chat&budget=any&skill=beginner', pagination: false, bars: false },
-  { name: 'all matches', path: '/result?task=chat&view=all', pagination: true, bars: false },
-  { name: 'coding matches', path: '/result?task=coding&view=all', pagination: true, bars: false },
-  { name: 'tool', path: '/tools/chatgpt', pagination: false, bars: true },
+  { name: 'result', path: '/result?task=chat&budget=any&skill=beginner', pagination: false },
+  { name: 'all matches', path: '/result?task=chat&view=all', pagination: true },
+  { name: 'coding matches', path: '/result?task=coding&view=all', pagination: true },
+  { name: 'tool', path: '/tools/chatgpt', pagination: false },
 ] as const
 
-test('stars, bars, pros, and pagination fit at 375, 390, and 768', async ({ page }) => {
+test('pros and pagination fit at 375, 390, and 768', async ({ page }) => {
   await page.context().addCookies([
     { name: 'bbf_consent', value: 'denied', domain: '127.0.0.1', path: '/' },
   ])
@@ -19,7 +19,7 @@ test('stars, bars, pros, and pagination fit at 375, 390, and 768', async ({ page
     for (const target of PAGES) {
       await page.goto(target.path)
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-      await expect(page.getByRole('img', { name: /^Rated / }).first()).toBeVisible()
+      await expect(page.locator('[data-score-section], [data-star-rating]')).toHaveCount(0)
 
       const fit = await page.evaluate(() => {
         const scrollWidth = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)
@@ -62,6 +62,7 @@ test('stars, bars, pros, and pagination fit at 375, 390, and 768', async ({ page
           widgetOverflow,
           smallText,
           bars: document.querySelectorAll('[role="meter"]').length,
+          scores: document.querySelectorAll('[data-score-section], [data-star-rating], [data-criterion-row]').length,
           pros: document.querySelectorAll('[data-pros-cons]').length,
         }
       })
@@ -70,7 +71,8 @@ test('stars, bars, pros, and pagination fit at 375, 390, and 768', async ({ page
       expect(fit.widgetOverflow, `${target.name} widgets at ${width}px`).toEqual([])
       expect(fit.smallText, `${target.name} text at ${width}px`).toEqual([])
       expect(fit.pros, `${target.name} pros at ${width}px`).toBeGreaterThan(0)
-      if (target.bars) expect(fit.bars, `${target.name} bars at ${width}px`).toBe(4)
+      expect(fit.bars, `${target.name} bars at ${width}px`).toBe(0)
+      expect(fit.scores, `${target.name} scores at ${width}px`).toBe(0)
 
       const pagesNav = page.getByRole('navigation', { name: 'Pages' })
       if (target.pagination) {
