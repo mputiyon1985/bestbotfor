@@ -1,7 +1,17 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
+import { toolCategories } from '../src/lib/tool-index'
+import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
 
-const pages = ['/', '/newsletter', '/best/coding', '/result?task=chat&budget=any&skill=beginner']
+const category = toolCategories(catalogFromSeeds().tools)[0]
+const pages = [
+  '/',
+  '/newsletter',
+  '/best/coding',
+  '/tools',
+  category ? `/tools?category=${category.slug}` : '/tools',
+  '/result?task=chat&budget=any&skill=beginner',
+]
 
 for (const path of pages) {
   test(`${path} has no axe violations`, async ({ page }) => {

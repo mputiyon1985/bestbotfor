@@ -2,7 +2,7 @@ import 'server-only'
 
 import { unstable_cache } from 'next/cache'
 import { asc, eq } from 'drizzle-orm'
-import { assembleCatalog, readPublicSlugs, readTaskCandidates, readTasks, readToolPage, readToolSummaries, readToolsBySlugs, scoreQuiz, searchToolSummaries } from './catalog-read'
+import { assembleCatalog, readPublicSlugs, readTaskCandidates, readTasks, readToolCategoryCounts, readToolPage, readToolSummaries, readToolsBySlugs, scoreQuiz, searchToolSummaries } from './catalog-read'
 import type { Catalog, CatalogTask, CatalogTool } from './catalog-types'
 import { getDb } from './db'
 import { affiliatePrograms, tasks, toolTasks, tools } from './db/schema'
@@ -49,8 +49,12 @@ export async function listTasks(): Promise<CatalogTask[]> {
   return readTasks(getDb())
 }
 
-export async function listToolPage(page: number) {
-  return readToolPage(getDb(), page)
+export async function listToolPage(page: number, category: string | null = null) {
+  return readToolPage(getDb(), page, category)
+}
+
+export async function listToolCategoryCounts() {
+  return readToolCategoryCounts(getDb())
 }
 
 export async function listTaskCandidates(taskSlug: string) {

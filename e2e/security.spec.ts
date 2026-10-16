@@ -1,5 +1,7 @@
 import { request as httpRequest } from 'node:http'
 import { expect, test } from '@playwright/test'
+import { toolCategories } from '../src/lib/tool-index'
+import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
 
 function rawStatus(path: string): Promise<{ status: number; body: string }> {
   const base = new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://127.0.0.1:3000')
@@ -33,6 +35,27 @@ test('encoded dot segments under /go do not render the home page', async () => {
     expect(response.body, path).toContain('not a tool in the catalog')
     expect(response.body, path).not.toContain('Three questions')
   }
+})
+
+test('the tools index is served and still rejects an unsafe slug', async () => {
+  const catalog = catalogFromSeeds()
+  const category = toolCategories(catalog.tools)[0]
+  expect(category).toBeTruthy()
+  if (!category) return
+
+  const index = await rawStatus('/tools')
+  expect(index.status).toBe(200)
+  expect(index.body).toContain('Tools')
+  expect(index.body).toContain(`${catalog.tools.length} tools. Page 1 of`)
+  expect(index.body).not.toContain('not a tool in the catalog')
+
+  const filtered = await rawStatus(`/tools?category=${category.slug}`)
+  expect(filtered.status).toBe(200)
+  expect(filtered.body).toContain(`${category.count} ${category.name} tools. Page 1 of`)
+
+  const unsafe = await rawStatus('/tools/%2e%2e')
+  expect(unsafe.status).toBe(404)
+  expect(unsafe.body).toContain('not a tool in the catalog')
 })
 
 test('best and tools reject a slug that is not in the catalog shape', async () => {

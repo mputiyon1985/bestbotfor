@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Expand the catalog with 108 reviewed tools. Affiliate status on the new tools stays unknown, and outbound links stay on official sites.
+- `/tools` stays paginated and filters by category with a shareable `?category=` URL. Every catalog tool lists the hosts `/go` may redirect to.
 - Apply the approved concept 1 brand: Poppins, the indigo and mint palette, lockups in the header and footer, kit favicons, and kit Open Graph art.
 - Home page inlines the lockup, inlines CSS, and renders the picker on the server so LCP stays under 2.1s and total blocking time stays under 230ms. Poppins loads after that first paint.
 - `/api/og` sends a one-day CDN cache, redirects invalid query strings to `/api/og`, and rate-limits generation in the route. A missing catalog serves an uncached fallback image.

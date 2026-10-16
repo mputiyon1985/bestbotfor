@@ -39,6 +39,8 @@ Stripe billing accepts a test secret key only. CI fails if a live-mode Stripe ke
 
 `/go/[slug]` redirects to the official URL stored for that tool only when the host is on the reviewed list in the seed. It ignores query strings and affiliate URLs. A rate-limit or catalog timeout still redirects; the click row is written after the response.
 
+`/tools` lists the catalog one page at a time. Filter with `?category=`, for example `/tools?category=coding-assistant`. The deepest benches are coding, writing, images, video, voice, research, and agents. Other jobs, including chat, music, design, and games, have a shorter list.
+
 ## Scripts
 
 ```bash

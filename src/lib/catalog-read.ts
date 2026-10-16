@@ -184,9 +184,19 @@ export async function readTasks(db: Database): Promise<CatalogTask[]> {
   return rows
 }
 
-export async function readToolPage(db: Database, page: number): Promise<ToolPage> {
+export async function readToolCategoryCounts(db: Database): Promise<{ category: string; total: number }[]> {
+  const rows = await db
+    .select({ category: tools.category, total: count() })
+    .from(tools)
+    .where(eq(tools.status, 'active'))
+    .groupBy(tools.category)
+  return rows.map((row) => ({ category: row.category, total: Number(row.total) }))
+}
+
+export async function readToolPage(db: Database, page: number, category: string | null = null): Promise<ToolPage> {
   const requested = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
-  const [countRow] = await db.select({ total: count() }).from(tools).where(eq(tools.status, 'active'))
+  const where = category ? and(eq(tools.status, 'active'), eq(tools.category, category)) : eq(tools.status, 'active')
+  const [countRow] = await db.select({ total: count() }).from(tools).where(where)
   const total = Number(countRow?.total ?? 0)
   const pageCount = Math.max(1, Math.ceil(total / TOOLS_PAGE_SIZE))
   const current = Math.min(requested, pageCount)
@@ -199,7 +209,7 @@ export async function readToolPage(db: Database, page: number): Promise<ToolPage
       shortDesc: tools.shortDesc,
     })
     .from(tools)
-    .where(eq(tools.status, 'active'))
+    .where(where)
     .orderBy(asc(tools.name))
     .limit(TOOLS_PAGE_SIZE)
     .offset((current - 1) * TOOLS_PAGE_SIZE)
