@@ -42,7 +42,8 @@ export function budgetDelta(tool: Pick<ScoreableTool, 'pricingModel' | 'hasFreeT
     if (tool.priceFromUsd != null && tool.priceFromUsd > LOW_BUDGET_USD) return 4
     return 12
   }
-  if (tool.priceFromUsd != null && tool.priceFromUsd <= LOW_BUDGET_USD) return 8
+  if (tool.priceFromUsd == null) return 0
+  if (tool.priceFromUsd <= LOW_BUDGET_USD) return 8
   return -12
 }
 
@@ -77,22 +78,31 @@ export const QUIZ_RESULT_COUNT = 6
 /** Tools below this editorial fit are not shown on the quiz result. */
 export const MIN_QUIZ_FIT_SCORE = 50
 
-export type BudgetFit = 'within' | 'over'
+export type BudgetFit = 'within' | 'over' | 'unknown'
 
 /**
  * A tool is inside the budget when the user can start it without crossing
- * the budget they chose. "Any" accepts every tool. "Free" needs a free plan
- * or a free tier. "Low" also accepts a paid plan at or under $30.
+ * the budget they chose. "Any" accepts every tool. "Free" uses the free-tier
+ * flag. "Low" also accepts a known paid price at or under $30. A missing
+ * price is unknown, not over budget.
  */
+export function quizBudgetFit(
+  tool: Pick<ScoreableTool, 'pricingModel' | 'hasFreeTier' | 'priceFromUsd'>,
+  budget: Budget,
+): BudgetFit {
+  if (budget === 'any') return 'within'
+  const freeToStart = tool.pricingModel === 'free' || tool.hasFreeTier
+  if (freeToStart) return 'within'
+  if (budget === 'free') return 'over'
+  if (tool.priceFromUsd == null) return 'unknown'
+  return tool.priceFromUsd <= LOW_BUDGET_USD ? 'within' : 'over'
+}
+
 export function fitsBudget(
   tool: Pick<ScoreableTool, 'pricingModel' | 'hasFreeTier' | 'priceFromUsd'>,
   budget: Budget,
 ): boolean {
-  if (budget === 'any') return true
-  const freeToStart = tool.pricingModel === 'free' || tool.hasFreeTier
-  if (budget === 'free') return freeToStart
-  if (freeToStart) return true
-  return tool.priceFromUsd != null && tool.priceFromUsd <= LOW_BUDGET_USD
+  return quizBudgetFit(tool, budget) === 'within'
 }
 
 export type QuizPick<T extends ScoreableTool> = T &
@@ -117,7 +127,7 @@ export function selectQuizPicks<T extends ScoreableTool>(
     .slice(0, QUIZ_RESULT_COUNT)
     .map((tool) => ({
       ...tool,
-      budgetFit: fitsBudget(tool, answers.budget) ? 'within' : 'over',
+      budgetFit: quizBudgetFit(tool, answers.budget),
       reason: tool.notes,
     }))
 }

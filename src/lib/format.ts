@@ -55,10 +55,12 @@ type Priced = {
 export function priceLabel(tool: Priced): string {
   if (tool.pricingModel === 'free') return 'Free'
   if (tool.priceFromUsd != null) {
+    const wholeDollars = Number.isInteger(tool.priceFromUsd)
     const money = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      maximumFractionDigits: 0,
+      minimumFractionDigits: wholeDollars ? 0 : 2,
+      maximumFractionDigits: wholeDollars ? 0 : 2,
     }).format(tool.priceFromUsd)
     return tool.hasFreeTier ? `Free tier, then ${money} and up` : `${money} and up`
   }

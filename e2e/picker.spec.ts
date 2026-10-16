@@ -80,3 +80,26 @@ test('a short list says few strong options exist', async ({ page }) => {
   await expect(list.getByRole('listitem')).toHaveCount(alternatives.length)
   await expect(list.getByText(fewStrongOptionsLabel)).toBeVisible()
 })
+
+test('a low budget keeps SOUNDRAW in the music results', async ({ page }) => {
+  const answers = { task: 'music', budget: 'low', skill: 'beginner' } as const
+  const result = recommend(catalogFromSeeds(), answers)
+  const soundraw = result?.picks.find((pick) => pick.slug === 'soundraw')
+  expect(soundraw?.budgetFit).toBe('within')
+  expect(soundraw?.priceFromUsd).toBe(16.99)
+  expect(result?.picks.some((pick) => pick.slug === 'lalal-ai')).toBe(false)
+  expect(result?.picks[0]?.reason).not.toContain('the music tool')
+  if (!soundraw) return
+
+  await page.goto(`/result?task=${answers.task}&budget=${answers.budget}&skill=${answers.skill}`)
+  await expect(page.getByRole('heading', { name: 'SOUNDRAW', exact: true })).toBeVisible()
+  await expect(page.getByText(priceLabel(soundraw), { exact: true })).toBeVisible()
+  if (result?.picks[0]?.slug === 'soundraw') {
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText('SOUNDRAW')
+  } else {
+    const item = page.getByRole('listitem').filter({
+      has: page.getByRole('heading', { level: 3, name: 'SOUNDRAW', exact: true }),
+    })
+    await expect(item.getByText(overBudgetLabel)).toHaveCount(0)
+  }
+})

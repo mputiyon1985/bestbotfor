@@ -68,6 +68,12 @@ describe('catalog seed', () => {
     const expectedFits = toolSeeds.reduce((sum, tool) => sum + tool.fits.length, 0)
     expect(fitRows).toHaveLength(expectedFits)
     expect(toolRows.every((row) => row.status === 'active')).toBe(true)
+    expect(toolRows.find((row) => row.slug === 'soundraw')?.priceFromUsd).toBe(16.99)
+    expect(toolRows.find((row) => row.slug === 'semrush')).toMatchObject({
+      pricingModel: 'freemium',
+      hasFreeTier: true,
+      priceFromUsd: 139,
+    })
   })
 
   it('keeps quiz, best-of, and compare resolvable for the whole seed', () => {
@@ -96,11 +102,15 @@ describe('catalog seed', () => {
       ['listnr', 'music'],
       ['notebooklm', 'music'],
       ['descript', 'music'],
+      ['lalal-ai', 'music'],
     ] as const
     for (const [slug, task] of droppedFits) {
       const entry = toolSeeds.find((item) => item.slug === slug)
       expect(entry?.fits.some((fit) => fit.task === task), `${slug} ${task}`).toBe(false)
     }
+    const sunoMusic = toolSeeds.find((item) => item.slug === 'suno')?.fits.find((fit) => fit.task === 'music')
+    expect(sunoMusic?.notes).toBe('You describe a song and get the audio, including vocals.')
+    expect(sunoMusic?.notes).not.toContain('the music tool')
     const elevenMusic = toolSeeds.find((item) => item.slug === 'elevenlabs')?.fits.find((fit) => fit.task === 'music')
     expect(elevenMusic).toEqual({
       task: 'music',
@@ -125,6 +135,19 @@ describe('catalog seed', () => {
       const fit = entry?.fits[0]
       expect(fit?.score, slug).toBe(score)
     }
+    expect(toolSeeds.find((item) => item.slug === 'semrush')).toMatchObject({
+      pricingModel: 'freemium',
+      hasFreeTier: true,
+      priceFromUsd: 139,
+    })
+    expect(toolSeeds.find((item) => item.slug === 'soundraw')?.priceFromUsd).toBe(16.99)
+    expect(toolSeeds.find((item) => item.slug === 'neuronwriter')?.priceFromUsd).toBe(23)
+    expect(toolSeeds.find((item) => item.slug === 'luma-dream-machine')?.priceFromUsd).toBe(30)
+    expect(toolSeeds.find((item) => item.slug === 'aiva')?.priceFromUsd).toBeNull()
+    const musicLow = recommend(catalog, { task: 'music', budget: 'low', skill: 'beginner' })
+    const soundraw = musicLow?.picks.find((pick) => pick.slug === 'soundraw')
+    expect(soundraw?.budgetFit).toBe('within')
+    expect(musicLow?.picks.some((pick) => pick.slug === 'lalal-ai')).toBe(false)
 
     for (const task of taskSeeds) {
       const ranked = toolsForTask(catalog, task.slug)
@@ -143,6 +166,16 @@ describe('catalog seed', () => {
             expect(pick.reason.length, pick.slug).toBeGreaterThan(20)
             expect(priceLabel(pick).length, pick.slug).toBeGreaterThan(0)
             if (pick.budgetFit === 'over') expect(pick.fitScore).toBeGreaterThanOrEqual(MIN_QUIZ_FIT_SCORE)
+            if (budget === 'low' && pick.budgetFit === 'over') {
+              expect(pick.hasFreeTier, pick.slug).toBe(false)
+              expect(pick.priceFromUsd, pick.slug).not.toBeNull()
+              expect(pick.priceFromUsd ?? 0, pick.slug).toBeGreaterThan(30)
+            }
+            if (budget === 'low' && pick.budgetFit === 'unknown') {
+              expect(pick.priceFromUsd, pick.slug).toBeNull()
+              expect(pick.hasFreeTier, pick.slug).toBe(false)
+              expect(pick.pricingModel, pick.slug).not.toBe('free')
+            }
           }
         }
       }

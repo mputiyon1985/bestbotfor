@@ -134,6 +134,7 @@ describe('catalog seed', () => {
       ['listnr', 'music'],
       ['notebooklm', 'music'],
       ['descript', 'music'],
+      ['lalal-ai', 'music'],
     ] as const
     for (const [toolSlug, taskSlug] of retired) {
       const retiredToolId = toolId.get(toolSlug)
@@ -148,7 +149,7 @@ describe('catalog seed', () => {
       })
     }
 
-    const sql = await readFile(path.join(process.cwd(), 'drizzle/0003_retire_quiz_fits.sql'), 'utf8')
+    const sql = await readFile(path.join(process.cwd(), 'drizzle/0004_retire_quiz_fits.sql'), 'utf8')
     await db.$client.executeMultiple(sql)
     await db.$client.executeMultiple(sql)
 
@@ -163,6 +164,7 @@ describe('catalog seed', () => {
     expect(afterDelete.some((row) => pair(row) === 'hyperwrite:writing')).toBe(true)
     expect(afterDelete.some((row) => pair(row) === 'descript:video')).toBe(true)
     expect(afterDelete.some((row) => pair(row) === 'elevenlabs:music')).toBe(true)
+    expect(afterDelete.some((row) => pair(row) === 'lalal-ai:voice')).toBe(true)
 
     await seed()
     const afterSeed = await db.select().from(toolTasks)

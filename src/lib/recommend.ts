@@ -1,12 +1,12 @@
 import type { Catalog, CatalogTask, CatalogTool } from './catalog-types'
-import { rankTools, selectQuizPicks, type RankedTool } from './scoring'
+import { rankTools, selectQuizPicks, type BudgetFit, type RankedTool } from './scoring'
 import type { QuizAnswers } from './validation'
 
 export type Recommendation = {
   task: CatalogTask
   answers: QuizAnswers
   ranked: RankedTool[]
-  picks: Array<RankedTool & { tool: CatalogTool; budgetFit: 'within' | 'over'; reason: string }>
+  picks: Array<RankedTool & { tool: CatalogTool; budgetFit: BudgetFit; reason: string }>
   why: string
 }
 

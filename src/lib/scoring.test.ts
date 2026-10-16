@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { budgetDelta, fitsBudget, MIN_QUIZ_FIT_SCORE, QUIZ_RESULT_COUNT, rankTools, selectQuizPicks, skillDelta, type ScoreableTool } from './scoring'
+import { budgetDelta, fitsBudget, MIN_QUIZ_FIT_SCORE, QUIZ_RESULT_COUNT, quizBudgetFit, rankTools, selectQuizPicks, skillDelta, type ScoreableTool } from './scoring'
 
 function tool(overrides: Partial<ScoreableTool> = {}): ScoreableTool {
   return {
@@ -79,6 +79,24 @@ describe('rankTools', () => {
     const any = selectQuizPicks(tools, { budget: 'any', skill: 'beginner' })
     expect(any.every((pick) => pick.budgetFit === 'within')).toBe(true)
     expect(any.map((pick) => pick.slug)).toEqual(['paid-high', 'free-a', 'paid-mid', 'free-b', 'low-price', 'paid-c'])
+  })
+
+  it('treats a missing paid price as unknown on a low budget', () => {
+    const unknown = tool({
+      slug: 'unknown-price',
+      name: 'Unknown Price',
+      pricingModel: 'paid',
+      hasFreeTier: false,
+      priceFromUsd: null,
+      fitScore: 80,
+      notes: 'The paid entry price was not on the pricing page.',
+    })
+    expect(quizBudgetFit(unknown, 'low')).toBe('unknown')
+    expect(budgetDelta(unknown, 'low')).toBe(0)
+    expect(quizBudgetFit(unknown, 'free')).toBe('over')
+    expect(fitsBudget(tool({ pricingModel: 'paid', hasFreeTier: false, priceFromUsd: 16.99 }), 'low')).toBe(true)
+    const picks = selectQuizPicks([unknown], { budget: 'low', skill: 'beginner' })
+    expect(picks[0]?.budgetFit).toBe('unknown')
   })
 
   it('does not pad the shortlist when fewer than five alternatives clear the minimum', () => {
