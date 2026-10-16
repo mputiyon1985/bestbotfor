@@ -159,6 +159,9 @@ describe('SHOW_SCORES', () => {
     expect(card).toContain(conText)
     expect(card).not.toContain('data-star-rating')
     expect(card).not.toContain('data-score-section')
+    expect(card).not.toContain('data-category-rank')
+    expect(card).not.toContain('#1 of 2 in Chat')
+    expect(card).not.toContain('Tied')
     expect(card).not.toContain('BestBotFor score')
     expect(card).not.toContain('out of 5')
 
@@ -197,5 +200,32 @@ describe('SHOW_SCORES', () => {
     expect(card).not.toContain('chatgpt.com/pricing')
     expect(card).not.toContain('data-score-section')
     expect(card).not.toContain('data-criterion')
+
+    const tied = {
+      ...editorial,
+      categoryRankDisplay: '#2 of 4 in Chat',
+      tieGroup: 'chat-T2',
+      tied: true,
+    }
+    const tiedSection = html(createElement(ScoreSection, { editorial: tied, showScores: true }))
+    expect(tiedSection).toContain('data-tie="true"')
+    expect(tiedSection).toContain('Tied · ')
+    expect(tiedSection).toContain('#2 of 4 in Chat')
+    const tiedHidden = html(createElement(ScoreSection, { editorial: tied, showScores: false }))
+    expect(tiedHidden).toBe('')
+    const tiedCard = html(createElement(EditorialCompact, { editorial: tied, pros, cons, showScores: false }))
+    expect(tiedCard).not.toContain('data-category-rank')
+    expect(tiedCard).not.toContain('#2 of 4 in Chat')
+    expect(tiedCard).not.toContain('Tied')
+
+    const single = html(
+      createElement(ScoreSection, {
+        editorial: { ...editorial, hideRank: true, categoryRankDisplay: '#1 of 1 in Productivity' },
+        showScores: true,
+      }),
+    )
+    expect(single).toContain('data-score-section')
+    expect(single).not.toContain('data-category-rank')
+    expect(single).not.toContain('#1 of 1 in Productivity')
   })
 })

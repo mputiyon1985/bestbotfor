@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- `SHOW_SCORES` is true, so the v2.3 ratings render. Turning it off hides the score heading, rank, stars, bars, note, and maintenance notice. Pros and cons stay. Pages still do not emit AggregateRating.
+- `SHOW_SCORES` is true, so the v2.3 ratings render through that flag. Rated tool pages lead with the category rank from `category_rank_display`, for example `#3 of 12 in Coding`. A shared tie group prefixes that line with `Tied · ` and keeps each tool’s own rank. The rank is hidden for the single-tool categories backend, design, games, and productivity. Four bars follow (Quality, Features, Value, Ease), the overall score is secondary and links to `/how-we-rate`, and a filled note is shown. Quiz and all-matches cards show the same rank line and overall score without the bars. Turning the flag off hides the heading, rank, stars, bars, note, and maintenance notice together. Pros and cons stay. Pages still do not emit AggregateRating.
 - Ratings v2.3 replace the v1 scores in one seed transaction. From the scores already in production, that is 4 score rows inserted (`cursor`, `grok`, `semantic-scholar`, `windsurf`), 87 score rows updated, and 59 score rows removed. Pros and cons point rows: 0 inserted, 439 updated, 296 removed. A second run updates the 91 score rows and 439 point rows and removes nothing. Unrated tools are left with no score row. Cursor and Windsurf are rated, so a stale score for either is replaced by the v2.3 row and any pros or cons for them are removed. Evidence and source URL columns are not stored on the score row and are not rendered.
 - Cursor’s current plans are Free $0, Plus $8 (Grok models only), and Premium $30 (third-party models billed extra). Pro $20 is for legacy subscribers only.
 - Relevance AI stays without a free plan. Pro is $19 a month billed yearly.
@@ -18,7 +18,7 @@
 - The default Open Graph and Twitter image is the new 1200×630 card, `og-default-1200x630.676bae0e.png`.
 - The quiz result shows one pick and up to six alternatives that clear a fit score of 50. When fewer qualify, the page still says few strong options exist.
 - All-matches pages list six tools and show “Showing 1–6 of N” with numbered page links. Budget filters stay noindex, rel prev/next and the canonical rules are unchanged, and a page past the end is still a 404.
-- Tool pages lead with the category rank (for example “#3 of 12 in Coding”) and four criteria bars. The overall score is secondary and links to `/how-we-rate`. Tools that share a tie group are marked tied. Ranks are hidden for the single-tool categories backend, design, games, and productivity. A filled note is shown. Unrated tools hide the ratings section. Pages do not emit AggregateRating or Review schema.
+- Unrated tools hide the ratings section. Pages do not emit AggregateRating or Review schema.
 - Pros and cons render as text on the tool page, and a shorter version renders on result cards, only when a still-rated tool has v1 rows. Source URLs stay in the database and are not shown.
 - Flowise and Roo Code stay live and show “Unmaintained (repo archived)”. They are left out of quiz picks and alternatives.
 - NotebookLM’s public name is Gemini Notebook and its site is https://notebooklm.google/plans. `notebooklm.google` stays on the allowlist. Craft’s category is Productivity. SE Ranking’s category is SEO.
