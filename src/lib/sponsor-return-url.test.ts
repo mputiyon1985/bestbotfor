@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { requestOriginFromHeaders, sponsorReturnOrigin, sponsorReturnUrls, SPONSOR_PRODUCTION_ORIGIN } from './sponsor-return-url'
+import {
+  requestHostFromHeaders,
+  requestOriginFromHeaders,
+  sponsorReturnOrigin,
+  sponsorReturnUrls,
+  SPONSOR_PRODUCTION_ORIGIN,
+} from './sponsor-return-url'
 
 const PREVIEW = 'bestbotfor-git-cursor-sponsor-2809b2-markputiyon-2225s-projects.vercel.app'
 const DEPLOYMENT = 'bestbotfor-abc123-markputiyon-2225s-projects.vercel.app'
@@ -24,6 +30,13 @@ describe('sponsorReturnOrigin', () => {
       sponsorReturnOrigin({
         requestOrigin: 'https://www.bestbotfor.com',
         env: { VERCEL_ENV: 'production' },
+      }),
+    ).toBe('https://bestbotfor.com')
+    expect(
+      sponsorReturnOrigin({
+        requestOrigin: 'http://127.0.0.1:3000',
+        requestHost: '127.0.0.1:3000',
+        env: { VERCEL_ENV: ' production ' },
       }),
     ).toBe('https://bestbotfor.com')
   })
@@ -53,13 +66,19 @@ describe('sponsorReturnOrigin', () => {
     ).toBe(`https://${DEPLOYMENT}`)
   })
 
-  it('accepts the apex and www, and ignores NEXT_PUBLIC_SITE_URL', () => {
+  it('prefers the preview deployment over an apex or www Origin', () => {
     expect(
       sponsorReturnOrigin({
         requestOrigin: 'https://www.bestbotfor.com',
-        env: { VERCEL_ENV: 'preview', NEXT_PUBLIC_SITE_URL: 'https://evil.example', VERCEL_URL: DEPLOYMENT },
+        env: { VERCEL_ENV: ' preview ', NEXT_PUBLIC_SITE_URL: 'https://evil.example', VERCEL_URL: DEPLOYMENT },
       }),
-    ).toBe('https://www.bestbotfor.com')
+    ).toBe(`https://${DEPLOYMENT}`)
+    expect(
+      sponsorReturnOrigin({
+        requestOrigin: 'https://bestbotfor.com',
+        env: { VERCEL_ENV: 'preview', VERCEL_BRANCH_URL: PREVIEW, VERCEL_URL: DEPLOYMENT },
+      }),
+    ).toBe(`https://${PREVIEW}`)
 
     expect(
       sponsorReturnOrigin({
@@ -69,7 +88,7 @@ describe('sponsorReturnOrigin', () => {
     ).toBe('https://bestbotfor.com')
   })
 
-  it('allows loopback only for local development', () => {
+  it('allows loopback http only when the request host is loopback and this is not production', () => {
     expect(sponsorReturnOrigin({ requestOrigin: 'http://127.0.0.1:3000', env: {} })).toBe('http://127.0.0.1:3000')
     expect(
       sponsorReturnOrigin({ requestOrigin: 'http://localhost:3000', env: { VERCEL_ENV: 'development' } }),
@@ -77,6 +96,28 @@ describe('sponsorReturnOrigin', () => {
     expect(
       sponsorReturnOrigin({
         requestOrigin: 'http://127.0.0.1:3000',
+        requestHost: '127.0.0.1:3000',
+        env: { VERCEL_ENV: 'preview' },
+      }),
+    ).toBe('http://127.0.0.1:3000')
+    expect(
+      sponsorReturnOrigin({
+        requestOrigin: 'https://bestbotfor.com',
+        requestHost: '127.0.0.1:3000',
+        env: { VERCEL_ENV: 'preview', VERCEL_BRANCH_URL: 'http://127.0.0.1:3000' },
+      }),
+    ).toBe('http://127.0.0.1:3000')
+    expect(
+      sponsorReturnOrigin({
+        requestOrigin: 'http://127.0.0.1:3000',
+        requestHost: PREVIEW,
+        env: { VERCEL_ENV: 'preview' },
+      }),
+    ).toBe('https://bestbotfor.com')
+    expect(
+      sponsorReturnOrigin({
+        requestOrigin: 'http://127.0.0.1:3000',
+        requestHost: '127.0.0.1:3000',
         env: { VERCEL_ENV: 'preview', VERCEL_URL: DEPLOYMENT },
       }),
     ).toBe(`https://${DEPLOYMENT}`)
@@ -153,5 +194,17 @@ describe('requestOriginFromHeaders', () => {
     expect(requestOriginFromHeaders(headers({ 'x-forwarded-host': PREVIEW, 'x-forwarded-proto': 'https' }))).toBe(
       `https://${PREVIEW}`,
     )
+  })
+
+  it('reads the request host from the forwarded host, not Origin', () => {
+    expect(
+      requestHostFromHeaders(
+        headers({
+          origin: 'http://127.0.0.1:3000',
+          'x-forwarded-host': PREVIEW,
+          host: '127.0.0.1:3000',
+        }),
+      ),
+    ).toBe(PREVIEW)
   })
 })

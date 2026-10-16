@@ -101,7 +101,16 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
     issue_date: input.issueDate ?? '',
     price_id: input.priceId,
   }
-  const fingerprintSource = [input.offering, input.email, input.company, input.taskSlug ?? '', input.issueDate ?? '', input.priceId].join('\n')
+  const fingerprintSource = [
+    input.offering,
+    input.email,
+    input.company,
+    input.taskSlug ?? '',
+    input.issueDate ?? '',
+    input.priceId,
+    input.successUrl,
+    input.cancelUrl,
+  ].join('\n')
   const fingerprint = createHash('sha256').update(fingerprintSource).digest('hex').slice(0, 16)
   return {
     idempotencyKey: `sponsor-${fingerprint}-${input.requestId}`,

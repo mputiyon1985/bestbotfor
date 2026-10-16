@@ -122,5 +122,14 @@ describe('sponsorCheckoutParams', () => {
     expect(first.params.managed_payments).toEqual({ enabled: false })
     expect(first.params).not.toHaveProperty('automatic_tax')
     expect(first).toEqual(second)
+
+    const otherOrigin = sponsorCheckoutParams({
+      ...parsed.value,
+      successUrl: 'http://127.0.0.1:3000/sponsor/success?session_id={CHECKOUT_SESSION_ID}',
+      cancelUrl: 'http://127.0.0.1:3000/sponsor/cancel',
+    })
+    expect(otherOrigin.idempotencyKey).not.toBe(first.idempotencyKey)
+    expect(otherOrigin.params.success_url).toBe('http://127.0.0.1:3000/sponsor/success?session_id={CHECKOUT_SESSION_ID}')
+    expect(otherOrigin.params.cancel_url).toBe('http://127.0.0.1:3000/sponsor/cancel')
   })
 })

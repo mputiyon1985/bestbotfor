@@ -26,6 +26,8 @@ export default defineConfig({
       TURSO_AUTH_TOKEN: process.env.TURSO_AUTH_TOKEN || 'local',
       // Faults are denied unless the runtime is explicitly preview or NODE_ENV=test.
       VERCEL_ENV: 'preview',
+      // This run is the loopback host. Sponsor checkout must return here, not to production.
+      VERCEL_BRANCH_URL: siteUrl,
       RESULT_FAULTS: '1',
       NEXT_PUBLIC_SITE_URL: siteUrl,
       NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID || 'G-TESTCONSENT',

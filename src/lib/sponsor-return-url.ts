@@ -18,29 +18,34 @@ export type SponsorReturnEnv = {
 
 /**
  * Origin Stripe should send the buyer back to.
- * Production is always the apex. Everywhere else, the first allowlisted
- * candidate wins: the request origin, then VERCEL_BRANCH_URL, then VERCEL_URL.
+ * Production is always the apex. On preview, this project's deployment URL
+ * wins over an apex or www Origin. Loopback http is allowed only when the
+ * request host is itself loopback and this is not production.
+ * NEXT_PUBLIC_SITE_URL is not a candidate.
  */
 export function sponsorReturnOrigin(
-  input: { requestOrigin?: string | null; env?: SponsorReturnEnv } = {},
+  input: { requestOrigin?: string | null; requestHost?: string | null; env?: SponsorReturnEnv } = {},
 ): string {
-  // NEXT_PUBLIC_SITE_URL is not a candidate. Preview must not follow it back to production.
   const env = input.env ?? {
     VERCEL_ENV: process.env.VERCEL_ENV,
     VERCEL_URL: process.env.VERCEL_URL,
     VERCEL_BRANCH_URL: process.env.VERCEL_BRANCH_URL,
   }
-  if (env.VERCEL_ENV === 'production') return SPONSOR_PRODUCTION_ORIGIN
+  const vercelEnv = env.VERCEL_ENV?.trim()
+  if (vercelEnv === 'production') return SPONSOR_PRODUCTION_ORIGIN
 
   const trusted = trustedDeploymentHosts(env)
-  const candidates = [
-    input.requestOrigin,
-    deploymentCandidate(env.VERCEL_BRANCH_URL),
-    deploymentCandidate(env.VERCEL_URL),
-  ]
+  const loopback = loopbackRequest(input.requestHost, input.requestOrigin)
+  const branch = deploymentCandidate(env.VERCEL_BRANCH_URL)
+  const deployment = deploymentCandidate(env.VERCEL_URL)
+  const candidates = vercelEnv === 'preview'
+    ? [branch, deployment, input.requestOrigin]
+    : [input.requestOrigin, branch, deployment]
   for (const candidate of candidates) {
-    const allowed = allowedReturnOrigin(candidate, trusted, env.VERCEL_ENV)
-    if (allowed) return allowed
+    const allowed = allowedReturnOrigin(candidate, trusted, loopback)
+    if (!allowed) continue
+    if (vercelEnv === 'preview' && trusted.size > 0 && isApexOrigin(allowed)) continue
+    return allowed
   }
   return SPONSOR_PRODUCTION_ORIGIN
 }
@@ -57,12 +62,17 @@ export function requestOriginFromHeaders(headerStore: { get(name: string): strin
   const origin = singleHeader(headerStore.get('origin'))
   if (origin) return origin
 
-  const host = singleHeader(headerStore.get('x-forwarded-host')) ?? singleHeader(headerStore.get('host'))
+  const host = requestHostFromHeaders(headerStore)
   if (!host) return null
   const forwardedProto = singleHeader(headerStore.get('x-forwarded-proto'))
   const proto = forwardedProto ?? (isLoopbackHost(hostName(host)) ? 'http' : 'https')
   if (proto !== 'https' && proto !== 'http') return null
   return `${proto}://${host}`
+}
+
+/** The request's own host. Origin is not a host. */
+export function requestHostFromHeaders(headerStore: { get(name: string): string | null }): string | null {
+  return singleHeader(headerStore.get('x-forwarded-host')) ?? singleHeader(headerStore.get('host'))
 }
 
 function trustedDeploymentHosts(env: SponsorReturnEnv): Set<string> {
@@ -82,10 +92,12 @@ function deploymentCandidate(value: string | undefined): string | null {
   return `https://${trimmed}`
 }
 
+type LoopbackRequest = { host: string; port: string }
+
 function allowedReturnOrigin(
   value: string | null | undefined,
   trustedVercelHosts: ReadonlySet<string>,
-  vercelEnv: string | undefined,
+  loopback: LoopbackRequest | null,
 ): string | null {
   if (!value || hasUnsafeOriginChars(value)) return null
   let url: URL
@@ -100,8 +112,7 @@ function allowedReturnOrigin(
   const host = canonicalHost(url.hostname)
   if (!host) return null
 
-  const dev = vercelEnv === undefined || vercelEnv === 'development'
-  if (url.protocol === 'http:' && dev && isLoopbackHost(host)) {
+  if (url.protocol === 'http:' && loopback && host === loopback.host && url.port === loopback.port) {
     const port = url.port ? `:${url.port}` : ''
     return `http://${host}${port}`
   }
@@ -110,6 +121,38 @@ function allowedReturnOrigin(
   if (APEX_HOSTS.has(host)) return `https://${host}`
   if (PROJECT_VERCEL_HOST.test(host) && trustedVercelHosts.has(host)) return `https://${host}`
   return null
+}
+
+function loopbackRequest(requestHost: string | null | undefined, requestOrigin: string | null | undefined): LoopbackRequest | null {
+  const headerHost = requestHost?.trim()
+  if (headerHost) {
+    const host = hostName(headerHost)
+    if (!isLoopbackHost(host)) return null
+    return { host, port: portFromHost(headerHost) }
+  }
+  if (!requestOrigin || hasUnsafeOriginChars(requestOrigin)) return null
+  try {
+    const url = new URL(requestOrigin)
+    const host = canonicalHost(url.hostname)
+    if (url.protocol !== 'http:' || !host || !isLoopbackHost(host)) return null
+    return { host, port: url.port }
+  } catch {
+    return null
+  }
+}
+
+function portFromHost(host: string): string {
+  if (host.startsWith('[')) return ''
+  const split = host.split(':')
+  return split.length > 1 ? (split[1] ?? '') : ''
+}
+
+function isApexOrigin(origin: string): boolean {
+  try {
+    return APEX_HOSTS.has(new URL(origin).hostname)
+  } catch {
+    return false
+  }
 }
 
 function projectVercelHost(value: string | null): string | null {
