@@ -125,7 +125,7 @@ test('windsurf stays at its slug, cursor and relevance show the reviewed prices,
   await expect(page.getByText('Free tier, then $20 and up')).toBeVisible()
   await expect(page.getByText('https://devin.ai/pricing: Free $0 and Pro $20.')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toBeVisible()
-  await expect(page.locator('[data-category-rank]')).toHaveText('#10 of 12 in Coding')
+  await expect(page.locator('[data-category-rank]')).toHaveText('Tied · #10 of 12 in Coding')
   await expect(page.locator('[data-tie]')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Pros and cons' })).toHaveCount(0)
   const comparison = page.getByRole('link', { name: 'Devin Desktop (formerly Windsurf) vs Cursor' })
