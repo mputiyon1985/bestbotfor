@@ -1,8 +1,8 @@
 import { skillLabel } from './format'
 import type { Budget, Skill } from './validation'
 
-/** Quiz budgets, plus the mid band used by the all-matches filter. */
-export type RankBudget = Budget | 'mid'
+/** All-matches uses the same budgets as the quiz. */
+export type RankBudget = Budget
 
 /**
  * Editorial fit is the base score (0-100). Budget and skill add a bounded
@@ -36,12 +36,8 @@ export type RankedTool = ScoreableTool & {
 
 const LOW_BUDGET_USD = 30
 
-/** A mid budget includes a known paid price above the low cap and at or under this amount. */
-export const MID_BUDGET_USD = 100
-
 function paidCap(budget: RankBudget): number | null {
   if (budget === 'low') return LOW_BUDGET_USD
-  if (budget === 'mid') return MID_BUDGET_USD
   return null
 }
 
@@ -101,8 +97,8 @@ export type BudgetFit = 'within' | 'over' | 'unknown'
 /**
  * A tool is inside the budget when the user can start it without crossing
  * the budget they chose. "Any" accepts every tool. "Free" uses the free-tier
- * flag. "Low" also accepts a known paid price at or under $30. "Mid" raises
- * that cap to $100. A missing price is unknown, not over budget.
+ * flag. "Low" also accepts a known paid price at or under $30. A missing
+ * price is unknown, not over budget.
  */
 export function quizBudgetFit(
   tool: Pick<ScoreableTool, 'pricingModel' | 'hasFreeTier' | 'priceFromUsd'>,

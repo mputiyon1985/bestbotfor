@@ -7,41 +7,23 @@ import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
 import { EditorialCompact } from '@/components/editorial'
-import { listTaskCandidates, recommendQuiz } from '@/lib/catalog'
-import { listMatches, matchBudgetLabel, matchesPageRequest, matchesPath, pageOfMatches, seeAllMatchesLabel } from '@/lib/matches'
+import { recommendQuiz } from '@/lib/catalog'
+import { matchBudgetLabel, matchesPath, seeAllMatchesLabel } from '@/lib/matches'
+import { allMatchesRequest, searchParamsToUrl } from '@/lib/result-request'
 import { matchesPageTitle, matchesRobots, quizResultRobots, quizResultTitle } from '@/lib/result-index'
 import { AllMatches } from './all-matches'
-import { ACTION_LIMITS, allowRate } from '@/lib/action-limit'
 import { getDb } from '@/lib/db'
-import { rateLimitKey, clientIp } from '@/lib/ip'
 import { budgetLabel, budgetPhrase, fewStrongOptionsLabel, overBudgetLabel, priceLabel, skillLabel, skillPhrase } from '@/lib/format'
 import { QUIZ_ALTERNATIVE_COUNT } from '@/lib/scoring'
 import { breadcrumbJsonLd } from '@/lib/jsonld'
 import { memberAccess } from '@/lib/members'
 import { pageMetadata } from '@/lib/metadata'
 import { absoluteUrl } from '@/lib/site'
-import { firstString, matchBudgetSchema, quizSchema, slugSchema } from '@/lib/validation'
+import { firstString, quizSchema } from '@/lib/validation'
 import { savePickAction } from './actions'
 
 async function loadAllMatches(params: Record<string, string | string[] | undefined>) {
-  const taskSlug = firstString(params.task)
-  if (!slugSchema.safeParse(taskSlug).success) return null
-  const rawBudget = firstString(params.budget)
-  const parsedBudget = rawBudget === '' ? { success: true as const, data: 'any' as const } : matchBudgetSchema.safeParse(rawBudget)
-  if (!parsedBudget.success) return null
-  const loaded = await listTaskCandidates(taskSlug)
-  if (!loaded) return null
-  const matches = listMatches(loaded.tools, parsedBudget.data)
-  const requested = matchesPageRequest(firstString(params.page), matches.length)
-  if (!requested) return null
-  return {
-    task: loaded.task,
-    budget: parsedBudget.data,
-    total: matches.length,
-    tools: pageOfMatches(matches, requested.page),
-    page: requested.page,
-    pageCount: requested.pageCount,
-  }
+  return allMatchesRequest(getDb(), searchParamsToUrl(params))
 }
 
 export async function generateMetadata({
@@ -84,6 +66,7 @@ export async function generateMetadata({
     })
   }
   const result = await recommendQuiz(parsed.data)
+  if (!result) notFound()
   const pick = result?.picks[0]
   const title = result && pick ? quizResultTitle(result.task.name, pick.name) : 'Your result'
   const description =
@@ -132,20 +115,6 @@ export default async function ResultPage({
     skill: firstString(params.skill),
   })
   const nonce = headerStore.get('x-nonce')
-  const allowed = await allowRate(
-    getDb(),
-    rateLimitKey(clientIp(headerStore), 'result'),
-    ACTION_LIMITS.result.limit,
-    ACTION_LIMITS.result.windowMs,
-  )
-  if (!allowed) {
-    return (
-      <div>
-        <h1 className="font-bold text-4xl">Too many results</h1>
-        <p className="mt-3 text-muted">This network has asked for too many picks. Try again in a minute.</p>
-      </div>
-    )
-  }
 
   if (!parsed.success) {
     return (
@@ -160,17 +129,7 @@ export default async function ResultPage({
   }
 
   const result = await recommendQuiz(parsed.data)
-  if (!result) {
-    return (
-      <div>
-        <h1 className="font-bold text-4xl">No tool in the catalog fits that job yet</h1>
-        <p className="mt-3 text-muted">Try a nearby job from the list on the home page.</p>
-        <Link href="/" className="mt-6 inline-flex min-h-12 items-center font-semibold underline">
-          Start over
-        </Link>
-      </div>
-    )
-  }
+  if (!result) notFound()
 
   const [top, ...alternatives] = result.picks
   if (!top) {

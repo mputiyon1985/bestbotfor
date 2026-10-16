@@ -7,7 +7,8 @@ export const slugSchema = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
 
 export const budgetSchema = z.enum(['free', 'low', 'any'])
-export const matchBudgetSchema = z.enum(['free', 'low', 'mid', 'any'])
+/** All-matches accepts the quiz budgets and nothing else. */
+export const matchBudgetSchema = budgetSchema
 export const skillSchema = z.enum(['beginner', 'intermediate', 'pro'])
 
 export const quizSchema = z.object({

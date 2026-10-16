@@ -10,11 +10,16 @@ export type RatingWriteCounts = {
 }
 import { comparePairSeeds, taskSeeds, toolSeeds } from '../src/data/catalog'
 import { editorialSeeds } from '../src/data/scores-pros-cons.seed'
-import { ratingSeeds } from '../src/data/scores-v23.seed'
+import { ratingSeeds, supplementalProsConsSeeds } from '../src/data/scores-v23.seed'
 import { getDb } from '../src/lib/db/client'
 import { affiliatePrograms, tasks, toolProsCons, toolScores, toolTasks, tools } from '../src/lib/db/schema'
 import { validateProsConsSeeds, validateRatingSeeds } from '../src/lib/editorial'
 import { reviewedToolUrl } from '../src/lib/redirect'
+
+/** Score rows that are not in the v2.3 file are deleted only when this is exactly `1`. */
+export function seedPruneEnabled(value: string | undefined = process.env.SEED_PRUNE): boolean {
+  return value === '1'
+}
 
 export async function seed(): Promise<RatingWriteCounts> {
 for (const tool of toolSeeds) reviewedToolUrl(tool)
@@ -24,9 +29,13 @@ const db = getDb()
 const knownSlugs = new Set(toolSeeds.map((tool) => tool.slug))
 validateRatingSeeds(ratingSeeds, knownSlugs)
 validateProsConsSeeds(editorialSeeds, knownSlugs)
+validateProsConsSeeds(supplementalProsConsSeeds, knownSlugs)
+const pointSeeds = [...editorialSeeds, ...supplementalProsConsSeeds]
+const pruneScores = seedPruneEnabled(process.env.SEED_PRUNE)
 
 // One transaction. Catalog rows that are not in this seed stay in place.
-// Score rows stay only for v2.3-rated tools. Pros and cons are upserted and never deleted.
+// Score rows are upserted. Deleting scores that v2.3 does not rate is opt-in.
+// Pros and cons are upserted and never deleted.
 const counts: RatingWriteCounts = {
   scoresInserted: 0,
   scoresUpdated: 0,
@@ -157,7 +166,7 @@ const existingScores = await tx.select({ toolId: toolScores.toolId }).from(toolS
 const existingScoreIds = new Set(existingScores.map((row) => row.toolId))
 counts.scoresInserted = ratedIds.filter((id) => !existingScoreIds.has(id)).length
 counts.scoresUpdated = ratedIds.filter((id) => existingScoreIds.has(id)).length
-counts.scoresRemoved = [...existingScoreIds].filter((id) => !ratedIdSet.has(id)).length
+counts.scoresRemoved = pruneScores ? [...existingScoreIds].filter((id) => !ratedIdSet.has(id)).length : 0
 for (const entry of ratingSeeds) {
   const id = toolId.get(entry.slug)
   if (!id) throw new Error(`Missing tool id for rating seed ${entry.slug}`)
@@ -185,14 +194,16 @@ for (const entry of ratingSeeds) {
       set: score,
     })
 }
-await tx.delete(toolScores).where(notInArray(toolScores.toolId, ratedIds))
-const remainingScores = await tx.select({ toolId: toolScores.toolId }).from(toolScores)
-if (remainingScores.length !== ratedIds.length || remainingScores.some((row) => !ratedIdSet.has(row.toolId))) {
-  throw new Error('Seed left a score row for a tool that v2.3 does not rate')
+if (pruneScores) {
+  await tx.delete(toolScores).where(notInArray(toolScores.toolId, ratedIds))
+  const remainingScores = await tx.select({ toolId: toolScores.toolId }).from(toolScores)
+  if (remainingScores.length !== ratedIds.length || remainingScores.some((row) => !ratedIdSet.has(row.toolId))) {
+    throw new Error('Seed left a score row for a tool that v2.3 does not rate')
+  }
 }
 
 const pointKeys: string[] = []
-for (const entry of editorialSeeds) {
+for (const entry of pointSeeds) {
   const id = toolId.get(entry.slug)
   if (!id) throw new Error(`Missing tool id for pros and cons ${entry.slug}`)
   entry.pros.forEach((_, index) => pointKeys.push(`${id}:pro:${index + 1}`))
@@ -205,7 +216,7 @@ const existingPointKeys = new Set(existingPoints.map((row) => `${row.toolId}:${r
 counts.prosInserted = pointKeys.filter((key) => !existingPointKeys.has(key)).length
 counts.prosUpdated = pointKeys.filter((key) => existingPointKeys.has(key)).length
 counts.prosRemoved = 0
-for (const entry of editorialSeeds) {
+for (const entry of pointSeeds) {
   const id = toolId.get(entry.slug)
   if (!id) throw new Error(`Missing tool id for pros and cons ${entry.slug}`)
   const points = [

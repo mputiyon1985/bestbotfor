@@ -238,8 +238,11 @@ export function validateRatingSeeds(rows: RatingSeed[], knownSlugs: ReadonlySet<
   }
 }
 
-/** v1 pros and cons, including tools v2.3 does not rate. Does not re-check the old equal-weight overall. */
-export function validateProsConsSeeds(rows: EditorialSeed[], knownSlugs: ReadonlySet<string>): void {
+/** Pros and cons rows. Does not re-check the old equal-weight overall. */
+export function validateProsConsSeeds(
+  rows: ReadonlyArray<{ slug: string; pros: EditorialSeedPoint[]; cons: EditorialSeedPoint[] }>,
+  knownSlugs: ReadonlySet<string>,
+): void {
   const seen = new Set<string>()
   for (const row of rows) {
     if (!knownSlugs.has(row.slug)) throw new Error(`Pros and cons name an unknown tool: ${row.slug}`)

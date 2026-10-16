@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { JsonLd } from '@/components/json-ld'
+import { ToolLogo } from '@/components/tool-logo'
 import { getToolsBySlugs } from '@/lib/catalog'
 import type { CatalogTool } from '@/lib/catalog-types'
 import { comparisonRows, comparisonSummary } from '@/lib/compare'
@@ -58,7 +59,11 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
       <JsonLd data={faqJsonLd(faqs)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
-      <h1 className="font-bold text-5xl leading-tight">{a.name} vs {b.name}</h1>
+      <div className="flex min-w-0 items-center gap-3">
+        <ToolLogo name={a.name} slug={a.slug} />
+        <ToolLogo name={b.name} slug={b.slug} />
+        <h1 className="min-w-0 font-bold text-5xl leading-tight">{a.name} vs {b.name}</h1>
+      </div>
       <p className="text-lg">{summary}</p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[40rem] border-collapse text-left text-sm">

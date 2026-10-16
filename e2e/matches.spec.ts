@@ -18,6 +18,7 @@ function candidates(task: string): ScoreableTool[] {
         priceFromUsd: tool.priceFromUsd,
         fitScore: fit.score,
         notes: fit.notes,
+        quizEligible: tool.quizEligible,
       },
     ]
   })
@@ -115,9 +116,8 @@ test('a budget filter is a real link and keeps its own canonical', async ({ brow
 test('numbered pages cover the ends and the last page', async ({ page }) => {
   const matches = listMatches(candidates('coding'), 'any')
   const pageCount = Math.ceil(matches.length / MATCHES_PAGE_SIZE)
-  expect(pageCount).toBeGreaterThan(3)
+  expect(pageCount).toBeGreaterThan(1)
   const firstWindow = paginationItems(1, pageCount)
-  expect(firstWindow).toContain('ellipsis')
 
   await page.goto(matchesPath('coding', 'any', 1))
   await expect(page.getByText(showingLabel(1, MATCHES_PAGE_SIZE, matches.length))).toBeVisible()
@@ -136,11 +136,11 @@ test('numbered pages cover the ends and the last page', async ({ page }) => {
   const lastWindow = paginationItems(pageCount, pageCount)
   expect(lastWindow[0]).toBe(1)
   expect(lastWindow.at(-1)).toBe(pageCount)
-  expect(lastWindow).toContain('ellipsis')
-  await expect(page.getByRole('navigation', { name: 'Pages' }).getByRole('link', { name: 'Page 1' })).toHaveAttribute(
-    'href',
-    matchesPath('coding', 'any', 1),
-  )
+  const lastNav = page.getByRole('navigation', { name: 'Pages' })
+  for (const item of lastWindow) {
+    if (item === 'ellipsis') await expect(lastNav.getByText('…', { exact: true }).first()).toBeVisible()
+    else await expect(lastNav.getByRole('link', { name: `Page ${item}` })).toHaveAttribute('href', matchesPath('coding', 'any', item))
+  }
 })
 
 test('page=1 shares the unpaged canonical, and bad pages are 404', async ({ page, request }) => {
@@ -159,7 +159,9 @@ test('page=1 shares the unpaged canonical, and bad pages are 404', async ({ page
     '/result?task=chat&view=all&page=99',
     '/result?task=music&view=all&budget=low&page=2',
     '/result?task=chat&view=all&budget=free&page=99',
+    '/result?task=chat&view=all&budget=mid',
     '/result?task=chat&view=all&budget=mid&page=0',
+    '/result?task=marketing&budget=any&skill=beginner',
     '/result?task=missing&view=all',
     '/result?task=chat&view=all&budget=nope',
     '/result?task=chat&view=other',
@@ -169,6 +171,44 @@ test('page=1 shares the unpaged canonical, and bad pages are 404', async ({ page
     expect(response.status(), path).toBe(404)
     const body = await response.text()
     expect(body, path).not.toMatch(/<link rel="canonical" href="[^"]*page=/)
+  }
+})
+
+test('archived tools stay off the match lists and mid is not a budget filter', async ({ page, request }) => {
+  const coding = listMatches(candidates('coding'), 'any')
+  const agents = listMatches(candidates('agents'), 'any')
+  const automation = listMatches(candidates('automation'), 'any')
+  expect(coding.some((tool) => tool.slug === 'roo-code')).toBe(false)
+  expect(agents.some((tool) => tool.slug === 'flowise')).toBe(false)
+  expect(automation.some((tool) => tool.slug === 'flowise')).toBe(false)
+  expect(Math.ceil(coding.length / MATCHES_PAGE_SIZE)).toBeGreaterThanOrEqual(2)
+  expect(Math.ceil(automation.length / MATCHES_PAGE_SIZE)).toBeGreaterThanOrEqual(3)
+
+  await page.goto(matchesPath('coding', 'any', 2))
+  await expect(page.getByRole('heading', { level: 2, name: 'Roo Code', exact: true })).toHaveCount(0)
+
+  await page.goto(matchesPath('agents', 'any', 1))
+  const agentsHtml = await page.content()
+  expect(agentsHtml).not.toContain('/tools/flowise')
+  expect(agentsHtml).not.toContain('Flowise')
+  await expect(page.getByRole('heading', { level: 2, name: 'Flowise', exact: true })).toHaveCount(0)
+
+  await page.goto(matchesPath('automation', 'any', 3))
+  const automationHtml = await page.content()
+  expect(automationHtml).not.toContain('/tools/flowise')
+  expect(automationHtml).not.toContain('Flowise')
+
+  const filters = page.getByRole('navigation', { name: 'Filter by budget' })
+  await expect(filters.getByRole('link', { name: 'Low cost' })).toBeVisible()
+  await expect(filters.getByRole('link', { name: 'Mid cost' })).toHaveCount(0)
+
+  const mid = await request.get('/result?task=chat&view=all&budget=mid')
+  expect(mid.status()).toBe(404)
+
+  for (const slug of ['roo-code', 'flowise']) {
+    const response = await page.goto(`/tools/${slug}`)
+    expect(response?.status()).toBe(200)
+    await expect(page.getByText('Unmaintained (repo archived)')).toBeVisible()
   }
 })
 

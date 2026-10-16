@@ -137,6 +137,43 @@ test('the tools index is served and still rejects an unsafe slug', async () => {
   expect(unsafe.body).toContain('not a tool in the catalog')
 })
 
+test('a result 404 has one robots meta', async () => {
+  for (const path of [
+    '/result?task=marketing&budget=any&skill=beginner',
+    '/result?task=chat&view=other',
+    '/result?task=missing&view=all',
+    '/result?task=chat&view=all&page=99',
+    '/result?task=chat&view=all&budget=mid',
+  ]) {
+    const response = await rawStatus(path)
+    expect(response.status, path).toBe(404)
+    expect(documentTitle(response.body), path).toBe(notFoundTitle)
+    expect(response.body, path).toContain(notFoundDescription)
+    expect(robotsDirectives(response.body), path).toEqual(['noindex, nofollow'])
+    expect(response.body, path).not.toMatch(/<link rel="canonical"/)
+  }
+})
+
+test('a tripped quiz rate limit returns 429 with Retry-After', async ({ request }) => {
+  test.setTimeout(120_000)
+  const headers = { 'x-forwarded-for': `2001:db8::${Date.now().toString(16)}` }
+  const path = '/result?task=chat&budget=any&skill=beginner'
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    const response = await request.get(path, { headers })
+    expect(response.status(), `attempt ${attempt + 1}`).toBe(200)
+  }
+  const blocked = await request.get(path, { headers })
+  expect(blocked.status()).toBe(429)
+  const retryAfter = Number(blocked.headers()['retry-after'])
+  expect(Number.isInteger(retryAfter)).toBe(true)
+  expect(retryAfter).toBeGreaterThan(0)
+  const body = await blocked.text()
+  expect(body).toContain('Too many results')
+  expect(robotsDirectives(body)).toEqual(['noindex, nofollow'])
+  const matches = await request.get('/result?task=chat&view=all', { headers })
+  expect(matches.status()).toBe(200)
+})
+
 test('best and tools reject a slug that is not in the catalog shape', async () => {
   for (const path of ['/best/%2e%2e', '/tools/%2e%2e', '/best/Not_A_Task']) {
     const response = await rawStatus(path)

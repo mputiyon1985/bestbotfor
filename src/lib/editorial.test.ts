@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { editorialRowsFromCsv, editorialSeeds } from '@/data/scores-pros-cons.seed'
-import { keptProsConsSeeds, ratingSeeds, unratedSlugs } from '@/data/scores-v23.seed'
+import { keptProsConsSeeds, ratingSeeds, supplementalProsConsSeeds, unratedSlugs } from '@/data/scores-v23.seed'
 import { toolSeeds } from '@/data/catalog'
 import { softwareJsonLd } from './jsonld'
 import type { CatalogTool } from './catalog-types'
@@ -178,9 +178,8 @@ describe('BestBotFor score', () => {
     expect(windsurf?.priceFromUsd).toBe(20)
     expect(windsurf?.hasFreeTier).toBe(true)
     expect(windsurf?.needsVerification).toBeFalsy()
-    expect(windsurf?.longDesc).toContain('https://devin.ai/pricing')
-    expect(windsurf?.longDesc).toContain('Free $0')
-    expect(windsurf?.longDesc).toContain('Pro $20')
+    expect(windsurf?.longDesc).not.toContain('https://devin.ai/pricing')
+    expect(windsurf?.longDesc).toContain('The Free plan is $0 and Pro is $20 a month.')
     const cursor = toolSeeds.find((tool) => tool.slug === 'cursor')
     expect(cursor?.priceFromUsd).toBe(8)
     expect(cursor?.hasFreeTier).toBe(true)
@@ -210,15 +209,16 @@ describe('BestBotFor score', () => {
     const ratedWindsurf = catalog.tools.find((tool) => tool.slug === 'windsurf')
     expect(ratedWindsurf?.name).toBe('Devin Desktop (formerly Windsurf)')
     expect(ratedWindsurf?.editorial?.overall).toBe(ratingSeeds.find((row) => row.slug === 'windsurf')?.overall)
-    expect(ratedWindsurf?.pros).toEqual([])
-    expect(ratedWindsurf?.cons).toEqual([])
+    expect(ratedWindsurf?.pros.map((point) => point.text)).toEqual(supplementalProsConsSeeds.find((row) => row.slug === 'windsurf')?.pros.map((point) => point.text))
+    expect(ratedWindsurf?.cons.map((point) => point.text)).toEqual(supplementalProsConsSeeds.find((row) => row.slug === 'windsurf')?.cons.map((point) => point.text))
     expect(ratedWindsurf?.editorial?.hideRank).toBe(false)
     expect(ratedWindsurf?.editorial?.categoryRankDisplay).toBe('#10 of 12 in Coding')
     expect(ratedWindsurf?.editorial?.tied).toBe(true)
     const ratedCursor = catalog.tools.find((tool) => tool.slug === 'cursor')
     expect(ratedCursor?.editorial?.categoryRankDisplay).toBe('#2 of 12 in Coding')
     expect(ratedCursor?.editorial?.tied).toBe(true)
-    expect(ratedCursor?.pros).toEqual([])
+    expect(ratedCursor?.pros.map((point) => point.text)).toEqual(supplementalProsConsSeeds.find((row) => row.slug === 'cursor')?.pros.map((point) => point.text))
+    expect(ratedCursor?.cons.length).toBe(3)
 
     const gemini = catalog.tools.find((tool) => tool.slug === 'gemini')
     const grokTool = catalog.tools.find((tool) => tool.slug === 'grok')
@@ -297,6 +297,10 @@ describe('BestBotFor score', () => {
     const grok = chat?.picks.find((pick) => pick.slug === 'grok')
     expect(grok?.tool.editorial?.tied).toBe(true)
     expect(grok?.tool.pros).toEqual([])
+    expect(grok?.tool.cons).toEqual([])
+    expect(catalog.tools.find((tool) => tool.slug === 'semantic-scholar')?.pros).toEqual([])
+    expect(catalog.tools.find((tool) => tool.slug === 'semantic-scholar')?.cons).toEqual([])
+    expect(supplementalProsConsSeeds.map((row) => row.slug).sort()).toEqual(['cursor', 'windsurf'])
     const perplexity = chat?.picks.find((pick) => pick.slug === 'perplexity')
     expect(perplexity?.tool.editorial).toBeNull()
     expect(chat?.picks.some((pick) => pick.tool.editorial)).toBe(true)
