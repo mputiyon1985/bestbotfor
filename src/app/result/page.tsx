@@ -7,6 +7,7 @@ import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
 import { listTaskCandidates, recommendQuiz } from '@/lib/catalog'
 import { listMatches, matchBudgetLabel, matchesPageRequest, matchesPath, pageOfMatches, seeAllMatchesLabel } from '@/lib/matches'
+import { matchesPageTitle, matchesRobots, quizResultRobots, quizResultTitle } from '@/lib/result-index'
 import { AllMatches } from './all-matches'
 import { ACTION_LIMITS, allowRate } from '@/lib/action-limit'
 import { getDb } from '@/lib/db'
@@ -52,14 +53,14 @@ export async function generateMetadata({
     const loaded = await loadAllMatches(params)
     if (!loaded) notFound()
     const path = matchesPath(loaded.task.slug, loaded.budget, loaded.page)
-    const title =
-      loaded.page > 1
-        ? `All matches for ${loaded.task.name.toLowerCase()}, page ${loaded.page}`
-        : `All matches for ${loaded.task.name.toLowerCase()}`
+    const robots = matchesRobots(loaded.budget)
+    const title = matchesPageTitle(loaded.task.name, loaded.budget, loaded.page)
     return pageMetadata({
       title,
-      description: `${loaded.total} tools with a strong fit for ${loaded.task.name.toLowerCase()}, ranked for ${matchBudgetLabel[loaded.budget].toLowerCase()}.`,
+      description: `${loaded.total} tools with a strong fit for ${loaded.task.name}, ranked for ${matchBudgetLabel[loaded.budget].toLowerCase()}.`,
       path,
+      noIndex: !robots.index,
+      follow: robots.follow,
       pagination: {
         previous: loaded.page > 1 ? matchesPath(loaded.task.slug, loaded.budget, loaded.page - 1) : null,
         next: loaded.page < loaded.pageCount ? matchesPath(loaded.task.slug, loaded.budget, loaded.page + 1) : null,
@@ -81,17 +82,20 @@ export async function generateMetadata({
   }
   const result = await recommendQuiz(parsed.data)
   const pick = result?.picks[0]
-  const title = result && pick ? `Best AI tool for ${result.task.name.toLowerCase()}: ${pick.name}` : 'Your result'
+  const title = result && pick ? quizResultTitle(result.task.name, pick.name) : 'Your result'
   const description =
     result && pick
       ? `${pick.name} is the top pick for ${result.task.name.toLowerCase()} ${budgetPhrase(parsed.data.budget)} for ${skillPhrase(parsed.data.skill)}.`
       : 'No matching tools for that combination.'
   const query = new URLSearchParams(parsed.data).toString()
+  const robots = quizResultRobots()
   return pageMetadata({
     title,
     description,
     path: `/result?${query}`,
     imagePath: `/api/og?kind=result&${query}`,
+    noIndex: !robots.index,
+    follow: robots.follow,
   })
 }
 
@@ -252,7 +256,7 @@ export default async function ResultPage({
         {alternatives.length < 5 ? <p className="mt-4 text-muted">{fewStrongOptionsLabel}</p> : null}
         {result.matchCount > 0 ? (
           <p className="mt-4">
-            <Link className="font-semibold underline" href={matchesPath(result.task.slug, 'any', 1)}>
+            <Link className="font-semibold underline" href={matchesPath(result.task.slug, parsed.data.budget, 1)}>
               {seeAllMatchesLabel(result.matchCount)}
             </Link>
           </p>

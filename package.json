@@ -10,7 +10,7 @@
     "dev": "tsx scripts/prepare-clerk-shell.ts && tsx scripts/prepare-db.ts && next dev",
     "prebuild": "tsx scripts/prepare-clerk-shell.ts && tsx scripts/prepare-db.ts",
     "build": "next build",
-    "start": "next start",
+    "start": "NODE_ENV=production tsx scripts/serve.ts",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
