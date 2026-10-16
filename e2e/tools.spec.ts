@@ -1,6 +1,7 @@
 import { expect, test } from '@playwright/test'
-import { toolSeeds } from '../src/data/catalog'
+import { comparePairSeeds, toolSeeds } from '../src/data/catalog'
 import { TOOLS_PAGE_SIZE } from '../src/lib/catalog-read'
+import { toolsForTask } from '../src/lib/recommend'
 import { categorySlug, toolCategories } from '../src/lib/tool-index'
 import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
 
@@ -153,8 +154,6 @@ test('an unknown category does not echo the query', async ({ page }) => {
 })
 
 test('best, compare, tool profiles, and the sitemap follow the seed', async ({ page, request }) => {
-  const { comparePairSeeds } = await import('../src/data/catalog')
-  const { toolsForTask } = await import('../src/lib/recommend')
   const task = catalog.tasks.find((item) => item.slug === 'coding')
   const ranked = toolsForTask(catalog, 'coding')
   const top = ranked[0]

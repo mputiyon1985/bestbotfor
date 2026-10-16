@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
+import { ToolLogo } from '@/components/tool-logo'
 import { EditorialCompact } from '@/components/editorial'
 import { listTaskCandidates, recommendQuiz } from '@/lib/catalog'
 import { listMatches, matchBudgetLabel, matchesPageRequest, matchesPath, pageOfMatches, seeAllMatchesLabel } from '@/lib/matches'
@@ -196,7 +197,10 @@ export default async function ResultPage({
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
       <p className="text-sm font-semibold uppercase tracking-[0.14em] text-accent">Your pick</p>
-      <h1 className="font-bold text-5xl leading-tight break-words">{top.name}</h1>
+      <div className="flex min-w-0 items-start gap-3">
+        <ToolLogo name={top.name} slug={top.slug} />
+        <h1 className="min-w-0 font-bold text-5xl leading-tight break-words">{top.name}</h1>
+      </div>
       <p className="max-w-2xl text-lg">
         Best bot for {result.task.name.toLowerCase()}, {budgetLabel[parsed.data.budget].toLowerCase()}, {skillLabel[parsed.data.skill].toLowerCase()}: {top.name}.
       </p>
@@ -241,11 +245,14 @@ export default async function ResultPage({
           <ul className="mt-4 grid gap-4 md:grid-cols-2">
             {alternatives.map((alt) => (
               <li key={alt.slug} className="rounded-2xl border border-line bg-card p-4">
-                <h3 className="font-semibold text-2xl">
-                  <Link href={`/tools/${alt.slug}`} className="underline-offset-4 hover:underline">
-                    {alt.name}
-                  </Link>
-                </h3>
+                <div className="flex min-w-0 items-start gap-3">
+                  <ToolLogo name={alt.name} slug={alt.slug} />
+                  <h3 className="min-w-0 font-semibold text-2xl">
+                    <Link href={`/tools/${alt.slug}`} className="underline-offset-4 hover:underline">
+                      {alt.name}
+                    </Link>
+                  </h3>
+                </div>
                 {alt.budgetFit === 'over' ? <p className="mt-2 text-sm font-semibold text-accent">{overBudgetLabel}</p> : null}
                 <p className="mt-2 text-sm text-muted">{alt.reason}</p>
                 <EditorialCompact editorial={alt.editorial} pros={alt.pros} cons={alt.cons} />

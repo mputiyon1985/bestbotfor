@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { ToolLogo } from '@/components/tool-logo'
 import { listToolCategoryCounts, listToolPage } from '@/lib/catalog'
 import { pageMetadata } from '@/lib/metadata'
 import { categorySlug, type ToolCategory } from '@/lib/tool-index'
@@ -124,13 +125,16 @@ export default async function ToolsPage({ searchParams }: { searchParams: Promis
       {listing && listing.tools.length > 0 ? (
         <ul aria-label="Tools" className="grid gap-3 sm:grid-cols-2">
           {listing.tools.map((tool) => (
-            <li key={tool.slug} className="rounded-2xl border border-line px-4 py-3">
-              <Link href={`/tools/${tool.slug}`} className="font-semibold underline-offset-4 hover:underline">
-                {tool.name}
-              </Link>
-              <span className="mt-1 block text-sm text-muted">
-                {tool.category}. {tool.shortDesc}
-              </span>
+            <li key={tool.slug} className="flex min-w-0 items-start gap-3 rounded-2xl border border-line px-4 py-3">
+              <ToolLogo name={tool.name} slug={tool.slug} />
+              <div className="min-w-0">
+                <Link href={`/tools/${tool.slug}`} className="font-semibold underline-offset-4 hover:underline">
+                  {tool.name}
+                </Link>
+                <span className="mt-1 block text-sm text-muted">
+                  {tool.category}. {tool.shortDesc}
+                </span>
+              </div>
             </li>
           ))}
         </ul>
