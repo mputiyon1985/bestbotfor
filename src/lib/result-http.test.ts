@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { notFoundDescription, notFoundTitle } from './metadata'
-import { resultMissMetadata, resultNotFoundHtml, resultNotFoundHeaders, resultRateLimitHeaders, resultRateLimitHtml } from './result-http'
+import {
+  RESULT_UNAVAILABLE_RETRY_AFTER_SECONDS,
+  resultMissMetadata,
+  resultNotFoundHtml,
+  resultNotFoundHeaders,
+  resultRateLimitHeaders,
+  resultRateLimitHtml,
+  resultUnavailableHeaders,
+  resultUnavailableHtml,
+} from './result-http'
 
 function robotsDirectives(html: string): string[] {
   return [...html.matchAll(/<meta\b[^>]*>/gi)]
@@ -19,6 +28,16 @@ describe('result HTTP responses', () => {
     expect(resultNotFoundHeaders()['x-robots-tag']).toBe('noindex, nofollow')
     expect(resultMissMetadata().robots).toEqual({ index: false, follow: false })
     expect(Array.isArray(resultMissMetadata().robots)).toBe(false)
+  })
+
+  it('sends one robots meta on a result 503', () => {
+    const html = resultUnavailableHtml()
+    expect(robotsDirectives(html)).toEqual(['noindex, nofollow'])
+    expect(html).toContain('Results are unavailable')
+    expect(html).toContain('The catalog did not answer.')
+    expect(resultUnavailableHeaders()['retry-after']).toBe(String(RESULT_UNAVAILABLE_RETRY_AFTER_SECONDS))
+    expect(resultUnavailableHeaders()['x-robots-tag']).toBe('noindex, nofollow')
+    expect(resultUnavailableHeaders()['cache-control']).toBe('no-store')
   })
 
   it('answers a tripped limit with 429 headers and Retry-After', () => {
