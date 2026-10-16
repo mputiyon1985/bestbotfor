@@ -63,17 +63,6 @@ function platformsOf(value: string): string[] {
   }
 }
 
-const sourceListSchema = z.array(z.string())
-
-function sourcesOf(value: string): string[] {
-  try {
-    const parsed = sourceListSchema.safeParse(JSON.parse(value))
-    return parsed.success ? parsed.data : []
-  } catch {
-    return []
-  }
-}
-
 function groupProsCons(rows: ProConRow[]): Map<number, ProConRow[]> {
   const grouped = new Map<number, ProConRow[]>()
   for (const row of rows) {
@@ -109,7 +98,6 @@ function editorialOf(score: ScoreRow | undefined, points: ProConRow[] | undefine
           quality: score.quality,
           overall: score.overall,
           rationale: score.rationale,
-          sources: sourcesOf(score.sources),
           reviewedAt: score.reviewedAt,
         }
       : null,

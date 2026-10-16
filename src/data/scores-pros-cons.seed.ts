@@ -1,83 +1,130 @@
-import { overallScore, type EditorialSeed } from '@/lib/editorial'
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
+import type { EditorialSeed, EditorialSeedPoint } from '@/lib/editorial'
 
 /**
- * Editorial scores and pros/cons for tools whose official docs and pricing
- * pages were read on 2026-10-16. The full catalog is not scored here.
- * Overall must equal the weighted average in src/lib/editorial.ts.
- * Do not add a row without a source URL for every claim.
+ * Forge batch 1, reviewed 2026-10-16. The CSV is the source of truth.
+ * `source_urls` is stored on the score row and is not rendered.
+ * Each pro and con keeps its own source URL, and that link is the one the page shows.
+ * Later batches in a future file stay out until this loader is told to include them.
  */
-const REVIEWED = '2026-10-16'
+const BATCH = '1'
+const csvPath = path.join(process.cwd(), 'src/data/scores-pros-cons.csv')
 
-const claudePricing = 'https://claude.com/pricing'
-const chatgptPricing = 'https://chatgpt.com/pricing'
-const cursorDocs = 'https://cursor.com/docs'
-const cursorPricing = 'https://cursor.com/docs/models'
+export const editorialSeeds: EditorialSeed[] = editorialRowsFromCsv(readFileSync(csvPath, 'utf8'))
 
-export const editorialSeeds: EditorialSeed[] = [
-  {
-    slug: 'claude',
-    features: 4,
-    value: 4,
-    ease: 5,
-    quality: 4,
-    overall: overallScore({ features: 4, value: 4, ease: 5, quality: 4 }),
-    reviewedAt: REVIEWED,
-    sources: [claudePricing],
-    rationale:
-      'Claude’s pricing page lists a free plan with chat on the web, desktop, and mobile, web search, Artifacts, voice, and up to five projects. Pro is $20 a month, or $17 a month when $200 is billed annually, and adds Claude Code, Research, and more models. Every plan has usage limits. Quality here is the documented model list and context window of up to 1M tokens, not a benchmark.',
-    pros: [
-      { text: 'The free plan includes chat on the web, desktop, and mobile.', sourceUrl: claudePricing },
-      { text: 'The free plan includes Artifacts, voice mode, and web search.', sourceUrl: claudePricing },
-      { text: 'Pro is $20 a month, or $17 a month billed annually, and adds Claude Code.', sourceUrl: claudePricing },
-    ],
-    cons: [
-      { text: 'Every plan has usage limits, including the free plan.', sourceUrl: claudePricing },
-      { text: 'Claude Code and Research are not included on the free plan.', sourceUrl: claudePricing },
-      { text: 'Max starts at $100 a month.', sourceUrl: claudePricing },
-    ],
-  },
-  {
-    slug: 'chatgpt',
-    features: 4,
-    value: 4,
-    ease: 4,
-    quality: 4,
-    overall: overallScore({ features: 4, value: 4, ease: 4, quality: 4 }),
-    reviewedAt: REVIEWED,
-    sources: [chatgptPricing],
-    rationale:
-      'ChatGPT’s pricing page says the free plan includes unlimited everyday text chats with GPT-6, subject to abuse guardrails, and limits uploads, images, voice, deep research, memory, and Codex. Plus adds projects, custom GPTs, scheduled tasks, and expanded access to those tools. The comparison we read did not print a dollar price for Plus, so value is scored from the free tier and the listed upgrades. Quality is that documented model access, not a benchmark.',
-    pros: [
-      { text: 'The free plan includes unlimited everyday text chats with GPT-6, subject to abuse guardrails.', sourceUrl: chatgptPricing },
-      { text: 'Plus adds projects, custom GPTs, and scheduled tasks.', sourceUrl: chatgptPricing },
-      { text: 'Plus expands Codex, deep research, memory, and image creation.', sourceUrl: chatgptPricing },
-    ],
-    cons: [
-      { text: 'Uploads, images, voice, deep research, memory, and Codex are limited on the free plan.', sourceUrl: chatgptPricing },
-      { text: 'The Go plan may include ads.', sourceUrl: chatgptPricing },
-      { text: 'Free ChatGPT Work is limited to the desktop app.', sourceUrl: chatgptPricing },
-    ],
-  },
-  {
-    slug: 'cursor',
-    features: 4,
-    value: 3,
-    ease: 3,
-    quality: 4,
-    overall: overallScore({ features: 4, value: 3, ease: 3, quality: 4 }),
-    reviewedAt: REVIEWED,
-    sources: [cursorDocs, cursorPricing],
-    rationale:
-      'Cursor’s docs describe a desktop coding agent for planning features, fixing bugs, and reviewing changes. The models page lists a free plan at $0 with limited Agent and Chat, Plus at $8 a month without third-party models, and Premium at $30 a month with cloud agents and Bugbot. Third-party models bill separately at API list price. Quality is that documented workflow, not a benchmark we ran.',
-    pros: [
-      { text: 'The docs describe an agent that can plan features, fix bugs, and review changes in a repo.', sourceUrl: cursorDocs },
-      { text: 'The free plan includes limited Agent and Chat at $0.', sourceUrl: cursorPricing },
-      { text: 'Premium at $30 a month adds cloud agents, Bugbot, and third-party models.', sourceUrl: cursorPricing },
-    ],
-    cons: [
-      { text: 'Free and Plus do not include third-party models.', sourceUrl: cursorPricing },
-      { text: 'Third-party models on Premium bill at API list price from prepaid credit.', sourceUrl: cursorPricing },
-      { text: 'You install the app; the docs start from a download, not a browser tab.', sourceUrl: cursorDocs },
-    ],
-  },
-]
+export function editorialRowsFromCsv(text: string, batch = BATCH): EditorialSeed[] {
+  const table = parseCsv(text)
+  const header = table[0]
+  if (!header) throw new Error('Editorial CSV is empty')
+  const index = new Map(header.map((name, position) => [name, position]))
+  for (const column of [
+    'slug',
+    'features',
+    'value',
+    'ease',
+    'quality',
+    'overall',
+    'rationale',
+    'pro1',
+    'pro1_source',
+    'con1',
+    'con1_source',
+    'source_urls',
+    'reviewed_at',
+    'batch',
+  ]) {
+    if (!index.has(column)) throw new Error(`Editorial CSV is missing ${column}`)
+  }
+
+  const rows: EditorialSeed[] = []
+  for (const record of table.slice(1)) {
+    const value = (column: string) => {
+      const position = index.get(column)
+      return (position === undefined ? '' : (record[position] ?? '')).trim()
+    }
+    if (value('batch') !== batch) continue
+    const slug = value('slug')
+    if (!slug) throw new Error('Editorial CSV has a batch row with no slug')
+    rows.push({
+      slug,
+      features: point(slug, 'features', value('features')),
+      value: point(slug, 'value', value('value')),
+      ease: point(slug, 'ease', value('ease')),
+      quality: point(slug, 'quality', value('quality')),
+      overall: point(slug, 'overall', value('overall')),
+      rationale: value('rationale'),
+      sources: value('source_urls').split(/\s+/).filter(Boolean),
+      reviewedAt: value('reviewed_at'),
+      pros: points(value, slug, 'pro'),
+      cons: points(value, slug, 'con'),
+    })
+  }
+  if (rows.length === 0) throw new Error(`Editorial CSV has no rows for batch ${batch}`)
+  return rows
+}
+
+function points(value: (column: string) => string, slug: string, kind: 'pro' | 'con'): EditorialSeedPoint[] {
+  const pointsForKind: EditorialSeedPoint[] = []
+  for (const position of [1, 2, 3]) {
+    const text = value(`${kind}${position}`)
+    const sourceUrl = value(`${kind}${position}_source`)
+    if (!text && !sourceUrl) continue
+    if (!text || !sourceUrl) throw new Error(`${slug} ${kind}${position} needs both text and a source URL`)
+    pointsForKind.push({ text, sourceUrl })
+  }
+  return pointsForKind
+}
+
+function point(slug: string, key: string, raw: string): number {
+  if (!/^\d(?:\.\d)?$/.test(raw)) throw new Error(`${slug} ${key} must be a tenth from 0 to 5`)
+  return Number(raw)
+}
+
+/** RFC 4180 parser. Quoted fields may contain commas and newlines. */
+export function parseCsv(text: string): string[][] {
+  const rows: string[][] = []
+  let row: string[] = []
+  let field = ''
+  let quoted = false
+  const input = text.replace(/^\uFEFF/, '')
+  for (let index = 0; index < input.length; index += 1) {
+    const char = input[index]
+    if (quoted) {
+      if (char === '"') {
+        if (input[index + 1] === '"') {
+          field += '"'
+          index += 1
+        } else {
+          quoted = false
+        }
+      } else {
+        field += char ?? ''
+      }
+      continue
+    }
+    if (char === '"') {
+      quoted = true
+      continue
+    }
+    if (char === ',') {
+      row.push(field)
+      field = ''
+      continue
+    }
+    if (char === '\n' || char === '\r') {
+      if (char === '\r' && input[index + 1] === '\n') index += 1
+      row.push(field)
+      field = ''
+      if (row.some((cell) => cell.length > 0)) rows.push(row)
+      row = []
+      continue
+    }
+    field += char ?? ''
+  }
+  if (field.length > 0 || row.length > 0) {
+    row.push(field)
+    if (row.some((cell) => cell.length > 0)) rows.push(row)
+  }
+  return rows
+}

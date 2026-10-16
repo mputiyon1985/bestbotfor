@@ -91,18 +91,6 @@ export function ScoreSection({ editorial }: { editorial: EditorialScore | null }
       <div>
         <h3 className="font-semibold text-xl">How we score</h3>
         <p className="mt-2 max-w-2xl text-sm text-muted">{HOW_WE_SCORE}</p>
-      </div>
-      <div>
-        <h3 className="font-semibold text-xl">Sources</h3>
-        <ul className="mt-2 space-y-1 text-sm">
-          {editorial.sources.map((source) => (
-            <li key={source}>
-              <a className="break-all underline" href={source} rel="noreferrer">
-                {source}
-              </a>
-            </li>
-          ))}
-        </ul>
         <p className="mt-2 text-sm text-muted">Reviewed {formatUsDate(editorial.reviewedAt)}.</p>
       </div>
     </section>

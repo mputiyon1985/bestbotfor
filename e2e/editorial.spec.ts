@@ -9,7 +9,8 @@ test('a scored tool shows fractional stars, the rubric, and no review schema', a
   expect(claude).toBeTruthy()
   if (!claude) return
   const label = ratingAriaLabel(claude.overall)
-  expect(starFills(claude.overall)).toEqual([1, 1, 1, 1, 0.2])
+  expect(claude.overall).toBe(4.5)
+  expect(starFills(claude.overall)).toEqual([1, 1, 1, 1, 0.5])
 
   await page.goto('/tools/claude')
   const stars = page.getByRole('img', { name: label })
@@ -21,8 +22,12 @@ test('a scored tool shows fractional stars, the rubric, and no review schema', a
   await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'How we score' })).toBeVisible()
   await expect(page.getByText('not a user review')).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Pros and cons' })).toBeVisible()
-  await expect(page.getByRole('link', { name: 'Source' })).toHaveCount(claude.pros.length + claude.cons.length)
+  const prosAndCons = page.getByRole('region', { name: 'Pros and cons' })
+  await expect(prosAndCons).toBeVisible()
+  await expect(prosAndCons.getByRole('link', { name: 'Source', exact: true })).toHaveCount(claude.pros.length + claude.cons.length)
+  const html = await page.content()
+  expect(html).not.toContain('pcmag.com')
+  expect(html).not.toContain('zdnet.com')
 
   const blocks = await page.locator('script[type="application/ld+json"]').allTextContents()
   const combined = blocks.join('\n')

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { editorialSeeds } from '@/data/scores-pros-cons.seed'
+import { editorialRowsFromCsv, editorialSeeds } from '@/data/scores-pros-cons.seed'
 import { toolSeeds } from '@/data/catalog'
 import { softwareJsonLd } from './jsonld'
 import type { CatalogTool } from './catalog-types'
@@ -10,10 +10,11 @@ const slugs = new Set(toolSeeds.map((tool) => tool.slug))
 describe('BestBotFor score', () => {
   it('weights the four parts and rounds half up to one decimal', () => {
     expect(SCORE_WEIGHTS.features + SCORE_WEIGHTS.value + SCORE_WEIGHTS.ease + SCORE_WEIGHTS.quality).toBe(100)
-    expect(overallScore({ features: 4, value: 4, ease: 5, quality: 4 })).toBe(4.2)
+    expect(overallScore({ features: 4, value: 4, ease: 5, quality: 4 })).toBe(4.3)
     expect(overallScore({ features: 4, value: 4, ease: 4, quality: 4 })).toBe(4)
-    expect(overallScore({ features: 4, value: 3, ease: 3, quality: 4 })).toBe(3.6)
+    expect(overallScore({ features: 4, value: 3, ease: 3, quality: 4 })).toBe(3.5)
     expect(HOW_WE_SCORE).toContain('25%')
+    expect(HOW_WE_SCORE).toContain('equally')
     expect(HOW_WE_SCORE).toContain('not a user review')
   })
 
@@ -34,7 +35,22 @@ describe('BestBotFor score', () => {
   })
 
   it('accepts the checked seed and rejects invented or incomplete rows', () => {
-    expect(editorialSeeds.map((row) => row.slug).sort()).toEqual(['chatgpt', 'claude', 'cursor'])
+    expect(editorialSeeds).toHaveLength(13)
+    expect(editorialSeeds.map((row) => row.slug).sort()).toEqual([
+      'chatgpt',
+      'claude',
+      'elevenlabs',
+      'framer',
+      'inworld',
+      'lovable',
+      'make',
+      'midjourney',
+      'otter',
+      'runway',
+      'suno',
+      'supabase',
+      'surfer',
+    ])
     expect(() => validateEditorialSeeds(editorialSeeds, slugs)).not.toThrow()
     for (const row of editorialSeeds) {
       expect(row.overall).toBe(overallScore(row))
@@ -42,12 +58,23 @@ describe('BestBotFor score', () => {
       expect(row.cons.length).toBeGreaterThanOrEqual(2)
       expect(row.cons.length).toBeLessThanOrEqual(3)
       expect(row.sources.every((source) => source.startsWith('https://'))).toBe(true)
+      expect(row.pros.every((point) => point.sourceUrl.startsWith('https://'))).toBe(true)
+      expect(row.cons.every((point) => point.sourceUrl.startsWith('https://'))).toBe(true)
     }
+    const claude = editorialSeeds.find((row) => row.slug === 'claude')
+    expect(claude?.sources.some((source) => source.includes('pcmag.com'))).toBe(true)
+    expect(claude?.pros.every((point) => !point.sourceUrl.includes('pcmag.com'))).toBe(true)
+    expect(() =>
+      editorialRowsFromCsv(
+        'slug,features,value,ease,quality,overall,rationale,pro1,pro1_source,pro2,pro2_source,pro3,pro3_source,con1,con1_source,con2,con2_source,con3,con3_source,source_urls,reviewed_at,batch\n' +
+          'claude,4.0,4.0,4.0,4.0,4.0,A rationale long enough to pass the editorial check.,First pro text here,https://claude.com/pricing,Second pro text here,https://claude.com/pricing,Third pro text here,https://claude.com/pricing,First con text here,https://claude.com/pricing,Second con text here,https://claude.com/pricing,,,https://claude.com/pricing,2026-10-16,2\n',
+      ),
+    ).toThrow(/no rows for batch 1/)
 
     const base = editorialSeeds[0]
     expect(base).toBeTruthy()
     if (!base) return
-    expect(() => validateEditorialSeeds([{ ...base, overall: 1 }], slugs)).toThrow(/weighted average/)
+    expect(() => validateEditorialSeeds([{ ...base, overall: 1 }], slugs)).toThrow(/equal-weight average/)
     expect(() => validateEditorialSeeds([{ ...base, slug: 'not-a-tool' }], slugs)).toThrow(/unknown tool/)
     expect(() => validateEditorialSeeds([{ ...base, pros: base.pros.slice(0, 2) }], slugs)).toThrow(/pros/)
     expect(() => validateEditorialSeeds([{ ...base, cons: base.cons.slice(0, 1) }], slugs)).toThrow(/cons/)
@@ -92,7 +119,6 @@ describe('BestBotFor score', () => {
         quality: scored.quality,
         overall: scored.overall,
         rationale: scored.rationale,
-        sources: scored.sources,
         reviewedAt: scored.reviewedAt,
       },
       pros: scored.pros.map((point) => ({ kind: 'pro' as const, text: point.text, sourceUrl: point.sourceUrl })),

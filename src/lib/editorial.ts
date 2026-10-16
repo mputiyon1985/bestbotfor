@@ -1,24 +1,23 @@
 /**
  * BestBotFor score is an editorial rubric, not a user review.
  *
- * Each part is 0–5. The overall score is a weighted average, in percent:
- * features 25, value 25, ease 20, quality 30. Those weights sum to 100.
+ * Each part is 0–5. The overall score is an equal-weight average:
+ * features, value, ease, and quality each count for 25%. Those weights sum to 100.
  * Parts are read in tenths, multiplied by the weight, divided by 100, and
  * rounded to one decimal with half-up rounding. Example: 4, 4, 5, and 4
- * become 4.2.
+ * become 4.3.
  *
- * Quality describes how complete the documented product is for careful work.
- * It is not a benchmark.
+ * Quality is the output for the tool’s main task. It is not a user review.
  */
 export const SCORE_WEIGHTS = {
   features: 25,
   value: 25,
-  ease: 20,
-  quality: 30,
+  ease: 25,
+  quality: 25,
 } as const
 
 export const HOW_WE_SCORE =
-  'BestBotFor score is an editorial rating from 0 to 5, not a user review. We read the vendor’s docs and pricing and score four parts: features, value, ease, and quality. The stars show a weighted average: features 25%, value 25%, ease 20%, and quality 30%, rounded to one decimal. Quality describes how complete the documented product is for careful work. We do not run a benchmark, and we do not publish this as an aggregate rating.'
+  'BestBotFor score is an editorial rating from 0 to 5, not a user review. We read the vendor’s docs and pricing and score four parts equally: features, value, ease, and quality. Each part is 25% of the score. The stars show that average, rounded to one decimal. Features is how fully the tool covers the job. Value comes from the official pricing page. Ease is how quickly a beginner gets a result. Quality is the output for the tool’s main task. We do not publish this as an aggregate rating.'
 
 export type Rubric = {
   features: number
@@ -27,10 +26,10 @@ export type Rubric = {
   quality: number
 }
 
+/** Page data for a score. Internal source URLs stay in the database and are not part of this type. */
 export type EditorialScore = Rubric & {
   overall: number
   rationale: string
-  sources: string[]
   reviewedAt: string
 }
 
@@ -121,7 +120,7 @@ export function validateEditorialSeeds(rows: EditorialSeed[], knownSlugs: Readon
     }
     const expected = overallScore(row)
     if (Math.abs(expected - row.overall) > 0.001) {
-      throw new Error(`${row.slug} overall is ${row.overall}; the weighted average is ${expected}`)
+      throw new Error(`${row.slug} overall is ${row.overall}; the equal-weight average is ${expected}`)
     }
     if (row.rationale.trim().length < 40) throw new Error(`${row.slug} rationale is too short to be a real review note`)
     if (row.sources.length === 0 || row.sources.some((source) => !isHttpsUrl(source))) {

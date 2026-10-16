@@ -215,7 +215,10 @@ describe('catalog seed', () => {
     expect(points).toHaveLength(expectedPoints + 1)
     const restored = scores.find((row) => row.toolId === claude.id)
     expect(restored?.rationale).toBe(editorialSeeds.find((row) => row.slug === 'claude')?.rationale)
-    expect(restored?.overall).toBe(4.2)
+    expect(restored?.overall).toBe(4.5)
+    expect(JSON.parse(restored?.sources ?? '[]')).toEqual(
+      expect.arrayContaining([expect.stringContaining('pcmag.com')]),
+    )
     const sentinel = scores.find((row) => row.toolId === 999_999)
     expect(sentinel?.rationale).toBe('Keep this sentinel score.')
     const sentinelPoint = points.find((row) => row.toolId === 999_999)

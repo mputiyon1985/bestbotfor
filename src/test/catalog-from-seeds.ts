@@ -46,7 +46,6 @@ function editorialFor(slug: string): Pick<CatalogTool, 'editorial' | 'pros' | 'c
       quality: entry.quality,
       overall: entry.overall,
       rationale: entry.rationale,
-      sources: entry.sources,
       reviewedAt: entry.reviewedAt,
     },
     pros,

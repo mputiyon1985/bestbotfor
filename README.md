@@ -4,7 +4,7 @@ Three questions. One best bot.
 
 BestBotFor asks for the job, the budget, and experience, then names one AI tool and up to six alternatives. The public catalog is free. A membership saves picks and unlocks the longer comparison notes.
 
-A BestBotFor score is an editorial rating from 0 to 5, not a user review. The stars are a weighted average of features (25%), value (25%), ease (20%), and quality (30%). Pros and cons, when we have them, cite the vendor’s own docs or pricing page. Tools without a verified row hide both sections. `src/data/scores-pros-cons.seed.ts` holds the rows that have been checked. The seed validates that file and upserts it in the same transaction as the catalog. It does not delete rows that are absent from the file.
+A BestBotFor score is an editorial rating from 0 to 5, not a user review. The stars are an equal-weight average of features, value, ease, and quality (25% each). Pros and cons, when we have them, each link to their own source. The `source_urls` column is stored and is not shown. Tools without a verified row hide both sections. `src/data/scores-pros-cons.csv` is Forge batch 1 (13 tools, reviewed October 16, 2026). The seed parses that file, checks the equal-weight average, and upserts it in the same transaction as the catalog. It does not delete rows that are absent from the file.
 
 Production origin: `https://bestbotfor.com`.
 

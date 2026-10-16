@@ -41,8 +41,9 @@ export const toolTasks = sqliteTable(
 )
 
 /**
- * One editorial rubric per tool. overall is the weighted average documented
- * in src/lib/editorial.ts. This is not a user review.
+ * One editorial rubric per tool. overall is the equal-weight average documented
+ * in src/lib/editorial.ts. sources stores internal source URLs and is not rendered.
+ * This is not a user review.
  */
 export const toolScores = sqliteTable('tool_scores', {
   toolId: integer('tool_id').primaryKey(),
