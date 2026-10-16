@@ -7,8 +7,11 @@ import { clicks } from '@/lib/db/schema'
 import { GO_DB_BUDGET_MS, resolveGoRedirect } from '@/lib/go-redirect'
 import { clientIp, rateLimitKey } from '@/lib/ip'
 import { consumeRateLimit } from '@/lib/rate-limit'
+import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
 import { getSiteUrl } from '@/lib/site'
 import { slugSchema } from '@/lib/validation'
+
+const GO_ROBOTS_TAG = 'noindex, nofollow'
 
 export const dynamic = 'force-dynamic'
 
@@ -19,7 +22,7 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   const { slug } = await context.params
-  if (!slugSchema.safeParse(slug).success) {
+  if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) {
     return text('That address is not a tool in the catalog.', 404)
   }
 
@@ -66,12 +69,17 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
 
   const response = NextResponse.redirect(outcome.location, 302)
   response.headers.set('Cache-Control', 'no-store')
+  response.headers.set('X-Robots-Tag', GO_ROBOTS_TAG)
   return response
 }
 
 function text(message: string, status: number) {
   return new NextResponse(message, {
     status,
-    headers: { 'content-type': 'text/plain; charset=utf-8', 'cache-control': 'no-store' },
+    headers: {
+      'content-type': 'text/plain; charset=utf-8',
+      'cache-control': 'no-store',
+      'x-robots-tag': GO_ROBOTS_TAG,
+    },
   })
 }

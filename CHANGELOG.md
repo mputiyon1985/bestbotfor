@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- `/tools` page numbers that are not a real page return 404, including category filters, so each indexable canonical belongs to one page.
+- Encoded dot segments under `/go`, `/best`, and `/tools` return 404 instead of the home page. `/go` responses send `X-Robots-Tag: noindex, nofollow`.
+- The catalog seed runs in one transaction and still only upserts. It does not delete rows.
 - Expand the catalog with 108 reviewed tools. Affiliate status on the new tools stays unknown, and outbound links stay on official sites.
 - `/tools` stays paginated and filters by category with a shareable `?category=` URL. Every catalog tool lists the hosts `/go` may redirect to.
 - Apply the approved concept 1 brand: Poppins, the indigo and mint palette, lockups in the header and footer, kit favicons, and kit Open Graph art.

@@ -75,6 +75,72 @@ test('filters by a catalog category with a shareable URL and without JavaScript'
   }
 })
 
+test('each real tools page has its own canonical, and pages past the end are 404', async ({ page, request }) => {
+  const pages = pageCount(catalog.tools.length)
+  expect(pages).toBeGreaterThan(1)
+  expect(pages).toBeLessThan(8)
+
+  await page.goto('/tools')
+  const firstCanonical = await page.locator('link[rel="canonical"]').getAttribute('href')
+  expect(firstCanonical).toMatch(/\/tools$/)
+
+  await page.goto('/tools?page=1')
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', firstCanonical ?? '')
+
+  await page.goto('/tools?page=2')
+  const secondCanonical = await page.locator('link[rel="canonical"]').getAttribute('href')
+  expect(secondCanonical).toMatch(/\/tools\?page=2$/)
+  expect(secondCanonical).not.toBe(firstCanonical)
+
+  const categories = toolCategories(catalog.tools)
+  const firstCategory = categories[0]
+  const secondCategory = categories[1]
+  expect(firstCategory && secondCategory).toBeTruthy()
+  if (!firstCategory || !secondCategory) return
+
+  await page.goto(`/tools?category=${firstCategory.slug}`)
+  const categoryCanonical = await page.locator('link[rel="canonical"]').getAttribute('href')
+  expect(categoryCanonical).toMatch(new RegExp(`/tools\\?category=${firstCategory.slug}$`))
+  expect(categoryCanonical).not.toBe(firstCanonical)
+  expect(categoryCanonical).not.toBe(secondCanonical)
+
+  await page.goto(`/tools?category=${secondCategory.slug}`)
+  const otherCategoryCanonical = await page.locator('link[rel="canonical"]').getAttribute('href')
+  expect(otherCategoryCanonical).toMatch(new RegExp(`/tools\\?category=${secondCategory.slug}$`))
+  expect(otherCategoryCanonical).not.toBe(categoryCanonical)
+
+  const pastLast = [
+    `/tools?page=${pages + 1}`,
+    '/tools?page=8',
+    '/tools?page=99',
+    '/tools?page=0',
+    '/tools?page=-1',
+    '/tools?page=abc',
+    '/tools?page=1.5',
+    '/tools?page=01',
+  ]
+  for (const category of categories) {
+    const categoryPages = pageCount(category.count)
+    pastLast.push(`/tools?category=${category.slug}&page=${categoryPages + 1}`)
+    pastLast.push(`/tools?category=${category.slug}&page=99`)
+    if (categoryPages > 1) {
+      await page.goto(`/tools?category=${category.slug}&page=2`)
+      const href = await page.locator('link[rel="canonical"]').getAttribute('href')
+      expect(href).toContain(`category=${category.slug}`)
+      expect(href).toContain('page=2')
+      expect(href).not.toBe(categoryCanonical)
+      expect(href).not.toBe(secondCanonical)
+    }
+  }
+
+  for (const path of pastLast) {
+    const response = await request.get(path)
+    expect(response.status(), path).toBe(404)
+    const body = await response.text()
+    expect(body, path).not.toMatch(/<link rel="canonical" href="[^"]*[?&]page=/)
+  }
+})
+
 test('an unknown category does not echo the query', async ({ page }) => {
   const unknown = 'not-a-real-category'
   expect(toolCategories(catalog.tools).some((category) => category.slug === unknown)).toBe(false)
