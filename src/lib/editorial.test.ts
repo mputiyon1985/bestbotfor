@@ -174,7 +174,7 @@ describe('BestBotFor score', () => {
     expect(windsurf?.name).toBe('Devin Desktop (formerly Windsurf)')
     expect(windsurf?.vendor).toBe('Cognition')
     expect(windsurf?.url).toBe('https://devin.ai/desktop')
-    expect(windsurf?.allowedHosts).toContain('devin.ai')
+    expect(windsurf?.allowedHosts).toEqual(['devin.ai'])
     expect(windsurf?.priceFromUsd).toBe(20)
     expect(windsurf?.hasFreeTier).toBe(true)
     expect(windsurf?.needsVerification).toBeFalsy()

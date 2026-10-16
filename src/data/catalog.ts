@@ -315,7 +315,7 @@ export const toolSeeds: ToolSeed[] = [
     name: 'Devin Desktop (formerly Windsurf)',
     vendor: 'Cognition',
     url: 'https://devin.ai/desktop',
-    allowedHosts: ['devin.ai', 'windsurf.com'],
+    allowedHosts: ['devin.ai'],
     category: 'Coding assistant',
     shortDesc: 'An AI editor with an agent that can take a task across several files.',
     longDesc:

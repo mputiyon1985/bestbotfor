@@ -340,6 +340,16 @@ describe('catalog seed', () => {
     expect(cursorScore?.overall).toBe(ratingSeeds.find((row) => row.slug === 'cursor')?.overall)
     expect(cursorScore?.sources).toBe('[]')
 
+    const fresh = await seed()
+    expect(fresh).toEqual({
+      scoresInserted: 0,
+      scoresUpdated: 91,
+      scoresRemoved: 0,
+      prosInserted: 0,
+      prosUpdated: 439,
+      prosRemoved: 0,
+    })
+
     const previousEnv = process.env.VERCEL_ENV
     process.env.VERCEL_ENV = 'production'
     try {
@@ -351,5 +361,132 @@ describe('catalog seed', () => {
       if (previousEnv === undefined) delete process.env.VERCEL_ENV
       else process.env.VERCEL_ENV = previousEnv
     }
+  })
+
+  it('counts v1 inserts, updates, and deletes, and replaces stale Cursor and Windsurf scores', async () => {
+    await useTempDatabase()
+    const fresh = await seed()
+    expect(fresh).toEqual({
+      scoresInserted: 91,
+      scoresUpdated: 0,
+      scoresRemoved: 0,
+      prosInserted: 439,
+      prosUpdated: 0,
+      prosRemoved: 0,
+    })
+
+    const db = getDb()
+    const toolRows = await db.select().from(tools)
+    const bySlug = new Map(toolRows.map((row) => [row.slug, row]))
+    await db.delete(toolScores)
+    await db.delete(toolProsCons)
+    for (const row of editorialSeeds) {
+      const id = bySlug.get(row.slug)?.id
+      expect(id, row.slug).toBeTruthy()
+      if (!id) return
+      await db.insert(toolScores).values({
+        toolId: id,
+        features: row.features,
+        value: row.value,
+        ease: row.ease,
+        quality: row.quality,
+        overall: row.overall,
+        rationale: row.rationale,
+        sources: '["https://example.com/stale"]',
+        reviewedAt: row.reviewedAt,
+      })
+      const points = [
+        ...row.pros.map((point, index) => ({ kind: 'pro' as const, position: index + 1, body: point.text, sourceUrl: point.sourceUrl })),
+        ...row.cons.map((point, index) => ({ kind: 'con' as const, position: index + 1, body: point.text, sourceUrl: point.sourceUrl })),
+      ]
+      for (const point of points) {
+        await db.insert(toolProsCons).values({ toolId: id, ...point })
+      }
+    }
+
+    const fromV1 = await seed()
+    expect(fromV1).toEqual({
+      scoresInserted: 4,
+      scoresUpdated: 87,
+      scoresRemoved: 59,
+      prosInserted: 0,
+      prosUpdated: 439,
+      prosRemoved: 296,
+    })
+
+    const cursor = bySlug.get('cursor')
+    const windsurf = bySlug.get('windsurf')
+    const perplexity = bySlug.get('perplexity')
+    const relevance = bySlug.get('relevance-ai')
+    expect(cursor && windsurf && perplexity && relevance).toBeTruthy()
+    if (!cursor || !windsurf || !perplexity || !relevance) return
+    const stale = {
+      features: 1,
+      value: 1,
+      ease: 1,
+      quality: 1,
+      overall: 1,
+      rationale: 'Stale score that the v2.3 seed must not leave in place.',
+      sources: '["https://stale.example/old"]',
+      reviewedAt: '2020-01-01',
+    }
+    await db.update(toolScores).set(stale).where(eq(toolScores.toolId, cursor.id))
+    await db.update(toolScores).set(stale).where(eq(toolScores.toolId, windsurf.id))
+    await db.insert(toolScores).values({ toolId: perplexity.id, ...stale })
+    await db.insert(toolScores).values({ toolId: relevance.id, ...stale })
+    await db.insert(toolProsCons).values({
+      toolId: cursor.id,
+      kind: 'pro',
+      position: 1,
+      body: 'Stale cursor pro that must be removed.',
+      sourceUrl: 'https://stale.example/cursor',
+    })
+    await db.insert(toolProsCons).values({
+      toolId: windsurf.id,
+      kind: 'pro',
+      position: 1,
+      body: 'Stale windsurf pro that must be removed.',
+      sourceUrl: 'https://stale.example/windsurf',
+    })
+    await db.insert(toolProsCons).values({
+      toolId: perplexity.id,
+      kind: 'pro',
+      position: 1,
+      body: 'Stale unrated pro that must be removed.',
+      sourceUrl: 'https://stale.example/perplexity',
+    })
+
+    const replaced = await seed()
+    expect(replaced).toEqual({
+      scoresInserted: 0,
+      scoresUpdated: 91,
+      scoresRemoved: 2,
+      prosInserted: 0,
+      prosUpdated: 439,
+      prosRemoved: 3,
+    })
+
+    const scores = await db.select().from(toolScores)
+    const points = await db.select().from(toolProsCons)
+    const idToSlug = new Map(toolRows.map((row) => [row.id, row.slug]))
+    const rated = scores.map((row) => idToSlug.get(row.toolId)).sort()
+    expect(rated).toEqual(ratingSeeds.map((row) => row.slug).sort())
+    for (const slug of unratedSlugs) {
+      const tool = bySlug.get(slug)
+      expect(scores.some((row) => row.toolId === tool?.id), slug).toBe(false)
+      expect(points.some((row) => row.toolId === tool?.id), slug).toBe(false)
+    }
+    for (const slug of ['cursor', 'windsurf'] as const) {
+      const tool = bySlug.get(slug)
+      const score = scores.find((row) => row.toolId === tool?.id)
+      const expected = ratingSeeds.find((row) => row.slug === slug)
+      expect(score?.overall).toBe(expected?.overall)
+      expect(score?.rationale).toBe(expected?.rationale)
+      expect(score?.sources).toBe('[]')
+      expect(score?.reviewedAt).toBe(expected?.reviewedAt)
+      expect(points.some((row) => row.toolId === tool?.id)).toBe(false)
+    }
+    expect(JSON.stringify(scores)).not.toContain('stale.example')
+    expect(JSON.stringify(points)).not.toContain('stale.example')
   })
 })
