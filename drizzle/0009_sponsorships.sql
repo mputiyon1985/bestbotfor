@@ -4,12 +4,17 @@
 -- Filename is 0009 so it sorts after 0008_ratings_v23.sql.
 -- Main already uses 0005 through 0008.
 --
--- The statements below are the same DDL as drizzle/0005_sponsorships.sql from
--- the unguarded #10 preview (66d41ea, 8:51 AM ET on 2026-10-16). That preview
--- created sponsorships and sponsorships_status_idx, and recorded
--- schema_migrations.id = '0005_sponsorships.sql'. CREATE TABLE and CREATE
--- INDEX use IF NOT EXISTS, so those objects stay as they are. This file does
--- not DROP, ALTER, UPDATE, or DELETE, and it does not remove that ledger row.
+-- ADOPT the sponsorships table from the unguarded #10 preview (66d41ea,
+-- 8:51 AM ET on 2026-10-16). That preview created this table and
+-- sponsorships_status_idx, and recorded schema_migrations.id =
+-- '0005_sponsorships.sql'. The statements below are that same DDL.
+-- CREATE TABLE IF NOT EXISTS and CREATE INDEX IF NOT EXISTS keep an existing
+-- table, index, and rows. They do not add a column when the table is already
+-- there, so applyMigrations then adds any column from src/lib/db/schema.ts
+-- that is missing, and creates the status index when it is missing.
+-- This file does not DROP, ALTER, UPDATE, or DELETE. The stray ledger row is
+-- not removed: the migrator only runs drizzle/*.sql files and does not look
+-- up ledger ids that have no file.
 -- No card numbers, PANs, or payment-method payloads are stored.
 
 CREATE TABLE IF NOT EXISTS stripe_events (

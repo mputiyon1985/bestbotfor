@@ -207,6 +207,10 @@ describe('sqlite file directories', () => {
     const beforeSql = await client.execute(
       "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'sponsorships'",
     )
+    const beforeLedger = await client.execute(
+      "SELECT id, applied_at FROM schema_migrations WHERE id = '0005_sponsorships.sql'",
+    )
+    const beforeRows = await client.execute('SELECT COUNT(*) AS n FROM sponsorships')
     client.close()
 
     await applyMigrations(url)
@@ -253,6 +257,90 @@ describe('sqlite file directories', () => {
       sql: "SELECT id FROM schema_migrations WHERE id = '0005_sponsorships.sql'",
     })
     expect(stillThere.rows).toHaveLength(1)
+    const appliedAt = await again.execute(
+      "SELECT applied_at FROM schema_migrations WHERE id = '0005_sponsorships.sql'",
+    )
+    expect(Number(appliedAt.rows[0]?.applied_at)).toBe(Number(beforeLedger.rows[0]?.applied_at))
+    const rowCount = await again.execute('SELECT COUNT(*) AS n FROM sponsorships')
+    expect(Number(rowCount.rows[0]?.n)).toBe(Number(beforeRows.rows[0]?.n))
     again.close()
+  })
+
+  it('adds missing sponsorship columns and the status index without deleting the stray ledger row', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'bestbotfor-adopt-0005-'))
+    directories.push(root)
+    const url = `file:${path.join(root, 'adopt.db')}`
+    const client = createClient({ url })
+    for (const file of MAIN_MIGRATIONS) {
+      const sql = await readFile(path.join(process.cwd(), 'drizzle', file), 'utf8')
+      await client.executeMultiple(sql)
+      await client.execute({
+        sql: 'INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)',
+        args: [file, 1],
+      })
+    }
+    await client.execute(`
+      CREATE TABLE sponsorships (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        stripe_checkout_session_id TEXT NOT NULL UNIQUE,
+        offering TEXT NOT NULL,
+        status TEXT NOT NULL CHECK (status IN ('pending', 'paid', 'failed')),
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    `)
+    await client.execute({
+      sql: 'INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)',
+      args: ['0005_sponsorships.sql', 1_762_000_000_000],
+    })
+    await client.execute({
+      sql: `INSERT INTO sponsorships (
+        stripe_checkout_session_id, offering, status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?)`,
+      args: ['cs_test_partial', 'placement_weekly', 'paid', 2, 2],
+    })
+    client.close()
+
+    await applyMigrations(url)
+
+    const after = createClient({ url })
+    const columns = await after.execute('PRAGMA table_info(sponsorships)')
+    expect(columns.rows.map((row) => String(row.name))).toEqual(
+      expect.arrayContaining([
+        'id',
+        'stripe_checkout_session_id',
+        'stripe_payment_intent_id',
+        'stripe_customer_id',
+        'stripe_price_id',
+        'offering',
+        'status',
+        'email',
+        'company',
+        'task_slug',
+        'issue_date',
+        'amount_total',
+        'currency',
+        'created_at',
+        'updated_at',
+      ]),
+    )
+    const index = await after.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'sponsorships_status_idx'",
+    )
+    expect(index.rows).toHaveLength(1)
+    const kept = await after.execute({
+      sql: 'SELECT status FROM sponsorships WHERE stripe_checkout_session_id = ?',
+      args: ['cs_test_partial'],
+    })
+    expect(kept.rows.map((row) => String(row.status))).toEqual(['paid'])
+    const stray = await after.execute(
+      "SELECT id FROM schema_migrations WHERE id = '0005_sponsorships.sql'",
+    )
+    expect(stray.rows).toHaveLength(1)
+    const recorded = await after.execute(
+      "SELECT id FROM schema_migrations WHERE id = '0009_sponsorships.sql'",
+    )
+    expect(recorded.rows).toHaveLength(1)
+    after.close()
   })
 })
