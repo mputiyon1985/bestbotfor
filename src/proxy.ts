@@ -9,8 +9,9 @@ import { isClerkConfigured } from '@/lib/flags'
 import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from '@/lib/indexing'
 import { clientIp, rateLimitKey } from '@/lib/ip'
 import { consumeRateLimit } from '@/lib/rate-limit'
+import { acceptResultFault, faultedResultWork } from '@/lib/result-fault'
 import { decideResultGate, RESULT_GATE_BUDGET_MS } from '@/lib/result-gate'
-import { resultNotFoundHeaders, resultNotFoundHtml, resultRateLimitHeaders, resultRateLimitHtml } from '@/lib/result-http'
+import { resultNotFoundHeaders, resultNotFoundHtml, resultRateLimitHeaders, resultRateLimitHtml, resultUnavailableHeaders, resultUnavailableHtml } from '@/lib/result-http'
 import { resultOfflineStatus, resultRequestStatus } from '@/lib/result-request'
 
 function applySecurity(response: NextResponse, nonce: string): NextResponse {
@@ -80,17 +81,20 @@ const withClerk = clerkMiddleware(async (auth, request) => {
   return nextWithNonce(request)
 })
 
-/** Playwright sets this. Production leaves it unset, so the fault header does nothing. */
-function resultFault(request: NextRequest): string {
-  if (process.env.RESULT_FAULTS !== '1') return ''
-  return request.headers.get('x-bbf-result-fault') ?? ''
+/** Playwright sets RESULT_FAULTS=1. Production ignores that and the fault header. */
+function resultFault(request: NextRequest) {
+  return acceptResultFault(request.headers.get('x-bbf-result-fault'), {
+    faults: process.env.RESULT_FAULTS,
+    vercelEnv: process.env.VERCEL_ENV,
+  })
 }
 
 /**
  * /result 404s are answered here so the page's not-found screen does not add a
  * second robots meta. Invalid task and budget values do not need the catalog.
  * Quiz views that pass the catalog check are rate limited with 429 and Retry-After.
- * A database failure or an 800ms timeout fails open. The page then renders one robots meta.
+ * When the catalog lookup fails or times out, the page's catalog read runs here.
+ * A miss is this same 404. If that read fails too, the response is 503.
  */
 async function gateResult(request: NextRequest): Promise<NextResponse | null> {
   if (request.nextUrl.pathname !== '/result') return null
@@ -102,28 +106,26 @@ async function gateResult(request: NextRequest): Promise<NextResponse | null> {
     return applySecurity(new NextResponse(resultNotFoundHtml(), { status: 404, headers: resultNotFoundHeaders() }), nonce)
   }
   const fault = resultFault(request)
+  const readCatalog = () => resultRequestStatus(getDb(), params)
   const decision = await decideResultGate({
     view: params.get('view') ?? '',
     deadlineMs: RESULT_GATE_BUDGET_MS,
-    lookup: () => {
-      if (fault === 'lookup-throw') return Promise.reject(new Error('fault'))
-      if (fault === 'lookup-slow') return new Promise(() => {})
-      if (offline === 'ok') return Promise.resolve('ok')
-      return resultRequestStatus(getDb(), params)
-    },
-    limit: () => {
-      if (fault === 'limit-throw') return Promise.reject(new Error('fault'))
-      if (fault === 'limit-slow') return new Promise(() => {})
-      return consumeRateLimit(
+    lookup: faultedResultWork(fault, 'lookup', () => (offline === 'ok' ? Promise.resolve('ok') : readCatalog())),
+    pageLookup: faultedResultWork(fault, 'page', readCatalog),
+    limit: faultedResultWork(fault, 'limit', () =>
+      consumeRateLimit(
         getDb(),
         rateLimitKey(clientIp(request.headers), 'result'),
         ACTION_LIMITS.result.limit,
         ACTION_LIMITS.result.windowMs,
-      )
-    },
+      ),
+    ),
   })
   if (decision.type === 'not-found') {
     return applySecurity(new NextResponse(resultNotFoundHtml(), { status: 404, headers: resultNotFoundHeaders() }), nonce)
+  }
+  if (decision.type === 'unavailable') {
+    return applySecurity(new NextResponse(resultUnavailableHtml(), { status: 503, headers: resultUnavailableHeaders() }), nonce)
   }
   if (decision.type === 'limited') {
     return applySecurity(
