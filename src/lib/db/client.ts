@@ -4,7 +4,12 @@ import * as schema from './schema'
 
 export type Database = LibSQLDatabase<typeof schema> & { $client: Client }
 
-const globalForDb = globalThis as unknown as { bestbotforDb?: Database; bestbotforClient?: Client }
+const globalForDb = globalThis as unknown as {
+  bestbotforDb?: Database
+  bestbotforClient?: Client
+  bestbotforFileUrl?: string
+  bestbotforLimiterClient?: Client
+}
 
 /**
  * Module binding so a warm process keeps one client. globalThis survives a
@@ -26,11 +31,63 @@ export function databaseUrl(): string {
   return url
 }
 
+const clientUrls = new WeakMap<Client, string>()
+
 export function createLibsqlClient(url = databaseUrl()): Client {
   const fileDatabase = url.startsWith('file:')
   const authToken = process.env.TURSO_AUTH_TOKEN?.trim()
   if (!fileDatabase && !authToken) throw new Error('TURSO_AUTH_TOKEN is not set')
-  return createClient({ url, authToken: fileDatabase ? undefined : authToken })
+  const client = createClient({ url, authToken: fileDatabase ? undefined : authToken })
+  clientUrls.set(client, url)
+  if (fileDatabase) globalForDb.bestbotforFileUrl = url
+  return client
+}
+
+const fileSharing = new WeakMap<Client, Promise<void>>()
+const dedicatedFileClients = new WeakMap<Client, Client>()
+
+/**
+ * Local files are opened by more than one server process in tests.
+ * WAL lets the other process read while one writes. busy_timeout is shorter
+ * than the limiter budget, so a lock returns and can be retried instead of
+ * holding a write that the deadline already gave up on.
+ * Hosted Turso has no local journal, so remote clients skip these pragmas.
+ */
+export function configureFileDatabase(client: Client): Promise<void> {
+  const url = clientUrls.get(client) ?? globalForDb.bestbotforFileUrl
+  if (url && !url.startsWith('file:')) return Promise.resolve()
+  const existing = fileSharing.get(client)
+  if (existing) return existing
+  const pending = (async () => {
+    try {
+      await client.execute('PRAGMA busy_timeout = 100')
+      const mode = await client.execute('PRAGMA journal_mode')
+      const current = String(mode.rows[0]?.journal_mode ?? '').toLowerCase()
+      if (current !== 'wal') await client.execute('PRAGMA journal_mode = WAL')
+    } catch (error) {
+      fileSharing.delete(client)
+      throw error
+    }
+  })()
+  fileSharing.set(client, pending)
+  return pending
+}
+
+/**
+ * A second connection for file databases. The request connection also serves
+ * catalog reads, and those statements would queue the limiter write on the
+ * same connection. Hosted Turso uses the request connection.
+ */
+export function limiterClientFor(client: Client): Client {
+  const url = clientUrls.get(client) ?? globalForDb.bestbotforFileUrl
+  if (!url?.startsWith('file:')) return client
+  const existing = dedicatedFileClients.get(client) ?? globalForDb.bestbotforLimiterClient
+  if (existing) return existing
+  const dedicated = createClient({ url })
+  clientUrls.set(dedicated, url)
+  dedicatedFileClients.set(client, dedicated)
+  globalForDb.bestbotforLimiterClient = dedicated
+  return dedicated
 }
 
 export function getDb(): Database {

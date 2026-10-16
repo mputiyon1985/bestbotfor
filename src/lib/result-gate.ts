@@ -6,7 +6,7 @@ export const RESULT_GATE_BUDGET_MS = 800
 /** Second read, the one the page would do. Long enough for a cold catalog query. */
 export const RESULT_PAGE_LOOKUP_BUDGET_MS = 3_000
 
-/** Limiter decision. The shared write is not awaited inside this budget. */
+/** Limiter decision budget. The shared increment uses a much shorter timeout inside the callback. */
 export const RESULT_LIMIT_BUDGET_MS = 3_000
 
 export type ResultGateDecision =
@@ -24,9 +24,10 @@ export type ResultGateDecision =
  * A valid quiz must not 503 because the database is slow.
  * If that second read throws, the database is unreachable: answer 503 and do
  * not render. Rendering would be a 500, and notFound() would add a second robots meta.
- * The limiter decision is the callback's result. Callers must not wait on the
- * shared write inside that callback: a stuck write must not hide a result the
- * catalog already found. The in-process counter still rejects a burst.
+ * The limiter decision is the callback's result. A shared increment inside
+ * that callback has to finish quickly or fall back to memory. A stuck write
+ * must not hide a result the catalog already found. The in-process counter
+ * still rejects a burst when the store does not answer.
  */
 export async function decideResultGate(input: {
   view: string

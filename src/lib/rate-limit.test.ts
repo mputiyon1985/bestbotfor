@@ -1,6 +1,19 @@
 import type { Client } from '@libsql/client'
+import { createClient } from '@libsql/client'
+import { drizzle } from 'drizzle-orm/libsql'
 import { describe, expect, it } from 'vitest'
-import { consumeLocalRateLimit, consumeRateLimit, localRateLimitSize, persistResultRateLimit, resetLocalRateLimits, retryAfterSeconds } from './rate-limit'
+import * as schema from './db/schema'
+import {
+  consumeLocalRateLimit,
+  consumeRateLimit,
+  consumeResultRateLimit,
+  consumeSharedResultWindow,
+  localRateLimitSize,
+  purgeExpiredResultWindows,
+  RESULT_SHARED_LIMIT_MS,
+  resetLocalRateLimits,
+  retryAfterSeconds,
+} from './rate-limit'
 import { createTestDatabase } from '@/test/db'
 
 describe('consumeRateLimit', () => {
@@ -18,7 +31,8 @@ describe('consumeRateLimit', () => {
     await close()
   })
 
-  it('returns the in-memory decision before a slow shared write finishes', async () => {
+  it('keeps the shared /result wait short enough that a slow store falls back to memory', async () => {
+    expect(RESULT_SHARED_LIMIT_MS).toBeLessThanOrEqual(500)
     const { db, close } = await createTestDatabase()
     resetLocalRateLimits()
     const execute = db.$client.execute.bind(db.$client)
@@ -32,12 +46,69 @@ describe('consumeRateLimit', () => {
     }) as Client['execute']
     try {
       const started = Date.now()
-      const local = consumeLocalRateLimit('slow-shared', 5, 60_000, 1_000)
-      const pending = persistResultRateLimit(db, 'slow-shared', 5, 60_000, 1_000)
-      expect(local.ok).toBe(true)
-      expect(Date.now() - started).toBeLessThan(50)
+      const decision = await consumeResultRateLimit(db, 'slow-shared', 5, 60_000, 1_000, 40)
+      expect(decision.ok).toBe(true)
+      expect(Date.now() - started).toBeLessThan(300)
       release()
-      await pending
+    } finally {
+      resetLocalRateLimits()
+      await close()
+    }
+  })
+
+  it('lets the shared fixed window reject a request this process has forgotten', async () => {
+    const { db, close } = await createTestDatabase()
+    resetLocalRateLimits()
+    try {
+      for (let index = 0; index < 5; index += 1) {
+        const allowed = await consumeResultRateLimit(db, 'shared-wins', 5, 60_000, 1_000)
+        expect(allowed.ok).toBe(true)
+      }
+      resetLocalRateLimits()
+      const blocked = await consumeResultRateLimit(db, 'shared-wins', 5, 60_000, 1_000)
+      expect(blocked.ok).toBe(false)
+      expect(blocked.resetAt).toBe(60_000)
+    } finally {
+      resetLocalRateLimits()
+      await close()
+    }
+  })
+
+  it('counts one fixed window across two connections and drops closed windows', async () => {
+    const { db, url, close } = await createTestDatabase()
+    const other = drizzle(createClient({ url }), { schema })
+    try {
+      const results = await Promise.all(
+        Array.from({ length: 40 }, (_, index) =>
+          consumeSharedResultWindow(index % 2 === 0 ? db : other, 'two-connections', 30, 60_000, 1_000, 2_000),
+        ),
+      )
+      expect(results.every((result) => result !== null)).toBe(true)
+      expect(results.filter((result) => result?.ok)).toHaveLength(30)
+      expect(results.filter((result) => result && !result.ok)).toHaveLength(10)
+
+      await consumeSharedResultWindow(db, 'closed-window', 5, 1_000, 0, 2_000)
+      await consumeSharedResultWindow(db, 'open-window', 5, 1_000, 1_000, 2_000)
+      await purgeExpiredResultWindows(db, 1_000)
+      const rows = await db.$client.execute('SELECT expires_at FROM result_rate_windows ORDER BY expires_at')
+      const expires = rows.rows.map((row) => Number(row.expires_at))
+      expect(expires).toContain(2_000)
+      expect(expires).not.toContain(1_000)
+    } finally {
+      other.$client.close()
+      await close()
+    }
+  })
+
+  it('uses memory when the shared store throws', async () => {
+    const { db, close } = await createTestDatabase()
+    resetLocalRateLimits()
+    db.$client.execute = (async () => {
+      throw new Error('down')
+    }) as Client['execute']
+    try {
+      const decision = await consumeResultRateLimit(db, 'store-down', 5, 60_000, 1_000)
+      expect(decision.ok).toBe(true)
     } finally {
       resetLocalRateLimits()
       await close()

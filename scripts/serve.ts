@@ -11,6 +11,7 @@
 import { createServer } from 'node:http'
 import next from 'next'
 import { CATALOG_REJECT_MESSAGE } from '../src/lib/catalog-path'
+import { configureFileDatabase, getDb } from '../src/lib/db/client'
 import { hasDotSegment } from '../src/lib/dot-segment'
 
 const port = Number(process.env.PORT || 3000)
@@ -20,6 +21,8 @@ async function main(): Promise<void> {
   const app = next({ dev: false, hostname, port })
   const handle = app.getRequestHandler()
   await app.prepare()
+  const databaseUrl = process.env.TURSO_DATABASE_URL?.trim() ?? ''
+  if (databaseUrl.startsWith('file:')) await configureFileDatabase(getDb().$client)
 
   const server = createServer((req, res) => {
     if (hasDotSegment(req.url ?? '')) {
