@@ -2,7 +2,7 @@
   "name": "bestbotfor",
   "version": "0.1.0",
   "private": true,
-  "description": "Three questions. One best bot.",
+  "description": "The right AI in 30 seconds.",
   "engines": {
     "node": ">=22"
   },

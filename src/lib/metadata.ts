@@ -48,6 +48,6 @@ function pageRobots(input: { noIndex?: boolean; follow?: boolean }): { index: bo
   return { index: true, follow: true }
 }
 
-export const homeTitle = `${SITE_NAME} — ${TAGLINE}`
+export const homeTitle = `${SITE_NAME} | ${TAGLINE.replace(/\.$/, '')}`
 
 export const homeDescription = `${TAGLINE} BestBotFor names one AI tool for the job and up to five alternatives, based on your budget and experience.`

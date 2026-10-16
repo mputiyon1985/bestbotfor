@@ -1,7 +1,7 @@
 /** Apex production origin. Used when NEXT_PUBLIC_SITE_URL is missing or invalid. */
 export const DEFAULT_SITE_URL = 'https://bestbotfor.com'
 
-export const TAGLINE = 'Three questions. One best bot.'
+export const TAGLINE = 'The right AI in 30 seconds.'
 
 export const SITE_NAME = 'BestBotFor'
 

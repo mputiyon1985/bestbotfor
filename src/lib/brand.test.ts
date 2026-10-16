@@ -10,6 +10,7 @@ import {
   ORGANIZATION_LOGO_PATH,
 } from './brand'
 import { organizationJsonLd } from './jsonld'
+import { homeTitle } from './metadata'
 import { getSiteUrl, TAGLINE } from './site'
 
 describe('brand sheet palette', () => {
@@ -31,13 +32,14 @@ describe('brand sheet palette', () => {
   })
 
   it('uses the approved tagline and the kit open graph image', () => {
-    expect(TAGLINE).toBe('Three questions. One best bot.')
+    expect(TAGLINE).toBe('The right AI in 30 seconds.')
+    expect(homeTitle).toBe('BestBotFor | The right AI in 30 seconds')
     expect(OG_IMAGE_PATH).toMatch(/^\/og\/og-default-1200x630\.[0-9a-f]{8}\.png$/)
     const manifest = readFileSync(path.join(process.cwd(), 'public/site.webmanifest'), 'utf8')
     expect(manifest).toContain(BRAND.indigo)
     expect(manifest).toContain(BRAND.ink)
     expect(manifest).toContain(MASKABLE_ICON_PATH)
-    expect(manifest).toContain('Three questions. One best bot.')
+    expect(manifest).toContain('The right AI in 30 seconds.')
   })
 
   it('keeps hashed brand files, woff2 fonts, and drops the ttf and screenshot copies', async () => {
@@ -57,6 +59,9 @@ describe('brand sheet palette', () => {
   })
 
   it('points organization structured data at the kit icon', () => {
-    expect(organizationJsonLd().logo).toBe(`${getSiteUrl()}${ORGANIZATION_LOGO_PATH}`)
+    const organization = organizationJsonLd()
+    expect(organization.logo).toBe(`${getSiteUrl()}${ORGANIZATION_LOGO_PATH}`)
+    expect(organization.slogan).toBe(TAGLINE)
+    expect(organization.description).toContain(TAGLINE)
   })
 })

@@ -47,7 +47,7 @@ test('encoded dot segments do not render the home page', async () => {
     const response = await rawStatus(path)
     expect(response.status, path).toBe(404)
     expect(response.body, path).toContain('not a tool in the catalog')
-    expect(response.body, path).not.toContain('Three questions')
+    expect(response.body, path).not.toContain('The right AI in 30 seconds')
   }
 })
 

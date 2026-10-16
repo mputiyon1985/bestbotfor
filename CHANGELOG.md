@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The tagline is “The right AI in 30 seconds.” The home title is “BestBotFor | The right AI in 30 seconds”.
 - Encoded and raw dot segments return 404 from a Vercel route and from the app server. The global `URL` constructor and `http.Server` are no longer patched.
 - Quiz result URLs and budget-filtered match lists are `noindex, follow`. `/result?task=X&view=all` page 1 stays indexable and in the sitemap. Lighthouse scores SEO on that indexable list. The production-env check asserts the quiz and budget-filtered pages render `noindex, follow`.
 - The first paint uses a metric-matched fallback for every Poppins weight, so the delayed swap does not reflow the tools directory.
