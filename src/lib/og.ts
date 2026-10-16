@@ -1,6 +1,7 @@
 import { comparisonRows, comparisonSummary } from './compare'
 import type { Catalog } from './catalog-types'
 import { budgetPhrase, skillPhrase } from './format'
+import { omitScoreText } from './score-visibility'
 import { TAGLINE } from './site'
 import { budgetSchema, parseComparePair, quizSchema, skillSchema, slugSchema } from './validation'
 
@@ -26,6 +27,22 @@ const FALLBACK: OgCopy = { title: TAGLINE, subtitle: 'One pick and up to six alt
  * a fallback when no catalog match exists.
  */
 export function ogCopy(
+  input: {
+    kind?: string
+    pair?: string
+    task?: string
+    budget?: string
+    skill?: string
+    title?: string
+    subtitle?: string
+  },
+  catalog: Catalog,
+): OgCopy {
+  const copy = ogCopyFromCatalog(input, catalog)
+  return { title: omitScoreText(copy.title), subtitle: omitScoreText(copy.subtitle) }
+}
+
+function ogCopyFromCatalog(
   input: {
     kind?: string
     pair?: string
