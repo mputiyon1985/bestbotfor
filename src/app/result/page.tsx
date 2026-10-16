@@ -1,6 +1,5 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { JsonLd } from '@/components/json-ld'
@@ -9,9 +8,11 @@ import { ToolLogo } from '@/components/tool-logo'
 import { EditorialCompact } from '@/components/editorial'
 import { recommendQuiz } from '@/lib/catalog'
 import { matchBudgetLabel, matchesPath, seeAllMatchesLabel } from '@/lib/matches'
-import { allMatchesRequest, searchParamsToUrl } from '@/lib/result-request'
+import { allMatchesRequest, resultRequestStatus, searchParamsToUrl } from '@/lib/result-request'
+import { resultMissMetadata } from '@/lib/result-http'
 import { matchesPageTitle, matchesRobots, quizResultRobots, quizResultTitle } from '@/lib/result-index'
 import { AllMatches } from './all-matches'
+import NotFoundPage from '../not-found'
 import { getDb } from '@/lib/db'
 import { budgetLabel, budgetPhrase, fewStrongOptionsLabel, overBudgetLabel, priceLabel, skillLabel, skillPhrase } from '@/lib/format'
 import { QUIZ_ALTERNATIVE_COUNT } from '@/lib/scoring'
@@ -19,11 +20,37 @@ import { breadcrumbJsonLd } from '@/lib/jsonld'
 import { memberAccess } from '@/lib/members'
 import { pageMetadata } from '@/lib/metadata'
 import { absoluteUrl } from '@/lib/site'
-import { firstString, quizSchema } from '@/lib/validation'
+import { firstString, quizSchema, type QuizAnswers } from '@/lib/validation'
 import { savePickAction } from './actions'
 
-async function loadAllMatches(params: Record<string, string | string[] | undefined>) {
-  return allMatchesRequest(getDb(), searchParamsToUrl(params))
+type LoadedMatches = NonNullable<Awaited<ReturnType<typeof allMatchesRequest>>>
+type QuizResult = NonNullable<Awaited<ReturnType<typeof recommendQuiz>>>
+
+type ResultLoad =
+  | { kind: 'miss' }
+  | { kind: 'form' }
+  | { kind: 'matches'; loaded: LoadedMatches }
+  | { kind: 'quiz'; answers: QuizAnswers; result: QuizResult }
+
+async function loadResult(params: Record<string, string | string[] | undefined>): Promise<ResultLoad> {
+  const view = firstString(params.view)
+  const query = searchParamsToUrl(params)
+  if (view === 'all') {
+    const loaded = await allMatchesRequest(getDb(), query)
+    if (!loaded) return { kind: 'miss' }
+    return { kind: 'matches', loaded }
+  }
+  if (view !== '') return { kind: 'miss' }
+  if ((await resultRequestStatus(getDb(), query)) === 'not-found') return { kind: 'miss' }
+  const parsed = quizSchema.safeParse({
+    task: firstString(params.task),
+    budget: firstString(params.budget),
+    skill: firstString(params.skill),
+  })
+  if (!parsed.success) return { kind: 'form' }
+  const result = await recommendQuiz(parsed.data)
+  if (!result) return { kind: 'miss' }
+  return { kind: 'quiz', answers: parsed.data, result }
 }
 
 export async function generateMetadata({
@@ -31,33 +58,9 @@ export async function generateMetadata({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }): Promise<Metadata> {
-  const params = await searchParams
-  const view = firstString(params.view)
-  if (view !== '' && view !== 'all') notFound()
-  if (view === 'all') {
-    const loaded = await loadAllMatches(params)
-    if (!loaded) notFound()
-    const path = matchesPath(loaded.task.slug, loaded.budget, loaded.page)
-    const robots = matchesRobots(loaded.budget)
-    const title = matchesPageTitle(loaded.task.name, loaded.budget, loaded.page)
-    return pageMetadata({
-      title,
-      description: `${loaded.total} tools with a strong fit for ${loaded.task.name}, ranked for ${matchBudgetLabel[loaded.budget].toLowerCase()}.`,
-      path,
-      noIndex: !robots.index,
-      follow: robots.follow,
-      pagination: {
-        previous: loaded.page > 1 ? matchesPath(loaded.task.slug, loaded.budget, loaded.page - 1) : null,
-        next: loaded.page < loaded.pageCount ? matchesPath(loaded.task.slug, loaded.budget, loaded.page + 1) : null,
-      },
-    })
-  }
-  const parsed = quizSchema.safeParse({
-    task: firstString(params.task),
-    budget: firstString(params.budget),
-    skill: firstString(params.skill),
-  })
-  if (!parsed.success) {
+  const loaded = await loadResult(await searchParams)
+  if (loaded.kind === 'miss') return resultMissMetadata()
+  if (loaded.kind === 'form') {
     return pageMetadata({
       title: 'Your result',
       description: 'Answer three questions (task, budget, experience) and get the right AI tool for the job plus up to six alternatives, in about 30 seconds.',
@@ -65,15 +68,30 @@ export async function generateMetadata({
       noIndex: true,
     })
   }
-  const result = await recommendQuiz(parsed.data)
-  if (!result) notFound()
-  const pick = result?.picks[0]
-  const title = result && pick ? quizResultTitle(result.task.name, pick.name) : 'Your result'
-  const description =
-    result && pick
-      ? `${pick.name} is the top pick for ${result.task.name.toLowerCase()} ${budgetPhrase(parsed.data.budget)} for ${skillPhrase(parsed.data.skill)}.`
-      : 'No matching tools for that combination.'
-  const query = new URLSearchParams(parsed.data).toString()
+  if (loaded.kind === 'matches') {
+    const { loaded: matches } = loaded
+    const path = matchesPath(matches.task.slug, matches.budget, matches.page)
+    const robots = matchesRobots(matches.budget)
+    const title = matchesPageTitle(matches.task.name, matches.budget, matches.page)
+    return pageMetadata({
+      title,
+      description: `${matches.total} tools with a strong fit for ${matches.task.name}, ranked for ${matchBudgetLabel[matches.budget].toLowerCase()}.`,
+      path,
+      noIndex: !robots.index,
+      follow: robots.follow,
+      pagination: {
+        previous: matches.page > 1 ? matchesPath(matches.task.slug, matches.budget, matches.page - 1) : null,
+        next: matches.page < matches.pageCount ? matchesPath(matches.task.slug, matches.budget, matches.page + 1) : null,
+      },
+    })
+  }
+  const { answers, result } = loaded
+  const pick = result.picks[0]
+  const title = pick ? quizResultTitle(result.task.name, pick.name) : 'Your result'
+  const description = pick
+    ? `${pick.name} is the top pick for ${result.task.name.toLowerCase()} ${budgetPhrase(answers.budget)} for ${skillPhrase(answers.skill)}.`
+    : 'No matching tools for that combination.'
+  const query = new URLSearchParams(answers).toString()
   const robots = quizResultRobots()
   return pageMetadata({
     title,
@@ -91,32 +109,24 @@ export default async function ResultPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const params = await searchParams
-  const view = firstString(params.view)
-  if (view !== '' && view !== 'all') notFound()
+  const loaded = await loadResult(params)
   const headerStore = await headers()
-  if (view === 'all') {
-    const loaded = await loadAllMatches(params)
-    if (!loaded) notFound()
+  const nonce = headerStore.get('x-nonce')
+  if (loaded.kind === 'miss') return <NotFoundPage />
+  if (loaded.kind === 'matches') {
     return (
       <AllMatches
-        task={loaded.task}
-        budget={loaded.budget}
-        page={loaded.page}
-        pageCount={loaded.pageCount}
-        total={loaded.total}
-        tools={loaded.tools}
-        nonce={headerStore.get('x-nonce')}
+        task={loaded.loaded.task}
+        budget={loaded.loaded.budget}
+        page={loaded.loaded.page}
+        pageCount={loaded.loaded.pageCount}
+        total={loaded.loaded.total}
+        tools={loaded.loaded.tools}
+        nonce={nonce}
       />
     )
   }
-  const parsed = quizSchema.safeParse({
-    task: firstString(params.task),
-    budget: firstString(params.budget),
-    skill: firstString(params.skill),
-  })
-  const nonce = headerStore.get('x-nonce')
-
-  if (!parsed.success) {
+  if (loaded.kind === 'form') {
     return (
       <div>
         <h1 className="font-bold text-4xl">We need three answers</h1>
@@ -128,9 +138,7 @@ export default async function ResultPage({
     )
   }
 
-  const result = await recommendQuiz(parsed.data)
-  if (!result) notFound()
-
+  const { answers, result } = loaded
   const [top, ...alternatives] = result.picks
   if (!top) {
     return (
@@ -144,7 +152,7 @@ export default async function ResultPage({
     )
   }
   const access = await memberAccess()
-  const sharePath = `/result?${new URLSearchParams(parsed.data).toString()}`
+  const sharePath = `/result?${new URLSearchParams(answers).toString()}`
   const crumbs = [
     { name: 'Home', path: '/' },
     { name: result.task.name, path: `/best/${result.task.slug}` },
@@ -161,7 +169,7 @@ export default async function ResultPage({
         <h1 className="min-w-0 font-bold text-5xl leading-tight break-words">{top.name}</h1>
       </div>
       <p className="max-w-2xl text-lg">
-        Best bot for {result.task.name.toLowerCase()}, {budgetLabel[parsed.data.budget].toLowerCase()}, {skillLabel[parsed.data.skill].toLowerCase()}: {top.name}.
+        Best bot for {result.task.name.toLowerCase()}, {budgetLabel[answers.budget].toLowerCase()}, {skillLabel[answers.skill].toLowerCase()}: {top.name}.
       </p>
       {top.budgetFit === 'over' ? <p className="text-sm font-semibold text-accent">{overBudgetLabel}</p> : null}
       <p className="max-w-2xl text-muted">{top.reason}</p>
@@ -182,9 +190,9 @@ export default async function ResultPage({
 
       {access.allowed ? (
         <form action={savePickAction} className="flex flex-wrap items-center gap-3">
-          <input type="hidden" name="task" value={parsed.data.task} />
-          <input type="hidden" name="budget" value={parsed.data.budget} />
-          <input type="hidden" name="skill" value={parsed.data.skill} />
+          <input type="hidden" name="task" value={answers.task} />
+          <input type="hidden" name="budget" value={answers.budget} />
+          <input type="hidden" name="skill" value={answers.skill} />
           <button type="submit" className="min-h-12 rounded-full border border-accent px-5 font-medium text-accent">
             Save this pick
           </button>
@@ -226,7 +234,7 @@ export default async function ResultPage({
         {alternatives.length < QUIZ_ALTERNATIVE_COUNT ? <p className="mt-4 text-muted">{fewStrongOptionsLabel}</p> : null}
         {result.matchCount > 0 ? (
           <p className="mt-4">
-            <Link className="font-semibold underline" href={matchesPath(result.task.slug, parsed.data.budget, 1)}>
+            <Link className="font-semibold underline" href={matchesPath(result.task.slug, answers.budget, 1)}>
               {seeAllMatchesLabel(result.matchCount)}
             </Link>
           </p>

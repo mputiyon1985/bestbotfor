@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { notFoundDescription, notFoundTitle } from './metadata'
-import { resultNotFoundHtml, resultNotFoundHeaders, resultRateLimitHeaders, resultRateLimitHtml } from './result-http'
+import { resultMissMetadata, resultNotFoundHtml, resultNotFoundHeaders, resultRateLimitHeaders, resultRateLimitHtml } from './result-http'
 
 function robotsDirectives(html: string): string[] {
   return [...html.matchAll(/<meta\b[^>]*>/gi)]
@@ -17,6 +17,8 @@ describe('result HTTP responses', () => {
     expect(html).toContain(notFoundDescription)
     expect(html).not.toContain('rel="canonical"')
     expect(resultNotFoundHeaders()['x-robots-tag']).toBe('noindex, nofollow')
+    expect(resultMissMetadata().robots).toEqual({ index: false, follow: false })
+    expect(Array.isArray(resultMissMetadata().robots)).toBe(false)
   })
 
   it('answers a tripped limit with 429 headers and Retry-After', () => {

@@ -1,5 +1,16 @@
 import { expect, test } from '@playwright/test'
 
+test('devin desktop redirects permanently to windsurf', async ({ request }) => {
+  const response = await request.get('/tools/devin-desktop', { maxRedirects: 0 })
+  expect(response.status()).toBe(301)
+  const location = response.headers().location ?? ''
+  expect(new URL(location, 'http://127.0.0.1:3000').pathname).toBe('/tools/windsurf')
+
+  const followed = await request.get('/tools/devin-desktop')
+  expect(followed.status()).toBe(200)
+  expect(await followed.text()).toContain('Devin Desktop (formerly Windsurf)')
+})
+
 test('the go route redirects only to the official tool URL', async ({ request }) => {
   const response = await request.get('/go/chatgpt?next=https://evil.example&ref=affiliate', { maxRedirects: 0 })
   expect(response.status()).toBe(302)
