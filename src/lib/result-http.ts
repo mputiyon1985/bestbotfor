@@ -36,30 +36,11 @@ export function resultRateLimitHtml(): string {
   return page('Too many results', 'Too many results', 'This network has asked for too many picks. Try again in a minute.')
 }
 
-/** How long a client should wait before retrying a result page the catalog could not read. */
-export const RESULT_UNAVAILABLE_RETRY_AFTER_SECONDS = 30
-
-/**
- * The catalog was still down when the page would have rendered.
- * 503, not 404: we do not know the task is missing, and a 404 would ask crawlers
- * to drop indexable match lists. 503, not 500: the outage is expected and temporary.
- */
-export function resultUnavailableHtml(): string {
-  return page('Results are unavailable', 'Results are unavailable', 'The catalog did not answer. Try this page again in a moment.')
-}
-
 export function resultNotFoundHeaders(): Record<string, string> {
   return {
     'content-type': 'text/html; charset=utf-8',
     'cache-control': 'no-store',
     'x-robots-tag': ROBOTS,
-  }
-}
-
-export function resultUnavailableHeaders(): Record<string, string> {
-  return {
-    ...resultNotFoundHeaders(),
-    'retry-after': String(RESULT_UNAVAILABLE_RETRY_AFTER_SECONDS),
   }
 }
 
