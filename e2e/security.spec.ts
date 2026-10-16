@@ -137,9 +137,22 @@ test('the tools index is served and still rejects an unsafe slug', async () => {
   expect(unsafe.body).toContain('not a tool in the catalog')
 })
 
+test('a valid quiz result stays 200 and noindex', async () => {
+  const response = await rawStatus('/result?task=chat&budget=any&skill=beginner')
+  expect(response.status).toBe(200)
+  expect(robotsDirectives(response.body)).toEqual(['noindex, nofollow'])
+  const incomplete = await rawStatus('/result?task=chat&budget=any')
+  expect(incomplete.status).toBe(200)
+  expect(incomplete.body).toContain('We need three answers')
+  expect(robotsDirectives(incomplete.body)).toEqual(['noindex, nofollow'])
+})
+
 test('a result 404 has one robots meta', async () => {
   for (const path of [
     '/result?task=marketing&budget=any&skill=beginner',
+    '/result?task=chat&budget=mid&skill=beginner',
+    '/result?task=chat&budget=nope',
+    '/result?task=Not_A_Task&budget=any&skill=beginner',
     '/result?task=chat&view=other',
     '/result?task=missing&view=all',
     '/result?task=chat&view=all&page=99',
@@ -151,6 +164,29 @@ test('a result 404 has one robots meta', async () => {
     expect(response.body, path).toContain(notFoundDescription)
     expect(robotsDirectives(response.body), path).toEqual(['noindex, nofollow'])
     expect(response.body, path).not.toMatch(/<link rel="canonical"/)
+  }
+})
+
+test('a missing task keeps one robots meta when the result proxy fails open', async ({ request }) => {
+  test.setTimeout(30_000)
+  const path = '/result?task=marketing&budget=any&skill=beginner'
+  for (const fault of ['lookup-throw', 'lookup-slow', 'limit-throw', 'limit-slow']) {
+    const response = await request.get(path, { headers: { 'x-bbf-result-fault': fault } })
+    const body = await response.text()
+    expect(robotsDirectives(body), fault).toEqual(['noindex, nofollow'])
+    if (fault.startsWith('lookup')) {
+      expect(response.status(), fault).toBe(200)
+      expect(body, fault).toContain('Page not found')
+    } else {
+      expect(response.status(), fault).toBe(404)
+    }
+  }
+
+  const quiz = '/result?task=chat&budget=any&skill=beginner'
+  for (const fault of ['limit-throw', 'limit-slow']) {
+    const response = await request.get(quiz, { headers: { 'x-bbf-result-fault': fault } })
+    expect(response.status(), fault).toBe(200)
+    expect(robotsDirectives(await response.text()), fault).toEqual(['noindex, nofollow'])
   }
 })
 

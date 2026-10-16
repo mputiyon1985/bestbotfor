@@ -57,7 +57,10 @@ const nextConfig: NextConfig = {
     inlineCss: true,
   },
   async redirects() {
-    return legacyAssetRedirects.map((redirect) => ({ ...redirect, permanent: true }))
+    return [
+      ...legacyAssetRedirects.map((redirect) => ({ ...redirect, permanent: true as const })),
+      { source: '/tools/devin-desktop', destination: '/tools/windsurf', statusCode: 301 as const },
+    ]
   },
   async headers() {
     return [

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { tasks, toolScores, toolTasks, tools } from './db/schema'
-import { allMatchesRequest, resultRequestStatus } from './result-request'
+import { allMatchesRequest, resultOfflineStatus, resultRequestStatus } from './result-request'
 import { createTestDatabase } from '@/test/db'
 
 async function seed(db: Awaited<ReturnType<typeof createTestDatabase>>['db']) {
@@ -48,16 +48,28 @@ function toolRow(id: number, slug: string, name: string) {
 }
 
 describe('result request status', () => {
-  it('404s a missing task, a mid budget, and a bad view, and keeps the quiz form for a bad answer', async () => {
+  it('404s an invalid quiz task or budget, and keeps a valid quiz and a missing skill on the page', async () => {
     const { db, close } = await createTestDatabase()
     await seed(db)
 
+    expect(resultOfflineStatus(new URLSearchParams('task=Not_A_Task&budget=any&skill=beginner'))).toBe('not-found')
+    expect(resultOfflineStatus(new URLSearchParams('task=chat&budget=mid&skill=beginner'))).toBe('not-found')
+    expect(resultOfflineStatus(new URLSearchParams('budget=nope'))).toBe('not-found')
+    expect(resultOfflineStatus(new URLSearchParams('task=chat&view=all&budget=mid'))).toBe('not-found')
+    expect(resultOfflineStatus(new URLSearchParams(''))).toBe('ok')
+    expect(resultOfflineStatus(new URLSearchParams('task=chat&budget=any'))).toBe('lookup')
+
     expect(await resultRequestStatus(db, new URLSearchParams('task=marketing&budget=any&skill=beginner'))).toBe('not-found')
+    expect(await resultRequestStatus(db, new URLSearchParams('task=marketing'))).toBe('not-found')
+    expect(await resultRequestStatus(db, new URLSearchParams('task=Not_A_Task&budget=any&skill=beginner'))).toBe('not-found')
+    expect(await resultRequestStatus(db, new URLSearchParams('task=chat&budget=mid&skill=beginner'))).toBe('not-found')
+    expect(await resultRequestStatus(db, new URLSearchParams('task=chat&budget=nope'))).toBe('not-found')
     expect(await resultRequestStatus(db, new URLSearchParams('task=chat&view=all&budget=mid'))).toBe('not-found')
     expect(await resultRequestStatus(db, new URLSearchParams('task=chat&view=other'))).toBe('not-found')
     expect(await resultRequestStatus(db, new URLSearchParams('task=chat&view=all&page=99'))).toBe('not-found')
     expect(await resultRequestStatus(db, new URLSearchParams('task=chat&budget=any&skill=beginner'))).toBe('ok')
     expect(await resultRequestStatus(db, new URLSearchParams('task=chat&budget=any'))).toBe('ok')
+    expect(await resultRequestStatus(db, new URLSearchParams(''))).toBe('ok')
 
     const page = await allMatchesRequest(db, new URLSearchParams('task=chat&view=all'))
     expect(page?.tools.map((tool) => tool.slug)).toEqual(['alpha'])

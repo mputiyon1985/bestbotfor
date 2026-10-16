@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkDbTarget, dbHost } from './guard'
+import { checkDbTarget, dbHost, isProdHost } from './guard'
 
 const cfg = {
   prodHosts: ['prod-db-acme.aws-us-east-1.turso.io'],
@@ -57,6 +57,21 @@ describe('db guard against config/db-guard.json', () => {
     expect(checkDbTarget(PROD_REAL, 'production').ok).toBe(true)
     expect(checkDbTarget(PROD_REAL, 'preview').ok).toBe(false)
     expect(checkDbTarget(PROD_REAL, 'development').ok).toBe(false)
+  })
+  it('classifies the agentic Turso host as prod and refuses it outside production', () => {
+    const host = 'agentic-ai-co-mputiyon1985.aws-us-east-1.turso.io'
+    const url = `libsql://${host}`
+    expect(dbHost(url)).toBe(host)
+    expect(isProdHost(host)).toBe(true)
+    expect(checkDbTarget(url, 'production')).toEqual({ ok: true, host })
+    for (const env of [undefined, '', '  ', 'preview', 'development']) {
+      const result = checkDbTarget(url, env)
+      expect(result.ok, String(env)).toBe(false)
+      if (!result.ok) {
+        expect(result.host).toBe(host)
+        expect(result.reason).toMatch(/Refusing to migrate\/seed production DB host/)
+      }
+    }
   })
   it('decodes %2d/%2e-encoded hosts like @libsql/core and treats them as prod', () => {
     const encoded = [
