@@ -56,6 +56,9 @@ describe('result burst', () => {
       const unavailable = decisions.filter((decision) => decision.type === 'unavailable')
       const limited = decisions.filter((decision) => decision.type === 'limited')
       const continued = decisions.filter((decision) => decision.type === 'continue')
+      console.log(
+        `result burst decisions ${JSON.stringify({ unavailable: unavailable.length, continue: continued.length, limited: limited.length, total: decisions.length })}`,
+      )
       expect(unavailable).toHaveLength(0)
       expect(limited.length).toBeGreaterThan(0)
       expect(continued.length).toBe(ACTION_LIMITS.result.limit)
