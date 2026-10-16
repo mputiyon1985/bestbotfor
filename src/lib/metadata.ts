@@ -37,7 +37,7 @@ export function pageMetadata(input: {
       card: 'summary_large_image',
       title: input.title,
       description: input.description,
-      images: [image],
+      images: [{ url: image, width: 1200, height: 630, alt: input.title }],
     },
   }
 }

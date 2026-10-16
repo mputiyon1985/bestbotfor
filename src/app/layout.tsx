@@ -64,7 +64,7 @@ export const metadata: Metadata = {
     type: 'website',
     images: [ogImage],
   },
-  twitter: { card: 'summary_large_image', title: homeTitle, description: TAGLINE, images: [OG_IMAGE_PATH] },
+  twitter: { card: 'summary_large_image', title: homeTitle, description: TAGLINE, images: [ogImage] },
   verification: googleVerification ? { google: googleVerification } : undefined,
   robots: isProductionDeployment() ? { index: true, follow: true } : { index: false, follow: false },
 }

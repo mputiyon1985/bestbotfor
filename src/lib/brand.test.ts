@@ -6,7 +6,9 @@ import {
   BRAND,
   HASHED_ASSET_PATHS,
   MASKABLE_ICON_PATH,
+  OG_HEADLINE_TEMPLATE_PATH,
   OG_IMAGE_PATH,
+  OG_IMAGE_SVG_PATH,
   ORGANIZATION_LOGO_PATH,
 } from './brand'
 import { organizationJsonLd } from './jsonld'
@@ -34,7 +36,9 @@ describe('brand sheet palette', () => {
   it('uses the approved tagline and the kit open graph image', () => {
     expect(TAGLINE).toBe('The right AI in 30 seconds.')
     expect(homeTitle).toBe('BestBotFor | The right AI in 30 seconds')
-    expect(OG_IMAGE_PATH).toMatch(/^\/og\/og-default-1200x630\.[0-9a-f]{8}\.png$/)
+    expect(OG_IMAGE_PATH).toBe('/og/og-default-1200x630.676bae0e.png')
+    expect(OG_IMAGE_SVG_PATH).toBe('/og/og-default-1200x630.1ab473e6.svg')
+    expect(existsSync(path.join(process.cwd(), 'public', OG_HEADLINE_TEMPLATE_PATH.replace(/^\/+/, '')))).toBe(true)
     const manifest = readFileSync(path.join(process.cwd(), 'public/site.webmanifest'), 'utf8')
     expect(manifest).toContain(BRAND.indigo)
     expect(manifest).toContain(BRAND.ink)

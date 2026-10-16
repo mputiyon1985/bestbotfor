@@ -42,7 +42,12 @@ test('favicons, manifest, and the default preview image are the kit files', asyn
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', new RegExp(APPLE_TOUCH_ICON_PATH.replace(/[.]/g, '\\.')))
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', /site\.webmanifest/)
   const og = page.locator('meta[property="og:image"]')
-  await expect(og.first()).toHaveAttribute('content', /og-default-1200x630\.[0-9a-f]{8}\.png/)
+  await expect(og.first()).toHaveAttribute('content', /og-default-1200x630\.676bae0e\.png/)
+  await expect(page.locator('meta[property="og:image:width"]')).toHaveAttribute('content', '1200')
+  await expect(page.locator('meta[property="og:image:height"]')).toHaveAttribute('content', '630')
+  await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute('content', /og-default-1200x630\.676bae0e\.png/)
+  await expect(page.locator('meta[name="twitter:image:width"]')).toHaveAttribute('content', '1200')
+  await expect(page.locator('meta[name="twitter:image:height"]')).toHaveAttribute('content', '630')
 
   for (const path of [
     '/favicon.ico',
