@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { OG_IMAGE_PATH } from './brand'
 import { isProductionDeployment } from './indexing'
-import { getSiteUrl, SITE_NAME, TAGLINE } from './site'
+import { absoluteUrl, getSiteUrl, SITE_NAME, TAGLINE } from './site'
 
 export function pageMetadata(input: {
   title: string
@@ -10,13 +10,17 @@ export function pageMetadata(input: {
   absoluteTitle?: boolean
   imagePath?: string
   noIndex?: boolean
+  pagination?: { previous?: string | null; next?: string | null }
 }): Metadata {
   const canonical = new URL(input.path, getSiteUrl()).toString()
   const image = input.imagePath ?? OG_IMAGE_PATH
+  const previous = input.pagination?.previous ? absoluteUrl(input.pagination.previous) : undefined
+  const next = input.pagination?.next ? absoluteUrl(input.pagination.next) : undefined
   return {
     title: input.absoluteTitle ? { absolute: input.title } : input.title,
     description: input.description,
     alternates: { canonical },
+    pagination: previous || next ? { previous, next } : undefined,
     robots:
       input.noIndex || !isProductionDeployment() ? { index: false, follow: false } : { index: true, follow: true },
     openGraph: {
@@ -39,4 +43,4 @@ export function pageMetadata(input: {
 
 export const homeTitle = `${SITE_NAME} — ${TAGLINE}`
 
-export const homeDescription = `${TAGLINE} BestBotFor names one AI tool for the job and two alternatives, based on your budget and experience.`
+export const homeDescription = `${TAGLINE} BestBotFor names one AI tool for the job and up to five alternatives, based on your budget and experience.`

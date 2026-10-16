@@ -7,6 +7,7 @@ export const slugSchema = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
 
 export const budgetSchema = z.enum(['free', 'low', 'any'])
+export const matchBudgetSchema = z.enum(['free', 'low', 'mid', 'any'])
 export const skillSchema = z.enum(['beginner', 'intermediate', 'pro'])
 
 export const quizSchema = z.object({
@@ -27,6 +28,7 @@ export const searchQuerySchema = z.string().trim().min(1).max(80)
 export const gaIdSchema = z.string().regex(/^G-[A-Z0-9]+$/)
 
 export type Budget = z.infer<typeof budgetSchema>
+export type MatchBudget = z.infer<typeof matchBudgetSchema>
 export type Skill = z.infer<typeof skillSchema>
 export type QuizAnswers = z.infer<typeof quizSchema>
 

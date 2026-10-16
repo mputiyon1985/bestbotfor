@@ -1,12 +1,12 @@
 import type { Catalog, CatalogTask, CatalogTool } from './catalog-types'
-import { explainPick, rankTools, type RankedTool } from './scoring'
+import { rankTools, selectQuizPicks, type BudgetFit, type RankedTool } from './scoring'
 import type { QuizAnswers } from './validation'
 
 export type Recommendation = {
   task: CatalogTask
   answers: QuizAnswers
   ranked: RankedTool[]
-  picks: Array<RankedTool & { tool: CatalogTool }>
+  picks: Array<RankedTool & { tool: CatalogTool; budgetFit: BudgetFit; reason: string }>
   why: string
 }
 
@@ -30,8 +30,7 @@ export function recommend(catalog: Catalog, answers: QuizAnswers): Recommendatio
     ]
   })
   const ranked = rankTools(candidates, answers)
-  const top = ranked.slice(0, 3)
-  const picks = top.flatMap((rankedTool) => {
+  const picks = selectQuizPicks(candidates, answers).flatMap((rankedTool) => {
     const tool = catalog.tools.find((item) => item.slug === rankedTool.slug)
     return tool ? [{ ...rankedTool, tool }] : []
   })
@@ -41,7 +40,7 @@ export function recommend(catalog: Catalog, answers: QuizAnswers): Recommendatio
     answers,
     ranked,
     picks,
-    why: leader ? explainPick(leader, answers) : '',
+    why: leader ? leader.reason : '',
   }
 }
 

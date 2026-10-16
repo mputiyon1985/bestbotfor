@@ -21,7 +21,7 @@ import { TAGLINE } from '@/lib/site'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const FALLBACK: OgCopy = { title: TAGLINE, subtitle: 'One pick and two alternatives.' }
+const FALLBACK: OgCopy = { title: TAGLINE, subtitle: 'One pick and up to five alternatives.' }
 
 export async function GET(request: Request) {
   const url = new URL(request.url)

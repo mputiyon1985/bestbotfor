@@ -1,4 +1,4 @@
-import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 export const tools = sqliteTable('tools', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -10,7 +10,7 @@ export const tools = sqliteTable('tools', {
   shortDesc: text('short_desc').notNull(),
   longDesc: text('long_desc').notNull(),
   pricingModel: text('pricing_model').notNull(),
-  priceFromUsd: integer('price_from_usd'),
+  priceFromUsd: real('price_from_usd'),
   hasFreeTier: integer('has_free_tier', { mode: 'boolean' }).notNull(),
   skillLevel: text('skill_level').notNull(),
   platforms: text('platforms').notNull(),

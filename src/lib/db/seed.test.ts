@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { count, eq } from 'drizzle-orm'
@@ -117,5 +117,63 @@ describe('catalog seed', () => {
     expect(keptTool?.name).toBe('Sentinel')
     expect(keptTask?.name).toBe('Sentinel')
     expect(keptClick?.page).toBe('/sentinel')
+  })
+
+  it('deletes retired quiz fits and does not restore them on a later seed', async () => {
+    await useTempDatabase()
+    await seed()
+    const db = getDb()
+    const toolRows = await db.select().from(tools)
+    const taskRows = await db.select().from(tasks)
+    const toolId = new Map(toolRows.map((row) => [row.slug, row.id]))
+    const taskId = new Map(taskRows.map((row) => [row.slug, row.id]))
+    const retired = [
+      ['hyperwrite', 'seo'],
+      ['wondercraft', 'music'],
+      ['podcastle', 'music'],
+      ['listnr', 'music'],
+      ['notebooklm', 'music'],
+      ['descript', 'music'],
+      ['lalal-ai', 'music'],
+    ] as const
+    for (const [toolSlug, taskSlug] of retired) {
+      const retiredToolId = toolId.get(toolSlug)
+      const retiredTaskId = taskId.get(taskSlug)
+      expect(retiredToolId, toolSlug).toBeTruthy()
+      expect(retiredTaskId, taskSlug).toBeTruthy()
+      await db.insert(toolTasks).values({
+        toolId: retiredToolId ?? 0,
+        taskId: retiredTaskId ?? 0,
+        fitScore: 40,
+        notes: 'stale fit',
+      })
+    }
+
+    const sql = await readFile(path.join(process.cwd(), 'drizzle/0004_retire_quiz_fits.sql'), 'utf8')
+    await db.$client.executeMultiple(sql)
+    await db.$client.executeMultiple(sql)
+
+    const slugByTool = new Map(toolRows.map((row) => [row.id, row.slug]))
+    const slugByTask = new Map(taskRows.map((row) => [row.id, row.slug]))
+    const pair = (row: { toolId: number; taskId: number }) => `${slugByTool.get(row.toolId)}:${slugByTask.get(row.taskId)}`
+    const afterDelete = await db.select().from(toolTasks)
+    for (const [toolSlug, taskSlug] of retired) {
+      expect(afterDelete.some((row) => pair(row) === `${toolSlug}:${taskSlug}`)).toBe(false)
+    }
+    expect(afterDelete.some((row) => pair(row) === 'notebooklm:chat')).toBe(true)
+    expect(afterDelete.some((row) => pair(row) === 'hyperwrite:writing')).toBe(true)
+    expect(afterDelete.some((row) => pair(row) === 'descript:video')).toBe(true)
+    expect(afterDelete.some((row) => pair(row) === 'elevenlabs:music')).toBe(true)
+    expect(afterDelete.some((row) => pair(row) === 'lalal-ai:voice')).toBe(true)
+
+    await seed()
+    const afterSeed = await db.select().from(toolTasks)
+    expect(afterSeed).toHaveLength(afterDelete.length)
+    for (const [toolSlug, taskSlug] of retired) {
+      expect(afterSeed.some((row) => pair(row) === `${toolSlug}:${taskSlug}`)).toBe(false)
+    }
+    const eleven = afterSeed.find((row) => pair(row) === 'elevenlabs:music')
+    expect(eleven?.fitScore).toBe(86)
+    expect(eleven?.notes).toBe('Eleven Music generates songs with vocals; commercial use needs a paid plan.')
   })
 })

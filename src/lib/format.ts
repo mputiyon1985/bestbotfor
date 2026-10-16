@@ -6,6 +6,12 @@ export const budgetLabel: Record<Budget, string> = {
   any: 'Any budget',
 }
 
+/** Shown on a shortlisted tool that sits outside the chosen budget. */
+export const overBudgetLabel = 'Just over budget'
+
+/** Shown when fewer than five alternatives clear the minimum fit. */
+export const fewStrongOptionsLabel = 'Few strong options exist for this yet.'
+
 export const skillLabel: Record<Skill, string> = {
   beginner: 'Beginner',
   intermediate: 'Intermediate',
@@ -49,10 +55,12 @@ type Priced = {
 export function priceLabel(tool: Priced): string {
   if (tool.pricingModel === 'free') return 'Free'
   if (tool.priceFromUsd != null) {
+    const wholeDollars = Number.isInteger(tool.priceFromUsd)
     const money = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD',
-      maximumFractionDigits: 0,
+      minimumFractionDigits: wholeDollars ? 0 : 2,
+      maximumFractionDigits: wholeDollars ? 0 : 2,
     }).format(tool.priceFromUsd)
     return tool.hasFreeTier ? `Free tier, then ${money} and up` : `${money} and up`
   }

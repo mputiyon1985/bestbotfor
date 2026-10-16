@@ -4,7 +4,14 @@ const base = `http://127.0.0.1:${port}`
 module.exports = {
   ci: {
     collect: {
-      url: [`${base}/`, `${base}/best/coding`, `${base}/tools`, `${base}/tools/cursor`],
+      url: [
+        `${base}/`,
+        `${base}/result?task=chat&budget=any&skill=beginner`,
+        `${base}/result?task=seo&budget=free&skill=beginner`,
+        `${base}/best/coding`,
+        `${base}/tools`,
+        `${base}/tools/cursor`,
+      ],
       numberOfRuns: 1,
       settings: {
         chromeFlags: '--no-sandbox --disable-dev-shm-usage',

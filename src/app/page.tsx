@@ -11,7 +11,7 @@ const faqs = [
   {
     question: 'How does BestBotFor pick a tool?',
     answer:
-      'You answer three questions: the job, your budget, and your experience. We rank the catalog with an editorial fit score, then adjust for budget and skill. Affiliate programs do not change the rank.',
+      'You answer three questions: the job, your budget, and your experience. We rank tools that clear a minimum fit score by editorial fit, then adjust for budget and skill. You get one pick and up to five alternatives. A tool just over budget can still appear when it clears that bar, and it is labeled. When fewer than five alternatives qualify, the page says so. Affiliate programs do not change the rank.',
   },
   {
     question: 'Do I need an account?',
@@ -40,7 +40,7 @@ export default async function HomePage() {
         <div>
           <h1 className="font-headline text-5xl leading-tight md:text-6xl">{TAGLINE}</h1>
           <p className="mt-4 max-w-xl text-lg text-muted">
-            Tell us the job, your budget, and how experienced you are. You’ll get one AI tool and two alternatives, in plain English.
+            Tell us the job, your budget, and how experienced you are. You’ll get one AI tool and up to five alternatives, in plain English.
           </p>
         </div>
         <p className="rounded-3xl bg-mist px-5 py-4 text-sm text-accent">

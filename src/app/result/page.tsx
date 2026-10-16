@@ -1,20 +1,44 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
-import { recommendQuiz } from '@/lib/catalog'
+import { listTaskCandidates, recommendQuiz } from '@/lib/catalog'
+import { listMatches, matchBudgetLabel, matchesPageRequest, matchesPath, pageOfMatches, seeAllMatchesLabel } from '@/lib/matches'
+import { AllMatches } from './all-matches'
 import { ACTION_LIMITS, allowRate } from '@/lib/action-limit'
 import { getDb } from '@/lib/db'
 import { rateLimitKey, clientIp } from '@/lib/ip'
-import { budgetLabel, budgetPhrase, priceLabel, skillLabel, skillPhrase } from '@/lib/format'
+import { budgetLabel, budgetPhrase, fewStrongOptionsLabel, overBudgetLabel, priceLabel, skillLabel, skillPhrase } from '@/lib/format'
 import { breadcrumbJsonLd } from '@/lib/jsonld'
 import { memberAccess } from '@/lib/members'
 import { pageMetadata } from '@/lib/metadata'
 import { absoluteUrl } from '@/lib/site'
-import { firstString, quizSchema } from '@/lib/validation'
+import { firstString, matchBudgetSchema, quizSchema, slugSchema } from '@/lib/validation'
 import { savePickAction } from './actions'
+
+async function loadAllMatches(params: Record<string, string | string[] | undefined>) {
+  const taskSlug = firstString(params.task)
+  if (!slugSchema.safeParse(taskSlug).success) return null
+  const rawBudget = firstString(params.budget)
+  const parsedBudget = rawBudget === '' ? { success: true as const, data: 'any' as const } : matchBudgetSchema.safeParse(rawBudget)
+  if (!parsedBudget.success) return null
+  const loaded = await listTaskCandidates(taskSlug)
+  if (!loaded) return null
+  const matches = listMatches(loaded.tools, parsedBudget.data)
+  const requested = matchesPageRequest(firstString(params.page), matches.length)
+  if (!requested) return null
+  return {
+    task: loaded.task,
+    budget: parsedBudget.data,
+    total: matches.length,
+    tools: pageOfMatches(matches, requested.page),
+    page: requested.page,
+    pageCount: requested.pageCount,
+  }
+}
 
 export async function generateMetadata({
   searchParams,
@@ -22,6 +46,26 @@ export async function generateMetadata({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }): Promise<Metadata> {
   const params = await searchParams
+  const view = firstString(params.view)
+  if (view !== '' && view !== 'all') notFound()
+  if (view === 'all') {
+    const loaded = await loadAllMatches(params)
+    if (!loaded) notFound()
+    const path = matchesPath(loaded.task.slug, loaded.budget, loaded.page)
+    const title =
+      loaded.page > 1
+        ? `All matches for ${loaded.task.name.toLowerCase()}, page ${loaded.page}`
+        : `All matches for ${loaded.task.name.toLowerCase()}`
+    return pageMetadata({
+      title,
+      description: `${loaded.total} tools with a strong fit for ${loaded.task.name.toLowerCase()}, ranked for ${matchBudgetLabel[loaded.budget].toLowerCase()}.`,
+      path,
+      pagination: {
+        previous: loaded.page > 1 ? matchesPath(loaded.task.slug, loaded.budget, loaded.page - 1) : null,
+        next: loaded.page < loaded.pageCount ? matchesPath(loaded.task.slug, loaded.budget, loaded.page + 1) : null,
+      },
+    })
+  }
   const parsed = quizSchema.safeParse({
     task: firstString(params.task),
     budget: firstString(params.budget),
@@ -30,7 +74,7 @@ export async function generateMetadata({
   if (!parsed.success) {
     return pageMetadata({
       title: 'Your result',
-      description: 'Answer the three questions to get a best AI tool and two alternatives.',
+      description: 'Answer the three questions to get a best AI tool and up to five alternatives.',
       path: '/result',
       noIndex: true,
     })
@@ -57,12 +101,29 @@ export default async function ResultPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const params = await searchParams
+  const view = firstString(params.view)
+  if (view !== '' && view !== 'all') notFound()
+  const headerStore = await headers()
+  if (view === 'all') {
+    const loaded = await loadAllMatches(params)
+    if (!loaded) notFound()
+    return (
+      <AllMatches
+        task={loaded.task}
+        budget={loaded.budget}
+        page={loaded.page}
+        pageCount={loaded.pageCount}
+        total={loaded.total}
+        tools={loaded.tools}
+        nonce={headerStore.get('x-nonce')}
+      />
+    )
+  }
   const parsed = quizSchema.safeParse({
     task: firstString(params.task),
     budget: firstString(params.budget),
     skill: firstString(params.skill),
   })
-  const headerStore = await headers()
   const nonce = headerStore.get('x-nonce')
   const allowed = await allowRate(
     getDb(),
@@ -92,7 +153,7 @@ export default async function ResultPage({
   }
 
   const result = await recommendQuiz(parsed.data)
-  if (!result || result.picks.length === 0) {
+  if (!result) {
     return (
       <div>
         <h1 className="font-bold text-4xl">No tool in the catalog fits that job yet</h1>
@@ -105,7 +166,17 @@ export default async function ResultPage({
   }
 
   const [top, ...alternatives] = result.picks
-  if (!top) return null
+  if (!top) {
+    return (
+      <div>
+        <h1 className="font-bold text-4xl">{fewStrongOptionsLabel}</h1>
+        <p className="mt-3 text-muted">Try a nearby job from the list on the home page.</p>
+        <Link href="/" className="mt-6 inline-flex min-h-12 items-center font-semibold underline">
+          Start over
+        </Link>
+      </div>
+    )
+  }
   const access = await memberAccess()
   const sharePath = `/result?${new URLSearchParams(parsed.data).toString()}`
   const crumbs = [
@@ -123,7 +194,8 @@ export default async function ResultPage({
       <p className="max-w-2xl text-lg">
         Best bot for {result.task.name.toLowerCase()}, {budgetLabel[parsed.data.budget].toLowerCase()}, {skillLabel[parsed.data.skill].toLowerCase()}: {top.name}.
       </p>
-      <p className="max-w-2xl text-muted">{result.why}</p>
+      {top.budgetFit === 'over' ? <p className="text-sm font-semibold text-accent">{overBudgetLabel}</p> : null}
+      <p className="max-w-2xl text-muted">{top.reason}</p>
       <dl className="grid gap-3 sm:grid-cols-3">
         <Fact label="Price" value={priceLabel(top)} />
         <Fact label="Experience" value={skillLabel[top.skillLevel]} />
@@ -156,11 +228,9 @@ export default async function ResultPage({
         </p>
       )}
 
-      <section>
-        <h2 className="font-semibold text-3xl">Alternatives</h2>
-        {alternatives.length === 0 ? (
-          <p className="mt-2 text-muted">The catalog does not have two other strong fits for this job.</p>
-        ) : (
+      <section aria-labelledby="alternatives-heading">
+        <h2 id="alternatives-heading" className="font-semibold text-3xl">Alternatives</h2>
+        {alternatives.length > 0 ? (
           <ul className="mt-4 grid gap-4 md:grid-cols-2">
             {alternatives.map((alt) => (
               <li key={alt.slug} className="rounded-2xl border border-line bg-card p-4">
@@ -169,7 +239,8 @@ export default async function ResultPage({
                     {alt.name}
                   </Link>
                 </h3>
-                <p className="mt-2 text-sm text-muted">{alt.notes}</p>
+                {alt.budgetFit === 'over' ? <p className="mt-2 text-sm font-semibold text-accent">{overBudgetLabel}</p> : null}
+                <p className="mt-2 text-sm text-muted">{alt.reason}</p>
                 <p className="mt-2 text-sm">{priceLabel(alt)}</p>
                 <OutboundLink slug={alt.slug} className="mt-3 inline-flex min-h-12 items-center font-semibold underline">
                   Visit {alt.name}
@@ -177,7 +248,15 @@ export default async function ResultPage({
               </li>
             ))}
           </ul>
-        )}
+        ) : null}
+        {alternatives.length < 5 ? <p className="mt-4 text-muted">{fewStrongOptionsLabel}</p> : null}
+        {result.matchCount > 0 ? (
+          <p className="mt-4">
+            <Link className="font-semibold underline" href={matchesPath(result.task.slug, 'any', 1)}>
+              {seeAllMatchesLabel(result.matchCount)}
+            </Link>
+          </p>
+        ) : null}
       </section>
 
       <section>
@@ -200,6 +279,9 @@ export default async function ResultPage({
                     <Link href={`/tools/${pick.slug}`} className="underline">
                       {pick.name}
                     </Link>
+                    {pick.budgetFit === 'over' ? (
+                      <span className="mt-1 block text-xs font-semibold uppercase tracking-wide text-accent">{overBudgetLabel}</span>
+                    ) : null}
                   </th>
                   <td className="py-3 pr-3">{priceLabel(pick)}</td>
                   <td className="py-3 pr-3">{skillLabel[pick.skillLevel]}</td>

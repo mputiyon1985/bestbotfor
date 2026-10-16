@@ -1,4 +1,5 @@
 import type { AffiliateSeed, TaskSeed, ToolSeed } from '@/lib/catalog-types'
+import { elevenlabsMusicFit, musicSeoToolSeeds } from './music-seo'
 
 const REVIEWED = '2026-10-15'
 
@@ -248,6 +249,7 @@ export const toolSeeds: ToolSeed[] = [
       { task: 'vibe-coding', score: 82, notes: 'Agent plus a hosted environment, so setup is light.' },
       { task: 'coding', score: 72, notes: 'A real editor in the browser, with less depth than a local AI IDE.' },
       { task: 'backend', score: 62, notes: 'You can run a small backend here, though the database story is not the product’s center.' },
+      { task: 'websites', score: 58, notes: 'Hosts the environment and lets the agent create and run files, so a site can start in the browser. It is an IDE, not a visual site publisher.' },
     ],
     affiliate: {
       hasProgram: false,
@@ -397,6 +399,7 @@ export const toolSeeds: ToolSeed[] = [
     lastVerifiedAt: REVIEWED,
     fits: [
       { task: 'vibe-coding', score: 78, notes: 'Prompt to a hosted app, with less of the code in your face.' },
+      { task: 'websites', score: 68, notes: 'Turns a description into a hosted app with a managed backend, so you can publish something people open. Layout control is thinner than Framer or Webflow.' },
     ],
     affiliate: {
       hasProgram: true,
@@ -564,6 +567,7 @@ export const toolSeeds: ToolSeed[] = [
     lastVerifiedAt: REVIEWED,
     fits: [
       { task: 'voice', score: 96, notes: 'Speech from text is the core product.' },
+      elevenlabsMusicFit,
     ],
     affiliate: {
       hasProgram: true,
@@ -924,6 +928,7 @@ export const toolSeeds: ToolSeed[] = [
     fits: [
       { task: 'writing', score: 60, notes: 'Useful inside the doc, not a marketing suite.' },
       { task: 'meetings', score: 62, notes: 'Can tidy notes you store in Notion. It is not a call recorder.' },
+      { task: 'chat', score: 57, notes: 'Q&A stays inside a Notion workspace you already use, so it can talk through those notes. It is not a standalone chat assistant.' },
     ],
     affiliate: {
       hasProgram: false,
@@ -961,7 +966,7 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['suno.com'],
     category: 'Music',
     shortDesc: 'Generates songs and instrumentals from a text prompt.',
-    longDesc: 'Suno is the catalog’s music tool. You describe the track and get audio. It does not score a film or replace a session musician for a finished commercial recording.',
+    longDesc: 'You describe the track and get a song or instrumental. It does not score a film or replace a session musician for a finished commercial recording.',
     pricingModel: 'freemium',
     priceFromUsd: null,
     hasFreeTier: true,
@@ -969,7 +974,7 @@ export const toolSeeds: ToolSeed[] = [
     platforms: ['Web'],
     lastVerifiedAt: REVIEWED,
     fits: [
-      { task: 'music', score: 95, notes: 'Prompt to a song is the product, and it is the music tool in this catalog.' },
+      { task: 'music', score: 95, notes: 'You describe a song and get the audio, including vocals.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -1487,6 +1492,7 @@ export const toolSeeds: ToolSeed[] = [
     fits: [
       { task: 'writing', score: 78, notes: 'Built for companies that need brand rules and governance across teams.' },
       { task: 'agents', score: 55, notes: 'The platform also builds agents that follow brand rules.' },
+      { task: 'seo', score: 55, notes: 'Enforces brand rules and governance across team content, which keeps a search program consistent. It does not score a page against ranking terms.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -1636,6 +1642,7 @@ export const toolSeeds: ToolSeed[] = [
     lastVerifiedAt: REVIEWED,
     fits: [
       { task: 'writing', score: 68, notes: 'Helps draft and rewrite across the web with your own knowledge base.' },
+      { task: 'seo', score: 52, notes: 'Drafts and rewrites across the web from your own knowledge base, which can revise a page in the browser. It does not build an SEO brief or a term score.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -1957,7 +1964,7 @@ export const toolSeeds: ToolSeed[] = [
     shortDesc: 'Luma’s creative platform for AI video and images with its own and third-party models.',
     longDesc: 'Strong for cinematic text-to-video and image-to-video. No free plan on the pricing page; plans start at $30/mo.',
     pricingModel: 'paid',
-    priceFromUsd: null,
+    priceFromUsd: 30,
     hasFreeTier: false,
     skillLevel: 'intermediate',
     platforms: ['Web', 'iOS'],
@@ -2392,7 +2399,6 @@ export const toolSeeds: ToolSeed[] = [
     lastVerifiedAt: REVIEWED,
     fits: [
       { task: 'voice', score: 60, notes: 'Clean vocal or instrument tracks from any song.' },
-      { task: 'music', score: 65, notes: 'Stem splitting prepares a track. It does not generate a song.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -2541,6 +2547,7 @@ export const toolSeeds: ToolSeed[] = [
     fits: [
       { task: 'research', score: 86, notes: 'Answers grounded in your own documents, plus audio overviews.' },
       { task: 'writing', score: 50, notes: 'A source-grounded notebook can draft from your documents. Research comes first.' },
+      { task: 'chat', score: 61, notes: 'Answers stay grounded in documents you add, so you can talk through that source set. It is not an open general assistant.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -3248,6 +3255,7 @@ export const toolSeeds: ToolSeed[] = [
     lastVerifiedAt: REVIEWED,
     fits: [
       { task: 'automation', score: 55, notes: 'Fast AI access from your keyboard.' },
+      { task: 'chat', score: 64, notes: 'Puts AI chat on a keyboard launcher for a quick back-and-forth. The AI features need Pro, and it is not a full assistant like ChatGPT.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -3335,6 +3343,7 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
+  ...musicSeoToolSeeds,
 ]
 
 /** Hand-checked comparisons. Other pairs still resolve if both tools exist. */
