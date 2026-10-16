@@ -57,8 +57,6 @@ export type EditorialSeed = Rubric & {
 export const UNRATED_SLUGS = [
   'perplexity',
   'canva',
-  'cursor',
-  'windsurf',
   'grok',
   'writer',
   'lex',
