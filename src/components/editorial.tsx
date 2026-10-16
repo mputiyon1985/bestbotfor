@@ -126,22 +126,22 @@ function CriterionBar({ label, value }: { label: string; value: number }) {
   const width = Math.min(100, Math.max(0, (value / 5) * 100))
   const text = formatScore(value)
   return (
-    <div data-criterion-row className="min-w-0">
-      <div className="flex items-baseline justify-between gap-3">
-        <dt className="text-sm font-semibold">{label}</dt>
-        <dd className="text-sm font-semibold">{text}</dd>
-      </div>
-      <div
-        className="mt-1 h-2 w-full min-w-0 overflow-hidden rounded-full bg-mist"
-        role="meter"
-        aria-label={`${label} ${text} out of 5`}
-        aria-valuemin={0}
-        aria-valuemax={5}
-        aria-valuenow={value}
-        data-criterion={label.toLowerCase()}
-      >
-        <div className="h-full rounded-full bg-indigo" style={{ width: `${width}%` }} />
-      </div>
+    <div data-criterion-row className="relative min-w-0">
+      <dt className="pr-10 text-sm font-semibold">{label}</dt>
+      <dd className="min-w-0">
+        <span className="absolute top-0 right-0 text-sm font-semibold">{text}</span>
+        <div
+          className="mt-1 h-2 w-full min-w-0 overflow-hidden rounded-full bg-mist"
+          role="meter"
+          aria-label={`${label} ${text} out of 5`}
+          aria-valuemin={0}
+          aria-valuemax={5}
+          aria-valuenow={value}
+          data-criterion={label.toLowerCase()}
+        >
+          <div className="h-full rounded-full bg-indigo" style={{ width: `${width}%` }} />
+        </div>
+      </dd>
     </div>
   )
 }

@@ -10,7 +10,7 @@ module.exports = {
         `${base}/result?task=seo&view=all`,
         `${base}/best/coding`,
         `${base}/tools`,
-        `${base}/tools/cursor`,
+        `${base}/tools/chatgpt`,
       ],
       numberOfRuns: 1,
       settings: {

@@ -16,12 +16,9 @@ const TASK_GERUNDS: Record<string, string> = {
   write: 'writing',
 }
 
-/**
- * Task names are commands ("Make music"). "Best AI tool for make music" reads
- * like a broken sentence, so the title uses the gerund: "Best AI for making music".
- */
-export function bestGuideTitle(taskName: string): string {
-  const phrase = taskName
+/** "Make music" → "making music". The command form reads as an infinitive after "for". */
+export function taskGerund(taskName: string): string {
+  return taskName
     .split(' ')
     .map((word, index, words) => {
       const lower = word.toLowerCase()
@@ -30,12 +27,39 @@ export function bestGuideTitle(taskName: string): string {
       return TASK_GERUNDS[lower] ?? lower
     })
     .join(' ')
-  return `Best AI for ${phrase}`
+}
+
+export function bestGuideTitle(taskName: string): string {
+  return `Best AI for ${taskGerund(taskName)}`
+}
+
+export function bestGuideHeading(taskName: string): string {
+  return `Best AI tool for ${taskGerund(taskName)}`
+}
+
+export function bestGuideCrumb(taskName: string): string {
+  return `Best for ${taskGerund(taskName)}`
+}
+
+export function bestGuideQuestion(taskName: string): string {
+  return `What is the best AI tool for ${taskGerund(taskName)}?`
+}
+
+export function bestGuideFitAnswer(taskName: string, toolName: string): string {
+  return `${toolName} is the top pick in this catalog for ${taskGerund(taskName)}.`
+}
+
+export function bestGuideLead(taskName: string, toolName: string): string {
+  return `The best AI tool for ${taskGerund(taskName)} is ${toolName}.`
+}
+
+export function bestGuideListName(taskName: string): string {
+  return `Best AI tools for ${taskGerund(taskName)}`
 }
 
 /** Drops the closing sentence when a long task name would push the description past 155 characters. */
 export function bestGuideDescription(taskName: string): string {
-  const lead = `Which AI should you use for ${taskName.toLowerCase()}? Our pick and the closest alternatives, side by side.`
+  const lead = `Which AI should you use for ${taskGerund(taskName)}? Our pick and the closest alternatives, side by side.`
   const full = `${lead}${OWN_PICK}`
   return full.length <= 155 ? full : lead
 }
