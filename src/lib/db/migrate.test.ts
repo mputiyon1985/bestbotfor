@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { createClient } from '@libsql/client'
@@ -47,7 +47,7 @@ describe('sqlite file directories', () => {
     expect(ids).toContain('0006_tool_needs_verification.sql')
     expect(ids).toContain('0007_drop_non_forge_scores.sql')
     expect(ids).toContain('0008_ratings_v23.sql')
-    expect(ids).toContain('0009_result_rate_windows.sql')
+    expect(ids).toContain('0010_result_rate_windows.sql')
     const windows = await client.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'result_rate_windows'",
     )
@@ -84,5 +84,19 @@ describe('sqlite file directories', () => {
     const count = await third.execute('SELECT COUNT(*) AS n FROM schema_migrations')
     expect(Number(count.rows[0]?.n)).toBe(afterIds.length)
     third.close()
+  })
+})
+
+describe('drizzle journal', () => {
+  it('matches the sql files and records the result window migration as 0010', async () => {
+    const journal = JSON.parse(await readFile(path.join(process.cwd(), 'drizzle/meta/_journal.json'), 'utf8')) as {
+      entries: { idx: number; tag: string }[]
+    }
+    const tags = journal.entries.map((entry) => entry.tag)
+    const sqlFiles = (await readdir(path.join(process.cwd(), 'drizzle'))).filter((name) => name.endsWith('.sql')).sort()
+    expect(tags.map((tag) => `${tag}.sql`)).toEqual(sqlFiles)
+    expect(tags).toContain('0010_result_rate_windows')
+    expect(tags).not.toContain('0009_result_rate_windows')
+    expect(journal.entries.map((entry) => entry.idx)).toEqual(tags.map((_, index) => index))
   })
 })
