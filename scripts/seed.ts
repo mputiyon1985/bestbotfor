@@ -11,6 +11,7 @@ export type RatingWriteCounts = {
 import { comparePairSeeds, taskSeeds, toolSeeds } from '../src/data/catalog'
 import { editorialSeeds } from '../src/data/scores-pros-cons.seed'
 import { ratingSeeds } from '../src/data/scores-v23.seed'
+import { assertSafeDbTarget } from '../src/lib/db/guard'
 import { getDb } from '../src/lib/db/client'
 import { affiliatePrograms, tasks, toolProsCons, toolScores, toolTasks, tools } from '../src/lib/db/schema'
 import { validateProsConsSeeds, validateRatingSeeds } from '../src/lib/editorial'
@@ -19,6 +20,7 @@ import { reviewedToolUrl } from '../src/lib/redirect'
 export async function seed(): Promise<RatingWriteCounts> {
 for (const tool of toolSeeds) reviewedToolUrl(tool)
 
+assertSafeDbTarget(process.env.TURSO_DATABASE_URL?.trim() ?? 'file:./data/local.db')
 const db = getDb()
 
 const knownSlugs = new Set(toolSeeds.map((tool) => tool.slug))
