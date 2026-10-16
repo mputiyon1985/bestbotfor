@@ -2,22 +2,28 @@ import { describe, expect, it } from 'vitest'
 import { acceptResultFault, faultedResultWork } from './result-fault'
 
 describe('result fault injection', () => {
-  it('ignores the header and RESULT_FAULTS when VERCEL_ENV is production', () => {
-    for (const header of ['lookup-throw', 'lookup-slow', 'limit-throw', 'limit-slow', 'db-down', 'lookup-throw ']) {
-      expect(acceptResultFault(header, { faults: '1', vercelEnv: 'production' }), header).toBe('')
-      expect(acceptResultFault(header, { faults: '1', vercelEnv: ' production ' }), header).toBe('')
+  it('denies the header in production even when NODE_ENV is test and RESULT_FAULTS is set', () => {
+    for (const header of ['lookup-throw', 'lookup-slow', 'limit-throw', 'limit-slow', 'db-down']) {
+      expect(acceptResultFault(header, { faults: '1', vercelEnv: 'production', nodeEnv: 'test' }), header).toBe('')
+      expect(acceptResultFault(header, { faults: '1', vercelEnv: ' production ', nodeEnv: 'production' }), header).toBe('')
     }
-    expect(acceptResultFault('db-down', { faults: '1', vercelEnv: 'production' })).toBe('')
   })
 
-  it('honors a known fault only when RESULT_FAULTS=1 and this is not production', () => {
-    for (const vercelEnv of [undefined, '', 'preview', 'development']) {
-      expect(acceptResultFault('lookup-throw', { faults: '1', vercelEnv }), String(vercelEnv)).toBe('lookup-throw')
-      expect(acceptResultFault('db-down', { faults: '1', vercelEnv }), String(vercelEnv)).toBe('db-down')
-      expect(acceptResultFault('lookup-throw', { faults: undefined, vercelEnv }), String(vercelEnv)).toBe('')
-      expect(acceptResultFault('lookup-throw', { faults: '0', vercelEnv }), String(vercelEnv)).toBe('')
+  it('denies an unset or unknown env even when RESULT_FAULTS=1', () => {
+    for (const vercelEnv of [undefined, '', 'development', 'staging', 'Production']) {
+      expect(acceptResultFault('lookup-throw', { faults: '1', vercelEnv, nodeEnv: 'production' }), String(vercelEnv)).toBe('')
+      expect(acceptResultFault('db-down', { faults: '1', vercelEnv, nodeEnv: undefined }), String(vercelEnv)).toBe('')
     }
-    expect(acceptResultFault('not-a-fault', { faults: '1', vercelEnv: 'preview' })).toBe('')
+    expect(acceptResultFault('lookup-throw', { faults: '1', vercelEnv: 'preview', nodeEnv: 'production' })).toBe('lookup-throw')
+    expect(acceptResultFault('lookup-throw', { faults: undefined, vercelEnv: 'preview', nodeEnv: 'test' })).toBe('')
+    expect(acceptResultFault('lookup-throw', { faults: '0', vercelEnv: 'preview', nodeEnv: 'test' })).toBe('')
+  })
+
+  it('honors a known fault for NODE_ENV=test or VERCEL_ENV=preview when RESULT_FAULTS=1', () => {
+    expect(acceptResultFault('lookup-throw', { faults: '1', nodeEnv: 'test' })).toBe('lookup-throw')
+    expect(acceptResultFault('db-down', { faults: '1', vercelEnv: 'preview', nodeEnv: 'production' })).toBe('db-down')
+    expect(acceptResultFault(' lookup-slow ', { faults: '1', nodeEnv: 'test' })).toBe('lookup-slow')
+    expect(acceptResultFault('not-a-fault', { faults: '1', nodeEnv: 'test' })).toBe('')
     expect(acceptResultFault(null, { faults: '1', vercelEnv: 'preview' })).toBe('')
   })
 

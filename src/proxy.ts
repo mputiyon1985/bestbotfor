@@ -8,9 +8,9 @@ import { getDb } from '@/lib/db/client'
 import { isClerkConfigured } from '@/lib/flags'
 import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from '@/lib/indexing'
 import { clientIp, rateLimitKey } from '@/lib/ip'
-import { consumeRateLimit } from '@/lib/rate-limit'
+import { consumeResultRateLimit } from '@/lib/rate-limit'
 import { acceptResultFault, faultedResultWork } from '@/lib/result-fault'
-import { decideResultGate, RESULT_GATE_BUDGET_MS } from '@/lib/result-gate'
+import { decideResultGate } from '@/lib/result-gate'
 import { resultNotFoundHeaders, resultNotFoundHtml, resultRateLimitHeaders, resultRateLimitHtml, resultUnavailableHeaders, resultUnavailableHtml } from '@/lib/result-http'
 import { resultOfflineStatus, resultRequestStatus } from '@/lib/result-request'
 
@@ -81,11 +81,12 @@ const withClerk = clerkMiddleware(async (auth, request) => {
   return nextWithNonce(request)
 })
 
-/** Playwright sets RESULT_FAULTS=1. Production ignores that and the fault header. */
+/** Faults run only when Playwright sets RESULT_FAULTS=1 on an explicit test env. */
 function resultFault(request: NextRequest) {
   return acceptResultFault(request.headers.get('x-bbf-result-fault'), {
     faults: process.env.RESULT_FAULTS,
     vercelEnv: process.env.VERCEL_ENV,
+    nodeEnv: process.env.NODE_ENV,
   })
 }
 
@@ -94,7 +95,7 @@ function resultFault(request: NextRequest) {
  * second robots meta. Invalid task and budget values do not need the catalog.
  * Quiz views that pass the catalog check are rate limited with 429 and Retry-After.
  * When the catalog lookup fails or times out, the page's catalog read runs here.
- * A miss is this same 404. If that read fails too, the response is 503.
+ * A miss is this same 404. A thrown read is 503. A read that only runs long renders the page.
  */
 async function gateResult(request: NextRequest): Promise<NextResponse | null> {
   if (request.nextUrl.pathname !== '/result') return null
@@ -109,11 +110,10 @@ async function gateResult(request: NextRequest): Promise<NextResponse | null> {
   const readCatalog = () => resultRequestStatus(getDb(), params)
   const decision = await decideResultGate({
     view: params.get('view') ?? '',
-    deadlineMs: RESULT_GATE_BUDGET_MS,
     lookup: faultedResultWork(fault, 'lookup', () => (offline === 'ok' ? Promise.resolve('ok') : readCatalog())),
     pageLookup: faultedResultWork(fault, 'page', readCatalog),
     limit: faultedResultWork(fault, 'limit', () =>
-      consumeRateLimit(
+      consumeResultRateLimit(
         getDb(),
         rateLimitKey(clientIp(request.headers), 'result'),
         ACTION_LIMITS.result.limit,

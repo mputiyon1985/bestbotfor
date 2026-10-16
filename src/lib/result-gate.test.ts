@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { decideResultGate, RESULT_GATE_BUDGET_MS } from './result-gate'
+import { decideResultGate, RESULT_GATE_BUDGET_MS, RESULT_LIMIT_BUDGET_MS, RESULT_PAGE_LOOKUP_BUDGET_MS } from './result-gate'
 import { resultNotFoundHtml, resultUnavailableHtml } from './result-http'
 
 function robotsDirectives(html: string): string[] {
@@ -15,10 +15,12 @@ function unused<T>(): Promise<T> {
 describe('result gate', () => {
   it('uses an 800ms budget and 404s a missing task when the lookup answers', async () => {
     expect(RESULT_GATE_BUDGET_MS).toBe(800)
+    expect(RESULT_PAGE_LOOKUP_BUDGET_MS).toBe(3_000)
+    expect(RESULT_LIMIT_BUDGET_MS).toBe(3_000)
     let pageLookup = false
     const decision = await decideResultGate({
       view: '',
-      deadlineMs: 50,
+      lookupBudgetMs: 50,
       lookup: async () => 'not-found',
       pageLookup: async () => {
         pageLookup = true
@@ -34,7 +36,7 @@ describe('result gate', () => {
   it('404s when the catalog lookup fails or times out and the page cannot find the task', async () => {
     const thrown = await decideResultGate({
       view: '',
-      deadlineMs: 40,
+      lookupBudgetMs: 40,
       lookup: async () => {
         throw new Error('database unavailable')
       },
@@ -48,7 +50,7 @@ describe('result gate', () => {
     const started = Date.now()
     const hung = await decideResultGate({
       view: '',
-      deadlineMs: 40,
+      lookupBudgetMs: 40,
       lookup: () => new Promise(() => {}),
       pageLookup: async () => 'not-found',
       limit: unused,
@@ -58,24 +60,30 @@ describe('result gate', () => {
     expect(robotsDirectives(resultNotFoundHtml())).toEqual(['noindex, nofollow'])
   })
 
-  it('503s when the page lookup is still down, instead of rendering', async () => {
+  it('503s only when the page lookup throws, and renders when it only runs long', async () => {
+    let limited = false
     const thrown = await decideResultGate({
       view: '',
-      deadlineMs: 40,
       lookup: async () => {
         throw new Error('database unavailable')
       },
       pageLookup: async () => {
         throw new Error('database unavailable')
       },
-      limit: unused,
+      limit: async () => {
+        limited = true
+        return { ok: true, resetAt: 0 }
+      },
     })
     expect(thrown).toEqual({ type: 'unavailable' })
+    expect(limited).toBe(false)
+    expect(robotsDirectives(resultUnavailableHtml())).toEqual(['noindex, nofollow'])
 
     const started = Date.now()
     const hung = await decideResultGate({
-      view: 'all',
-      deadlineMs: 40,
+      view: '',
+      lookupBudgetMs: 30,
+      pageLookupBudgetMs: 30,
       lookup: () => new Promise(() => {}),
       pageLookup: () => new Promise(() => {}),
       limit: async () => {
@@ -83,14 +91,13 @@ describe('result gate', () => {
       },
     })
     expect(Date.now() - started).toBeLessThan(400)
-    expect(hung).toEqual({ type: 'unavailable' })
-    expect(robotsDirectives(resultUnavailableHtml())).toEqual(['noindex, nofollow'])
+    expect(hung).toEqual({ type: 'continue' })
   })
 
   it('continues a found task after the catalog lookup fails, then applies the quiz limit', async () => {
     const decision = await decideResultGate({
       view: '',
-      deadlineMs: 40,
+      lookupBudgetMs: 40,
       lookup: async () => {
         throw new Error('database unavailable')
       },
@@ -103,7 +110,7 @@ describe('result gate', () => {
   it('continues when the rate-limit write throws or takes longer than the budget', async () => {
     const thrown = await decideResultGate({
       view: '',
-      deadlineMs: 40,
+      limitBudgetMs: 40,
       lookup: async () => 'ok',
       pageLookup: unused,
       limit: async () => {
@@ -115,7 +122,7 @@ describe('result gate', () => {
     const started = Date.now()
     const hung = await decideResultGate({
       view: '',
-      deadlineMs: 40,
+      limitBudgetMs: 40,
       lookup: async () => 'ok',
       pageLookup: unused,
       limit: () => new Promise(() => {}),
