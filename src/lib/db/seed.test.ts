@@ -8,6 +8,7 @@ import { seed } from '../../../scripts/seed'
 import { getDb, resetDbCache } from './client'
 import { applyMigrations } from './migrate'
 import { editorialSeeds } from '@/data/scores-pros-cons.seed'
+import { UNRATED_SLUGS } from '@/lib/editorial'
 import { affiliatePrograms, clicks, tasks, toolProsCons, toolScores, toolTasks, tools } from './schema'
 
 const previousUrl = process.env.TURSO_DATABASE_URL
@@ -229,5 +230,72 @@ describe('catalog seed', () => {
     expect(sentinelPoint?.body).toBe('Keep this sentinel point.')
     const claudePros = points.filter((row) => row.toolId === claude.id && row.kind === 'pro')
     expect(claudePros).toHaveLength(3)
+  })
+
+  it('rates exactly the CSV slugs and deletes the sample cursor score', async () => {
+    await useTempDatabase()
+    await seed()
+    const db = getDb()
+    const toolRows = await db.select().from(tools)
+    const bySlug = new Map(toolRows.map((row) => [row.slug, row]))
+    const cursor = bySlug.get('cursor')
+    const chatgpt = bySlug.get('chatgpt')
+    expect(cursor).toBeTruthy()
+    expect(chatgpt).toBeTruthy()
+    if (!cursor || !chatgpt) return
+
+    await db.insert(toolScores).values({
+      toolId: cursor.id,
+      features: 4,
+      value: 3,
+      ease: 3,
+      quality: 4,
+      overall: 3.6,
+      rationale: 'Sample score that is not in the Forge CSV.',
+      sources: '[]',
+      reviewedAt: '2026-10-16',
+    })
+    await db.insert(toolProsCons).values({
+      toolId: cursor.id,
+      kind: 'pro',
+      position: 1,
+      body: 'Sample pro that is not in the Forge CSV.',
+      sourceUrl: 'https://cursor.com/docs',
+    })
+
+    const sql = await readFile(path.join(process.cwd(), 'drizzle/0007_drop_non_forge_scores.sql'), 'utf8')
+    const named = [...new Set([...sql.matchAll(/slug IN \('([^']+)'\)/g)].map((match) => match[1]))]
+    expect(named).toEqual(['cursor'])
+    expect(named.every((slug) => !editorialSeeds.some((row) => row.slug === slug))).toBe(true)
+    await db.$client.executeMultiple(sql)
+
+    const scores = await db.select().from(toolScores)
+    const points = await db.select().from(toolProsCons)
+    const idToSlug = new Map(toolRows.map((row) => [row.id, row.slug]))
+    const rated = scores.map((row) => idToSlug.get(row.toolId)).sort()
+    const csvSlugs = editorialSeeds.map((row) => row.slug).sort()
+    expect(rated).toEqual(csvSlugs)
+    expect(new Set(rated)).toEqual(new Set(csvSlugs))
+    expect(points.some((row) => row.toolId === cursor.id)).toBe(false)
+    expect(scores.some((row) => row.toolId === chatgpt.id)).toBe(true)
+
+    expect(UNRATED_SLUGS).toHaveLength(13)
+    expect(UNRATED_SLUGS).toContain('windsurf')
+    expect(UNRATED_SLUGS).toContain('cursor')
+    for (const slug of UNRATED_SLUGS) {
+      const tool = bySlug.get(slug)
+      expect(tool, slug).toBeTruthy()
+      expect(scores.some((row) => row.toolId === tool?.id), slug).toBe(false)
+      expect(points.some((row) => row.toolId === tool?.id), slug).toBe(false)
+      expect(editorialSeeds.some((row) => row.slug === slug), slug).toBe(false)
+    }
+    expect(bySlug.get('windsurf')?.needsVerification).toBe(true)
+
+    const relevance = bySlug.get('relevance-ai')
+    const seeded = toolSeeds.find((tool) => tool.slug === 'relevance-ai')
+    expect(seeded?.hasFreeTier).toBe(false)
+    expect(seeded?.pricingModel).toBe('paid')
+    expect(relevance?.hasFreeTier).toBe(false)
+    expect(relevance?.pricingModel).toBe('paid')
   })
 })

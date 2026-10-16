@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Scores and pros/cons come only from Forge’s CSV. Migration `0007` deletes the sample Cursor score and its pros and cons, the only slug that was seeded and is not in that file.
 - The tagline is “The right AI in 30 seconds.” The home title is “BestBotFor — The right AI in 30 seconds.”
 - The home eyebrow says “Answer 3 quick questions.”
 - The not-found page sets its own title, “Page not found | BestBotFor”, its own description, and `noindex, nofollow`. It does not reuse the home canonical or the home social titles.
