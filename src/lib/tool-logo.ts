@@ -1,7 +1,7 @@
 import logoSlugs from '@/data/logo-slugs.json'
 import { logoAlt, monogramLetter, TOOL_LOGO_SIZE } from './logo-source'
 
-export { logoAlt, LOGO_MANIFEST_PATH, LOGO_PUBLIC_DIR, monogramLetter, TOOL_LOGO_SIZE, isToolSiteUrl, toolSiteHosts } from './logo-source'
+export { logoAlt, LOGO_MANIFEST_PATH, LOGO_PUBLIC_DIR, monogramLetter, TOOL_LOGO_SIZE } from './logo-source'
 
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/
 

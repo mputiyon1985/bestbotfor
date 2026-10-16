@@ -5,12 +5,14 @@ import sharp from 'sharp'
 import { toolSeeds } from '@/data/catalog'
 import manifestJson from '@/data/logo-manifest.json'
 import logoSlugsJson from '@/data/logo-slugs.json'
-import { isToolSiteUrl, LOGO_PUBLIC_DIR, monogramLetter } from '@/lib/logo-source'
+import { LOGO_PUBLIC_DIR, monogramLetter } from '@/lib/logo-source'
 import { resolveToolLogo, TOOL_LOGO_SIZE } from '@/lib/tool-logo'
+import { normalizeLogo, readSources, sanitizeSvg } from '../../scripts/fetch-tool-logos'
 
 type ManifestEntry = { slug: string; sourceUrl: string; fetchedAt: string }
 
 const manifest = manifestJson as ManifestEntry[]
+const MISSING = ['chatgpt', 'jules', 'leonardo-ai', 'midjourney', 'openai-codex', 'replit', 'sunsama']
 
 function sourceFiles(directory: string): string[] {
   const found: string[] = []
@@ -49,25 +51,39 @@ describe('tool logos', () => {
     for (const slug of files) expect(resolved.has(slug)).toBe(true)
   })
 
-  it('records own-site sources in a manifest that pages do not import', () => {
-    const bySlug = new Map(toolSeeds.map((tool) => [tool.slug, tool]))
+  it('follows the verified list and keeps the manifest off the page', async () => {
+    const sources = await readSources()
+    const bySlug = new Map(sources.map((row) => [row.slug, row]))
+    expect(sources).toHaveLength(toolSeeds.length)
+    expect(sources.filter((row) => row.status === 'ok')).toHaveLength(126)
+    expect(sources.filter((row) => row.status === 'low_res')).toHaveLength(26)
+    const missing = sources.filter((row) => row.status === 'missing').map((row) => row.slug).sort()
+    expect(missing).toEqual(MISSING)
+
     const manifestSlugs = manifest.map((entry) => entry.slug)
     expect(new Set(manifestSlugs).size).toBe(manifest.length)
     expect(logoSlugsJson).toEqual(manifestSlugs)
+    expect(manifest).toHaveLength(126)
     for (const entry of manifest) {
-      const tool = bySlug.get(entry.slug)
+      const row = bySlug.get(entry.slug)
+      expect(row?.status).toBe('ok')
+      expect(entry.sourceUrl).toBe(row?.logoUrl)
+      expect(entry.fetchedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      const tool = toolSeeds.find((item) => item.slug === entry.slug)
       expect(tool, entry.slug).toBeTruthy()
       if (!tool) continue
-      expect(entry.fetchedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-      expect(entry.sourceUrl.startsWith('https://')).toBe(true)
-      expect(isToolSiteUrl(entry.sourceUrl, tool.url, tool.allowedHosts)).toBe(true)
-      const logo = resolveToolLogo(tool.slug, tool.name)
-      expect(logo.kind).toBe('file')
+      expect(resolveToolLogo(tool.slug, tool.name).kind).toBe('file')
     }
     for (const tool of toolSeeds) {
+      const row = bySlug.get(tool.slug)
       const logo = resolveToolLogo(tool.slug, tool.name)
-      expect(manifestSlugs.includes(tool.slug)).toBe(logo.kind === 'file')
+      const usesFile = row?.status === 'ok'
+      expect(logo.kind === 'file').toBe(usesFile)
+      expect(manifestSlugs.includes(tool.slug)).toBe(usesFile)
     }
+
+    const disclosure = readFileSync(path.join(process.cwd(), 'src/app/disclosure/page.tsx'), 'utf8')
+    expect(disclosure).toContain('identification only')
 
     const roots = ['src/app', 'src/components', 'src/lib'].map((dir) => path.join(process.cwd(), dir))
     const rendered = roots.flatMap((dir) => sourceFiles(dir)).filter((file) => !file.endsWith('tool-logo.test.ts') && !file.endsWith(`${path.sep}logo-source.ts`))
@@ -87,5 +103,19 @@ describe('tool logos', () => {
       expect(meta.width).toBe(128)
       expect(meta.height).toBe(128)
     }
+  })
+
+  it('strips scripts and event handlers from an svg before tiling', async () => {
+    const dirty = '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" onload="alert(1)"><script>alert(1)</script><circle cx="64" cy="64" r="40" fill="#111111"/></svg>'
+    const clean = sanitizeSvg(dirty)
+    expect(clean.toLowerCase()).not.toContain('<script')
+    expect(clean).not.toMatch(/\son[a-z]+\s*=/i)
+    expect(clean).toContain('<circle')
+    const tile = await normalizeLogo(Buffer.from(dirty))
+    expect(tile).not.toBeNull()
+    const meta = await sharp(tile!).metadata()
+    expect(meta.format).toBe('webp')
+    expect(meta.width).toBe(128)
+    expect(meta.height).toBe(128)
   })
 })
