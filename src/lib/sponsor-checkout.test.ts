@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { SPONSOR_OFFERINGS, sponsorPriceId, sponsorPriceLabel } from './sponsor-offerings'
+import { SPONSOR_INTEGRATION_IDENTIFIER, SPONSOR_OFFERINGS, sponsorPriceId, sponsorPriceLabel } from './sponsor-offerings'
 import { parseSponsorCheckout, sponsorCheckoutParams } from './sponsor-checkout'
 
 const REQUEST_ID = '123e4567-e89b-42d3-a456-426614174000'
@@ -83,7 +83,7 @@ describe('parseSponsorCheckout', () => {
 })
 
 describe('sponsorCheckoutParams', () => {
-  it('creates a one-time hosted session without a client price', () => {
+  it('creates a one-time hosted session and replays the same body', () => {
     const parsed = parseSponsorCheckout(
       form({
         offering: 'placement_weekly',
@@ -117,8 +117,10 @@ describe('sponsorCheckoutParams', () => {
       task_slug: 'writing',
       price_id: 'price_server_weekly',
     })
-    expect(first.params.integration_identifier).toMatch(/^sponsor_checkout_[a-z]{8}$/)
-    expect(first.idempotencyKey).toBe(second.idempotencyKey)
-    expect(first.params.integration_identifier).not.toBe(second.params.integration_identifier)
+    expect(SPONSOR_INTEGRATION_IDENTIFIER).toMatch(/^sponsor_checkout_[a-z]{8}$/)
+    expect(first.params.integration_identifier).toBe(SPONSOR_INTEGRATION_IDENTIFIER)
+    expect(first.params.managed_payments).toEqual({ enabled: false })
+    expect(first.params).not.toHaveProperty('automatic_tax')
+    expect(first).toEqual(second)
   })
 })

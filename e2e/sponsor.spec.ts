@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { SPONSOR_INTEGRATION_IDENTIFIER } from '../src/lib/sponsor-offerings'
 
 test('sponsor page creates a hosted checkout session from the server price', async ({ page }) => {
   await page.route('https://checkout.stripe.com/**', async (route) => {
@@ -38,7 +39,10 @@ test('sponsor page creates a hosted checkout session from the server price', asy
   expect(session?.['metadata[offering]']).toBe('placement_monthly')
   expect(session?.payment_method_types).toBeUndefined()
   expect(session?.['payment_method_types[0]']).toBeUndefined()
-  expect(session?.integration_identifier).toMatch(/^sponsor_checkout_[a-z]{8}$/)
+  expect(session?.integration_identifier).toBe(SPONSOR_INTEGRATION_IDENTIFIER)
+  expect(session?.['managed_payments[enabled]']).toBe('false')
+  expect(session?.['automatic_tax[enabled]']).toBeUndefined()
+  expect(JSON.stringify(session)).not.toContain('automatic_tax')
   expect(JSON.stringify(session)).not.toContain('unit_amount')
 })
 

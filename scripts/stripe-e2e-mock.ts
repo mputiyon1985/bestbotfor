@@ -19,7 +19,7 @@ function isLiveKey(value: string): boolean {
 }
 
 export function startStripeMock(port: number): Promise<StripeMock> {
-  const sessions = new Map<string, string>()
+  const sessions = new Map<string, { body: string; payload: string }>()
   const requests: Array<Record<string, string>> = []
 
   const server = createServer(async (request, response) => {
@@ -49,8 +49,17 @@ export function startStripeMock(port: number): Promise<StripeMock> {
       const key = typeof idempotency === 'string' ? idempotency : ''
       const cached = key ? sessions.get(key) : undefined
       if (cached) {
+        if (cached.body !== body) {
+          sendJson(response, 400, {
+            error: {
+              type: 'idempotency_error',
+              message: 'Keys for idempotent requests can only be used with the same parameters they were first used with.',
+            },
+          })
+          return
+        }
         response.writeHead(200, { 'content-type': 'application/json' })
-        response.end(cached)
+        response.end(cached.payload)
         return
       }
       const id = `cs_test_mock_${requests.length}`
@@ -62,7 +71,7 @@ export function startStripeMock(port: number): Promise<StripeMock> {
         mode: 'payment',
         status: 'open',
       })
-      if (key) sessions.set(key, payload)
+      if (key) sessions.set(key, { body, payload })
       response.writeHead(200, { 'content-type': 'application/json' })
       response.end(payload)
       return

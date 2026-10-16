@@ -1,13 +1,24 @@
 import { eq } from 'drizzle-orm'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type Stripe from 'stripe'
+import type { Database } from './db/client'
 import { sponsorships, stripeEvents, subscriptions } from './db/schema'
 import { handleStripeWebhook } from './stripe-webhook'
 import { createTestDatabase } from '@/test/db'
 
 const SECRET = 'whsec_test_secret'
+const SPONSOR_PRICE_ENV = {
+  STRIPE_PRICE_PLACEMENT_WEEKLY: 'price_e2e_weekly',
+  STRIPE_PRICE_PLACEMENT_MONTHLY: 'price_e2e_monthly',
+  STRIPE_PRICE_NEWSLETTER_SLOT: 'price_e2e_newsletter',
+} as const
 
-function stripeStub(events: Stripe.Event[]): Stripe {
+const ORIGINAL_SPONSOR_ENV = Object.fromEntries(
+  Object.keys(SPONSOR_PRICE_ENV).map((key) => [key, process.env[key]]),
+) as Record<string, string | undefined>
+
+function stripeStub(events: Stripe.Event[], options?: { priceId?: string; onRetrieve?: () => void }): Stripe {
+  const priceId = options?.priceId ?? 'price_e2e_monthly'
   return {
     webhooks: {
       constructEvent(rawBody: string, signature: string, secret: string) {
@@ -17,7 +28,57 @@ function stripeStub(events: Stripe.Event[]): Stripe {
         return event
       },
     },
+    checkout: {
+      sessions: {
+        async retrieve(id: string) {
+          options?.onRetrieve?.()
+          return {
+            id,
+            line_items: { data: [{ price: { id: priceId } }] },
+          }
+        },
+      },
+    },
   } as unknown as Stripe
+}
+
+function failFirstSubscriptionWrite(db: Database): Database {
+  let failed = false
+  return new Proxy(db, {
+    get(target, prop) {
+      if (prop === 'insert') {
+        return (table: unknown) => {
+          if (table === subscriptions && !failed) {
+            failed = true
+            return {
+              values: () => ({
+                onConflictDoUpdate: () => Promise.reject(new Error('transient write')),
+              }),
+            }
+          }
+          return target.insert.bind(target)(table as Parameters<Database['insert']>[0])
+        }
+      }
+      const value = Reflect.get(target, prop, target)
+      return typeof value === 'function' ? value.bind(target) : value
+    },
+  }) as Database
+}
+
+function reportUnfinishedClaim(db: Database, eventId: string): Database {
+  return new Proxy(db, {
+    get(target, prop) {
+      if (prop === 'select') {
+        return () => ({
+          from: () => ({
+            where: async () => [{ id: eventId, type: 'customer.subscription.updated', processedAt: 0 }],
+          }),
+        })
+      }
+      const value = Reflect.get(target, prop, target)
+      return typeof value === 'function' ? value.bind(target) : value
+    },
+  }) as Database
 }
 
 function sponsorshipEvent(id: string, type = 'checkout.session.completed', overrides: Record<string, unknown> = {}): Stripe.Event {
@@ -69,6 +130,17 @@ function subscriptionEvent(id: string, livemode = false): Stripe.Event {
 }
 
 describe('handleStripeWebhook', () => {
+  beforeEach(() => {
+    for (const [key, value] of Object.entries(SPONSOR_PRICE_ENV)) process.env[key] = value
+  })
+
+  afterEach(() => {
+    for (const [key, value] of Object.entries(ORIGINAL_SPONSOR_ENV)) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+  })
+
   it('rejects a bad signature before writing anything', async () => {
     const { db, close } = await createTestDatabase()
     const event = subscriptionEvent('evt_bad')
@@ -322,6 +394,137 @@ describe('handleStripeWebhook', () => {
     expect(info.mock.calls.flat().map(String).join(' ')).not.toContain('person-unknown@example.com')
     expect(await db.select().from(sponsorships)).toEqual([])
     info.mockRestore()
+    await close()
+  })
+
+  it('records a sponsorship when tax makes the total differ from the list price', async () => {
+    const { db, close } = await createTestDatabase()
+    const event = sponsorshipEvent('evt_sponsor_tax', 'checkout.session.completed', {
+      amount_total: 32_000,
+      metadata: {
+        kind: 'sponsorship',
+        offering: 'placement_monthly',
+        email: 'sponsor@example.com',
+        company: 'Example Tools',
+        task_slug: 'coding',
+        issue_date: '',
+        price_id: 'price_from_metadata',
+      },
+    })
+    const result = await handleStripeWebhook({
+      rawBody: JSON.stringify(event),
+      signature: 'valid',
+      db,
+      stripe: stripeStub([event]),
+      secret: SECRET,
+    })
+    expect(result.status).toBe(200)
+    const rows = await db.select().from(sponsorships)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      stripePriceId: 'price_e2e_monthly',
+      amountTotal: 32_000,
+      status: 'paid',
+    })
+    await close()
+  })
+
+  it('does not store a sponsorship when the session price differs from the env price', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { db, close } = await createTestDatabase()
+    const event = sponsorshipEvent('evt_price_mismatch')
+    await expect(
+      handleStripeWebhook({
+        rawBody: JSON.stringify(event),
+        signature: 'valid',
+        db,
+        stripe: stripeStub([event], { priceId: 'price_other' }),
+        secret: SECRET,
+      }),
+    ).rejects.toThrow(/price mismatch/)
+    expect(await db.select().from(sponsorships)).toEqual([])
+    expect(await db.select().from(stripeEvents)).toEqual([])
+    expect(errorLog.mock.calls.flat().join(' ')).not.toContain('sponsor@example.com')
+    errorLog.mockRestore()
+    await close()
+  })
+
+  it('does not retrieve a session when the env price is missing', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+    delete process.env.STRIPE_PRICE_PLACEMENT_MONTHLY
+    const { db, close } = await createTestDatabase()
+    const event = sponsorshipEvent('evt_price_missing')
+    let retrieved = 0
+    await expect(
+      handleStripeWebhook({
+        rawBody: JSON.stringify(event),
+        signature: 'valid',
+        db,
+        stripe: stripeStub([event], {
+          onRetrieve: () => {
+            retrieved += 1
+          },
+        }),
+        secret: SECRET,
+      }),
+    ).rejects.toThrow(/not configured/)
+    expect(retrieved).toBe(0)
+    expect(await db.select().from(sponsorships)).toEqual([])
+    expect(await db.select().from(stripeEvents)).toEqual([])
+    errorLog.mockRestore()
+    await close()
+  })
+
+  it('removes an unfinished claim when apply throws so the retry writes one row', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { db, close } = await createTestDatabase()
+    const event = subscriptionEvent('evt_retry_after_throw')
+    const flaky = failFirstSubscriptionWrite(db)
+    const input = {
+      rawBody: JSON.stringify(event),
+      signature: 'valid',
+      db: flaky,
+      stripe: stripeStub([event]),
+      secret: SECRET,
+    }
+    await expect(handleStripeWebhook(input)).rejects.toThrow(/transient write/)
+    expect(await db.select().from(stripeEvents)).toEqual([])
+    expect(await db.select().from(subscriptions)).toEqual([])
+    const result = await handleStripeWebhook(input)
+    expect(result).toEqual({ status: 200, body: { received: true } })
+    const rows = await db.select().from(subscriptions).where(eq(subscriptions.stripeSubscriptionId, 'sub_123'))
+    expect(rows).toHaveLength(1)
+    const saved = await db.select().from(stripeEvents).where(eq(stripeEvents.id, event.id))
+    expect(saved).toHaveLength(1)
+    expect(saved[0]?.processedAt).toBeGreaterThan(0)
+    errorLog.mockRestore()
+    await close()
+  })
+
+  it('leaves a finished claim in place when apply fails', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { db, close } = await createTestDatabase()
+    const event = {
+      id: 'evt_finished_guard',
+      type: 'customer.subscription.updated',
+      livemode: false,
+      data: { object: { id: 'sub_finished_guard' } },
+    } as unknown as Stripe.Event
+    await db.insert(stripeEvents).values({ id: event.id, type: event.type, processedAt: 42 })
+    await expect(
+      handleStripeWebhook({
+        rawBody: JSON.stringify(event),
+        signature: 'valid',
+        db: reportUnfinishedClaim(db, event.id),
+        stripe: stripeStub([event]),
+        secret: SECRET,
+      }),
+    ).rejects.toThrow(/subscription payload failed validation/)
+    const saved = await db.select().from(stripeEvents).where(eq(stripeEvents.id, event.id))
+    expect(saved).toHaveLength(1)
+    expect(saved[0]?.processedAt).toBe(42)
+    expect(await db.select().from(subscriptions)).toEqual([])
+    errorLog.mockRestore()
     await close()
   })
 

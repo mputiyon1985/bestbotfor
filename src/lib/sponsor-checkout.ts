@@ -1,9 +1,14 @@
 import 'server-only'
 
-import { createHash, randomInt } from 'node:crypto'
+import { createHash } from 'node:crypto'
 import type Stripe from 'stripe'
 import { taskSeeds } from '@/data/catalog'
-import { sponsorOffering, sponsorPriceId, type SponsorOfferingId } from './sponsor-offerings'
+import {
+  SPONSOR_INTEGRATION_IDENTIFIER,
+  sponsorOffering,
+  sponsorPriceId,
+  type SponsorOfferingId,
+} from './sponsor-offerings'
 import { emailSchema } from './validation'
 
 const COMPANY = /^[^\r\n<>]{2,120}$/
@@ -18,13 +23,6 @@ export type SponsorCheckoutInput = {
   issueDate: string | null
   priceId: string
   requestId: string
-}
-
-export function sponsorIntegrationIdentifier(): string {
-  const alphabet = 'abcdefghijklmnopqrstuvwxyz'
-  let suffix = ''
-  for (let index = 0; index < 8; index += 1) suffix += alphabet[randomInt(alphabet.length)]
-  return `sponsor_checkout_${suffix}`
 }
 
 export function parseSponsorCheckout(formData: FormData, env: Record<string, string | undefined> = process.env):
@@ -115,7 +113,10 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
       cancel_url: input.cancelUrl,
       metadata,
       payment_intent_data: { metadata },
-      integration_identifier: sponsorIntegrationIdentifier(),
+      integration_identifier: SPONSOR_INTEGRATION_IDENTIFIER,
+      // Advertising placements are not eligible for Managed Payments.
+      // automatic_tax stays unset; this business remains the merchant of record.
+      managed_payments: { enabled: false },
     },
   }
 }

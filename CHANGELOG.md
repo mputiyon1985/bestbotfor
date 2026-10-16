@@ -2,7 +2,7 @@
 
 ## Unreleased
 
-- Sponsor Checkout on `/sponsor` sells a featured `/best/[task]` slot ($99 per week or $299 per month) and a newsletter slot ($49 per issue). Prices are server config. Live Stripe keys stay refused unless the live flag is set to true, and that flag ships off.
+- Sponsor Checkout on `/sponsor` sells a featured `/best/[task]` slot ($99 per week or $299 per month) and a newsletter slot ($49 per issue). Prices are server config. Checkout disables Managed Payments for these advertising placements and leaves automatic tax unset. Live Stripe keys stay refused unless the live flag is set to true, and that flag ships off.
 - `/tools` page numbers that are not a real page return 404, including category filters, so each indexable canonical belongs to one page.
 - Encoded dot segments under `/go`, `/best`, and `/tools` return 404 instead of the home page. `/go` responses send `X-Robots-Tag: noindex, nofollow`.
 - The catalog seed runs in one transaction and still only upserts. It does not delete rows.

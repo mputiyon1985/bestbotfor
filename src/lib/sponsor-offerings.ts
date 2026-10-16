@@ -7,6 +7,12 @@
 
 export const SPONSOR_CURRENCY = 'usd'
 
+/**
+ * Stable label for this Checkout flow. A retried sponsor form must send the
+ * same value, or Stripe rejects the reused idempotency key.
+ */
+export const SPONSOR_INTEGRATION_IDENTIFIER = 'sponsor_checkout_featured'
+
 export const SPONSOR_OFFERINGS = [
   {
     id: 'placement_weekly',

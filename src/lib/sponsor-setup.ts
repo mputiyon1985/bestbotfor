@@ -13,6 +13,11 @@ type PriceRecord = {
   product?: string | { id: string } | null
 }
 
+/**
+ * Advertising placements are not eligible for Managed Payments, so products
+ * are created without a Managed Payments tax code and prices omit tax_behavior.
+ * Checkout disables managed_payments and leaves automatic_tax unset.
+ */
 export async function ensureSponsorPrice(stripe: Stripe, offering: SponsorOffering): Promise<string> {
   const existing = await stripe.prices.list({ lookup_keys: [offering.lookupKey], limit: 1 })
   const current = existing.data[0] as PriceRecord | undefined

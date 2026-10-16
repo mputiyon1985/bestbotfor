@@ -26,6 +26,7 @@ export async function sponsorCheckoutAction(_previous: SponsorFormState, formDat
     rateLimitKey(clientIp(headerStore), 'sponsor'),
     ACTION_LIMITS.sponsor.limit,
     ACTION_LIMITS.sponsor.windowMs,
+    { failClosed: true },
   )
   if (!allowed) return { status: 'error', message: 'Too many checkout attempts. Try again in an hour.' }
 

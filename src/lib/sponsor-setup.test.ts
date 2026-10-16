@@ -50,6 +50,8 @@ describe('sponsor price setup', () => {
     const { stripe, created, products } = fakeStripe([])
     await expect(ensureSponsorPrice(stripe, offering)).resolves.toBe('price_created')
     expect(products[0]).toMatchObject({ name: offering.productName })
+    expect(products[0]).not.toHaveProperty('tax_code')
+    expect(created[0]).not.toHaveProperty('tax_behavior')
     expect(created[0]).toMatchObject({
       unit_amount: 4_900,
       currency: 'usd',

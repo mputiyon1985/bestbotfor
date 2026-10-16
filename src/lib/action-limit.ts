@@ -9,13 +9,23 @@ export const ACTION_LIMITS = {
   sponsor: { limit: 8, windowMs: 60 * 60_000 },
 } as const
 
-/** A slow or failed limiter must not turn the page into a hang. Over-limit still blocks. */
-export async function allowRate(db: Database, key: string, limit: number, windowMs: number): Promise<boolean> {
+/**
+ * A slow or failed limiter must not hang the page. Over-limit still blocks.
+ * Sponsor checkout passes failClosed so a limiter error refuses the attempt.
+ * Other actions stay available when the limiter throws.
+ */
+export async function allowRate(
+  db: Database,
+  key: string,
+  limit: number,
+  windowMs: number,
+  options?: { failClosed?: boolean },
+): Promise<boolean> {
   try {
     const result = await withDeadline(consumeRateLimit(db, key, limit, windowMs), 800)
     return result.ok
   } catch (error) {
     console.error('rate limit failed', error instanceof Error ? error.name : 'error')
-    return true
+    return options?.failClosed ? false : true
   }
 }

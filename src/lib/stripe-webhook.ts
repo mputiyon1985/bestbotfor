@@ -1,11 +1,11 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import type Stripe from 'stripe'
 import { z } from 'zod'
 import type { Database } from './db'
 import { sponsorships, stripeEvents, subscriptions } from './db/schema'
 import { getDb } from './db'
 import { isDeadline, withDeadline } from './deadline'
-import { sponsorOffering } from './sponsor-offerings'
+import { sponsorOffering, sponsorPriceId } from './sponsor-offerings'
 import { getStripe, stripeWebhookSecret } from './stripe'
 import { liveModeAllowed } from './stripe-key'
 
@@ -45,7 +45,8 @@ export type WebhookResult = { status: number; body: Record<string, unknown> }
  * only after the subscription write succeeds. A retry of a finished event
  * returns 200 without applying again. A retry of an unfinished claim still
  * applies, including when the timeout cleanup could not delete the row.
- * If applying fails, the event row is removed so Stripe can retry safely.
+ * If applying fails, the unfinished event row (processed_at = 0) is removed so
+ * Stripe can retry safely. A finished claim is left in place.
  */
 export async function handleStripeWebhook(input: {
   rawBody: string
@@ -81,13 +82,13 @@ export async function handleStripeWebhook(input: {
   const deadlineMs = input.deadlineMs ?? WEBHOOK_DB_BUDGET_MS
 
   try {
-    const outcome = await withDeadline(applyWebhook(db, event), deadlineMs)
+    const outcome = await withDeadline(applyWebhook(db, stripe, event), deadlineMs)
     if (outcome === 'duplicate') return { status: 200, body: { received: true, duplicate: true } }
     return { status: 200, body: { received: true } }
   } catch (error) {
     if (isDeadline(error)) {
       try {
-        await withDeadline(db.delete(stripeEvents).where(eq(stripeEvents.id, event.id)), Math.min(deadlineMs, 300))
+        await withDeadline(deleteUnfinishedClaim(db, event.id), Math.min(deadlineMs, 300))
       } catch (cleanup) {
         console.error('stripe webhook cleanup failed', cleanup instanceof Error ? cleanup.name : 'error')
       }
@@ -98,7 +99,13 @@ export async function handleStripeWebhook(input: {
   }
 }
 
-async function applyWebhook(db: Database, event: Stripe.Event): Promise<'ok' | 'duplicate'> {
+function deleteUnfinishedClaim(db: Database, eventId: string) {
+  return db
+    .delete(stripeEvents)
+    .where(and(eq(stripeEvents.id, eventId), eq(stripeEvents.processedAt, 0)))
+}
+
+async function applyWebhook(db: Database, stripe: Stripe, event: Stripe.Event): Promise<'ok' | 'duplicate'> {
   const inserted = await db
     .insert(stripeEvents)
     .values({ id: event.id, type: event.type, processedAt: 0 })
@@ -111,10 +118,10 @@ async function applyWebhook(db: Database, event: Stripe.Event): Promise<'ok' | '
   }
 
   try {
-    await applyEvent(db, event)
+    await applyEvent(db, stripe, event)
     await db.update(stripeEvents).set({ processedAt: Date.now() }).where(eq(stripeEvents.id, event.id))
   } catch (error) {
-    await db.delete(stripeEvents).where(eq(stripeEvents.id, event.id))
+    await deleteUnfinishedClaim(db, event.id)
     throw error
   }
   return 'ok'
@@ -169,14 +176,27 @@ function sponsorshipStatus(type: string, paymentStatus: string | undefined): 'pe
   return paymentStatus === 'paid' ? 'paid' : 'pending'
 }
 
-async function applySponsorship(db: Database, event: Stripe.Event): Promise<void> {
+function sessionPriceId(session: Stripe.Checkout.Session): string | null {
+  const items = session.line_items?.data ?? []
+  if (items.length !== 1) return null
+  const price = items[0]?.price
+  if (!price) return null
+  return typeof price === 'string' ? price : price.id
+}
+
+async function applySponsorship(db: Database, stripe: Stripe, event: Stripe.Event): Promise<void> {
   const parsed = sponsorshipCheckoutSchema.safeParse(event.data.object)
   if (!parsed.success || parsed.data.metadata?.kind !== 'sponsorship') {
     throw new Error('sponsorship payload failed validation')
   }
   const offering = sponsorOffering(parsed.data.metadata.offering)
   if (!offering) throw new Error('sponsorship payload failed validation')
-  const priceId = parsed.data.metadata.price_id
+  const expectedPriceId = sponsorPriceId(offering.id)
+  if (!expectedPriceId) throw new Error('sponsorship price is not configured')
+  const session = await stripe.checkout.sessions.retrieve(parsed.data.id, { expand: ['line_items'] })
+  if (session.id !== parsed.data.id || sessionPriceId(session) !== expectedPriceId) {
+    throw new Error('sponsorship price mismatch')
+  }
   const now = Date.now()
   const status = sponsorshipStatus(event.type, parsed.data.payment_status)
   await db
@@ -185,7 +205,7 @@ async function applySponsorship(db: Database, event: Stripe.Event): Promise<void
       stripeCheckoutSessionId: parsed.data.id,
       stripePaymentIntentId: stripeId(parsed.data.payment_intent),
       stripeCustomerId: stripeId(parsed.data.customer),
-      stripePriceId: priceId && priceId.startsWith('price_') ? priceId : null,
+      stripePriceId: expectedPriceId,
       offering: offering.id,
       status,
       email: parsed.data.customer_email ?? parsed.data.metadata.email ?? null,
@@ -219,9 +239,9 @@ async function applySponsorship(db: Database, event: Stripe.Event): Promise<void
     })
 }
 
-async function applyEvent(db: Database, event: Stripe.Event): Promise<void> {
+async function applyEvent(db: Database, stripe: Stripe, event: Stripe.Event): Promise<void> {
   if (isSponsorshipEvent(event)) {
-    await applySponsorship(db, event)
+    await applySponsorship(db, stripe, event)
     return
   }
 
