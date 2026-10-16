@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Windsurf stays at `/tools/windsurf` and at `/compare/cursor-vs-windsurf`. The name is Devin Desktop (formerly Windsurf), the vendor is Cognition, the site is https://devin.ai/desktop, and pricing is Free $0 and Pro $20 at https://devin.ai/pricing. `devin.ai` is an allowed host. Cursor and Windsurf stay out of `tool_scores` and `tool_pros_cons` until the next rubric. The rated set remains the 146 slugs already on main.
+- Cursor’s current plans are Free $0, Plus $8 (Grok models only), and Premium $30 (third-party models billed extra). Pro $20 is for legacy subscribers only.
+- Relevance AI stays without a free plan. Pro is $19 a month billed yearly.
 - Scores and pros/cons come only from Forge’s CSV. Migration `0007` deletes the sample Cursor score and its pros and cons, the only slug that was seeded and is not in that file.
 - The tagline is “The right AI in 30 seconds.” The home title is “BestBotFor — The right AI in 30 seconds.”
 - The home eyebrow says “Answer 3 quick questions.”
@@ -15,8 +18,7 @@
 - All-matches pages list six tools and show “Showing 1–6 of N” with numbered page links. Budget filters stay noindex, rel prev/next and the canonical rules are unchanged, and a page past the end is still a 404.
 - Tool pages can show a BestBotFor score from 0 to 5, with a fractional star, the features/value/ease/quality rubric, and a short note on how the equal-weight average is calculated. The score is editorial. Pages do not emit AggregateRating or Review schema.
 - Pros and cons render on the tool page, and a shorter version renders on result cards, only when a tool has verified rows with source URLs.
-- `src/data/scores-pros-cons.csv` is the editorial seed for 146 tools. The 13 tools without a row hide the score and the pros and cons. `source_urls` and third-party columns are not stored and are not rendered. Tool pages show a bar for features, value, ease, and quality next to the overall stars.
-- Relevance AI’s free plan is retired, so the seed upserts `hasFreeTier` as false. Windsurf keeps its name, is flagged `needs_verification`, and has no score.
+- Tool pages show a bar for features, value, ease, and quality next to the overall stars.
 - Quiz results, all-matches lists, and tool pages keep the stars, score bars, pros and cons, and numbered pagination inside the screen at 375, 390, and 768 pixels. Pagination links are at least 44 pixels tall, and text stays at least 12 pixels.
 - Text links in the breadcrumbs, best-of lists, footer, and tablet header keep a 44 pixel tap height. Page controls are full-size buttons. The header sits clear of the breadcrumb and “Back to the questions” on a phone, and “See my best bot” stays on screen at 390 pixels.
 - Encoded and raw dot segments return 404 from a Vercel route and from the app server. The global `URL` constructor and `http.Server` are no longer patched.

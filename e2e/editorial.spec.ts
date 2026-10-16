@@ -46,7 +46,7 @@ test('a scored tool shows fractional stars, the rubric, and no review schema', a
   expect(combined).not.toContain('ratingValue')
 })
 
-test('blank tools hide the score and the pros, and windsurf keeps its name', async ({ page }) => {
+test('blank tools hide the score and the pros', async ({ page }) => {
   for (const slug of UNRATED_SLUGS) {
     const tool = toolSeeds.find((item) => item.slug === slug)
     await page.goto(`/tools/${slug}`)
@@ -86,4 +86,76 @@ test('result cards show a compact pros list only for tools that have one', async
   await expect(grokCard.getByText('Pros:', { exact: false })).toHaveCount(0)
   await expect(grokCard.getByRole('img', { name: /Rated/ })).toHaveCount(0)
   await expect(grokCard.getByRole('link', { name: 'Source', exact: true })).toHaveCount(0)
+})
+
+test('windsurf stays at its slug, cursor and relevance show the reviewed prices, and source columns stay off the page', async ({ page }) => {
+  const windsurfResponse = await page.goto('/tools/windsurf')
+  expect(windsurfResponse?.status()).toBe(200)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Devin Desktop (formerly Windsurf)')
+  await expect(page.getByText('Cognition', { exact: true })).toBeVisible()
+  await expect(page.getByText('Free tier, then $20 and up')).toBeVisible()
+  await expect(page.getByText('https://devin.ai/pricing: Free $0 and Pro $20.')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Pros and cons' })).toHaveCount(0)
+  await expect(page.getByRole('img', { name: /Rated/ })).toHaveCount(0)
+  const comparison = page.getByRole('link', { name: 'Devin Desktop (formerly Windsurf) vs Cursor' })
+  await expect(comparison).toHaveAttribute('href', '/compare/cursor-vs-windsurf')
+  let html = await page.content()
+  expect(html).not.toContain('zapier.com')
+  expect(html).not.toContain('techradar.com')
+  expect(html).not.toContain('pcmag.com')
+  expect(html).not.toContain('docs.devin.ai')
+  expect(html).not.toContain('third_party')
+  expect(html).not.toContain('source_urls')
+  expect(html).not.toContain('windsurf.com')
+
+  await page.goto('/')
+  await expect(page.getByRole('link', { name: 'Cursor vs Devin Desktop (formerly Windsurf)' })).toHaveAttribute(
+    'href',
+    '/compare/cursor-vs-windsurf',
+  )
+
+  const compare = await page.goto('/compare/cursor-vs-windsurf')
+  expect(compare?.status()).toBe(200)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Cursor vs Devin Desktop (formerly Windsurf)')
+  await expect(page.getByRole('link', { name: 'Devin Desktop (formerly Windsurf) profile' })).toHaveAttribute('href', '/tools/windsurf')
+
+  await page.goto('/tools/cursor')
+  await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Pros and cons' })).toHaveCount(0)
+  await expect(page.getByText('Free tier, then $8 and up')).toBeVisible()
+  await expect(page.getByText('Plus $8 (Grok models only)')).toBeVisible()
+  await expect(page.getByText('Premium $30 (third-party models billed extra)')).toBeVisible()
+  await expect(page.getByText('Pro $20 is for legacy subscribers only.')).toBeVisible()
+  await expect(page.getByRole('link', { name: 'Cursor vs Devin Desktop (formerly Windsurf)' })).toHaveAttribute(
+    'href',
+    '/compare/cursor-vs-windsurf',
+  )
+  html = await page.content()
+  expect(html).not.toContain('techradar.com')
+  expect(html).not.toContain('zapier.com')
+  expect(html).not.toContain('third_party')
+  expect(html).not.toContain('source_urls')
+  expect(html).not.toContain('cursor.com/pricing')
+
+  await page.setViewportSize({ width: 375, height: 844 })
+  await page.goto('/tools/windsurf')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Devin Desktop (formerly Windsurf)')
+  const windsurfFits = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+  expect(windsurfFits).toBe(true)
+  await page.goto('/compare/cursor-vs-windsurf')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Cursor vs Devin Desktop (formerly Windsurf)')
+  const compareFits = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)
+  expect(compareFits).toBe(true)
+
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/tools/relevance-ai')
+  await expect(page.getByText('$19 and up')).toBeVisible()
+  await expect(page.getByText('No', { exact: true })).toBeVisible()
+  await expect(page.getByText('Pro is $19 a month billed yearly', { exact: true })).toBeVisible()
+  await expect(page.getByText('The free plan is retired. Pro is $19 a month billed yearly.')).toBeVisible()
+  html = await page.content()
+  expect(html).not.toContain('relevanceai.com/docs')
+  expect(html).not.toContain('third_party')
+  expect(html).not.toContain('source_urls')
 })

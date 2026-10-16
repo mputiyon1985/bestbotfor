@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { headers } from 'next/headers'
 import { JsonLd } from '@/components/json-ld'
 import { PICKER_QUESTIONS, PickerForm } from '@/components/picker-form'
-import { comparePairSeeds, taskSeeds } from '@/data/catalog'
+import { comparePairSeeds, taskSeeds, toolSeeds } from '@/data/catalog'
 import { listTasks } from '@/lib/catalog'
 import { faqJsonLd } from '@/lib/jsonld'
 import { TAGLINE } from '@/lib/site'
@@ -117,9 +117,8 @@ export default async function HomePage() {
   )
 }
 
+const toolName = new Map(toolSeeds.map((tool) => [tool.slug, tool.name]))
+
 function label(slug: string): string {
-  return slug
-    .split('-')
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(' ')
+  return toolName.get(slug) ?? slug
 }
