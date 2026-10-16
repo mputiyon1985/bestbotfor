@@ -9,6 +9,7 @@
 - `src/data/scores-pros-cons.csv` is the editorial seed for 146 tools. The 13 tools without a row hide the score and the pros and cons. `source_urls` and third-party columns are not stored and are not rendered. Tool pages show a bar for features, value, ease, and quality next to the overall stars.
 - Relevance AI’s free plan is retired, so the seed upserts `hasFreeTier` as false. Windsurf keeps its name, is flagged `needs_verification`, and has no score.
 - Quiz results, all-matches lists, and tool pages keep the stars, score bars, pros and cons, and numbered pagination inside the screen at 375, 390, and 768 pixels. Pagination links are at least 44 pixels tall, and text stays at least 12 pixels.
+- Text links in the breadcrumbs, best-of lists, footer, and tablet header keep a 44 pixel tap height. Page controls are full-size buttons. The header sits clear of the breadcrumb and “Back to the questions” on a phone, and “See my best bot” stays on screen at 390 pixels.
 - Encoded and raw dot segments return 404 from a Vercel route and from the app server. The global `URL` constructor and `http.Server` are no longer patched.
 - Quiz result URLs and budget-filtered match lists are `noindex, follow`. `/result?task=X&view=all` page 1 stays indexable and in the sitemap. Lighthouse scores SEO on that indexable list. The production-env check asserts the quiz and budget-filtered pages render `noindex, follow`.
 - The first paint uses a metric-matched fallback for every Poppins weight, so the delayed swap does not reflow the tools directory.

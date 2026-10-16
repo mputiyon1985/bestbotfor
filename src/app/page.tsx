@@ -34,16 +34,16 @@ export default async function HomePage() {
   const tasks = catalogTasks.length > 0 ? catalogTasks : taskSeeds
 
   return (
-    <div className="space-y-16">
+    <div className="space-y-8 md:space-y-16">
       <JsonLd data={faqJsonLd(faqs)} nonce={nonce} />
-      <section className="grid gap-8 md:grid-cols-[1.1fr_0.9fr] md:items-end">
+      <section className="grid gap-3 md:grid-cols-[1.1fr_0.9fr] md:items-end md:gap-8">
         <div>
-          <h1 className="font-headline text-5xl leading-tight md:text-6xl">{TAGLINE}</h1>
-          <p className="mt-4 max-w-xl text-lg text-muted">
+          <h1 className="font-headline text-4xl leading-tight md:text-6xl">{TAGLINE}</h1>
+          <p className="mt-2 max-w-xl text-base text-muted md:mt-4 md:text-lg">
             Tell us the job, your budget, and how experienced you are. You’ll get one AI tool and up to six alternatives, in plain English.
           </p>
         </div>
-        <p className="rounded-3xl bg-mist px-5 py-4 text-sm text-accent">
+        <p className="rounded-3xl bg-mist px-4 py-3 text-sm text-accent md:px-5 md:py-4">
           No account required. The result has its own link, so you can send it to someone else.
         </p>
       </section>

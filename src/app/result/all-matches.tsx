@@ -113,12 +113,12 @@ export function AllMatches({
         </ol>
         <div className="flex max-w-full flex-wrap items-center gap-4">
           {page > 1 ? (
-            <Link className="inline-flex min-h-12 items-center underline" href={matchesPath(task.slug, budget, page - 1)}>
+            <Link className="inline-flex min-h-12 items-center justify-center rounded-full border border-line bg-card px-4 hover:border-accent" href={matchesPath(task.slug, budget, page - 1)}>
               Previous page
             </Link>
           ) : null}
           {page < pageCount ? (
-            <Link className="inline-flex min-h-12 items-center underline" href={matchesPath(task.slug, budget, page + 1)}>
+            <Link className="inline-flex min-h-12 items-center justify-center rounded-full border border-line bg-card px-4 hover:border-accent" href={matchesPath(task.slug, budget, page + 1)}>
               Next page
             </Link>
           ) : null}

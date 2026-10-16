@@ -20,24 +20,24 @@ export async function SiteHeader() {
   ]
 
   return (
-    <header className="border-b border-line bg-paper">
+    <header className="relative z-20 border-b border-line bg-paper">
       <a className="skip-link" href="#main">
         Skip to content
       </a>
-      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 py-4">
+      <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-x-4 gap-y-3 px-4 pt-4 pb-6 md:py-4">
         <BrandLockup />
-        <nav aria-label="Primary" className="hidden min-w-0 max-w-full flex-wrap items-center justify-end gap-x-5 gap-y-2 md:flex">
+        <nav aria-label="Primary" className="hidden min-w-0 max-w-full flex-wrap items-center justify-end gap-x-4 gap-y-1 md:flex">
           {links.map((link) => (
-            <Link key={link.href} href={link.href} className="text-sm font-semibold text-ink underline-offset-4 hover:underline">
+            <Link key={link.href} href={link.href} className="inline-flex min-h-11 items-center text-sm font-semibold text-ink underline-offset-4 hover:underline">
               {link.label}
             </Link>
           ))}
           {signedIn ? (
-            <Link href="/members" className="text-sm font-semibold underline-offset-4 hover:underline">
+            <Link href="/members" className="inline-flex min-h-11 items-center text-sm font-semibold underline-offset-4 hover:underline">
               Members
             </Link>
           ) : (
-            <Link href="/sign-in" className="text-sm font-semibold underline-offset-4 hover:underline">
+            <Link href="/sign-in" className="inline-flex min-h-11 items-center text-sm font-semibold underline-offset-4 hover:underline">
               Sign in
             </Link>
           )}

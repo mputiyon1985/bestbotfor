@@ -3,7 +3,7 @@ import type { CatalogTask } from '@/lib/catalog-types'
 /** Server-rendered. A client form was hydrating on every home visit and adding blocking time. */
 export function PickerForm({ tasks }: { tasks: CatalogTask[] }) {
   return (
-    <form action="/result" method="get" className="space-y-8 rounded-3xl border border-line bg-card p-6 shadow-sm md:p-8">
+    <form action="/result" method="get" className="space-y-6 rounded-3xl border border-line bg-card p-4 pb-24 shadow-sm md:space-y-8 md:p-8">
       <fieldset>
         <legend className="font-semibold text-2xl">1. What do you want to do?</legend>
         <label htmlFor="task" className="mt-3 block text-sm text-muted">
@@ -56,9 +56,11 @@ export function PickerForm({ tasks }: { tasks: CatalogTask[] }) {
         </div>
       </fieldset>
 
-      <button type="submit" className="min-h-12 w-full rounded-full bg-indigo px-6 font-medium text-white md:w-auto">
-        See my best bot
-      </button>
+      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-line bg-paper px-4 pt-3 pb-3 md:static md:z-auto md:border-0 md:bg-transparent md:p-0">
+        <button type="submit" className="min-h-12 w-full rounded-full bg-indigo px-6 font-medium text-white md:w-auto">
+          See my best bot
+        </button>
+      </div>
     </form>
   )
 }

@@ -90,7 +90,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
             {ranked.slice(0, 5).map((tool) => (
               <tr key={tool.slug} className="border-b border-line align-top">
                 <th scope="row" className="py-3 pr-3 font-semibold">
-                  <Link href={`/tools/${tool.slug}`} className="underline">
+                  <Link href={`/tools/${tool.slug}`} className="inline-flex min-h-11 items-center underline">
                     {tool.name}
                   </Link>
                 </th>

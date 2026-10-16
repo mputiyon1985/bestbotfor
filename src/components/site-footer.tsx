@@ -6,7 +6,7 @@ import { CookieSettingsButton } from './cookie-settings-button'
 
 export function SiteFooter() {
   return (
-    <footer className="mt-16 border-t border-line">
+    <footer className="mt-16 scroll-mb-24 border-t border-line">
       <div className="mx-auto grid max-w-5xl gap-8 px-4 py-10 md:grid-cols-3">
         <div>
           <BrandLockup />
@@ -14,10 +14,10 @@ export function SiteFooter() {
         </div>
         <nav aria-label="Best for">
           <h2 className="text-sm font-semibold">Best for</h2>
-          <ul className="mt-2 space-y-1 text-sm">
+          <ul className="mt-2 text-sm">
             {taskSeeds.map((task) => (
               <li key={task.slug}>
-                <Link className="underline-offset-4 hover:underline" href={`/best/${task.slug}`}>
+                <Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href={`/best/${task.slug}`}>
                   {task.name}
                 </Link>
               </li>
@@ -26,15 +26,15 @@ export function SiteFooter() {
         </nav>
         <nav aria-label="Company">
           <h2 className="text-sm font-semibold">Company</h2>
-          <ul className="mt-2 space-y-1 text-sm">
-            <li><Link className="underline-offset-4 hover:underline" href="/about">About</Link></li>
-            <li><Link className="underline-offset-4 hover:underline" href="/disclosure">Affiliate disclosure</Link></li>
-            <li><Link className="underline-offset-4 hover:underline" href="/privacy">Privacy</Link></li>
+          <ul className="mt-2 text-sm">
+            <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/about">About</Link></li>
+            <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/disclosure">Affiliate disclosure</Link></li>
+            <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/privacy">Privacy</Link></li>
             <li><CookieSettingsButton /></li>
-            <li><Link className="underline-offset-4 hover:underline" href="/tools">Tools</Link></li>
-            <li><Link className="underline-offset-4 hover:underline" href="/terms">Terms</Link></li>
-            <li><Link className="underline-offset-4 hover:underline" href="/newsletter">Newsletter</Link></li>
-            <li><Link className="underline-offset-4 hover:underline" href="/pricing">Pricing</Link></li>
+            <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/tools">Tools</Link></li>
+            <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/terms">Terms</Link></li>
+            <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/newsletter">Newsletter</Link></li>
+            <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/pricing">Pricing</Link></li>
           </ul>
         </nav>
       </div>
