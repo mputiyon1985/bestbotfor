@@ -8,8 +8,10 @@ for (const tool of toolSeeds) reviewedToolUrl(tool)
 
 const db = getDb()
 
+// One transaction, upserts only. Rows that are not in this seed stay in place.
+await db.transaction(async (tx) => {
 for (const task of taskSeeds) {
-  await db
+  await tx
     .insert(tasks)
     .values(task)
     .onConflictDoUpdate({
@@ -19,7 +21,7 @@ for (const task of taskSeeds) {
 }
 
 for (const tool of toolSeeds) {
-  await db
+  await tx
     .insert(tools)
     .values({
       slug: tool.slug,
@@ -57,8 +59,8 @@ for (const tool of toolSeeds) {
     })
 }
 
-const taskRows = await db.select().from(tasks)
-const toolRows = await db.select().from(tools)
+const taskRows = await tx.select().from(tasks)
+const toolRows = await tx.select().from(tools)
 const taskId = new Map(taskRows.map((row) => [row.slug, row.id]))
 const toolId = new Map(toolRows.map((row) => [row.slug, row.id]))
 
@@ -68,7 +70,7 @@ for (const tool of toolSeeds) {
   for (const fit of tool.fits) {
     const task = taskId.get(fit.task)
     if (!task) throw new Error(`Unknown task ${fit.task} on ${tool.slug}`)
-    await db
+    await tx
       .insert(toolTasks)
       .values({
         toolId: id,
@@ -85,7 +87,7 @@ for (const tool of toolSeeds) {
       })
   }
 
-  await db
+  await tx
     .insert(affiliatePrograms)
     .values({
       toolId: id,
@@ -115,10 +117,11 @@ for (const [a, b] of comparePairSeeds) {
   if (!toolId.has(a) || !toolId.has(b)) throw new Error(`Compare pair ${a} vs ${b} is not in the catalog`)
 }
 
-const storedPrograms = await db.select().from(affiliatePrograms)
+const storedPrograms = await tx.select().from(affiliatePrograms)
 if (storedPrograms.some((row) => row.affiliateUrl)) {
   throw new Error('Seed wrote an affiliate URL. Redirects must stay on official sites.')
 }
+})
 
 console.log(`Seeded ${toolSeeds.length} tools and ${taskSeeds.length} tasks. Affiliate URLs left null.`)
 }

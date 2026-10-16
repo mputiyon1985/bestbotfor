@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { isUnsafeCatalogPath } from './catalog-path'
+import { isUnsafeCatalogPath, isUnsafeCatalogSlug } from './catalog-path'
 
 describe('isUnsafeCatalogPath', () => {
   it('rejects dot-segment bypasses that the URL parser would turn into the home page', () => {
@@ -46,5 +46,25 @@ describe('isUnsafeCatalogPath', () => {
     expect(isUnsafeCatalogPath('/go/')).toBe(true)
     expect(isUnsafeCatalogPath('/best')).toBe(true)
     expect(isUnsafeCatalogPath('/best/')).toBe(true)
+  })
+
+  it('reads an absolute URL without letting the parser collapse dot segments', () => {
+    expect(isUnsafeCatalogPath('http://127.0.0.1:3000/go/%2e%2e')).toBe(true)
+    expect(isUnsafeCatalogPath('https://bestbotfor.com/best/%2e%2e')).toBe(true)
+    expect(isUnsafeCatalogPath('https://bestbotfor.com/tools/%2e%2e?page=2')).toBe(true)
+    expect(isUnsafeCatalogPath('https://bestbotfor.com/go/chatgpt')).toBe(false)
+    expect(isUnsafeCatalogPath('https://bestbotfor.com/tools?page=2')).toBe(false)
+    expect(isUnsafeCatalogPath('https://bestbotfor.com/')).toBe(false)
+  })
+})
+
+describe('isUnsafeCatalogSlug', () => {
+  it('rejects dot segments and keeps a normal slug', () => {
+    expect(isUnsafeCatalogSlug('..')).toBe(true)
+    expect(isUnsafeCatalogSlug('.')).toBe(true)
+    expect(isUnsafeCatalogSlug('%2e%2e')).toBe(true)
+    expect(isUnsafeCatalogSlug('%252e%252e')).toBe(true)
+    expect(isUnsafeCatalogSlug('chatgpt')).toBe(false)
+    expect(isUnsafeCatalogSlug('github-copilot')).toBe(false)
   })
 })

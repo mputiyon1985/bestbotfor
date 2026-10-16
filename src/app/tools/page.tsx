@@ -1,9 +1,11 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { listToolCategoryCounts, listToolPage } from '@/lib/catalog'
 import { pageMetadata } from '@/lib/metadata'
 import { categorySlug, type ToolCategory } from '@/lib/tool-index'
+import { isToolsPageInRange, parseToolsPage } from '@/lib/tools-page'
 import { firstString } from '@/lib/validation'
 
 const MAX_CATEGORY_QUERY = 80
@@ -16,12 +18,6 @@ type ResolvedCategory = {
   selected: ToolCategory | null
   unknown: boolean
   total: number
-}
-
-function pageNumber(value: string): number {
-  const parsed = Number(value)
-  if (!Number.isInteger(parsed) || parsed < 1) return 1
-  return parsed
 }
 
 function toolsPath(category: string | null, page: number): string {
@@ -49,11 +45,20 @@ async function resolveCategory(raw: string): Promise<ResolvedCategory> {
   return { categories, selected, unknown: !selected, total }
 }
 
-export async function generateMetadata({ searchParams }: { searchParams: Promise<SearchParams> }): Promise<Metadata> {
-  const params = await searchParams
-  const page = pageNumber(firstString(params.page))
+async function loadToolsIndex(params: SearchParams) {
+  const requested = parseToolsPage(firstString(params.page))
+  if (requested === null) notFound()
   const resolved = await resolveCategory(firstString(params.category))
-  if (resolved.unknown) {
+  if (resolved.unknown) return { requested, resolved, listing: null }
+  const listing = await listToolPage(requested, resolved.selected?.name ?? null)
+  if (!isToolsPageInRange(requested, listing.pageCount)) notFound()
+  return { requested, resolved, listing }
+}
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<SearchParams> }): Promise<Metadata> {
+  const loaded = await loadToolsIndex(await searchParams)
+  const { resolved, listing } = loaded
+  if (resolved.unknown || !listing) {
     return pageMetadata({
       title: 'Tools',
       description: INDEX_DESCRIPTION,
@@ -62,6 +67,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
     })
   }
   const category = resolved.selected
+  const page = listing.page
   const title = category
     ? page > 1
       ? `${category.name} tools, page ${page}`
@@ -80,10 +86,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 }
 
 export default async function ToolsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const params = await searchParams
-  const page = pageNumber(firstString(params.page))
-  const resolved = await resolveCategory(firstString(params.category))
-  const listing = resolved.unknown ? null : await listToolPage(page, resolved.selected?.name ?? null)
+  const { resolved, listing } = await loadToolsIndex(await searchParams)
   const selected = resolved.selected
 
   return (

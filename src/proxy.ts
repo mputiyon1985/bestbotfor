@@ -1,5 +1,6 @@
 import { clerkMiddleware } from '@clerk/nextjs/server'
 import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server'
+import { CATALOG_REJECT_MESSAGE, CATALOG_REJECT_PATH, isUnsafeCatalogPath } from '@/lib/catalog-path'
 import { buildContentSecurityPolicy, securityHeaders } from '@/lib/csp'
 import { isClerkConfigured } from '@/lib/flags'
 import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from '@/lib/indexing'
@@ -28,6 +29,32 @@ function isMembersPath(pathname: string): boolean {
   return pathname === '/members' || pathname.startsWith('/members/')
 }
 
+function catalogCandidate(request: NextRequest): boolean {
+  if (request.nextUrl.pathname === CATALOG_REJECT_PATH) return true
+  if (isUnsafeCatalogPath(request.url) || isUnsafeCatalogPath(request.nextUrl.pathname)) return true
+  for (const name of ['x-matched-path', 'x-invoke-path', 'next-url']) {
+    const value = request.headers.get(name)
+    if (value && isUnsafeCatalogPath(value)) return true
+  }
+  return false
+}
+
+function rejectCatalogPath(request: NextRequest): NextResponse | null {
+  if (!catalogCandidate(request)) return null
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+  return applySecurity(
+    new NextResponse(CATALOG_REJECT_MESSAGE, {
+      status: 404,
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+        'cache-control': 'no-store',
+        'x-robots-tag': 'noindex, nofollow',
+      },
+    }),
+    nonce,
+  )
+}
+
 const withClerk = clerkMiddleware(async (auth, request) => {
   if (isMembersPath(request.nextUrl.pathname)) {
     await auth.protect()
@@ -36,6 +63,8 @@ const withClerk = clerkMiddleware(async (auth, request) => {
 })
 
 export function proxy(request: NextRequest, event: NextFetchEvent) {
+  const rejected = rejectCatalogPath(request)
+  if (rejected) return rejected
   if (!isClerkConfigured()) {
     if (isMembersPath(request.nextUrl.pathname)) {
       const url = request.nextUrl.clone()

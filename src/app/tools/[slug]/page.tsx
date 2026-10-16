@@ -9,12 +9,13 @@ import { comparePairSeeds } from '@/data/catalog'
 import { getTool, getToolsBySlugs } from '@/lib/catalog'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
 import { breadcrumbJsonLd, softwareJsonLd } from '@/lib/jsonld'
+import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
 import { pageMetadata } from '@/lib/metadata'
 import { slugSchema } from '@/lib/validation'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
-  if (!slugSchema.safeParse(slug).success) {
+  if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) {
     return pageMetadata({ title: 'Tool', description: 'That tool is not in the catalog.', path: '/tools', noIndex: true })
   }
   const tool = await getTool(slug)
@@ -28,7 +29,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function ToolPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
-  if (!slugSchema.safeParse(slug).success) notFound()
+  if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) notFound()
   const tool = await getTool(slug)
   if (!tool) notFound()
   const nonce = (await headers()).get('x-nonce')

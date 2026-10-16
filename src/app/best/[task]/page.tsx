@@ -8,12 +8,13 @@ import { OutboundLink } from '@/components/outbound-link'
 import { getTask, listTaskCandidates } from '@/lib/catalog'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
 import { breadcrumbJsonLd, faqJsonLd, itemListJsonLd } from '@/lib/jsonld'
+import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
 import { pageMetadata } from '@/lib/metadata'
 import { slugSchema } from '@/lib/validation'
 
 export async function generateMetadata({ params }: { params: Promise<{ task: string }> }): Promise<Metadata> {
   const { task: slug } = await params
-  if (!slugSchema.safeParse(slug).success) {
+  if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) {
     return pageMetadata({ title: 'Not found', description: 'That guide is not in the catalog.', path: '/best', noIndex: true })
   }
   const task = await getTask(slug)
@@ -27,7 +28,7 @@ export async function generateMetadata({ params }: { params: Promise<{ task: str
 
 export default async function BestPage({ params }: { params: Promise<{ task: string }> }) {
   const { task: slug } = await params
-  if (!slugSchema.safeParse(slug).success) notFound()
+  if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) notFound()
   const task = await getTask(slug)
   if (!task) notFound()
   const loaded = await listTaskCandidates(task.slug)
