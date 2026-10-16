@@ -6,6 +6,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { ProsConsSection, ScoreSection } from '@/components/editorial'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
+import { ToolLogo } from '@/components/tool-logo'
 import { comparePairSeeds } from '@/data/catalog'
 import { getTool, getToolsBySlugs } from '@/lib/catalog'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
@@ -48,7 +49,10 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
       <JsonLd data={softwareJsonLd(tool)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
       <p className="text-sm font-semibold uppercase tracking-[0.14em] text-accent">{tool.category}</p>
-      <h1 className="break-words font-bold text-5xl">{tool.name}</h1>
+      <div className="flex min-w-0 items-start gap-3">
+        <ToolLogo name={tool.name} slug={tool.slug} />
+        <h1 className="min-w-0 break-words font-bold text-5xl">{tool.name}</h1>
+      </div>
       <p className="text-lg">{tool.shortDesc}</p>
       <p className="max-w-2xl text-muted">{tool.longDesc}</p>
       <dl className="grid gap-3 sm:grid-cols-2">

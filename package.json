@@ -22,7 +22,8 @@
     "check:bundle": "tsx scripts/check-client-bundle.ts",
     "check:db-writes": "tsx scripts/check-db-writes.ts",
     "check:members": "tsx scripts/check-member-routes.ts",
-    "check:lighthouse": "tsx scripts/check-lighthouse.ts"
+    "check:lighthouse": "tsx scripts/check-lighthouse.ts",
+    "logos:fetch": "tsx scripts/fetch-tool-logos.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.16",
@@ -47,6 +48,7 @@
     "@types/react-dom": "^19.3.0",
     "eslint": "^10.12.0",
     "postcss": "^8.5.30",
+    "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { ToolLogo } from '@/components/tool-logo'
 import { EditorialCompact } from '@/components/editorial'
 import { priceLabel } from '@/lib/format'
 import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/jsonld'
@@ -72,11 +73,14 @@ export function AllMatches({
         <ul aria-label="Matches" className="grid gap-4">
           {tools.map((tool) => (
             <li key={tool.slug} className="rounded-2xl border border-line bg-card p-4">
-              <h2 className="font-semibold text-2xl">
-                <Link href={`/tools/${tool.slug}`} className="underline-offset-4 hover:underline">
-                  {tool.name}
-                </Link>
-              </h2>
+              <div className="flex min-w-0 items-start gap-3">
+                <ToolLogo name={tool.name} slug={tool.slug} />
+                <h2 className="min-w-0 font-semibold text-2xl">
+                  <Link href={`/tools/${tool.slug}`} className="underline-offset-4 hover:underline">
+                    {tool.name}
+                  </Link>
+                </h2>
+              </div>
               <p className="mt-2 text-sm text-muted">{tool.reason}</p>
               <EditorialCompact editorial={tool.editorial} pros={tool.pros} cons={tool.cons} />
               <p className="mt-2 text-sm">{priceLabel(tool)}</p>
