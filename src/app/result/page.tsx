@@ -77,7 +77,7 @@ export async function generateMetadata({
   if (!parsed.success) {
     return pageMetadata({
       title: 'Your result',
-      description: 'Answer the three questions to get a best AI tool and up to six alternatives.',
+      description: 'Answer three questions (task, budget, experience) and get the right AI tool for the job plus up to six alternatives, in about 30 seconds.',
       path: '/result',
       noIndex: true,
     })

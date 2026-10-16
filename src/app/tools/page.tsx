@@ -9,7 +9,7 @@ import { isToolsPageInRange, parseToolsPage } from '@/lib/tools-page'
 import { firstString } from '@/lib/validation'
 
 const MAX_CATEGORY_QUERY = 80
-const INDEX_DESCRIPTION = 'Every AI tool in the BestBotFor catalog, one page at a time.'
+const INDEX_DESCRIPTION = 'Every AI tool in the BestBotFor catalog with price, free tier and skill level. Not sure which one? Get the right AI in 30 seconds.'
 
 type SearchParams = Record<string, string | string[] | undefined>
 

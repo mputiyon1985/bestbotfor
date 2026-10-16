@@ -14,7 +14,7 @@ test('three questions produce one pick and six alternatives', async ({ page }) =
   if (!pick) return
 
   await page.goto('/')
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Three questions. One best bot.')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('The right AI in 30 seconds.')
   await page.getByLabel('Pick the closest job.').selectOption(answers.task)
   await page.getByRole('radio', { name: 'Any budget' }).check()
   await page.getByRole('radio', { name: 'Beginner' }).check()

@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- The tagline is “The right AI in 30 seconds.” The home title is “BestBotFor — The right AI in 30 seconds.”
+- The home eyebrow says “Answer 3 quick questions.”
+- The not-found page sets its own title, “Page not found | BestBotFor”, its own description, and `noindex, nofollow`. It does not reuse the home canonical or the home social titles.
+- Pages publish `og:url` as the absolute canonical URL.
+- Home explains the three questions, and the public meta descriptions use the 30-second pick.
+- The default Open Graph and Twitter image is the new 1200×630 card, `og-default-1200x630.676bae0e.png`.
 - The quiz result shows one pick and up to six alternatives that clear a fit score of 50. When fewer qualify, the page still says few strong options exist.
 - All-matches pages list six tools and show “Showing 1–6 of N” with numbered page links. Budget filters stay noindex, rel prev/next and the canonical rules are unchanged, and a page past the end is still a 404.
 - Tool pages can show a BestBotFor score from 0 to 5, with a fractional star, the features/value/ease/quality rubric, and a short note on how the equal-weight average is calculated. The score is editorial. Pages do not emit AggregateRating or Review schema.

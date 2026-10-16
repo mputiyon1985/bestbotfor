@@ -59,12 +59,13 @@ export const metadata: Metadata = {
   openGraph: {
     title: homeTitle,
     description: TAGLINE,
+    url: getSiteUrl(),
     siteName: SITE_NAME,
     locale: 'en_US',
     type: 'website',
     images: [ogImage],
   },
-  twitter: { card: 'summary_large_image', title: homeTitle, description: TAGLINE, images: [OG_IMAGE_PATH] },
+  twitter: { card: 'summary_large_image', title: homeTitle, description: TAGLINE, images: [ogImage] },
   verification: googleVerification ? { google: googleVerification } : undefined,
   robots: isProductionDeployment() ? { index: true, follow: true } : { index: false, follow: false },
 }
