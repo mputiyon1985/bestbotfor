@@ -5,6 +5,22 @@ import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
 
 const answers = { task: 'chat', budget: 'any', skill: 'beginner' } as const
 
+test('sub-page Open Graph and Twitter titles include the brand', async ({ page }) => {
+  const cases = [
+    ['/about', 'About'],
+    ['/tools', 'Tools'],
+    ['/pricing', 'Pricing'],
+    ['/best/music', 'Best AI for making music'],
+  ] as const
+  for (const [path, title] of cases) {
+    await page.goto(path)
+    const branded = `${title} | BestBotFor`
+    await expect(page.locator('meta[property="og:title"]'), path).toHaveAttribute('content', branded)
+    await expect(page.locator('meta[name="twitter:title"]'), path).toHaveAttribute('content', branded)
+    await expect(page, path).toHaveTitle(`${title} · BestBotFor`)
+  }
+})
+
 test('pages publish og:url as the absolute canonical', async ({ page }) => {
   for (const path of ['/about', '/tools', '/pricing']) {
     await page.goto(path)

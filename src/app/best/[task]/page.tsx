@@ -9,7 +9,7 @@ import { getTask, listTaskCandidates } from '@/lib/catalog'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
 import { breadcrumbJsonLd, faqJsonLd, itemListJsonLd } from '@/lib/jsonld'
 import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
-import { bestGuideDescription } from '@/lib/descriptions'
+import { bestGuideDescription, bestGuideTitle } from '@/lib/descriptions'
 import { pageMetadata } from '@/lib/metadata'
 import { slugSchema } from '@/lib/validation'
 
@@ -21,7 +21,7 @@ export async function generateMetadata({ params }: { params: Promise<{ task: str
   const task = await getTask(slug)
   if (!task) return pageMetadata({ title: 'Not found', description: 'That guide is not in the catalog.', path: `/best/${slug}`, noIndex: true })
   return pageMetadata({
-    title: `Best AI tool for ${task.name.toLowerCase()}`,
+    title: bestGuideTitle(task.name),
     description: bestGuideDescription(task.name),
     path: `/best/${task.slug}`,
   })

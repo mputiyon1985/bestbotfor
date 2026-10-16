@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { homeDescription } from '../src/lib/metadata'
 import {
   ANDROID_CHROME_192_PATH,
   APPLE_TOUCH_ICON_PATH,
@@ -28,7 +29,7 @@ test('header and footer inline the lockup and the tagline', async ({ page }) => 
   expect(canonical).toMatch(/^https?:\/\/[^/]+\/?$/)
   await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', canonical ?? '')
   await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', 'BestBotFor — The right AI in 30 seconds.')
-  await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', 'The right AI in 30 seconds.')
+  await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', homeDescription)
   await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', 'BestBotFor — The right AI in 30 seconds.')
   await expect(page.locator('meta[name="twitter:description"]')).toHaveAttribute('content', 'The right AI in 30 seconds.')
   await expect(page.getByRole('contentinfo')).toContainText('The right AI in 30 seconds.')

@@ -162,6 +162,9 @@ test('best, compare, tool profiles, and the sitemap follow the seed', async ({ p
   if (!task || !top) return
 
   await page.goto(`/best/${task.slug}`)
+  await expect(page).toHaveTitle('Best AI for writing code · BestBotFor')
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', 'Best AI for writing code | BestBotFor')
+  await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', 'Best AI for writing code | BestBotFor')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText(`Best AI tool for ${task.name.toLowerCase()}`)
   await expect(page.getByText(`The best AI tool for ${task.name.toLowerCase()} is ${top.name}.`)).toBeVisible()
   for (const tool of ranked.slice(0, 5)) {

@@ -72,6 +72,19 @@ describe('preview indexing', () => {
     expect(meta.openGraph && 'url' in meta.openGraph ? meta.openGraph.url : null).toBe(canonical)
   })
 
+  it('adds the brand to sub-page Open Graph and Twitter titles', () => {
+    const meta = pageMetadata({ title: 'About', description: 'About BestBotFor', path: '/about' })
+    expect(meta.title).toBe('About')
+    expect(meta.openGraph?.title).toBe('About | BestBotFor')
+    expect(meta.twitter?.title).toBe('About | BestBotFor')
+    const branded = pageMetadata({
+      title: 'Page not found | BestBotFor',
+      description: 'Missing',
+      path: '/missing',
+    })
+    expect(branded.openGraph?.title).toBe('Page not found | BestBotFor')
+  })
+
   it('can noindex a production page and still follow its links', () => {
     process.env.VERCEL_ENV = 'production'
     expect(pageMetadata({ title: 'Your result', description: 'Pick', path: '/result?task=chat', noIndex: true, follow: true }).robots).toEqual({

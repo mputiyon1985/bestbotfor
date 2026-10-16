@@ -18,6 +18,7 @@ export function pageMetadata(input: {
   const image = input.imagePath ?? OG_IMAGE_PATH
   const previous = input.pagination?.previous ? absoluteUrl(input.pagination.previous) : undefined
   const next = input.pagination?.next ? absoluteUrl(input.pagination.next) : undefined
+  const branded = socialTitle(input.title)
   return {
     title: input.absoluteTitle ? { absolute: input.title } : input.title,
     description: input.description,
@@ -25,7 +26,7 @@ export function pageMetadata(input: {
     pagination: previous || next ? { previous, next } : undefined,
     robots: pageRobots(input),
     openGraph: {
-      title: input.title,
+      title: branded,
       description: input.description,
       url: canonical,
       siteName: SITE_NAME,
@@ -35,11 +36,17 @@ export function pageMetadata(input: {
     },
     twitter: {
       card: 'summary_large_image',
-      title: input.title,
+      title: branded,
       description: input.description,
       images: [{ url: image, width: 1200, height: 630, alt: input.title }],
     },
   }
+}
+
+/** Open Graph and Twitter titles do not pick up the document title template. */
+function socialTitle(title: string): string {
+  const suffix = `| ${SITE_NAME}`
+  return title.endsWith(suffix) ? title : `${title} ${suffix}`
 }
 
 function pageRobots(input: { noIndex?: boolean; follow?: boolean }): { index: boolean; follow: boolean } {
