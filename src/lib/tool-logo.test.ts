@@ -5,9 +5,9 @@ import sharp from 'sharp'
 import { toolSeeds } from '@/data/catalog'
 import manifestJson from '@/data/logo-manifest.json'
 import logoSlugsJson from '@/data/logo-slugs.json'
-import { LOGO_PUBLIC_DIR, monogramLetter } from '@/lib/logo-source'
-import { resolveToolLogo, TOOL_LOGO_SIZE } from '@/lib/tool-logo'
-import { normalizeLogo, readSources, sanitizeSvg } from '../../scripts/fetch-tool-logos'
+import { LOGO_PUBLIC_DIR, monogramLetter, TOOL_LOGO_MARK_FILL } from '@/lib/logo-source'
+import { monogramFontSize, resolveToolLogo, TOOL_LOGO_SIZE } from '@/lib/tool-logo'
+import { markLongSideFill, normalizeLogo, readSources, sanitizeSvg } from '../../scripts/fetch-tool-logos'
 
 type ManifestEntry = { slug: string; sourceUrl: string; fetchedAt: string }
 
@@ -103,6 +103,21 @@ describe('tool logos', () => {
       expect(meta.width).toBe(128)
       expect(meta.height).toBe(128)
     }
+  })
+
+  it('pads a full mark to about 80% of the tile', async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><rect width="128" height="128" fill="#111111"/></svg>'
+    const tile = await normalizeLogo(Buffer.from(svg))
+    expect(tile).not.toBeNull()
+    if (!tile) return
+    const fill = await markLongSideFill(tile)
+    expect(fill).toBeGreaterThanOrEqual(TOOL_LOGO_MARK_FILL - 0.03)
+    expect(fill).toBeLessThanOrEqual(TOOL_LOGO_MARK_FILL + 0.03)
+
+    const saved = await markLongSideFill(readFileSync(path.join(process.cwd(), LOGO_PUBLIC_DIR, 'activepieces.webp')))
+    expect(saved).toBeGreaterThanOrEqual(TOOL_LOGO_MARK_FILL - 0.03)
+    expect(saved).toBeLessThanOrEqual(TOOL_LOGO_MARK_FILL + 0.03)
+    expect(monogramFontSize(TOOL_LOGO_SIZE)).toBe(23)
   })
 
   it('strips scripts and event handlers from an svg before tiling', async () => {

@@ -1,6 +1,8 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Locator } from '@playwright/test'
 import { comparePairSeeds, toolSeeds } from '../src/data/catalog'
 import { TOOLS_PAGE_SIZE } from '../src/lib/catalog-read'
+import { TOOL_LOGO_MARK_FILL, TOOL_LOGO_SIZE } from '../src/lib/logo-source'
+import { BEST_GUIDE_TOOL_COUNT } from '../src/lib/descriptions'
 import { toolsForTask } from '../src/lib/recommend'
 import { categorySlug, toolCategories } from '../src/lib/tool-index'
 import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
@@ -142,6 +144,154 @@ test('each real tools page has its own canonical, and pages past the end are 404
   }
 })
 
+async function markFill(logo: Locator): Promise<number | null> {
+  return logo.evaluate(async (element) => {
+    if (!(element instanceof HTMLImageElement)) return null
+    const current = element.currentSrc || element.src
+    const parsed = new URL(current, window.location.href)
+    const original = parsed.searchParams.get('url') || parsed.pathname
+    const probe = new Image()
+    probe.src = original
+    await probe.decode()
+    const width = probe.naturalWidth
+    const height = probe.naturalHeight
+    if (width === 0 || height === 0) return null
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const context = canvas.getContext('2d', { willReadFrequently: true })
+    if (!context) return null
+    context.drawImage(probe, 0, 0)
+    const { data } = context.getImageData(0, 0, width, height)
+    let minX = width
+    let minY = height
+    let maxX = -1
+    let maxY = -1
+    for (let y = 0; y < height; y += 1) {
+      for (let x = 0; x < width; x += 1) {
+        const index = (y * width + x) * 4
+        const red = data[index] ?? 0
+        const green = data[index + 1] ?? 0
+        const blue = data[index + 2] ?? 0
+        const alpha = data[index + 3] ?? 0
+        if (alpha < 16) continue
+        if (red > 246 && green > 246 && blue > 246) continue
+        if (x < minX) minX = x
+        if (y < minY) minY = y
+        if (x > maxX) maxX = x
+        if (y > maxY) maxY = y
+      }
+    }
+    if (maxX < minX || maxY < minY) return null
+    return Math.max(maxX - minX + 1, maxY - minY + 1) / Math.max(width, height)
+  })
+}
+
+function insideViewport(box: { x: number; y: number; width: number; height: number }, viewport: { width: number; height: number }): boolean {
+  return box.x >= -1 && box.y >= -1 && box.x + box.width <= viewport.width + 1 && box.y + box.height <= viewport.height + 1
+}
+
+test('a tool card and an 80% logo mark fit the first 390px viewport', async ({ page }) => {
+  const viewport = { width: 390, height: 844 }
+  await page.setViewportSize(viewport)
+  await page.goto('/tools')
+
+  const card = page.getByRole('list', { name: 'Tools' }).getByRole('listitem').first()
+  await expect(card).toBeVisible()
+  const cardBox = await card.boundingBox()
+  expect(cardBox, 'first tool card').not.toBeNull()
+  if (!cardBox) return
+  expect(insideViewport(cardBox, viewport), `card at y=${cardBox.y}`).toBe(true)
+
+  const logo = card.getByRole('img')
+  await expect(logo).toBeVisible()
+  const tile = await logo.boundingBox()
+  expect(tile, 'logo tile').not.toBeNull()
+  if (!tile) return
+  expect(tile.width).toBeGreaterThanOrEqual(TOOL_LOGO_SIZE - 1)
+  expect(tile.width).toBeLessThanOrEqual(TOOL_LOGO_SIZE + 1)
+  expect(insideViewport(tile, viewport)).toBe(true)
+  const fill = await markFill(logo)
+  expect(fill, 'logo mark fill').not.toBeNull()
+  if (fill === null) return
+  expect(fill).toBeGreaterThanOrEqual(TOOL_LOGO_MARK_FILL - 0.05)
+  expect(fill).toBeLessThanOrEqual(TOOL_LOGO_MARK_FILL + 0.05)
+  const renderedMark = fill * tile.width
+  expect(renderedMark).toBeGreaterThanOrEqual(tile.width * (TOOL_LOGO_MARK_FILL - 0.05))
+  expect(renderedMark).toBeLessThanOrEqual(tile.width * (TOOL_LOGO_MARK_FILL + 0.05))
+
+  await page.evaluate(() => document.fonts.ready)
+  const monogram = page.getByRole('list', { name: 'Tools' }).locator('span[role="img"]').first()
+  await expect(monogram).toBeVisible()
+  const monogramSize = await monogram.evaluate((element) => {
+    const tile = element.getBoundingClientRect()
+    const letter = element.querySelector('span')
+    if (!letter) return null
+    const range = document.createRange()
+    range.selectNodeContents(letter)
+    const ink = range.getBoundingClientRect()
+    return { tile: tile.width, mark: Math.max(ink.width, ink.height) }
+  })
+  expect(monogramSize).not.toBeNull()
+  if (!monogramSize) return
+  expect(monogramSize.tile).toBeGreaterThanOrEqual(TOOL_LOGO_SIZE - 1)
+  expect(monogramSize.mark / monogramSize.tile).toBeGreaterThanOrEqual(TOOL_LOGO_MARK_FILL - 0.05)
+  expect(monogramSize.mark / monogramSize.tile).toBeLessThanOrEqual(TOOL_LOGO_MARK_FILL + 0.05)
+
+  const nav = page.getByRole('navigation', { name: 'Filter by category' })
+  await expect(nav).toBeVisible()
+  const chips = nav.getByRole('link')
+  const chipCount = await chips.count()
+  expect(chipCount).toBeGreaterThan(1)
+  const firstChip = await chips.first().boundingBox()
+  const lastChip = await chips.nth(chipCount - 1).boundingBox()
+  expect(firstChip && lastChip).toBeTruthy()
+  if (!firstChip || !lastChip) return
+  expect(Math.abs(firstChip.y - lastChip.y)).toBeLessThanOrEqual(2)
+  expect(firstChip.height).toBeGreaterThanOrEqual(44)
+  expect(lastChip.height).toBeGreaterThanOrEqual(44)
+
+  await chips.nth(chipCount - 2).focus()
+  await page.keyboard.press('Tab')
+  await expect(chips.nth(chipCount - 1)).toBeFocused()
+  const focused = await chips.nth(chipCount - 1).evaluate((element) => {
+    const style = getComputedStyle(element)
+    const rect = element.getBoundingClientRect()
+    return {
+      outlineStyle: style.outlineStyle,
+      outlineWidth: Number.parseFloat(style.outlineWidth),
+      left: rect.left,
+      right: rect.right,
+      top: rect.top,
+      bottom: rect.bottom,
+      width: window.innerWidth,
+      height: window.innerHeight,
+    }
+  })
+  expect(focused.outlineStyle).not.toBe('none')
+  expect(focused.outlineWidth).toBeGreaterThanOrEqual(2)
+  expect(focused.left).toBeGreaterThanOrEqual(-1)
+  expect(focused.right).toBeLessThanOrEqual(focused.width + 1)
+  expect(focused.top).toBeGreaterThanOrEqual(-1)
+  expect(focused.bottom).toBeLessThanOrEqual(focused.height + 1)
+
+  const overflow = await page.evaluate(() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth) - window.innerWidth)
+  expect(overflow).toBeLessThanOrEqual(1)
+})
+
+test('category chips still wrap on a desktop tools page', async ({ page }) => {
+  await page.setViewportSize({ width: 1280, height: 900 })
+  await page.goto('/tools')
+  const chips = page.getByRole('navigation', { name: 'Filter by category' }).getByRole('link')
+  const count = await chips.count()
+  expect(count).toBeGreaterThan(1)
+  const first = await chips.first().boundingBox()
+  const last = await chips.nth(count - 1).boundingBox()
+  expect(first && last).toBeTruthy()
+  if (!first || !last) return
+  expect(last.y).toBeGreaterThan(first.y + 20)
+})
+
 test('an unknown category does not echo the query', async ({ page }) => {
   const unknown = 'not-a-real-category'
   expect(toolCategories(catalog.tools).some((category) => category.slug === unknown)).toBe(false)
@@ -167,7 +317,7 @@ test('best, compare, tool profiles, and the sitemap follow the seed', async ({ p
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Best AI tool for writing code')
   await expect(page.getByText(`The best AI tool for writing code is ${top.name}.`)).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Best for writing code')
-  for (const tool of ranked.slice(0, 5)) {
+  for (const tool of ranked.slice(0, BEST_GUIDE_TOOL_COUNT)) {
     await expect(page.getByRole('link', { name: tool.name, exact: true })).toBeVisible()
   }
 

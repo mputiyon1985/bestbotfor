@@ -1,5 +1,11 @@
 const OWN_PICK = ' Or get your own pick in 30 seconds.'
 
+/** Tools a best-of guide lists before linking to the full match list. */
+export const BEST_GUIDE_TOOL_COUNT = 10
+
+/** Visible explanation of the Fit column. Not a hover-only tooltip. */
+export const BEST_GUIDE_FIT_LEGEND = 'Fit = how well it matches this task'
+
 const TASK_GERUNDS: Record<string, string> = {
   add: 'adding',
   automate: 'automating',
