@@ -17,8 +17,12 @@ const ORIGINAL_SPONSOR_ENV = Object.fromEntries(
   Object.keys(SPONSOR_PRICE_ENV).map((key) => [key, process.env[key]]),
 ) as Record<string, string | undefined>
 
-function stripeStub(events: Stripe.Event[], options?: { priceId?: string; onRetrieve?: () => void }): Stripe {
+function stripeStub(
+  events: Stripe.Event[],
+  options?: { priceId?: string; quantity?: number | null; onRetrieve?: () => void },
+): Stripe {
   const priceId = options?.priceId ?? 'price_e2e_monthly'
+  const quantity = options && 'quantity' in options ? options.quantity : 1
   return {
     webhooks: {
       constructEvent(rawBody: string, signature: string, secret: string) {
@@ -32,9 +36,11 @@ function stripeStub(events: Stripe.Event[], options?: { priceId?: string; onRetr
       sessions: {
         async retrieve(id: string) {
           options?.onRetrieve?.()
+          const item: { price: { id: string }; quantity?: number } = { price: { id: priceId } }
+          if (typeof quantity === 'number') item.quantity = quantity
           return {
             id,
-            line_items: { data: [{ price: { id: priceId } }] },
+            line_items: { data: [item] },
           }
         },
       },
@@ -445,6 +451,45 @@ describe('handleStripeWebhook', () => {
     expect(await db.select().from(sponsorships)).toEqual([])
     expect(await db.select().from(stripeEvents)).toEqual([])
     expect(errorLog.mock.calls.flat().join(' ')).not.toContain('sponsor@example.com')
+    errorLog.mockRestore()
+    await close()
+  })
+
+  it('does not store a sponsorship when the line quantity is not 1', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { db, close } = await createTestDatabase()
+    const event = sponsorshipEvent('evt_quantity_mismatch')
+    await expect(
+      handleStripeWebhook({
+        rawBody: JSON.stringify(event),
+        signature: 'valid',
+        db,
+        stripe: stripeStub([event], { quantity: 2 }),
+        secret: SECRET,
+      }),
+    ).rejects.toThrow(/quantity mismatch/)
+    expect(await db.select().from(sponsorships)).toEqual([])
+    expect(await db.select().from(stripeEvents)).toEqual([])
+    expect(errorLog.mock.calls.flat().join(' ')).not.toContain('sponsor@example.com')
+    errorLog.mockRestore()
+    await close()
+  })
+
+  it('does not store a sponsorship when the line quantity is missing', async () => {
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { db, close } = await createTestDatabase()
+    const event = sponsorshipEvent('evt_quantity_missing')
+    await expect(
+      handleStripeWebhook({
+        rawBody: JSON.stringify(event),
+        signature: 'valid',
+        db,
+        stripe: stripeStub([event], { quantity: null }),
+        secret: SECRET,
+      }),
+    ).rejects.toThrow(/quantity mismatch/)
+    expect(await db.select().from(sponsorships)).toEqual([])
+    expect(await db.select().from(stripeEvents)).toEqual([])
     errorLog.mockRestore()
     await close()
   })

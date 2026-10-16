@@ -1,0 +1,159 @@
+/** Apex origin for production Checkout returns. */
+export const SPONSOR_PRODUCTION_ORIGIN = 'https://bestbotfor.com'
+
+const SUCCESS_PATH = '/sponsor/success?session_id={CHECKOUT_SESSION_ID}'
+const CANCEL_PATH = '/sponsor/cancel'
+
+/** Deployments of this project on Vercel, not any other vercel.app host. */
+const PROJECT_VERCEL_HOST = /^bestbotfor(?:-[a-z0-9-]+)?\.vercel\.app$/
+
+const APEX_HOSTS = new Set(['bestbotfor.com', 'www.bestbotfor.com'])
+
+export type SponsorReturnEnv = {
+  VERCEL_ENV?: string
+  VERCEL_URL?: string
+  VERCEL_BRANCH_URL?: string
+  NEXT_PUBLIC_SITE_URL?: string
+}
+
+/**
+ * Origin Stripe should send the buyer back to.
+ * Production is always the apex. Everywhere else, the first allowlisted
+ * candidate wins: the request origin, then VERCEL_BRANCH_URL, then VERCEL_URL.
+ */
+export function sponsorReturnOrigin(
+  input: { requestOrigin?: string | null; env?: SponsorReturnEnv } = {},
+): string {
+  // NEXT_PUBLIC_SITE_URL is not a candidate. Preview must not follow it back to production.
+  const env = input.env ?? {
+    VERCEL_ENV: process.env.VERCEL_ENV,
+    VERCEL_URL: process.env.VERCEL_URL,
+    VERCEL_BRANCH_URL: process.env.VERCEL_BRANCH_URL,
+  }
+  if (env.VERCEL_ENV === 'production') return SPONSOR_PRODUCTION_ORIGIN
+
+  const trusted = trustedDeploymentHosts(env)
+  const candidates = [
+    input.requestOrigin,
+    deploymentCandidate(env.VERCEL_BRANCH_URL),
+    deploymentCandidate(env.VERCEL_URL),
+  ]
+  for (const candidate of candidates) {
+    const allowed = allowedReturnOrigin(candidate, trusted, env.VERCEL_ENV)
+    if (allowed) return allowed
+  }
+  return SPONSOR_PRODUCTION_ORIGIN
+}
+
+export function sponsorReturnUrls(origin: string): { successUrl: string; cancelUrl: string } {
+  return {
+    successUrl: `${origin}${SUCCESS_PATH}`,
+    cancelUrl: `${origin}${CANCEL_PATH}`,
+  }
+}
+
+/** Origin header, otherwise a single forwarded host, otherwise host. */
+export function requestOriginFromHeaders(headerStore: { get(name: string): string | null }): string | null {
+  const origin = singleHeader(headerStore.get('origin'))
+  if (origin) return origin
+
+  const host = singleHeader(headerStore.get('x-forwarded-host')) ?? singleHeader(headerStore.get('host'))
+  if (!host) return null
+  const forwardedProto = singleHeader(headerStore.get('x-forwarded-proto'))
+  const proto = forwardedProto ?? (isLoopbackHost(hostName(host)) ? 'http' : 'https')
+  if (proto !== 'https' && proto !== 'http') return null
+  return `${proto}://${host}`
+}
+
+function trustedDeploymentHosts(env: SponsorReturnEnv): Set<string> {
+  const hosts = new Set<string>()
+  for (const raw of [env.VERCEL_BRANCH_URL, env.VERCEL_URL]) {
+    const host = projectVercelHost(deploymentCandidate(raw))
+    if (host) hosts.add(host)
+  }
+  return hosts
+}
+
+function deploymentCandidate(value: string | undefined): string | null {
+  if (!value) return null
+  const trimmed = value.trim()
+  if (!trimmed || hasUnsafeOriginChars(trimmed)) return null
+  if (trimmed.includes('://')) return trimmed
+  return `https://${trimmed}`
+}
+
+function allowedReturnOrigin(
+  value: string | null | undefined,
+  trustedVercelHosts: ReadonlySet<string>,
+  vercelEnv: string | undefined,
+): string | null {
+  if (!value || hasUnsafeOriginChars(value)) return null
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    return null
+  }
+  if (url.username || url.password) return null
+  if (url.pathname !== '/' || url.search || url.hash) return null
+
+  const host = canonicalHost(url.hostname)
+  if (!host) return null
+
+  const dev = vercelEnv === undefined || vercelEnv === 'development'
+  if (url.protocol === 'http:' && dev && isLoopbackHost(host)) {
+    const port = url.port ? `:${url.port}` : ''
+    return `http://${host}${port}`
+  }
+
+  if (url.protocol !== 'https:' || url.port !== '') return null
+  if (APEX_HOSTS.has(host)) return `https://${host}`
+  if (PROJECT_VERCEL_HOST.test(host) && trustedVercelHosts.has(host)) return `https://${host}`
+  return null
+}
+
+function projectVercelHost(value: string | null): string | null {
+  if (!value || hasUnsafeOriginChars(value)) return null
+  let url: URL
+  try {
+    url = new URL(value)
+  } catch {
+    return null
+  }
+  if (url.username || url.password || url.port) return null
+  if (url.protocol !== 'https:' || url.pathname !== '/' || url.search || url.hash) return null
+  const host = canonicalHost(url.hostname)
+  if (!host || !PROJECT_VERCEL_HOST.test(host)) return null
+  return host
+}
+
+function canonicalHost(hostname: string): string | null {
+  const host = hostname.toLowerCase().replace(/\.$/, '')
+  if (!host || host.length > 253 || host.includes('..')) return null
+  if (!/^[a-z0-9.-]+$/.test(host)) return null
+  return host
+}
+
+function hostName(host: string): string {
+  if (host.startsWith('[')) return host
+  return host.split(':')[0] ?? host
+}
+
+function isLoopbackHost(host: string): boolean {
+  return host === 'localhost' || host === '127.0.0.1'
+}
+
+function singleHeader(value: string | null): string | null {
+  if (!value) return null
+  const trimmed = value.trim()
+  if (!trimmed || trimmed.includes(',') || hasUnsafeOriginChars(trimmed)) return null
+  return trimmed
+}
+
+function hasUnsafeOriginChars(value: string): boolean {
+  for (const char of value) {
+    const code = char.charCodeAt(0)
+    if (code <= 32 || char === ',' || char === '\\' || char === '@') return true
+  }
+  return false
+}

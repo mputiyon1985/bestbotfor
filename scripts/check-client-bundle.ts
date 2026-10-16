@@ -1,21 +1,8 @@
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
+import { CLIENT_BUNDLE_FORBIDDEN, clientBundleHits } from '../src/lib/client-bundle'
 
 const STATIC_ROOT = path.join(process.cwd(), '.next', 'static')
-
-const FORBIDDEN = [
-  'libsql://',
-  'TURSO_AUTH_TOKEN',
-  '@libsql/client',
-  'STRIPE_SECRET_KEY',
-  'STRIPE_WEBHOOK_SECRET',
-  'STRIPE_ALLOW_LIVE',
-  'whsec_',
-  ['sk_', 'live_'].join(''),
-  ['rk_', 'live_'].join(''),
-  ['sk_', 'test_'].join(''),
-  ['rk_', 'test_'].join(''),
-]
 
 async function filesIn(directory: string): Promise<string[]> {
   const found: string[] = []
@@ -38,7 +25,7 @@ async function main(): Promise<void> {
   }
 
   const token = process.env.TURSO_AUTH_TOKEN?.trim() ?? ''
-  const needles = [...FORBIDDEN]
+  const needles = [...CLIENT_BUNDLE_FORBIDDEN]
   if (token.length >= 20) needles.push(token)
 
   const hits: string[] = []
@@ -49,8 +36,7 @@ async function main(): Promise<void> {
     } catch {
       continue
     }
-    for (const needle of needles) {
-      if (!text.includes(needle)) continue
+    for (const needle of clientBundleHits(text, needles)) {
       const label = needle === token ? 'TURSO auth token value' : needle
       hits.push(`${path.relative(process.cwd(), full)} contains ${label}`)
     }

@@ -176,12 +176,15 @@ function sponsorshipStatus(type: string, paymentStatus: string | undefined): 'pe
   return paymentStatus === 'paid' ? 'paid' : 'pending'
 }
 
-function sessionPriceId(session: Stripe.Checkout.Session): string | null {
+function sponsorshipLine(session: Stripe.Checkout.Session): { priceId: string | null; quantity: number | null } {
   const items = session.line_items?.data ?? []
-  if (items.length !== 1) return null
-  const price = items[0]?.price
-  if (!price) return null
-  return typeof price === 'string' ? price : price.id
+  if (items.length !== 1) return { priceId: null, quantity: null }
+  const item = items[0]
+  if (!item) return { priceId: null, quantity: null }
+  const price = item.price
+  const priceId = !price ? null : typeof price === 'string' ? price : price.id
+  const quantity = typeof item.quantity === 'number' ? item.quantity : null
+  return { priceId, quantity }
 }
 
 async function applySponsorship(db: Database, stripe: Stripe, event: Stripe.Event): Promise<void> {
@@ -194,9 +197,11 @@ async function applySponsorship(db: Database, stripe: Stripe, event: Stripe.Even
   const expectedPriceId = sponsorPriceId(offering.id)
   if (!expectedPriceId) throw new Error('sponsorship price is not configured')
   const session = await stripe.checkout.sessions.retrieve(parsed.data.id, { expand: ['line_items'] })
-  if (session.id !== parsed.data.id || sessionPriceId(session) !== expectedPriceId) {
+  const line = sponsorshipLine(session)
+  if (session.id !== parsed.data.id || line.priceId !== expectedPriceId) {
     throw new Error('sponsorship price mismatch')
   }
+  if (line.quantity !== 1) throw new Error('sponsorship quantity mismatch')
   const now = Date.now()
   const status = sponsorshipStatus(event.type, parsed.data.payment_status)
   await db
