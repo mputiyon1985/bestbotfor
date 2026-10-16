@@ -199,7 +199,12 @@ test('the how we rate page uses the public copy and no source columns', async ({
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('How we rate AI tools')
   await expect(page.getByText('Quality (40%)')).toBeVisible()
   await expect(page.getByText('tools within 0.1 of each other are shown as tied', { exact: false })).toBeVisible()
+  await expect(
+    page.getByText('We keep the evidence and sources for each score on file and review them quarterly.'),
+  ).toBeVisible()
   const html = await page.content()
+  expect(html).not.toContain('Every score links to its sources')
+  expect(html).not.toContain('links to its sources')
   expect(html).not.toContain('pcmag.com')
   expect(html).not.toContain('evidence.jsonl')
   expect(html).not.toContain('source_urls')

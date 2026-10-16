@@ -16,7 +16,7 @@
 
 **What the numbers mean:** 5 is rare and best in class. 4 is clearly above average. 3 is average for the category. 2 is weak. 1 is poor. We never stretch or curve the results to make them look spread out. The numbers come straight from the evidence.
 
-**Evidence, not opinion.** Every score links to its sources: leaderboards, official pricing and docs, tested reviews, app store pages and GitHub. We read forums for leads but never treat them as fact.
+**Evidence, not opinion.** We keep the evidence and sources for each score on file and review them quarterly. Those records include leaderboards, official pricing and docs, tested reviews, app store pages and GitHub. We read forums for leads but never treat them as fact.
 
 **Money never buys a score.** Some links earn us a commission. That has no effect on ratings, rankings or which tools we cover.
 
