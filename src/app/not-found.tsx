@@ -1,4 +1,12 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
+import { notFoundTitle } from '@/lib/metadata'
+
+export const metadata: Metadata = {
+  // Absolute so the layout template does not turn this into "Page not found · BestBotFor".
+  title: { absolute: notFoundTitle },
+  robots: { index: false, follow: false },
+}
 
 export default function NotFound() {
   return (

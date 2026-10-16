@@ -1,7 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from './indexing'
-import { pageMetadata } from './metadata'
+import { metadata as notFoundMetadata } from '@/app/not-found'
 import robots from '@/app/robots'
+import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from './indexing'
+import { homeTitle, notFoundTitle, pageMetadata } from './metadata'
 
 const original = process.env.VERCEL_ENV
 
@@ -45,6 +46,15 @@ describe('preview indexing', () => {
       index: true,
       follow: true,
     })
+  })
+
+  it('gives the not-found page its own title and noindex in production', () => {
+    process.env.VERCEL_ENV = 'production'
+    expect(isProductionDeployment()).toBe(true)
+    expect(notFoundTitle).toBe('Page not found | BestBotFor')
+    expect(notFoundTitle).not.toBe(homeTitle)
+    expect(notFoundMetadata.title).toEqual({ absolute: notFoundTitle })
+    expect(notFoundMetadata.robots).toEqual({ index: false, follow: false })
   })
 
   it('can noindex a production page and still follow its links', () => {

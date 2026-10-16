@@ -50,4 +50,6 @@ function pageRobots(input: { noIndex?: boolean; follow?: boolean }): { index: bo
 
 export const homeTitle = `${SITE_NAME} — ${TAGLINE}`
 
+export const notFoundTitle = `Page not found | ${SITE_NAME}`
+
 export const homeDescription = `${TAGLINE} Answer three questions (your task, budget and experience) and get the best AI tool for the job plus up to five alternatives.`
