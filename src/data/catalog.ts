@@ -248,6 +248,7 @@ export const toolSeeds: ToolSeed[] = [
       { task: 'vibe-coding', score: 82, notes: 'Agent plus a hosted environment, so setup is light.' },
       { task: 'coding', score: 72, notes: 'A real editor in the browser, with less depth than a local AI IDE.' },
       { task: 'backend', score: 62, notes: 'You can run a small backend here, though the database story is not the product’s center.' },
+      { task: 'websites', score: 58, notes: 'Hosts the environment and lets the agent create and run files, so a site can start in the browser. It is an IDE, not a visual site publisher.' },
     ],
     affiliate: {
       hasProgram: false,
@@ -397,6 +398,7 @@ export const toolSeeds: ToolSeed[] = [
     lastVerifiedAt: REVIEWED,
     fits: [
       { task: 'vibe-coding', score: 78, notes: 'Prompt to a hosted app, with less of the code in your face.' },
+      { task: 'websites', score: 68, notes: 'Turns a description into a hosted app with a managed backend, so you can publish something people open. Layout control is thinner than Framer or Webflow.' },
     ],
     affiliate: {
       hasProgram: true,
@@ -564,6 +566,7 @@ export const toolSeeds: ToolSeed[] = [
     lastVerifiedAt: REVIEWED,
     fits: [
       { task: 'voice', score: 96, notes: 'Speech from text is the core product.' },
+      { task: 'music', score: 54, notes: 'The usual pick for a natural voiceover from a script you write. It does not generate a song or an instrumental.' },
     ],
     affiliate: {
       hasProgram: true,
@@ -663,6 +666,7 @@ export const toolSeeds: ToolSeed[] = [
     fits: [
       { task: 'video', score: 80, notes: 'Transcript editing is the right model when the recording already exists.' },
       { task: 'voice', score: 60, notes: 'Includes voice tools, as part of an editor rather than a voice studio.' },
+      { task: 'music', score: 44, notes: 'Edits video and podcasts you already recorded by editing the transcript. It does not generate a song.' },
     ],
     affiliate: {
       hasProgram: true,
@@ -924,6 +928,7 @@ export const toolSeeds: ToolSeed[] = [
     fits: [
       { task: 'writing', score: 60, notes: 'Useful inside the doc, not a marketing suite.' },
       { task: 'meetings', score: 62, notes: 'Can tidy notes you store in Notion. It is not a call recorder.' },
+      { task: 'chat', score: 57, notes: 'Q&A stays inside a Notion workspace you already use, so it can talk through those notes. It is not a standalone chat assistant.' },
     ],
     affiliate: {
       hasProgram: false,
@@ -1487,6 +1492,7 @@ export const toolSeeds: ToolSeed[] = [
     fits: [
       { task: 'writing', score: 78, notes: 'Built for companies that need brand rules and governance across teams.' },
       { task: 'agents', score: 55, notes: 'The platform also builds agents that follow brand rules.' },
+      { task: 'seo', score: 55, notes: 'Enforces brand rules and governance across team content, which keeps a search program consistent. It does not score a page against ranking terms.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -1530,6 +1536,7 @@ export const toolSeeds: ToolSeed[] = [
     lastVerifiedAt: REVIEWED,
     fits: [
       { task: 'writing', score: 72, notes: 'An easy way to get drafting help in the browser.' },
+      { task: 'seo', score: 48, notes: 'Offers browser autocomplete and research help while you draft. It does not score the draft against ranking pages.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -1636,6 +1643,7 @@ export const toolSeeds: ToolSeed[] = [
     lastVerifiedAt: REVIEWED,
     fits: [
       { task: 'writing', score: 68, notes: 'Helps draft and rewrite across the web with your own knowledge base.' },
+      { task: 'seo', score: 52, notes: 'Drafts and rewrites across the web from your own knowledge base, which can revise a page in the browser. It does not build an SEO brief or a term score.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -2263,6 +2271,7 @@ export const toolSeeds: ToolSeed[] = [
     fits: [
       { task: 'voice', score: 70, notes: 'An all-in-one start for podcasters.' },
       { task: 'video', score: 45, notes: 'The studio is audio first and also handles some video.' },
+      { task: 'music', score: 56, notes: 'A podcast recording and editing studio with AI voices. It builds a spoken show, not a song from a prompt.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -2305,6 +2314,7 @@ export const toolSeeds: ToolSeed[] = [
     lastVerifiedAt: REVIEWED,
     fits: [
       { task: 'voice', score: 74, notes: 'Turns scripts into produced audio.' },
+      { task: 'music', score: 62, notes: 'Turns scripts into produced audio for podcasts and ads. That is finished audio, not a generated song or instrumental.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -2435,6 +2445,7 @@ export const toolSeeds: ToolSeed[] = [
     lastVerifiedAt: REVIEWED,
     fits: [
       { task: 'voice', score: 66, notes: 'Simple voiceovers with a free start.' },
+      { task: 'music', score: 47, notes: 'Simple voiceovers and podcast tools with a free start. The output is spoken audio, not a generated track.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -2541,6 +2552,8 @@ export const toolSeeds: ToolSeed[] = [
     fits: [
       { task: 'research', score: 86, notes: 'Answers grounded in your own documents, plus audio overviews.' },
       { task: 'writing', score: 50, notes: 'A source-grounded notebook can draft from your documents. Research comes first.' },
+      { task: 'chat', score: 61, notes: 'Answers stay grounded in documents you add, so you can talk through that source set. It is not an open general assistant.' },
+      { task: 'music', score: 49, notes: 'Adds audio overviews of documents you upload. Those are spoken summaries, not songs or instrumentals.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -3248,6 +3261,7 @@ export const toolSeeds: ToolSeed[] = [
     lastVerifiedAt: REVIEWED,
     fits: [
       { task: 'automation', score: 55, notes: 'Fast AI access from your keyboard.' },
+      { task: 'chat', score: 64, notes: 'Puts AI chat on a keyboard launcher for a quick back-and-forth. The AI features need Pro, and it is not a full assistant like ChatGPT.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),

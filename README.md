@@ -2,7 +2,7 @@
 
 Three questions. One best bot.
 
-BestBotFor asks for the job, the budget, and experience, then names one AI tool and two alternatives. The public catalog is free. A membership saves picks and unlocks the longer comparison notes.
+BestBotFor asks for the job, the budget, and experience, then names one AI tool and five alternatives. The public catalog is free. A membership saves picks and unlocks the longer comparison notes.
 
 Production origin: `https://bestbotfor.com`.
 

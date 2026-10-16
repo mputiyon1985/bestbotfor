@@ -71,6 +71,64 @@ export function rankTools<T extends ScoreableTool>(
   return ranked
 }
 
+/** One top pick plus five alternatives. */
+export const QUIZ_RESULT_COUNT = 6
+
+export type BudgetFit = 'within' | 'over'
+
+/**
+ * A tool is inside the budget when the user can start it without crossing
+ * the budget they chose. "Any" accepts every tool. "Free" needs a free plan
+ * or a free tier. "Low" also accepts a paid plan at or under $30.
+ */
+export function fitsBudget(
+  tool: Pick<ScoreableTool, 'pricingModel' | 'hasFreeTier' | 'priceFromUsd'>,
+  budget: Budget,
+): boolean {
+  if (budget === 'any') return true
+  const freeToStart = tool.pricingModel === 'free' || tool.hasFreeTier
+  if (budget === 'free') return freeToStart
+  if (freeToStart) return true
+  return tool.priceFromUsd != null && tool.priceFromUsd <= LOW_BUDGET_USD
+}
+
+export type QuizPick<T extends ScoreableTool> = T &
+  Pick<RankedTool, 'score' | 'budgetDelta' | 'skillDelta'> & {
+    budgetFit: BudgetFit
+    /** One-line editorial reason. The fit note is already a single sentence. */
+    reason: string
+  }
+
+/**
+ * Rank tools that fit the budget by fit score plus the budget and skill
+ * adjustments. When that list has fewer than five alternatives, append the
+ * best-fitting tools just over budget, ordered by fit score.
+ */
+export function selectQuizPicks<T extends ScoreableTool>(
+  tools: T[],
+  answers: { budget: Budget; skill: Skill },
+): QuizPick<T>[] {
+  const within: T[] = []
+  const over: T[] = []
+  for (const tool of tools) {
+    if (fitsBudget(tool, answers.budget)) within.push(tool)
+    else over.push(tool)
+  }
+  const withinPicks: QuizPick<T>[] = rankTools(within, answers).map((tool) => ({
+    ...tool,
+    budgetFit: 'within',
+    reason: tool.notes,
+  }))
+  const overPicks: QuizPick<T>[] = rankTools(over, answers)
+    .sort((a, b) => b.fitScore - a.fitScore || a.name.localeCompare(b.name))
+    .map((tool) => ({
+      ...tool,
+      budgetFit: 'over',
+      reason: tool.notes,
+    }))
+  return [...withinPicks, ...overPicks].slice(0, QUIZ_RESULT_COUNT)
+}
+
 export function explainPick(pick: RankedTool, answers: { budget: Budget; skill: Skill }): string {
   const parts = [pick.notes]
   if (answers.budget === 'free') {

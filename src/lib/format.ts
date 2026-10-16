@@ -6,6 +6,9 @@ export const budgetLabel: Record<Budget, string> = {
   any: 'Any budget',
 }
 
+/** Shown on a result that was added because the in-budget list was short. */
+export const overBudgetLabel = 'Just over budget'
+
 export const skillLabel: Record<Skill, string> = {
   beginner: 'Beginner',
   intermediate: 'Intermediate',

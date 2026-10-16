@@ -1,7 +1,7 @@
 import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
 import type { Database } from './db/client'
 import { affiliatePrograms, tasks, toolTasks, tools } from './db/schema'
-import { explainPick, rankTools } from './scoring'
+import { selectQuizPicks } from './scoring'
 import type { Catalog, CatalogFit, CatalogTask, CatalogTool, PricingModel } from './catalog-types'
 import type { QuizAnswers, Skill } from './validation'
 import { z } from 'zod'
@@ -271,10 +271,9 @@ export async function readTaskCandidates(
 export async function scoreQuiz(db: Database, answers: QuizAnswers) {
   const loaded = await readTaskCandidates(db, answers.task)
   if (!loaded || loaded.tools.length === 0) return null
-  const ranked = rankTools(loaded.tools, answers)
-  const picks = ranked.slice(0, 3)
+  const picks = selectQuizPicks(loaded.tools, answers)
   const leader = picks[0]
-  return { task: loaded.task, picks, answers, why: leader ? explainPick(leader, answers) : '' }
+  return { task: loaded.task, picks, answers, why: leader ? leader.reason : '' }
 }
 
 function likePattern(query: string): string {

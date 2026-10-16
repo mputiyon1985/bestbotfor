@@ -12,7 +12,7 @@ export async function GET() {
     '',
     `> ${TAGLINE}`,
     '',
-    'BestBotFor recommends one AI tool and two alternatives from three questions: the job, the budget, and experience.',
+    'BestBotFor recommends one AI tool and five alternatives from three questions: the job, the budget, and experience.',
     '',
     '## Guides',
     ...taskList.map((task) => `- [Best AI tool for ${task.name}](${site}/best/${task.slug}): ${task.description}`),

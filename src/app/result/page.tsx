@@ -8,7 +8,7 @@ import { recommendQuiz } from '@/lib/catalog'
 import { ACTION_LIMITS, allowRate } from '@/lib/action-limit'
 import { getDb } from '@/lib/db'
 import { rateLimitKey, clientIp } from '@/lib/ip'
-import { budgetLabel, budgetPhrase, priceLabel, skillLabel, skillPhrase } from '@/lib/format'
+import { budgetLabel, budgetPhrase, overBudgetLabel, priceLabel, skillLabel, skillPhrase } from '@/lib/format'
 import { breadcrumbJsonLd } from '@/lib/jsonld'
 import { memberAccess } from '@/lib/members'
 import { pageMetadata } from '@/lib/metadata'
@@ -30,7 +30,7 @@ export async function generateMetadata({
   if (!parsed.success) {
     return pageMetadata({
       title: 'Your result',
-      description: 'Answer the three questions to get a best AI tool and two alternatives.',
+      description: 'Answer the three questions to get a best AI tool and five alternatives.',
       path: '/result',
       noIndex: true,
     })
@@ -123,7 +123,8 @@ export default async function ResultPage({
       <p className="max-w-2xl text-lg">
         Best bot for {result.task.name.toLowerCase()}, {budgetLabel[parsed.data.budget].toLowerCase()}, {skillLabel[parsed.data.skill].toLowerCase()}: {top.name}.
       </p>
-      <p className="max-w-2xl text-muted">{result.why}</p>
+      {top.budgetFit === 'over' ? <p className="text-sm font-semibold text-accent">{overBudgetLabel}</p> : null}
+      <p className="max-w-2xl text-muted">{top.reason}</p>
       <dl className="grid gap-3 sm:grid-cols-3">
         <Fact label="Price" value={priceLabel(top)} />
         <Fact label="Experience" value={skillLabel[top.skillLevel]} />
@@ -156,10 +157,10 @@ export default async function ResultPage({
         </p>
       )}
 
-      <section>
-        <h2 className="font-semibold text-3xl">Alternatives</h2>
+      <section aria-labelledby="alternatives-heading">
+        <h2 id="alternatives-heading" className="font-semibold text-3xl">Alternatives</h2>
         {alternatives.length === 0 ? (
-          <p className="mt-2 text-muted">The catalog does not have two other strong fits for this job.</p>
+          <p className="mt-2 text-muted">The catalog does not have another strong fit for this job.</p>
         ) : (
           <ul className="mt-4 grid gap-4 md:grid-cols-2">
             {alternatives.map((alt) => (
@@ -169,7 +170,8 @@ export default async function ResultPage({
                     {alt.name}
                   </Link>
                 </h3>
-                <p className="mt-2 text-sm text-muted">{alt.notes}</p>
+                {alt.budgetFit === 'over' ? <p className="mt-2 text-sm font-semibold text-accent">{overBudgetLabel}</p> : null}
+                <p className="mt-2 text-sm text-muted">{alt.reason}</p>
                 <p className="mt-2 text-sm">{priceLabel(alt)}</p>
                 <OutboundLink slug={alt.slug} className="mt-3 inline-flex min-h-12 items-center font-semibold underline">
                   Visit {alt.name}
@@ -200,6 +202,9 @@ export default async function ResultPage({
                     <Link href={`/tools/${pick.slug}`} className="underline">
                       {pick.name}
                     </Link>
+                    {pick.budgetFit === 'over' ? (
+                      <span className="mt-1 block text-xs font-semibold uppercase tracking-wide text-accent">{overBudgetLabel}</span>
+                    ) : null}
                   </th>
                   <td className="py-3 pr-3">{priceLabel(pick)}</td>
                   <td className="py-3 pr-3">{skillLabel[pick.skillLevel]}</td>

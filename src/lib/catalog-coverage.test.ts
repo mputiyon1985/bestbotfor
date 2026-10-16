@@ -8,7 +8,9 @@ import { getDb, resetDbCache } from '@/lib/db/client'
 import { applyMigrations } from '@/lib/db/migrate'
 import { affiliatePrograms, tasks, toolTasks, tools } from '@/lib/db/schema'
 import { officialHttpsUrl } from '@/lib/redirect'
+import { priceLabel } from '@/lib/format'
 import { recommend, toolsForTask } from '@/lib/recommend'
+import { fitsBudget, QUIZ_RESULT_COUNT } from '@/lib/scoring'
 import { slugSchema, type Budget, type Skill } from '@/lib/validation'
 import { seed } from '../../scripts/seed'
 
@@ -91,12 +93,26 @@ describe('catalog seed', () => {
       const ranked = toolsForTask(catalog, task.slug)
       const fitted = toolSeeds.filter((tool) => tool.fits.some((fit) => fit.task === task.slug))
       expect(ranked, task.slug).toHaveLength(fitted.length)
-      expect(ranked.length, task.slug).toBeGreaterThan(0)
+      expect(ranked.length, task.slug).toBeGreaterThanOrEqual(8)
       for (const budget of budgets) {
         for (const skill of skills) {
           const result = recommend(catalog, { task: task.slug, budget, skill })
-          expect(result?.picks.length, `${task.slug} ${budget} ${skill}`).toBeGreaterThan(0)
-          expect(result?.picks.length).toBeLessThanOrEqual(3)
+          expect(result?.picks.length, `${task.slug} ${budget} ${skill}`).toBeGreaterThanOrEqual(QUIZ_RESULT_COUNT)
+          const picks = result?.picks ?? []
+          const withinCount = fitted.filter((item) => fitsBudget(item, budget)).length
+          const withinPicks = picks.filter((pick) => pick.budgetFit === 'within')
+          const overPicks = picks.filter((pick) => pick.budgetFit === 'over')
+          expect(withinPicks, `${task.slug} ${budget}`).toHaveLength(Math.min(withinCount, QUIZ_RESULT_COUNT))
+          expect(overPicks, `${task.slug} ${budget}`).toHaveLength(QUIZ_RESULT_COUNT - withinPicks.length)
+          for (let index = 1; index < overPicks.length; index += 1) {
+            expect(overPicks[index - 1]!.fitScore).toBeGreaterThanOrEqual(overPicks[index]!.fitScore)
+          }
+          for (const pick of picks) {
+            expect(pick.reason, pick.slug).toBe(pick.notes)
+            expect(pick.reason.includes('\n'), pick.slug).toBe(false)
+            expect(pick.reason.length, pick.slug).toBeGreaterThan(20)
+            expect(priceLabel(pick).length, pick.slug).toBeGreaterThan(0)
+          }
         }
       }
     }

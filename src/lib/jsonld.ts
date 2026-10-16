@@ -24,7 +24,7 @@ export function organizationJsonLd() {
     '@type': 'Organization',
     name: SITE_NAME,
     url: getSiteUrl(),
-    description: `${TAGLINE} BestBotFor recommends one AI tool and two alternatives.`,
+    description: `${TAGLINE} BestBotFor recommends one AI tool and five alternatives.`,
     logo: absoluteUrl(ORGANIZATION_LOGO_PATH),
   }
 }
