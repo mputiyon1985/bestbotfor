@@ -79,12 +79,9 @@ export function ScoreSection({ editorial }: { editorial: EditorialScore | null }
         <StarRating score={editorial.overall} />
         <p className="font-semibold">{formatScore(editorial.overall)} out of 5</p>
       </div>
-      <dl className="grid gap-3 sm:grid-cols-4">
+      <dl className="max-w-xl space-y-3">
         {parts.map(([label, value]) => (
-          <div key={label} className="rounded-2xl border border-line px-4 py-3">
-            <dt className="text-xs font-semibold uppercase tracking-wide text-muted">{label}</dt>
-            <dd className="font-semibold">{formatScore(value)}</dd>
-          </div>
+          <CriterionBar key={label} label={label} value={value} />
         ))}
       </dl>
       <p className="max-w-2xl text-muted">{editorial.rationale}</p>
@@ -118,12 +115,33 @@ function PointList({ title, points }: { title: string; points: ProCon[] }) {
         {points.map((point) => (
           <li key={`${point.kind}-${point.text}`}>
             <p>{point.text}</p>
-            <a className="text-sm underline" href={point.sourceUrl} rel="noreferrer">
-              Source
-            </a>
           </li>
         ))}
       </ul>
+    </div>
+  )
+}
+
+function CriterionBar({ label, value }: { label: string; value: number }) {
+  const width = Math.min(100, Math.max(0, (value / 5) * 100))
+  const text = formatScore(value)
+  return (
+    <div>
+      <div className="flex items-baseline justify-between gap-3">
+        <dt className="text-sm font-semibold">{label}</dt>
+        <dd className="text-sm font-semibold">{text}</dd>
+      </div>
+      <div
+        className="mt-1 h-2 overflow-hidden rounded-full bg-mist"
+        role="meter"
+        aria-label={`${label} ${text} out of 5`}
+        aria-valuemin={0}
+        aria-valuemax={5}
+        aria-valuenow={value}
+        data-criterion={label.toLowerCase()}
+      >
+        <div className="h-full rounded-full bg-indigo" style={{ width: `${width}%` }} />
+      </div>
     </div>
   )
 }

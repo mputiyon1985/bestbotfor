@@ -16,6 +16,8 @@ export const tools = sqliteTable('tools', {
   platforms: text('platforms').notNull(),
   lastVerifiedAt: text('last_verified_at').notNull(),
   status: text('status').notNull(),
+  /** True when the catalog entry needs a fresh check, such as a reported rename. The score stays hidden. */
+  needsVerification: integer('needs_verification', { mode: 'boolean' }).notNull().default(false),
 })
 
 export const tasks = sqliteTable('tasks', {
@@ -42,7 +44,8 @@ export const toolTasks = sqliteTable(
 
 /**
  * One editorial rubric per tool. overall is the equal-weight average documented
- * in src/lib/editorial.ts. sources stores internal source URLs and is not rendered.
+ * in src/lib/editorial.ts. sources stays an empty list: source_urls and third-party
+ * columns are not stored. Per-point source URLs stay on tool_pros_cons and are not rendered.
  * This is not a user review.
  */
 export const toolScores = sqliteTable('tool_scores', {

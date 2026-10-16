@@ -6,7 +6,8 @@
 - All-matches pages list six tools and show “Showing 1–6 of N” with numbered page links. Budget filters stay noindex, rel prev/next and the canonical rules are unchanged, and a page past the end is still a 404.
 - Tool pages can show a BestBotFor score from 0 to 5, with a fractional star, the features/value/ease/quality rubric, and a short note on how the equal-weight average is calculated. The score is editorial. Pages do not emit AggregateRating or Review schema.
 - Pros and cons render on the tool page, and a shorter version renders on result cards, only when a tool has verified rows with source URLs.
-- `src/data/scores-pros-cons.csv` is the editorial seed. The loader reads Forge batch 1 (13 tools) and upserts it. It does not delete other rows. The overall score is an equal-weight average of the four parts. `source_urls` is stored and is not rendered. Each pro and con still links to its own source.
+- `src/data/scores-pros-cons.csv` is the editorial seed for 146 tools. The 13 tools without a row hide the score and the pros and cons. `source_urls` and third-party columns are not stored and are not rendered. Tool pages show a bar for features, value, ease, and quality next to the overall stars.
+- Relevance AI’s free plan is retired, so the seed upserts `hasFreeTier` as false. Windsurf keeps its name, is flagged `needs_verification`, and has no score.
 - Encoded and raw dot segments return 404 from a Vercel route and from the app server. The global `URL` constructor and `http.Server` are no longer patched.
 - Quiz result URLs and budget-filtered match lists are `noindex, follow`. `/result?task=X&view=all` page 1 stays indexable and in the sitemap. Lighthouse scores SEO on that indexable list. The production-env check asserts the quiz and budget-filtered pages render `noindex, follow`.
 - The first paint uses a metric-matched fallback for every Poppins weight, so the delayed swap does not reflow the tools directory.

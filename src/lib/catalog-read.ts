@@ -198,7 +198,7 @@ function toolRecord(
     lastVerifiedAt: tool.lastVerifiedAt,
     fits,
     affiliate: affiliateOf(affiliate),
-    ...editorialOf(score, points),
+    ...(tool.needsVerification ? { editorial: null, pros: [], cons: [] } : editorialOf(score, points)),
   }
 }
 
@@ -315,6 +315,7 @@ export async function readTaskCandidates(
       hasFreeTier: tools.hasFreeTier,
       priceFromUsd: tools.priceFromUsd,
       lastVerifiedAt: tools.lastVerifiedAt,
+      needsVerification: tools.needsVerification,
       fitScore: toolTasks.fitScore,
       notes: toolTasks.notes,
     })
@@ -339,7 +340,9 @@ export async function readTaskCandidates(
     lastVerifiedAt: row.lastVerifiedAt,
     fitScore: row.fitScore,
     notes: row.notes,
-    ...editorialOf(scoreByTool.get(row.id), prosByTool.get(row.id)),
+    ...(row.needsVerification
+      ? { editorial: null, pros: [], cons: [] }
+      : editorialOf(scoreByTool.get(row.id), prosByTool.get(row.id))),
   }))
   candidates.sort((a, b) => b.fitScore - a.fitScore || a.name.localeCompare(b.name))
   return {

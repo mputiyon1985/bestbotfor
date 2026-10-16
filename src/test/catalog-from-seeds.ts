@@ -28,7 +28,7 @@ export function catalogFromSeeds(): Catalog {
       notes: fit.notes,
     })),
     affiliate: { ...tool.affiliate, affiliateUrl: null },
-    ...editorialFor(tool.slug),
+    ...(tool.needsVerification ? { editorial: null, pros: [], cons: [] } : editorialFor(tool.slug)),
   }))
   return { tasks: taskSeeds, tools }
 }

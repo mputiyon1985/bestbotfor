@@ -38,6 +38,8 @@ export type ToolSeed = {
   lastVerifiedAt: string
   fits: { task: string; score: number; notes: string }[]
   affiliate: AffiliateSeed
+  /** The public name and URL still need a fresh check. No editorial score is shown. */
+  needsVerification?: boolean
 }
 
 export type CatalogTask = TaskSeed

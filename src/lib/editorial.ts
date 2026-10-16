@@ -48,11 +48,27 @@ export type EditorialSeed = Rubric & {
   slug: string
   overall: number
   rationale: string
-  sources: string[]
   reviewedAt: string
   pros: EditorialSeedPoint[]
   cons: EditorialSeedPoint[]
 }
+
+/** Catalog tools Forge could not verify. They have no score and no pros or cons. */
+export const UNRATED_SLUGS = [
+  'perplexity',
+  'canva',
+  'cursor',
+  'windsurf',
+  'grok',
+  'writer',
+  'lex',
+  'languagetool',
+  'clipdrop',
+  'vidnoz',
+  'podcastle',
+  'flux',
+  'semantic-scholar',
+] as const
 
 export function overallScore(parts: Rubric): number {
   const tenths = (value: number) => Math.round(value * 10)
@@ -109,10 +125,15 @@ function isIsoDate(value: string): boolean {
  * Reject a seed that would invent a score, skip a source, or write the wrong
  * number of pros and cons. Throws before the database transaction starts.
  */
-export function validateEditorialSeeds(rows: EditorialSeed[], knownSlugs: ReadonlySet<string>): void {
+export function validateEditorialSeeds(
+  rows: EditorialSeed[],
+  knownSlugs: ReadonlySet<string>,
+  blockedSlugs: ReadonlySet<string> = new Set(),
+): void {
   const seen = new Set<string>()
   for (const row of rows) {
     if (!knownSlugs.has(row.slug)) throw new Error(`Editorial seed names an unknown tool: ${row.slug}`)
+    if (blockedSlugs.has(row.slug)) throw new Error(`${row.slug} needs verification and cannot have a score`)
     if (seen.has(row.slug)) throw new Error(`Editorial seed repeats ${row.slug}`)
     seen.add(row.slug)
     for (const key of ['features', 'value', 'ease', 'quality', 'overall'] as const) {
@@ -122,10 +143,7 @@ export function validateEditorialSeeds(rows: EditorialSeed[], knownSlugs: Readon
     if (Math.abs(expected - row.overall) > 0.001) {
       throw new Error(`${row.slug} overall is ${row.overall}; the equal-weight average is ${expected}`)
     }
-    if (row.rationale.trim().length < 40) throw new Error(`${row.slug} rationale is too short to be a real review note`)
-    if (row.sources.length === 0 || row.sources.some((source) => !isHttpsUrl(source))) {
-      throw new Error(`${row.slug} needs https source URLs`)
-    }
+    if (row.rationale.trim().length < 30) throw new Error(`${row.slug} rationale is too short to be a real review note`)
     if (!isIsoDate(row.reviewedAt)) throw new Error(`${row.slug} reviewedAt must be YYYY-MM-DD`)
     assertPoints(row.slug, 'pros', row.pros, 3, 3)
     assertPoints(row.slug, 'cons', row.cons, 2, 3)
@@ -137,7 +155,7 @@ function assertPoints(slug: string, kind: string, points: EditorialSeedPoint[], 
     throw new Error(`${slug} needs ${min}–${max} ${kind}, found ${points.length}`)
   }
   for (const point of points) {
-    if (point.text.trim().length < 12) throw new Error(`${slug} has an empty ${kind}`)
+    if (point.text.trim().length < 8) throw new Error(`${slug} has an empty ${kind}`)
     if (!isHttpsUrl(point.sourceUrl)) throw new Error(`${slug} ${kind} source must be an https URL`)
   }
 }

@@ -44,6 +44,9 @@ describe('sqlite file directories', () => {
     expect(ids).toContain('0003_tool_tasks_unique.sql')
     expect(ids).toContain('0004_retire_quiz_fits.sql')
     expect(ids).toContain('0005_tool_scores_pros_cons.sql')
+    expect(ids).toContain('0006_tool_needs_verification.sql')
+    const columns = await client.execute('PRAGMA table_info(tools)')
+    expect(columns.rows.some((row) => row.name === 'needs_verification')).toBe(true)
     const tables = await client.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('tool_scores', 'tool_pros_cons') ORDER BY name",
     )

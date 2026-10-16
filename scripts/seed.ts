@@ -10,7 +10,11 @@ for (const tool of toolSeeds) reviewedToolUrl(tool)
 
 const db = getDb()
 
-validateEditorialSeeds(editorialSeeds, new Set(toolSeeds.map((tool) => tool.slug)))
+validateEditorialSeeds(
+  editorialSeeds,
+  new Set(toolSeeds.map((tool) => tool.slug)),
+  new Set(toolSeeds.filter((tool) => tool.needsVerification).map((tool) => tool.slug)),
+)
 
 // One transaction, upserts only. Rows that are not in this seed stay in place.
 await db.transaction(async (tx) => {
@@ -42,6 +46,7 @@ for (const tool of toolSeeds) {
       platforms: JSON.stringify(tool.platforms),
       lastVerifiedAt: tool.lastVerifiedAt,
       status: 'active',
+      needsVerification: tool.needsVerification === true,
     })
     .onConflictDoUpdate({
       target: tools.slug,
@@ -59,6 +64,7 @@ for (const tool of toolSeeds) {
         platforms: JSON.stringify(tool.platforms),
         lastVerifiedAt: tool.lastVerifiedAt,
         status: 'active',
+        needsVerification: tool.needsVerification === true,
       },
     })
 }
@@ -131,7 +137,7 @@ for (const entry of editorialSeeds) {
     quality: entry.quality,
     overall: entry.overall,
     rationale: entry.rationale,
-    sources: JSON.stringify(entry.sources),
+    sources: '[]',
     reviewedAt: entry.reviewedAt,
   }
   await tx

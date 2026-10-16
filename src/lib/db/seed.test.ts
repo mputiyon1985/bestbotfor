@@ -216,9 +216,13 @@ describe('catalog seed', () => {
     const restored = scores.find((row) => row.toolId === claude.id)
     expect(restored?.rationale).toBe(editorialSeeds.find((row) => row.slug === 'claude')?.rationale)
     expect(restored?.overall).toBe(4.5)
-    expect(JSON.parse(restored?.sources ?? '[]')).toEqual(
-      expect.arrayContaining([expect.stringContaining('pcmag.com')]),
-    )
+    expect(restored?.sources).toBe('[]')
+    const windsurf = toolRows.find((row) => row.slug === 'windsurf')
+    expect(windsurf?.name).toBe('Windsurf')
+    expect(windsurf?.needsVerification).toBe(true)
+    expect(scores.some((row) => row.toolId === windsurf?.id)).toBe(false)
+    const relevance = toolRows.find((row) => row.slug === 'relevance-ai')
+    expect(relevance?.hasFreeTier).toBe(false)
     const sentinel = scores.find((row) => row.toolId === 999_999)
     expect(sentinel?.rationale).toBe('Keep this sentinel score.')
     const sentinelPoint = points.find((row) => row.toolId === 999_999)

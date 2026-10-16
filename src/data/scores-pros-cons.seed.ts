@@ -3,17 +3,15 @@ import path from 'node:path'
 import type { EditorialSeed, EditorialSeedPoint } from '@/lib/editorial'
 
 /**
- * Forge batch 1, reviewed 2026-10-16. The CSV is the source of truth.
- * `source_urls` is stored on the score row and is not rendered.
- * Each pro and con keeps its own source URL, and that link is the one the page shows.
- * Later batches in a future file stay out until this loader is told to include them.
+ * Forge's full editorial file, reviewed 2026-10-16. 146 rated tools.
+ * `source_urls` and `third_party_sources` are checked for presence and then dropped.
+ * They are not stored and not rendered. Each pro and con keeps its own source URL in the database.
  */
-const BATCH = '1'
 const csvPath = path.join(process.cwd(), 'src/data/scores-pros-cons.csv')
 
 export const editorialSeeds: EditorialSeed[] = editorialRowsFromCsv(readFileSync(csvPath, 'utf8'))
 
-export function editorialRowsFromCsv(text: string, batch = BATCH): EditorialSeed[] {
+export function editorialRowsFromCsv(text: string): EditorialSeed[] {
   const table = parseCsv(text)
   const header = table[0]
   if (!header) throw new Error('Editorial CSV is empty')
@@ -31,6 +29,7 @@ export function editorialRowsFromCsv(text: string, batch = BATCH): EditorialSeed
     'con1',
     'con1_source',
     'source_urls',
+    'third_party_sources',
     'reviewed_at',
     'batch',
   ]) {
@@ -43,9 +42,8 @@ export function editorialRowsFromCsv(text: string, batch = BATCH): EditorialSeed
       const position = index.get(column)
       return (position === undefined ? '' : (record[position] ?? '')).trim()
     }
-    if (value('batch') !== batch) continue
     const slug = value('slug')
-    if (!slug) throw new Error('Editorial CSV has a batch row with no slug')
+    if (!slug) throw new Error('Editorial CSV has a row with no slug')
     rows.push({
       slug,
       features: point(slug, 'features', value('features')),
@@ -54,13 +52,12 @@ export function editorialRowsFromCsv(text: string, batch = BATCH): EditorialSeed
       quality: point(slug, 'quality', value('quality')),
       overall: point(slug, 'overall', value('overall')),
       rationale: value('rationale'),
-      sources: value('source_urls').split(/\s+/).filter(Boolean),
       reviewedAt: value('reviewed_at'),
       pros: points(value, slug, 'pro'),
       cons: points(value, slug, 'con'),
     })
   }
-  if (rows.length === 0) throw new Error(`Editorial CSV has no rows for batch ${batch}`)
+  if (rows.length === 0) throw new Error('Editorial CSV has no tool rows')
   return rows
 }
 
