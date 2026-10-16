@@ -319,7 +319,7 @@ export const toolSeeds: ToolSeed[] = [
     category: 'Coding assistant',
     shortDesc: 'An AI editor with an agent that can take a task across several files.',
     longDesc:
-      'Devin Desktop, formerly Windsurf, is Cognition’s editor built around an agent workflow. It competes with Cursor for people who want the model to edit the project, not only complete the current line. Pricing is listed at https://devin.ai/pricing: Free $0 and Pro $20.',
+      'Devin Desktop, formerly Windsurf, is Cognition’s editor built around an agent workflow. It competes with Cursor for people who want the model to edit the project, not only complete the current line. The Free plan is $0 and Pro is $20 a month.',
     pricingModel: 'freemium',
     priceFromUsd: 20,
     hasFreeTier: true,

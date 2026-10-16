@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { comparePairSeeds, taskSeeds, toolSeeds } from '@/data/catalog'
 import {
+  BEST_GUIDE_FIT_LEGEND,
+  BEST_GUIDE_TOOL_COUNT,
   bestGuideCrumb,
   bestGuideDescription,
   bestGuideFitAnswer,
@@ -54,6 +56,11 @@ describe('meta descriptions', () => {
         expect(copy.toLowerCase(), task.slug).toContain(phrase.toLowerCase())
       }
     }
+  })
+
+  it('explains fit and lists more than the first five tools', () => {
+    expect(BEST_GUIDE_FIT_LEGEND).toBe('Fit = how well it matches this task')
+    expect(BEST_GUIDE_TOOL_COUNT).toBeGreaterThan(5)
   })
 
   it('keeps seeded best and compare descriptions within 160 characters', () => {

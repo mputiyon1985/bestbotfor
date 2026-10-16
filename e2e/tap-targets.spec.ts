@@ -48,7 +48,7 @@ test('key controls meet the 44px tap target at 390px', async ({ page }) => {
   await page.goto('/best/coding')
   const crumb = page.getByRole('navigation', { name: 'Breadcrumb' }).getByRole('link', { name: 'Home' })
   await expectTapHeight(crumb, 'breadcrumb')
-  const toolLink = page.locator('table').getByRole('link').first()
+  const toolLink = page.getByRole('list', { name: /Tools ranked/ }).getByRole('link').first()
   await expectTapHeight(toolLink, 'best list tool link')
   const crumbBox = await box(crumb)
   const bestLogo = await logo(page)

@@ -5,7 +5,8 @@
  * slug, logo_url, source_page, format, size, status). This script does not
  * scrape homepages. It downloads each status=ok URL once, sanitizes SVG
  * (scripts and event handlers removed) and pads the mark onto a 128px white
- * rounded tile. The mark is not recolored or cropped.
+ * rounded tile. The mark's long side fills about 80% of that tile. The artwork
+ * is not recolored or cropped.
  *
  * status=low_res and status=missing are monogram fallbacks. No file is written.
  *
@@ -28,14 +29,13 @@ import path from 'node:path'
 import { pathToFileURL } from 'node:url'
 import sharp from 'sharp'
 import { toolSeeds } from '../src/data/catalog'
-import { LOGO_MANIFEST_PATH, LOGO_PUBLIC_DIR } from '../src/lib/logo-source'
+import { LOGO_MANIFEST_PATH, LOGO_PUBLIC_DIR, LOGO_TILE_SIZE, TOOL_LOGO_MARK_FILL } from '../src/lib/logo-source'
 
 const SOURCES_PATH = 'src/data/logo-sources.csv'
 const LOGO_SLUGS_PATH = 'src/data/logo-slugs.json'
 
-const SIZE = 128
-const PADDING = 24
-const INNER = SIZE - PADDING * 2
+const SIZE = LOGO_TILE_SIZE
+const INNER = Math.round(SIZE * TOOL_LOGO_MARK_FILL)
 const RADIUS = 28
 const MIN_RASTER = 128
 const USER_AGENTS = [
@@ -190,7 +190,7 @@ export function sanitizeSvg(source: string): string {
   return text
 }
 
-/** Pad the mark onto a 128px white rounded tile. Returns null when the asset is too small, too wide, or unreadable. */
+/** Pad the mark onto a 128px white rounded tile so its long side is about 80% of the tile. Returns null when the asset is too small, too wide, or unreadable. */
 export async function normalizeLogo(input: Buffer): Promise<Buffer | null> {
   const prepared = await prepareRaster(input)
   if (!prepared) return null
@@ -362,6 +362,15 @@ function dibToRaw(dib: Buffer): { data: Buffer; width: number; height: number } 
     for (let index = 3; index < data.length; index += 4) data[index] = 255
   }
   return { data, width, height }
+}
+
+/** Longest side of the non-white mark, divided by the tile side. About 0.8 when the artwork fills the inner box. */
+export async function markLongSideFill(input: Buffer): Promise<number | null> {
+  const meta = await sharp(input).metadata()
+  const side = Math.max(meta.width ?? 0, meta.height ?? 0)
+  const box = await contentBox(input)
+  if (!box || side === 0) return null
+  return Math.max(box.width, box.height) / side
 }
 
 /** Bounding box of pixels that are not transparent and not near-white padding. */

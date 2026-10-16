@@ -405,7 +405,7 @@ export async function readTaskCandidates(
 
 export async function scoreQuiz(db: Database, answers: QuizAnswers) {
   const loaded = await readTaskCandidates(db, answers.task)
-  if (!loaded || loaded.tools.length === 0) return null
+  if (!loaded) return null
   const picks = selectQuizPicks(loaded.tools, answers)
   const leader = picks[0]
   const matchCount = listMatches(loaded.tools, answers.budget).length

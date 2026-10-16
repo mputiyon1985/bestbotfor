@@ -2,15 +2,18 @@ import { expect, test } from '@playwright/test'
 import { toolSeeds } from '../src/data/catalog'
 import { resolveToolLogo, TOOL_LOGO_SIZE } from '../src/lib/tool-logo'
 
+const fileTool = toolSeeds.find((tool) => resolveToolLogo(tool.slug, tool.name).kind === 'file')
+const fallbackTool = toolSeeds.find((tool) => resolveToolLogo(tool.slug, tool.name).kind === 'monogram')
+
 const PAGES = [
   '/tools',
   '/tools/chatgpt',
   '/result?task=chat&budget=any&skill=beginner',
   '/result?task=chat&view=all',
-] as const
-
-const fileTool = toolSeeds.find((tool) => resolveToolLogo(tool.slug, tool.name).kind === 'file')
-const fallbackTool = toolSeeds.find((tool) => resolveToolLogo(tool.slug, tool.name).kind === 'monogram')
+  '/compare/chatgpt-vs-claude',
+  '/search?q=chatgpt',
+  fallbackTool ? `/search?q=${encodeURIComponent(fallbackTool.name)}` : '/search?q=chatgpt',
+]
 
 const origin = process.env.NEXT_PUBLIC_SITE_URL || 'http://127.0.0.1:3000'
 

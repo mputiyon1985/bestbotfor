@@ -1,6 +1,6 @@
 import { taskSeeds, toolSeeds } from '../data/catalog'
 import { editorialSeeds } from '../data/scores-pros-cons.seed'
-import { ratingSeeds } from '../data/scores-v23.seed'
+import { ratingSeeds, supplementalProsConsSeeds } from '../data/scores-v23.seed'
 import type { Catalog, CatalogTool } from '../lib/catalog-types'
 import {
   categoryToolCounts,
@@ -13,7 +13,7 @@ import {
 const categoryCounts = categoryToolCounts(ratingSeeds)
 const tieCounts = tieGroupCounts(ratingSeeds)
 const ratingBySlug = new Map(ratingSeeds.map((row) => [row.slug, row]))
-const pointsBySlug = new Map(editorialSeeds.map((row) => [row.slug, row]))
+const pointsBySlug = new Map([...editorialSeeds, ...supplementalProsConsSeeds].map((row) => [row.slug, row]))
 
 /** In-memory catalog built from the seed module, for tests that should follow the data. */
 export function catalogFromSeeds(): Catalog {
