@@ -92,14 +92,9 @@ test('a low budget keeps SOUNDRAW in the music results', async ({ page }) => {
   if (!soundraw) return
 
   await page.goto(`/result?task=${answers.task}&budget=${answers.budget}&skill=${answers.skill}`)
-  await expect(page.getByRole('heading', { name: 'SOUNDRAW', exact: true })).toBeVisible()
-  await expect(page.getByText(priceLabel(soundraw), { exact: true })).toBeVisible()
-  if (result?.picks[0]?.slug === 'soundraw') {
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('SOUNDRAW')
-  } else {
-    const item = page.getByRole('listitem').filter({
-      has: page.getByRole('heading', { level: 3, name: 'SOUNDRAW', exact: true }),
-    })
-    await expect(item.getByText(overBudgetLabel)).toHaveCount(0)
-  }
+  const item = page.getByRole('listitem').filter({
+    has: page.getByRole('heading', { level: 3, name: 'SOUNDRAW', exact: true }),
+  })
+  await expect(item.getByText(priceLabel(soundraw), { exact: true })).toBeVisible()
+  await expect(item.getByText(overBudgetLabel)).toHaveCount(0)
 })

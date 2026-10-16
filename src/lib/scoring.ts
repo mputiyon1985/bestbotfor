@@ -1,6 +1,9 @@
 import { skillLabel } from './format'
 import type { Budget, Skill } from './validation'
 
+/** Quiz budgets, plus the mid band used by the all-matches filter. */
+export type RankBudget = Budget | 'mid'
+
 /**
  * Editorial fit is the base score (0-100). Budget and skill add a bounded
  * adjustment so a poor fit cannot win on price alone, and affiliate status
@@ -31,19 +34,29 @@ export type RankedTool = ScoreableTool & {
 
 const LOW_BUDGET_USD = 30
 
-export function budgetDelta(tool: Pick<ScoreableTool, 'pricingModel' | 'hasFreeTier' | 'priceFromUsd'>, budget: Budget): number {
+/** A mid budget includes a known paid price above the low cap and at or under this amount. */
+export const MID_BUDGET_USD = 100
+
+function paidCap(budget: RankBudget): number | null {
+  if (budget === 'low') return LOW_BUDGET_USD
+  if (budget === 'mid') return MID_BUDGET_USD
+  return null
+}
+
+export function budgetDelta(tool: Pick<ScoreableTool, 'pricingModel' | 'hasFreeTier' | 'priceFromUsd'>, budget: RankBudget): number {
   if (budget === 'any') return 0
   if (budget === 'free') {
     if (tool.pricingModel === 'free') return 18
     if (tool.hasFreeTier) return 10
     return -30
   }
+  const cap = paidCap(budget) ?? LOW_BUDGET_USD
   if (tool.pricingModel === 'free' || tool.hasFreeTier) {
-    if (tool.priceFromUsd != null && tool.priceFromUsd > LOW_BUDGET_USD) return 4
+    if (tool.priceFromUsd != null && tool.priceFromUsd > cap) return 4
     return 12
   }
   if (tool.priceFromUsd == null) return 0
-  if (tool.priceFromUsd <= LOW_BUDGET_USD) return 8
+  if (tool.priceFromUsd <= cap) return 8
   return -12
 }
 
@@ -56,7 +69,7 @@ export function skillDelta(toolSkill: Skill, userSkill: Skill): number {
 
 export function rankTools<T extends ScoreableTool>(
   tools: T[],
-  answers: { budget: Budget; skill: Skill },
+  answers: { budget: RankBudget; skill: Skill },
 ): Array<T & Pick<RankedTool, 'score' | 'budgetDelta' | 'skillDelta'>> {
   const ranked = tools.map((tool) => {
     const budgetAdjustment = budgetDelta(tool, answers.budget)
@@ -83,24 +96,25 @@ export type BudgetFit = 'within' | 'over' | 'unknown'
 /**
  * A tool is inside the budget when the user can start it without crossing
  * the budget they chose. "Any" accepts every tool. "Free" uses the free-tier
- * flag. "Low" also accepts a known paid price at or under $30. A missing
- * price is unknown, not over budget.
+ * flag. "Low" also accepts a known paid price at or under $30. "Mid" raises
+ * that cap to $100. A missing price is unknown, not over budget.
  */
 export function quizBudgetFit(
   tool: Pick<ScoreableTool, 'pricingModel' | 'hasFreeTier' | 'priceFromUsd'>,
-  budget: Budget,
+  budget: RankBudget,
 ): BudgetFit {
   if (budget === 'any') return 'within'
   const freeToStart = tool.pricingModel === 'free' || tool.hasFreeTier
   if (freeToStart) return 'within'
   if (budget === 'free') return 'over'
   if (tool.priceFromUsd == null) return 'unknown'
-  return tool.priceFromUsd <= LOW_BUDGET_USD ? 'within' : 'over'
+  const cap = paidCap(budget) ?? LOW_BUDGET_USD
+  return tool.priceFromUsd <= cap ? 'within' : 'over'
 }
 
 export function fitsBudget(
   tool: Pick<ScoreableTool, 'pricingModel' | 'hasFreeTier' | 'priceFromUsd'>,
-  budget: Budget,
+  budget: RankBudget,
 ): boolean {
   return quizBudgetFit(tool, budget) === 'within'
 }
@@ -120,7 +134,7 @@ export type QuizPick<T extends ScoreableTool> = T &
  */
 export function selectQuizPicks<T extends ScoreableTool>(
   tools: T[],
-  answers: { budget: Budget; skill: Skill },
+  answers: { budget: RankBudget; skill: Skill },
 ): QuizPick<T>[] {
   const qualified = tools.filter((tool) => tool.fitScore >= MIN_QUIZ_FIT_SCORE)
   return rankTools(qualified, answers)
@@ -132,7 +146,7 @@ export function selectQuizPicks<T extends ScoreableTool>(
     }))
 }
 
-export function explainPick(pick: RankedTool, answers: { budget: Budget; skill: Skill }): string {
+export function explainPick(pick: RankedTool, answers: { budget: RankBudget; skill: Skill }): string {
   const parts = [pick.notes]
   if (answers.budget === 'free') {
     parts.push(

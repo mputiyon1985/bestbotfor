@@ -1,10 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
-import { recommendQuiz } from '@/lib/catalog'
+import { listTaskCandidates, recommendQuiz } from '@/lib/catalog'
+import { listMatches, matchBudgetLabel, matchesPageRequest, matchesPath, pageOfMatches, seeAllMatchesLabel } from '@/lib/matches'
+import { AllMatches } from './all-matches'
 import { ACTION_LIMITS, allowRate } from '@/lib/action-limit'
 import { getDb } from '@/lib/db'
 import { rateLimitKey, clientIp } from '@/lib/ip'
@@ -13,8 +16,29 @@ import { breadcrumbJsonLd } from '@/lib/jsonld'
 import { memberAccess } from '@/lib/members'
 import { pageMetadata } from '@/lib/metadata'
 import { absoluteUrl } from '@/lib/site'
-import { firstString, quizSchema } from '@/lib/validation'
+import { firstString, matchBudgetSchema, quizSchema, slugSchema } from '@/lib/validation'
 import { savePickAction } from './actions'
+
+async function loadAllMatches(params: Record<string, string | string[] | undefined>) {
+  const taskSlug = firstString(params.task)
+  if (!slugSchema.safeParse(taskSlug).success) return null
+  const rawBudget = firstString(params.budget)
+  const parsedBudget = rawBudget === '' ? { success: true as const, data: 'any' as const } : matchBudgetSchema.safeParse(rawBudget)
+  if (!parsedBudget.success) return null
+  const loaded = await listTaskCandidates(taskSlug)
+  if (!loaded) return null
+  const matches = listMatches(loaded.tools, parsedBudget.data)
+  const requested = matchesPageRequest(firstString(params.page), matches.length)
+  if (!requested) return null
+  return {
+    task: loaded.task,
+    budget: parsedBudget.data,
+    total: matches.length,
+    tools: pageOfMatches(matches, requested.page),
+    page: requested.page,
+    pageCount: requested.pageCount,
+  }
+}
 
 export async function generateMetadata({
   searchParams,
@@ -22,6 +46,26 @@ export async function generateMetadata({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }): Promise<Metadata> {
   const params = await searchParams
+  const view = firstString(params.view)
+  if (view !== '' && view !== 'all') notFound()
+  if (view === 'all') {
+    const loaded = await loadAllMatches(params)
+    if (!loaded) notFound()
+    const path = matchesPath(loaded.task.slug, loaded.budget, loaded.page)
+    const title =
+      loaded.page > 1
+        ? `All matches for ${loaded.task.name.toLowerCase()}, page ${loaded.page}`
+        : `All matches for ${loaded.task.name.toLowerCase()}`
+    return pageMetadata({
+      title,
+      description: `${loaded.total} tools with a strong fit for ${loaded.task.name.toLowerCase()}, ranked for ${matchBudgetLabel[loaded.budget].toLowerCase()}.`,
+      path,
+      pagination: {
+        previous: loaded.page > 1 ? matchesPath(loaded.task.slug, loaded.budget, loaded.page - 1) : null,
+        next: loaded.page < loaded.pageCount ? matchesPath(loaded.task.slug, loaded.budget, loaded.page + 1) : null,
+      },
+    })
+  }
   const parsed = quizSchema.safeParse({
     task: firstString(params.task),
     budget: firstString(params.budget),
@@ -57,12 +101,29 @@ export default async function ResultPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const params = await searchParams
+  const view = firstString(params.view)
+  if (view !== '' && view !== 'all') notFound()
+  const headerStore = await headers()
+  if (view === 'all') {
+    const loaded = await loadAllMatches(params)
+    if (!loaded) notFound()
+    return (
+      <AllMatches
+        task={loaded.task}
+        budget={loaded.budget}
+        page={loaded.page}
+        pageCount={loaded.pageCount}
+        total={loaded.total}
+        tools={loaded.tools}
+        nonce={headerStore.get('x-nonce')}
+      />
+    )
+  }
   const parsed = quizSchema.safeParse({
     task: firstString(params.task),
     budget: firstString(params.budget),
     skill: firstString(params.skill),
   })
-  const headerStore = await headers()
   const nonce = headerStore.get('x-nonce')
   const allowed = await allowRate(
     getDb(),
@@ -189,6 +250,13 @@ export default async function ResultPage({
           </ul>
         ) : null}
         {alternatives.length < 5 ? <p className="mt-4 text-muted">{fewStrongOptionsLabel}</p> : null}
+        {result.matchCount > 0 ? (
+          <p className="mt-4">
+            <Link className="font-semibold underline" href={matchesPath(result.task.slug, 'any', 1)}>
+              {seeAllMatchesLabel(result.matchCount)}
+            </Link>
+          </p>
+        ) : null}
       </section>
 
       <section>

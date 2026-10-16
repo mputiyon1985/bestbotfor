@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next'
 import { comparePairSeeds } from '@/data/catalog'
 import { listPublicSlugs } from '@/lib/catalog'
+import { matchesPath } from '@/lib/matches'
 import { getSiteUrl } from '@/lib/site'
 
 export const dynamic = 'force-dynamic'
@@ -18,6 +19,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     const catalog = await listPublicSlugs()
     for (const slug of catalog.tasks) {
       entries.push({ url: new URL(`/best/${slug}`, site).toString(), changeFrequency: 'weekly', priority: 0.8 })
+      entries.push({ url: new URL(matchesPath(slug, 'any', 1), site).toString(), changeFrequency: 'weekly', priority: 0.6 })
     }
     for (const slug of catalog.tools) {
       entries.push({ url: new URL(`/tools/${slug}`, site).toString(), changeFrequency: 'weekly', priority: 0.7 })
