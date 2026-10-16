@@ -38,53 +38,6 @@ export async function consumeRateLimit(
   return { ok, remaining: ok ? limit - count : 0, resetAt: windowEnd }
 }
 
-const localWindows = new Map<string, { count: number; resetAt: number }>()
-
-/** Test isolation. Production windows expire on their own. */
-export function resetLocalRateLimits(): void {
-  localWindows.clear()
-}
-
-/**
- * Same window as the database limiter, kept in this process.
- * It does not wait on the network, so a burst can still be rejected when the
- * shared write is slow.
- */
-export function consumeLocalRateLimit(
-  key: string,
-  limit: number,
-  windowMs: number,
-  now = Date.now(),
-): { ok: boolean; resetAt: number } {
-  const current = localWindows.get(key)
-  if (!current || current.resetAt <= now) {
-    const resetAt = now + windowMs
-    localWindows.set(key, { count: 1, resetAt })
-    return { ok: true, resetAt }
-  }
-  current.count += 1
-  return { ok: current.count <= limit, resetAt: current.resetAt }
-}
-
-/**
- * Count in memory first, then write the shared row.
- * Callers fail open when this promise throws or passes its deadline: a stuck
- * write must not hide a quiz the catalog already found. Requests over the
- * in-process limit return before that write, so the burst is still rejected.
- */
-export async function consumeResultRateLimit(
-  db: Database,
-  key: string,
-  limit: number,
-  windowMs: number,
-  now = Date.now(),
-): Promise<{ ok: boolean; resetAt: number }> {
-  const local = consumeLocalRateLimit(key, limit, windowMs, now)
-  if (!local.ok) return local
-  const shared = await consumeRateLimit(db, key, limit, windowMs, now)
-  return { ok: shared.ok, resetAt: shared.resetAt }
-}
-
 /** Seconds for a Retry-After header. At least one second, rounded up. */
 export function retryAfterSeconds(resetAt: number, now = Date.now()): number {
   if (!Number.isFinite(resetAt)) return 1

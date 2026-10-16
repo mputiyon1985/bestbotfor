@@ -1,5 +1,7 @@
+import { eq } from 'drizzle-orm'
 import { readTaskCandidates } from './catalog-read'
-import { cachedTaskSlugs, type Database } from './db/client'
+import type { Database } from './db/client'
+import { tasks } from './db/schema'
 import { listMatches, matchesPageRequest, pageOfMatches } from './matches'
 import { firstString, matchBudgetSchema, slugSchema } from './validation'
 
@@ -64,6 +66,6 @@ export async function resultRequestStatus(db: Database, params: URLSearchParams)
   if (offline !== 'lookup') return offline
   if ((params.get('view') ?? '') === 'all') return (await allMatchesRequest(db, params)) ? 'ok' : 'not-found'
   const task = params.get('task') ?? ''
-  const slugs = await cachedTaskSlugs(db)
-  return slugs.has(task) ? 'ok' : 'not-found'
+  const [row] = await db.select({ slug: tasks.slug }).from(tasks).where(eq(tasks.slug, task)).limit(1)
+  return row ? 'ok' : 'not-found'
 }

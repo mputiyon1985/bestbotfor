@@ -22,8 +22,6 @@ export default defineConfig({
       ...process.env,
       TURSO_DATABASE_URL: databaseUrl,
       TURSO_AUTH_TOKEN: process.env.TURSO_AUTH_TOKEN || 'local',
-      // Faults are denied unless the runtime is explicitly preview or NODE_ENV=test.
-      VERCEL_ENV: 'preview',
       RESULT_FAULTS: '1',
       NEXT_PUBLIC_SITE_URL: siteUrl,
       NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID || 'G-TESTCONSENT',
