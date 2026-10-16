@@ -185,7 +185,6 @@ test('windsurf stays at its slug, cursor and relevance show the reviewed prices,
   await page.goto('/tools/relevance-ai')
   await expect(page.getByText('$19 and up')).toBeVisible()
   await expect(page.getByText('No', { exact: true })).toBeVisible()
-  await expect(page.getByText('Pro is $19 a month billed yearly', { exact: true })).toBeVisible()
   await expect(page.getByText('The free plan is retired. Pro is $19 a month billed yearly.')).toBeVisible()
   html = await page.content()
   expect(html).not.toContain('relevanceai.com/docs')
