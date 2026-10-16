@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- The tagline is “The right AI in 30 seconds.” The home title is “BestBotFor — The right AI in 30 seconds.”
+- The not-found page sets its own title, “Page not found | BestBotFor”, and `noindex, nofollow`.
+- Home explains the three questions, and the public meta descriptions use the 30-second pick.
+- The default Open Graph and Twitter image is the new 1200×630 card, `og-default-1200x630.676bae0e.png`.
 - Encoded and raw dot segments return 404 from a Vercel route and from the app server. The global `URL` constructor and `http.Server` are no longer patched.
 - Quiz result URLs and budget-filtered match lists are `noindex, follow`. `/result?task=X&view=all` page 1 stays indexable and in the sitemap. Lighthouse scores SEO on that indexable list. The production-env check asserts the quiz and budget-filtered pages render `noindex, follow`.
 - The first paint uses a metric-matched fallback for every Poppins weight, so the delayed swap does not reflow the tools directory.

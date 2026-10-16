@@ -19,8 +19,17 @@ test('header and footer inline the lockup and the tagline', async ({ page }) => 
   await expect(headerLogo.locator('svg').nth(0)).toBeVisible()
   const footerLogo = page.getByRole('contentinfo').getByRole('link', { name: 'BestBotFor' })
   await expect(footerLogo.locator('svg').nth(0)).toBeVisible()
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Three questions. One best bot.')
-  await expect(page.getByRole('contentinfo')).toContainText('Three questions. One best bot.')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('The right AI in 30 seconds.')
+  await expect(page).toHaveTitle('BestBotFor — The right AI in 30 seconds.')
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /The right AI in 30 seconds\./)
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', 'BestBotFor — The right AI in 30 seconds.')
+  await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', 'The right AI in 30 seconds.')
+  await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', 'BestBotFor — The right AI in 30 seconds.')
+  await expect(page.locator('meta[name="twitter:description"]')).toHaveAttribute('content', 'The right AI in 30 seconds.')
+  await expect(page.getByRole('contentinfo')).toContainText('The right AI in 30 seconds.')
+  const jsonLd = (await page.locator('script[type="application/ld+json"]').allTextContents()).join('\n')
+  expect(jsonLd).toContain('"slogan":"The right AI in 30 seconds."')
+  expect(jsonLd).toContain('"description":"The right AI in 30 seconds."')
 })
 
 test('favicons, manifest, and the default preview image are the kit files', async ({ page, request }) => {
@@ -33,7 +42,12 @@ test('favicons, manifest, and the default preview image are the kit files', asyn
   await expect(page.locator('link[rel="apple-touch-icon"]')).toHaveAttribute('href', new RegExp(APPLE_TOUCH_ICON_PATH.replace(/[.]/g, '\\.')))
   await expect(page.locator('link[rel="manifest"]')).toHaveAttribute('href', /site\.webmanifest/)
   const og = page.locator('meta[property="og:image"]')
-  await expect(og.first()).toHaveAttribute('content', /og-default-1200x630\.[0-9a-f]{8}\.png/)
+  await expect(og.first()).toHaveAttribute('content', /og-default-1200x630\.676bae0e\.png/)
+  await expect(page.locator('meta[property="og:image:width"]')).toHaveAttribute('content', '1200')
+  await expect(page.locator('meta[property="og:image:height"]')).toHaveAttribute('content', '630')
+  await expect(page.locator('meta[name="twitter:image"]')).toHaveAttribute('content', /og-default-1200x630\.676bae0e\.png/)
+  await expect(page.locator('meta[name="twitter:image:width"]')).toHaveAttribute('content', '1200')
+  await expect(page.locator('meta[name="twitter:image:height"]')).toHaveAttribute('content', '630')
 
   for (const path of [
     '/favicon.ico',

@@ -9,6 +9,7 @@ import { getTask, listTaskCandidates } from '@/lib/catalog'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
 import { breadcrumbJsonLd, faqJsonLd, itemListJsonLd } from '@/lib/jsonld'
 import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
+import { bestGuideDescription } from '@/lib/descriptions'
 import { pageMetadata } from '@/lib/metadata'
 import { slugSchema } from '@/lib/validation'
 
@@ -21,7 +22,7 @@ export async function generateMetadata({ params }: { params: Promise<{ task: str
   if (!task) return pageMetadata({ title: 'Not found', description: 'That guide is not in the catalog.', path: `/best/${slug}`, noIndex: true })
   return pageMetadata({
     title: `Best AI tool for ${task.name.toLowerCase()}`,
-    description: `The best AI tool for ${task.name.toLowerCase()} in our catalog, plus the closest alternatives. ${task.description}`,
+    description: bestGuideDescription(task.name),
     path: `/best/${task.slug}`,
   })
 }
@@ -114,7 +115,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
         </dl>
       </section>
       <p className="text-sm text-muted">
-        Want this personalized? <Link className="underline" href="/">Answer the three questions</Link>.
+        Want this personalized? <Link className="underline" href="/">Get your own pick in 30 seconds</Link>: answer three questions.
       </p>
     </article>
   )

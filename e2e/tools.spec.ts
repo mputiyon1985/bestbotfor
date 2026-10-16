@@ -24,7 +24,7 @@ test('lists a page of catalog tools and links to the next page', async ({ page }
   await page.goto('/tools')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Tools')
   await expect(page).toHaveTitle('Tools · BestBotFor')
-  await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /one page at a time/)
+  await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /Get the right AI in 30 seconds/)
   await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/tools$/)
   await expect(page.getByText(`${ordered.length} tools. Page 1 of ${pages}.`)).toBeVisible()
 

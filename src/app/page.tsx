@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { JsonLd } from '@/components/json-ld'
-import { PickerForm } from '@/components/picker-form'
+import { PICKER_QUESTIONS, PickerForm } from '@/components/picker-form'
 import { comparePairSeeds, taskSeeds } from '@/data/catalog'
 import { listTasks } from '@/lib/catalog'
 import { faqJsonLd } from '@/lib/jsonld'
@@ -12,6 +12,11 @@ const faqs = [
     question: 'How does BestBotFor pick a tool?',
     answer:
       'You answer three questions: the job, your budget, and your experience. We rank tools that clear a minimum fit score by editorial fit, then adjust for budget and skill. You get one pick and up to five alternatives. A tool just over budget can still appear when it clears that bar, and it is labeled. When fewer than five alternatives qualify, the page says so. Affiliate programs do not change the rank.',
+  },
+  {
+    question: 'Does it really take 30 seconds?',
+    answer:
+      'It’s three questions, each answered with a single choice, and the result page loads as soon as you submit. There’s no sign-up step in between.',
   },
   {
     question: 'Do I need an account?',
@@ -38,14 +43,34 @@ export default async function HomePage() {
       <JsonLd data={faqJsonLd(faqs)} nonce={nonce} />
       <section className="grid gap-8 md:grid-cols-[1.1fr_0.9fr] md:items-end">
         <div>
-          <h1 className="font-headline text-5xl leading-tight md:text-6xl">{TAGLINE}</h1>
+          <p className="text-sm font-medium uppercase tracking-wide text-accent">Three questions. One best bot.</p>
+          <h1 className="mt-3 font-headline text-5xl leading-tight md:text-6xl">{TAGLINE}</h1>
           <p className="mt-4 max-w-xl text-lg text-muted">
-            Tell us the job, your budget, and how experienced you are. You’ll get one AI tool and up to five alternatives, in plain English.
+            Answer three quick questions: what you want to do, what you can spend, and how experienced you are. You’ll get one AI tool for the job and up to five alternatives, with a plain-English reason for each.
           </p>
         </div>
         <p className="rounded-3xl bg-mist px-5 py-4 text-sm text-accent">
-          No account required. The result has its own link, so you can send it to someone else.
+          No account needed. Your result gets its own link, so you can share it with your team or your Discord.
         </p>
+      </section>
+
+      <section aria-labelledby="how-it-works">
+        <h2 id="how-it-works" className="font-semibold text-3xl">How it works: three questions, about 30 seconds</h2>
+        <ol className="mt-4 grid gap-3 md:grid-cols-3">
+          <li className="rounded-2xl border border-line bg-card px-4 py-3">
+            <span className="font-semibold">{PICKER_QUESTIONS[0]}</span>
+            <span className="mt-1 block text-sm text-muted">Pick the job: write code, build an app from a prompt, make a video, create a voiceover, automate a workflow, and more.</span>
+          </li>
+          <li className="rounded-2xl border border-line bg-card px-4 py-3">
+            <span className="font-semibold">{PICKER_QUESTIONS[1]}</span>
+            <span className="mt-1 block text-sm text-muted">Free only, low cost, or any budget.</span>
+          </li>
+          <li className="rounded-2xl border border-line bg-card px-4 py-3">
+            <span className="font-semibold">{PICKER_QUESTIONS[2]}</span>
+            <span className="mt-1 block text-sm text-muted">Beginner, intermediate, or advanced.</span>
+          </li>
+        </ol>
+        <p className="mt-4 text-muted">You get one pick and up to five alternatives, side by side, with the reason we chose each. Budget and experience change the answer. That’s why we ask.</p>
       </section>
 
       <PickerForm tasks={tasks} />

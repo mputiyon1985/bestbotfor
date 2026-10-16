@@ -37,7 +37,7 @@ export function pageMetadata(input: {
       card: 'summary_large_image',
       title: input.title,
       description: input.description,
-      images: [image],
+      images: [{ url: image, width: 1200, height: 630, alt: input.title }],
     },
   }
 }
@@ -50,4 +50,6 @@ function pageRobots(input: { noIndex?: boolean; follow?: boolean }): { index: bo
 
 export const homeTitle = `${SITE_NAME} — ${TAGLINE}`
 
-export const homeDescription = `${TAGLINE} BestBotFor names one AI tool for the job and up to five alternatives, based on your budget and experience.`
+export const notFoundTitle = `Page not found | ${SITE_NAME}`
+
+export const homeDescription = `${TAGLINE} Answer three questions (your task, budget and experience) and get the best AI tool for the job plus up to five alternatives.`

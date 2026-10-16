@@ -1,7 +1,7 @@
 {
   "name": "BestBotFor",
   "short_name": "BestBotFor",
-  "description": "Three questions. One best bot.",
+  "description": "The right AI in 30 seconds.",
   "start_url": "/",
   "display": "standalone",
   "theme_color": "#5B4BFF",

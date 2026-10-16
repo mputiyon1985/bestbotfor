@@ -1,6 +1,6 @@
 # BestBotFor
 
-Three questions. One best bot.
+The right AI in 30 seconds.
 
 BestBotFor asks for the job, the budget, and experience, then names one AI tool and up to five alternatives. The public catalog is free. A membership saves picks and unlocks the longer comparison notes.
 

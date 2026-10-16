@@ -1,7 +1,18 @@
 import { request as httpRequest } from 'node:http'
 import { expect, test } from '@playwright/test'
+import { homeTitle, notFoundTitle } from '../src/lib/metadata'
 import { toolCategories } from '../src/lib/tool-index'
 import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
+
+function documentTitle(html: string): string {
+  return html.match(/<title>([^<]*)<\/title>/)?.[1] ?? ''
+}
+
+function robotsDirectives(html: string): string[] {
+  return [...html.matchAll(/<meta\b[^>]*>/gi)]
+    .filter((match) => /name=["']robots["']/i.test(match[0]))
+    .map((match) => match[0].match(/content=["']([^"']*)["']/i)?.[1] ?? '')
+}
 
 function rawStatus(path: string): Promise<{ status: number; body: string }> {
   const base = new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://127.0.0.1:3000')
@@ -28,7 +39,17 @@ test('the home page sends a nonce content security policy', async ({ request }) 
   expect(policy).toContain("object-src 'none'")
 })
 
+const HOME_MARKER = 'The right AI in 30 seconds'
+
 test('encoded dot segments do not render the home page', async () => {
+  const home = await rawStatus('/')
+  expect(home.status).toBe(200)
+  expect(home.body).toContain(HOME_MARKER)
+  // The same assertion used on 404s must fail when the body is the home page.
+  expect(() => {
+    expect(home.body).not.toContain(HOME_MARKER)
+  }).toThrow()
+
   for (const path of [
     '/go/%2e%2e',
     '/go/%2E%2E',
@@ -47,8 +68,36 @@ test('encoded dot segments do not render the home page', async () => {
     const response = await rawStatus(path)
     expect(response.status, path).toBe(404)
     expect(response.body, path).toContain('not a tool in the catalog')
-    expect(response.body, path).not.toContain('Three questions')
+    expect(response.body, path).not.toContain(HOME_MARKER)
+    expect(documentTitle(response.body), path).not.toBe(homeTitle)
+    expect(response.body, path).not.toContain(notFoundTitle)
   }
+})
+
+test('a missing page is the not-found screen, not the home page', async () => {
+  const home = await rawStatus('/')
+  expect(home.status).toBe(200)
+  expect(documentTitle(home.body)).toBe(homeTitle)
+  expect(home.body).not.toContain(notFoundTitle)
+  // The footer repeats the tagline on both pages, so the document title is what separates them.
+  expect(home.body).toContain(HOME_MARKER)
+  expect(() => {
+    expect(documentTitle(home.body)).toBe(notFoundTitle)
+  }).toThrow()
+  expect(() => {
+    expect(documentTitle(home.body)).not.toBe(homeTitle)
+  }).toThrow()
+
+  const missing = await rawStatus('/this-page-does-not-exist')
+  expect(missing.status).toBe(404)
+  expect(documentTitle(missing.body)).toBe(notFoundTitle)
+  expect(documentTitle(missing.body)).not.toBe(homeTitle)
+  expect(missing.body).toContain('That page is not in the catalog.')
+  expect(missing.body).toContain(HOME_MARKER)
+  const robots = robotsDirectives(missing.body)
+  expect(robots.length).toBeGreaterThan(0)
+  expect(robots.every((content) => content.includes('noindex'))).toBe(true)
+  expect(robots).toContain('noindex, nofollow')
 })
 
 test('the tools index is served and still rejects an unsafe slug', async () => {
