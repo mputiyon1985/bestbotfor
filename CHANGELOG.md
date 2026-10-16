@@ -4,6 +4,7 @@
 
 - Encoded and raw dot segments return 404 from a Vercel route and from the app server. The global `URL` constructor and `http.Server` are no longer patched.
 - Quiz result URLs and budget-filtered match lists are `noindex, follow`. `/result?task=X&view=all` page 1 stays indexable and in the sitemap. Lighthouse scores SEO on that indexable list. The production-env check asserts the quiz and budget-filtered pages render `noindex, follow`.
+- The first paint uses a metric-matched fallback for every Poppins weight, so the delayed swap does not reflow the tools directory.
 - “See all N matches” keeps the quiz budget. Match and quiz titles use the task’s own name.
 - `/tools` page numbers that are not a real page return 404, including category filters, so each indexable canonical belongs to one page.
 - Encoded dot segments under `/go`, `/best`, and `/tools` return 404 instead of the home page. `/go` responses send `X-Robots-Tag: noindex, nofollow`.
