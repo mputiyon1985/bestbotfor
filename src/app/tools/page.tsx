@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { cache } from 'react'
 import { notFound } from 'next/navigation'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { ToolLogo } from '@/components/tool-logo'
@@ -46,18 +47,34 @@ async function resolveCategory(raw: string): Promise<ResolvedCategory> {
   return { categories, selected, unknown: !selected, total }
 }
 
-async function loadToolsIndex(params: SearchParams) {
+function toolsCacheKey(params: SearchParams): string {
+  const query = new URLSearchParams()
+  const page = firstString(params.page)
+  const category = firstString(params.category)
+  if (page) query.set('page', page)
+  if (category) query.set('category', category)
+  return query.toString()
+}
+
+const loadToolsIndex = cache(async function loadToolsIndex(key: string) {
+  const params = Object.fromEntries(new URLSearchParams(key))
   const requested = parseToolsPage(firstString(params.page))
   if (requested === null) notFound()
-  const resolved = await resolveCategory(firstString(params.category))
+  const rawCategory = firstString(params.category)
+  if (!rawCategory.trim()) {
+    const [resolved, listing] = await Promise.all([resolveCategory(''), listToolPage(requested, null)])
+    if (!isToolsPageInRange(requested, listing.pageCount)) notFound()
+    return { requested, resolved, listing }
+  }
+  const resolved = await resolveCategory(rawCategory)
   if (resolved.unknown) return { requested, resolved, listing: null }
   const listing = await listToolPage(requested, resolved.selected?.name ?? null)
   if (!isToolsPageInRange(requested, listing.pageCount)) notFound()
   return { requested, resolved, listing }
-}
+})
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<SearchParams> }): Promise<Metadata> {
-  const loaded = await loadToolsIndex(await searchParams)
+  const loaded = await loadToolsIndex(toolsCacheKey(await searchParams))
   const { resolved, listing } = loaded
   if (resolved.unknown || !listing) {
     return pageMetadata({
@@ -87,7 +104,7 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 }
 
 export default async function ToolsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const { resolved, listing } = await loadToolsIndex(await searchParams)
+  const { resolved, listing } = await loadToolsIndex(toolsCacheKey(await searchParams))
   const selected = resolved.selected
 
   return (

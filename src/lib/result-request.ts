@@ -56,6 +56,22 @@ export function resultOfflineStatus(params: URLSearchParams): 'not-found' | 'ok'
 }
 
 /**
+ * Cached slug set for a quiz, or a definite miss for all-matches.
+ * Null means the gate still has to read. A hit does not start the slow retry.
+ */
+export function cachedQuizStatus(
+  slugs: ReadonlySet<string> | null,
+  params: URLSearchParams,
+): 'not-found' | 'ok' | null {
+  if (!slugs) return null
+  if (resultOfflineStatus(params) !== 'lookup') return null
+  const task = params.get('task') ?? ''
+  const view = params.get('view') ?? ''
+  if (view === 'all') return slugs.has(task) ? null : 'not-found'
+  return slugs.has(task) ? 'ok' : 'not-found'
+}
+
+/**
  * Quiz URLs with a missing skill stay on the form (200).
  * An invalid task or budget is a 404. A well-formed task that is not in the catalog is a 404.
  */

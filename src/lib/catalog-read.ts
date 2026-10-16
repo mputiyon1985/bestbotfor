@@ -316,41 +316,56 @@ export async function readToolCategoryCounts(db: Database): Promise<{ category: 
 export async function readToolPage(db: Database, page: number, category: string | null = null): Promise<ToolPage> {
   const requested = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
   const where = category ? and(eq(tools.status, 'active'), eq(tools.category, category)) : eq(tools.status, 'active')
-  const [countRow] = await db.select({ total: count() }).from(tools).where(where)
-  const total = Number(countRow?.total ?? 0)
+  const pageSelect = {
+    slug: tools.slug,
+    name: tools.name,
+    vendor: tools.vendor,
+    category: tools.category,
+    shortDesc: tools.shortDesc,
+  }
+  const [countRows, rows] = await Promise.all([
+    db.select({ total: count() }).from(tools).where(where),
+    db
+      .select(pageSelect)
+      .from(tools)
+      .where(where)
+      .orderBy(asc(tools.name))
+      .limit(TOOLS_PAGE_SIZE)
+      .offset((requested - 1) * TOOLS_PAGE_SIZE),
+  ])
+  const total = Number(countRows[0]?.total ?? 0)
   const pageCount = Math.max(1, Math.ceil(total / TOOLS_PAGE_SIZE))
   const current = Math.min(requested, pageCount)
-  const rows = await db
-    .select({
-      slug: tools.slug,
-      name: tools.name,
-      vendor: tools.vendor,
-      category: tools.category,
-      shortDesc: tools.shortDesc,
-    })
+  if (current === requested) return { tools: rows, total, page: current, pageSize: TOOLS_PAGE_SIZE, pageCount }
+  const clamped = await db
+    .select(pageSelect)
     .from(tools)
     .where(where)
     .orderBy(asc(tools.name))
     .limit(TOOLS_PAGE_SIZE)
     .offset((current - 1) * TOOLS_PAGE_SIZE)
-  return { tools: rows, total, page: current, pageSize: TOOLS_PAGE_SIZE, pageCount }
+  return { tools: clamped, total, page: current, pageSize: TOOLS_PAGE_SIZE, pageCount }
 }
 
 export async function readTaskCandidates(
   db: Database,
   taskSlug: string,
 ): Promise<{ task: CatalogTask; tools: TaskCandidate[] } | null> {
-  const [task] = await db
-    .select({
-      slug: tasks.slug,
-      name: tasks.name,
-      category: tasks.category,
-      description: tasks.description,
-      id: tasks.id,
-    })
-    .from(tasks)
-    .where(eq(tasks.slug, taskSlug))
-    .limit(1)
+  const [taskRows, rankRows] = await Promise.all([
+    db
+      .select({
+        slug: tasks.slug,
+        name: tasks.name,
+        category: tasks.category,
+        description: tasks.description,
+        id: tasks.id,
+      })
+      .from(tasks)
+      .where(eq(tasks.slug, taskSlug))
+      .limit(1),
+    db.select({ primaryCategory: toolScores.primaryCategory, tieGroup: toolScores.tieGroup }).from(toolScores),
+  ])
+  const task = taskRows[0]
   if (!task) return null
   const rows = await db
     .select({
@@ -372,11 +387,13 @@ export async function readTaskCandidates(
     .where(and(eq(toolTasks.taskId, task.id), eq(tools.status, 'active')))
 
   const ids = rows.map((row) => row.id)
-  const scoreRows = ids.length === 0 ? [] : await db.select().from(toolScores).where(inArray(toolScores.toolId, ids))
-  const proConRows = ids.length === 0 ? [] : await db.select().from(toolProsCons).where(inArray(toolProsCons.toolId, ids))
-  const rankRows = await db
-    .select({ primaryCategory: toolScores.primaryCategory, tieGroup: toolScores.tieGroup })
-    .from(toolScores)
+  const [scoreRows, proConRows] =
+    ids.length === 0
+      ? [[], []]
+      : await Promise.all([
+          db.select().from(toolScores).where(inArray(toolScores.toolId, ids)),
+          db.select().from(toolProsCons).where(inArray(toolProsCons.toolId, ids)),
+        ])
   const scoreByTool = new Map(scoreRows.map((row) => [row.toolId, row]))
   const prosByTool = groupProsCons(proConRows)
   const context = ratingContext(rankRows)
@@ -403,13 +420,17 @@ export async function readTaskCandidates(
   }
 }
 
-export async function scoreQuiz(db: Database, answers: QuizAnswers) {
-  const loaded = await readTaskCandidates(db, answers.task)
-  if (!loaded) return null
+export function scoreLoadedQuiz(loaded: { task: CatalogTask; tools: TaskCandidate[] }, answers: QuizAnswers) {
   const picks = selectQuizPicks(loaded.tools, answers)
   const leader = picks[0]
   const matchCount = listMatches(loaded.tools, answers.budget).length
   return { task: loaded.task, picks, answers, why: leader ? leader.reason : '', matchCount }
+}
+
+export async function scoreQuiz(db: Database, answers: QuizAnswers) {
+  const loaded = await readTaskCandidates(db, answers.task)
+  if (!loaded) return null
+  return scoreLoadedQuiz(loaded, answers)
 }
 
 function likePattern(query: string): string {

@@ -4,7 +4,7 @@ import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { Client } from '@libsql/client'
 import { createTestDatabase } from '@/test/db'
-import { cachedTaskSlugs, clearTaskSlugCache, getDb, resetDbCache } from './client'
+import { TASK_SLUG_CACHE_TTL_MS, cachedTaskSlugs, clearTaskSlugCache, getDb, peekCachedTaskSlugs, resetDbCache } from './client'
 import { tasks } from './schema'
 
 const previousUrl = process.env.TURSO_DATABASE_URL
@@ -61,6 +61,12 @@ describe('database client', () => {
       expect((await cachedTaskSlugs(db)).has('code')).toBe(false)
       clearTaskSlugCache(db)
       expect((await cachedTaskSlugs(db)).has('code')).toBe(true)
+
+      clearTaskSlugCache(db)
+      const frozen = await cachedTaskSlugs(db, 1_000)
+      expect(TASK_SLUG_CACHE_TTL_MS).toBe(5 * 60 * 1000)
+      expect(peekCachedTaskSlugs(db, 1_000 + TASK_SLUG_CACHE_TTL_MS - 1)).toBe(frozen)
+      expect(peekCachedTaskSlugs(db, 1_000 + TASK_SLUG_CACHE_TTL_MS)).toBeNull()
     } finally {
       await close()
     }

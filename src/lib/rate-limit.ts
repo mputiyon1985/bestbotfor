@@ -40,9 +40,23 @@ export async function consumeRateLimit(
 
 const localWindows = new Map<string, { count: number; resetAt: number }>()
 
+/** Sweep expired keys once the map is large enough to matter. One key is replaced in place. */
+const LOCAL_WINDOW_PRUNE_AT = 32
+
 /** Test isolation. Production windows expire on their own. */
 export function resetLocalRateLimits(): void {
   localWindows.clear()
+}
+
+export function localRateLimitSize(): number {
+  return localWindows.size
+}
+
+function pruneExpiredLocalWindows(now: number): void {
+  if (localWindows.size < LOCAL_WINDOW_PRUNE_AT) return
+  for (const [key, window] of localWindows) {
+    if (window.resetAt <= now) localWindows.delete(key)
+  }
 }
 
 /**
@@ -56,6 +70,7 @@ export function consumeLocalRateLimit(
   windowMs: number,
   now = Date.now(),
 ): { ok: boolean; resetAt: number } {
+  pruneExpiredLocalWindows(now)
   const current = localWindows.get(key)
   if (!current || current.resetAt <= now) {
     const resetAt = now + windowMs
@@ -64,6 +79,25 @@ export function consumeLocalRateLimit(
   }
   current.count += 1
   return { ok: current.count <= limit, resetAt: current.resetAt }
+}
+
+/**
+ * Shared row write for after the response. A slow or failed write must not
+ * decide the status: the in-memory counter already did.
+ */
+export function persistResultRateLimit(
+  db: Database,
+  key: string,
+  limit: number,
+  windowMs: number,
+  now = Date.now(),
+): Promise<void> {
+  return consumeRateLimit(db, key, limit, windowMs, now).then(
+    () => undefined,
+    (error: unknown) => {
+      console.error('result rate store failed', error instanceof Error ? error.name : 'error')
+    },
+  )
 }
 
 /**

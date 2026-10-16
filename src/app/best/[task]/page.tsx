@@ -44,13 +44,12 @@ export async function generateMetadata({ params }: { params: Promise<{ task: str
 export default async function BestPage({ params }: { params: Promise<{ task: string }> }) {
   const { task: slug } = await params
   if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) notFound()
-  const task = await getTask(slug)
-  if (!task) notFound()
-  const loaded = await listTaskCandidates(task.slug)
+  const [loaded, headerStore] = await Promise.all([listTaskCandidates(slug), headers()])
+  const task = loaded?.task
   const ranked = loaded?.tools ?? []
   const top = ranked[0]
-  if (!top) notFound()
-  const nonce = (await headers()).get('x-nonce')
+  if (!task || !top) notFound()
+  const nonce = headerStore.get('x-nonce')
   const verified = formatUsDate(top.lastVerifiedAt)
   const freeOption = ranked.find((tool) => tool.hasFreeTier)
   const faqs = [

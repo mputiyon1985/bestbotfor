@@ -34,8 +34,8 @@ const faqs = [
 ]
 
 export default async function HomePage() {
-  const catalogTasks = await listTasks()
-  const nonce = (await headers()).get('x-nonce')
+  const [catalogTasks, headerStore] = await Promise.all([listTasks(), headers()])
+  const nonce = headerStore.get('x-nonce')
   const tasks = catalogTasks.length > 0 ? catalogTasks : taskSeeds
 
   return (
