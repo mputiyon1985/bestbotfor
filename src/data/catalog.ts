@@ -1,4 +1,5 @@
 import type { AffiliateSeed, TaskSeed, ToolSeed } from '@/lib/catalog-types'
+import { elevenlabsMusicFit, musicSeoToolSeeds } from './music-seo'
 
 const REVIEWED = '2026-10-15'
 
@@ -566,7 +567,7 @@ export const toolSeeds: ToolSeed[] = [
     lastVerifiedAt: REVIEWED,
     fits: [
       { task: 'voice', score: 96, notes: 'Speech from text is the core product.' },
-      { task: 'music', score: 54, notes: 'The usual pick for a natural voiceover from a script you write. It does not generate a song or an instrumental.' },
+      elevenlabsMusicFit,
     ],
     affiliate: {
       hasProgram: true,
@@ -666,7 +667,6 @@ export const toolSeeds: ToolSeed[] = [
     fits: [
       { task: 'video', score: 80, notes: 'Transcript editing is the right model when the recording already exists.' },
       { task: 'voice', score: 60, notes: 'Includes voice tools, as part of an editor rather than a voice studio.' },
-      { task: 'music', score: 44, notes: 'Edits video and podcasts you already recorded by editing the transcript. It does not generate a song.' },
     ],
     affiliate: {
       hasProgram: true,
@@ -1536,7 +1536,6 @@ export const toolSeeds: ToolSeed[] = [
     lastVerifiedAt: REVIEWED,
     fits: [
       { task: 'writing', score: 72, notes: 'An easy way to get drafting help in the browser.' },
-      { task: 'seo', score: 48, notes: 'Offers browser autocomplete and research help while you draft. It does not score the draft against ranking pages.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -2271,7 +2270,6 @@ export const toolSeeds: ToolSeed[] = [
     fits: [
       { task: 'voice', score: 70, notes: 'An all-in-one start for podcasters.' },
       { task: 'video', score: 45, notes: 'The studio is audio first and also handles some video.' },
-      { task: 'music', score: 56, notes: 'A podcast recording and editing studio with AI voices. It builds a spoken show, not a song from a prompt.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -2314,7 +2312,6 @@ export const toolSeeds: ToolSeed[] = [
     lastVerifiedAt: REVIEWED,
     fits: [
       { task: 'voice', score: 74, notes: 'Turns scripts into produced audio.' },
-      { task: 'music', score: 62, notes: 'Turns scripts into produced audio for podcasts and ads. That is finished audio, not a generated song or instrumental.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -2445,7 +2442,6 @@ export const toolSeeds: ToolSeed[] = [
     lastVerifiedAt: REVIEWED,
     fits: [
       { task: 'voice', score: 66, notes: 'Simple voiceovers with a free start.' },
-      { task: 'music', score: 47, notes: 'Simple voiceovers and podcast tools with a free start. The output is spoken audio, not a generated track.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -2553,7 +2549,6 @@ export const toolSeeds: ToolSeed[] = [
       { task: 'research', score: 86, notes: 'Answers grounded in your own documents, plus audio overviews.' },
       { task: 'writing', score: 50, notes: 'A source-grounded notebook can draft from your documents. Research comes first.' },
       { task: 'chat', score: 61, notes: 'Answers stay grounded in documents you add, so you can talk through that source set. It is not an open general assistant.' },
-      { task: 'music', score: 49, notes: 'Adds audio overviews of documents you upload. Those are spoken summaries, not songs or instrumentals.' },
     ],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -3349,6 +3344,7 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
+  ...musicSeoToolSeeds,
 ]
 
 /** Hand-checked comparisons. Other pairs still resolve if both tools exist. */

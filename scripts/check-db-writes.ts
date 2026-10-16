@@ -10,6 +10,7 @@ const ALLOWED = new Set([
   'src/lib/db/migrate.ts',
   'scripts/seed.ts',
   'scripts/migrate.ts',
+  'drizzle/0003_retire_quiz_fits.sql',
 ])
 
 const ROOTS = ['src', 'scripts', 'drizzle']

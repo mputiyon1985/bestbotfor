@@ -71,8 +71,11 @@ export function rankTools<T extends ScoreableTool>(
   return ranked
 }
 
-/** One top pick plus five alternatives. */
+/** Maximum shortlist: one pick plus up to five alternatives. */
 export const QUIZ_RESULT_COUNT = 6
+
+/** Tools below this editorial fit are not shown on the quiz result. */
+export const MIN_QUIZ_FIT_SCORE = 50
 
 export type BudgetFit = 'within' | 'over'
 
@@ -100,33 +103,23 @@ export type QuizPick<T extends ScoreableTool> = T &
   }
 
 /**
- * Rank tools that fit the budget by fit score plus the budget and skill
- * adjustments. When that list has fewer than five alternatives, append the
- * best-fitting tools just over budget, ordered by fit score.
+ * Keep tools that clear the minimum fit, rank them by fit plus the budget and
+ * skill adjustments, and return at most one pick and five alternatives.
+ * A tool just over budget can appear only when it clears that minimum.
+ * The list is not padded when fewer tools qualify.
  */
 export function selectQuizPicks<T extends ScoreableTool>(
   tools: T[],
   answers: { budget: Budget; skill: Skill },
 ): QuizPick<T>[] {
-  const within: T[] = []
-  const over: T[] = []
-  for (const tool of tools) {
-    if (fitsBudget(tool, answers.budget)) within.push(tool)
-    else over.push(tool)
-  }
-  const withinPicks: QuizPick<T>[] = rankTools(within, answers).map((tool) => ({
-    ...tool,
-    budgetFit: 'within',
-    reason: tool.notes,
-  }))
-  const overPicks: QuizPick<T>[] = rankTools(over, answers)
-    .sort((a, b) => b.fitScore - a.fitScore || a.name.localeCompare(b.name))
+  const qualified = tools.filter((tool) => tool.fitScore >= MIN_QUIZ_FIT_SCORE)
+  return rankTools(qualified, answers)
+    .slice(0, QUIZ_RESULT_COUNT)
     .map((tool) => ({
       ...tool,
-      budgetFit: 'over',
+      budgetFit: fitsBudget(tool, answers.budget) ? 'within' : 'over',
       reason: tool.notes,
     }))
-  return [...withinPicks, ...overPicks].slice(0, QUIZ_RESULT_COUNT)
 }
 
 export function explainPick(pick: RankedTool, answers: { budget: Budget; skill: Skill }): string {

@@ -8,7 +8,7 @@ import { recommendQuiz } from '@/lib/catalog'
 import { ACTION_LIMITS, allowRate } from '@/lib/action-limit'
 import { getDb } from '@/lib/db'
 import { rateLimitKey, clientIp } from '@/lib/ip'
-import { budgetLabel, budgetPhrase, overBudgetLabel, priceLabel, skillLabel, skillPhrase } from '@/lib/format'
+import { budgetLabel, budgetPhrase, fewStrongOptionsLabel, overBudgetLabel, priceLabel, skillLabel, skillPhrase } from '@/lib/format'
 import { breadcrumbJsonLd } from '@/lib/jsonld'
 import { memberAccess } from '@/lib/members'
 import { pageMetadata } from '@/lib/metadata'
@@ -30,7 +30,7 @@ export async function generateMetadata({
   if (!parsed.success) {
     return pageMetadata({
       title: 'Your result',
-      description: 'Answer the three questions to get a best AI tool and five alternatives.',
+      description: 'Answer the three questions to get a best AI tool and up to five alternatives.',
       path: '/result',
       noIndex: true,
     })
@@ -92,7 +92,7 @@ export default async function ResultPage({
   }
 
   const result = await recommendQuiz(parsed.data)
-  if (!result || result.picks.length === 0) {
+  if (!result) {
     return (
       <div>
         <h1 className="font-bold text-4xl">No tool in the catalog fits that job yet</h1>
@@ -105,7 +105,17 @@ export default async function ResultPage({
   }
 
   const [top, ...alternatives] = result.picks
-  if (!top) return null
+  if (!top) {
+    return (
+      <div>
+        <h1 className="font-bold text-4xl">{fewStrongOptionsLabel}</h1>
+        <p className="mt-3 text-muted">Try a nearby job from the list on the home page.</p>
+        <Link href="/" className="mt-6 inline-flex min-h-12 items-center font-semibold underline">
+          Start over
+        </Link>
+      </div>
+    )
+  }
   const access = await memberAccess()
   const sharePath = `/result?${new URLSearchParams(parsed.data).toString()}`
   const crumbs = [
@@ -159,9 +169,7 @@ export default async function ResultPage({
 
       <section aria-labelledby="alternatives-heading">
         <h2 id="alternatives-heading" className="font-semibold text-3xl">Alternatives</h2>
-        {alternatives.length === 0 ? (
-          <p className="mt-2 text-muted">The catalog does not have another strong fit for this job.</p>
-        ) : (
+        {alternatives.length > 0 ? (
           <ul className="mt-4 grid gap-4 md:grid-cols-2">
             {alternatives.map((alt) => (
               <li key={alt.slug} className="rounded-2xl border border-line bg-card p-4">
@@ -179,7 +187,8 @@ export default async function ResultPage({
               </li>
             ))}
           </ul>
-        )}
+        ) : null}
+        {alternatives.length < 5 ? <p className="mt-4 text-muted">{fewStrongOptionsLabel}</p> : null}
       </section>
 
       <section>

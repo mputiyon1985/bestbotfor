@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { overBudgetLabel, priceLabel } from '../src/lib/format'
+import { fewStrongOptionsLabel, overBudgetLabel, priceLabel } from '../src/lib/format'
 import { recommend } from '../src/lib/recommend'
 import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
 
@@ -24,6 +24,7 @@ test('three questions produce one pick and five alternatives', async ({ page }) 
   await expect(page.getByText(pick.reason)).toBeVisible()
   await expect(page.getByText(priceLabel(pick), { exact: true }).first()).toBeVisible()
   await expect(page.getByRole('link', { name: `Visit ${pick.name}` })).toHaveAttribute('href', `/go/${pick.slug}`)
+  await expect(page.getByText(fewStrongOptionsLabel)).toHaveCount(0)
 
   const list = page.getByRole('region', { name: 'Alternatives' }).getByRole('list')
   await expect(list.getByRole('listitem')).toHaveCount(alternatives.length)
@@ -41,8 +42,10 @@ test('a free budget labels the best fits that sit just over budget', async ({ pa
   const result = recommend(catalogFromSeeds(), tight)
   const alternatives = result?.picks.slice(1) ?? []
   const over = alternatives.filter((pick) => pick.budgetFit === 'over')
-  expect(result?.picks.length).toBeGreaterThanOrEqual(6)
+  expect(result?.picks.length).toBe(6)
+  expect(result?.picks.every((pick) => pick.fitScore >= 50)).toBe(true)
   expect(over.length).toBeGreaterThan(0)
+  expect(result?.picks.some((pick) => pick.slug === 'hyperwrite')).toBe(false)
 
   await page.goto(`/result?task=${tight.task}&budget=${tight.budget}&skill=${tight.skill}`)
   const list = page.getByRole('region', { name: 'Alternatives' })
@@ -62,4 +65,18 @@ test('a free budget labels the best fits that sit just over budget', async ({ pa
     })
     await expect(item.getByText(overBudgetLabel)).toHaveCount(0)
   }
+})
+
+test('a short list says few strong options exist', async ({ page }) => {
+  const games = { task: 'games', budget: 'any', skill: 'beginner' } as const
+  const result = recommend(catalogFromSeeds(), games)
+  const alternatives = result?.picks.slice(1) ?? []
+  expect(alternatives.length).toBeLessThan(5)
+  expect(alternatives.length).toBeGreaterThan(0)
+
+  await page.goto(`/result?task=${games.task}&budget=${games.budget}&skill=${games.skill}`)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(result?.picks[0]?.name ?? '')
+  const list = page.getByRole('region', { name: 'Alternatives' })
+  await expect(list.getByRole('listitem')).toHaveCount(alternatives.length)
+  await expect(list.getByText(fewStrongOptionsLabel)).toBeVisible()
 })

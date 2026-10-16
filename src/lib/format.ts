@@ -6,8 +6,11 @@ export const budgetLabel: Record<Budget, string> = {
   any: 'Any budget',
 }
 
-/** Shown on a result that was added because the in-budget list was short. */
+/** Shown on a shortlisted tool that sits outside the chosen budget. */
 export const overBudgetLabel = 'Just over budget'
+
+/** Shown when fewer than five alternatives clear the minimum fit. */
+export const fewStrongOptionsLabel = 'Few strong options exist for this yet.'
 
 export const skillLabel: Record<Skill, string> = {
   beginner: 'Beginner',

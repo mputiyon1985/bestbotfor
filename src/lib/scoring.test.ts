@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { budgetDelta, fitsBudget, QUIZ_RESULT_COUNT, rankTools, selectQuizPicks, skillDelta, type ScoreableTool } from './scoring'
+import { budgetDelta, fitsBudget, MIN_QUIZ_FIT_SCORE, QUIZ_RESULT_COUNT, rankTools, selectQuizPicks, skillDelta, type ScoreableTool } from './scoring'
 
 function tool(overrides: Partial<ScoreableTool> = {}): ScoreableTool {
   return {
@@ -44,7 +44,7 @@ describe('rankTools', () => {
     expect(skillDelta('beginner', 'beginner')).toBe(12)
   })
 
-  it('returns one top pick and five alternatives, backfilling tools just over budget', () => {
+  it('shows at most one pick and five alternatives that clear the minimum fit', () => {
     const tools = [
       tool({ slug: 'free-a', name: 'Free A', fitScore: 90, pricingModel: 'free', hasFreeTier: true, priceFromUsd: null }),
       tool({ slug: 'free-b', name: 'Free B', fitScore: 70, pricingModel: 'freemium', hasFreeTier: true, priceFromUsd: 10, notes: 'Free B starts on a free tier.' }),
@@ -57,28 +57,42 @@ describe('rankTools', () => {
     ]
 
     const free = selectQuizPicks(tools, { budget: 'free', skill: 'beginner' })
+    expect(MIN_QUIZ_FIT_SCORE).toBe(50)
     expect(free).toHaveLength(QUIZ_RESULT_COUNT)
-    expect(free[0]?.slug).toBe('free-a')
-    expect(free.filter((pick) => pick.budgetFit === 'within').map((pick) => pick.slug)).toEqual(['free-a', 'free-b'])
+    expect(free.map((pick) => pick.slug)).toEqual(['free-a', 'free-b', 'paid-high', 'paid-mid', 'low-price', 'paid-c'])
     expect(free.filter((pick) => pick.budgetFit === 'over').map((pick) => pick.slug)).toEqual([
       'paid-high',
       'paid-mid',
       'low-price',
       'paid-c',
     ])
+    expect(free.every((pick) => pick.fitScore >= MIN_QUIZ_FIT_SCORE)).toBe(true)
     expect(free.every((pick) => pick.reason === pick.notes && !pick.reason.includes('\n'))).toBe(true)
-
-    const low = selectQuizPicks(tools, { budget: 'low', skill: 'beginner' })
-    expect(low).toHaveLength(QUIZ_RESULT_COUNT)
-    expect(low.filter((pick) => pick.budgetFit === 'within').map((pick) => pick.slug)).toEqual(['free-a', 'free-b', 'low-price'])
-    expect(low.filter((pick) => pick.budgetFit === 'over').map((pick) => pick.slug)).toEqual(['paid-high', 'paid-mid', 'paid-c'])
     expect(fitsBudget(tools[4]!, 'low')).toBe(true)
     expect(fitsBudget(tools[4]!, 'free')).toBe(false)
 
+    const low = selectQuizPicks(tools, { budget: 'low', skill: 'beginner' })
+    expect(low.map((pick) => pick.slug)).toEqual(['free-a', 'paid-high', 'free-b', 'paid-mid', 'low-price', 'paid-c'])
+    expect(low.find((pick) => pick.slug === 'paid-high')?.budgetFit).toBe('over')
+    expect(low.find((pick) => pick.slug === 'low-price')?.budgetFit).toBe('within')
+
     const any = selectQuizPicks(tools, { budget: 'any', skill: 'beginner' })
-    expect(any).toHaveLength(QUIZ_RESULT_COUNT)
     expect(any.every((pick) => pick.budgetFit === 'within')).toBe(true)
     expect(any.map((pick) => pick.slug)).toEqual(['paid-high', 'free-a', 'paid-mid', 'free-b', 'low-price', 'paid-c'])
+  })
+
+  it('does not pad the shortlist when fewer than five alternatives clear the minimum', () => {
+    const picks = selectQuizPicks(
+      [
+        tool({ slug: 'only', name: 'Only', fitScore: 70, pricingModel: 'free', hasFreeTier: true }),
+        tool({ slug: 'second', name: 'Second', fitScore: 55, pricingModel: 'free', hasFreeTier: true }),
+        tool({ slug: 'below', name: 'Below', fitScore: 49, pricingModel: 'paid', hasFreeTier: false, priceFromUsd: 80 }),
+        tool({ slug: 'weaker', name: 'Weaker', fitScore: 20, pricingModel: 'free', hasFreeTier: true }),
+      ],
+      { budget: 'free', skill: 'beginner' },
+    )
+    expect(picks.map((pick) => pick.slug)).toEqual(['only', 'second'])
+    expect(picks.every((pick) => pick.budgetFit === 'within')).toBe(true)
   })
 
   it('ignores an affiliate URL even if one is attached to the object', () => {

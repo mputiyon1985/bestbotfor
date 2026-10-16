@@ -10,7 +10,7 @@ import { affiliatePrograms, tasks, toolTasks, tools } from '@/lib/db/schema'
 import { officialHttpsUrl } from '@/lib/redirect'
 import { priceLabel } from '@/lib/format'
 import { recommend, toolsForTask } from '@/lib/recommend'
-import { fitsBudget, QUIZ_RESULT_COUNT } from '@/lib/scoring'
+import { MIN_QUIZ_FIT_SCORE, QUIZ_RESULT_COUNT } from '@/lib/scoring'
 import { slugSchema, type Budget, type Skill } from '@/lib/validation'
 import { seed } from '../../scripts/seed'
 
@@ -89,29 +89,60 @@ describe('catalog seed', () => {
 
     const budgets: Budget[] = ['free', 'low', 'any']
     const skills: Skill[] = ['beginner', 'intermediate', 'pro']
+    const droppedFits = [
+      ['hyperwrite', 'seo'],
+      ['wondercraft', 'music'],
+      ['podcastle', 'music'],
+      ['listnr', 'music'],
+      ['notebooklm', 'music'],
+      ['descript', 'music'],
+    ] as const
+    for (const [slug, task] of droppedFits) {
+      const entry = toolSeeds.find((item) => item.slug === slug)
+      expect(entry?.fits.some((fit) => fit.task === task), `${slug} ${task}`).toBe(false)
+    }
+    const elevenMusic = toolSeeds.find((item) => item.slug === 'elevenlabs')?.fits.find((fit) => fit.task === 'music')
+    expect(elevenMusic).toEqual({
+      task: 'music',
+      score: 86,
+      notes: 'Eleven Music generates songs with vocals; commercial use needs a paid plan.',
+    })
+    for (const [slug, score] of [
+      ['udio', 88],
+      ['aiva', 78],
+      ['soundraw', 74],
+      ['mubert', 72],
+      ['semrush', 90],
+      ['ahrefs', 90],
+      ['clearscope', 88],
+      ['marketmuse', 85],
+      ['neuronwriter', 84],
+      ['se-ranking', 84],
+    ] as const) {
+      const entry = toolSeeds.find((item) => item.slug === slug)
+      expect(entry?.lastVerifiedAt, slug).toBe('2026-10-16')
+      expect(entry?.allowedHosts.length, slug).toBeGreaterThan(0)
+      const fit = entry?.fits[0]
+      expect(fit?.score, slug).toBe(score)
+    }
+
     for (const task of taskSeeds) {
       const ranked = toolsForTask(catalog, task.slug)
       const fitted = toolSeeds.filter((tool) => tool.fits.some((fit) => fit.task === task.slug))
       expect(ranked, task.slug).toHaveLength(fitted.length)
-      expect(ranked.length, task.slug).toBeGreaterThanOrEqual(8)
+      const qualified = fitted.filter((tool) => (tool.fits.find((fit) => fit.task === task.slug)?.score ?? 0) >= MIN_QUIZ_FIT_SCORE)
       for (const budget of budgets) {
         for (const skill of skills) {
           const result = recommend(catalog, { task: task.slug, budget, skill })
-          expect(result?.picks.length, `${task.slug} ${budget} ${skill}`).toBeGreaterThanOrEqual(QUIZ_RESULT_COUNT)
           const picks = result?.picks ?? []
-          const withinCount = fitted.filter((item) => fitsBudget(item, budget)).length
-          const withinPicks = picks.filter((pick) => pick.budgetFit === 'within')
-          const overPicks = picks.filter((pick) => pick.budgetFit === 'over')
-          expect(withinPicks, `${task.slug} ${budget}`).toHaveLength(Math.min(withinCount, QUIZ_RESULT_COUNT))
-          expect(overPicks, `${task.slug} ${budget}`).toHaveLength(QUIZ_RESULT_COUNT - withinPicks.length)
-          for (let index = 1; index < overPicks.length; index += 1) {
-            expect(overPicks[index - 1]!.fitScore).toBeGreaterThanOrEqual(overPicks[index]!.fitScore)
-          }
+          expect(picks, `${task.slug} ${budget} ${skill}`).toHaveLength(Math.min(QUIZ_RESULT_COUNT, qualified.length))
           for (const pick of picks) {
+            expect(pick.fitScore, pick.slug).toBeGreaterThanOrEqual(MIN_QUIZ_FIT_SCORE)
             expect(pick.reason, pick.slug).toBe(pick.notes)
             expect(pick.reason.includes('\n'), pick.slug).toBe(false)
             expect(pick.reason.length, pick.slug).toBeGreaterThan(20)
             expect(priceLabel(pick).length, pick.slug).toBeGreaterThan(0)
+            if (pick.budgetFit === 'over') expect(pick.fitScore).toBeGreaterThanOrEqual(MIN_QUIZ_FIT_SCORE)
           }
         }
       }
