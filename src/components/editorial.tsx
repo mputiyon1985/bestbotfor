@@ -1,4 +1,5 @@
-import { ratingAriaLabel, starFills, type EditorialScore, type ProCon } from '@/lib/editorial'
+import Link from 'next/link'
+import { UNMAINTAINED_NOTICE, ratingAriaLabel, starFills, type EditorialScore, type ProCon } from '@/lib/editorial'
 import { formatUsDate } from '@/lib/format'
 import { publicScore, scoresPublished } from '@/lib/score-visibility'
 
@@ -47,7 +48,13 @@ export function EditorialCompact({
   if (!score && pros.length === 0 && cons.length === 0) return null
   return (
     <div data-pros-cons="compact" className="mt-3 min-w-0 space-y-2 break-words">
-      {score ? <StarRating score={score.overall} showScores={showScores} /> : null}
+      {score && editorial ? <RankLine editorial={editorial} compact /> : null}
+      {score ? (
+        <Link href="/how-we-rate" className="inline-flex max-w-full flex-wrap items-center gap-2 underline-offset-4 hover:underline">
+          <StarRating score={score.overall} showScores={showScores} />
+          <span className="text-sm text-muted">{score.overallText}</span>
+        </Link>
+      ) : null}
       <ProsConsCompact pros={pros} cons={cons} />
     </div>
   )
@@ -82,27 +89,32 @@ export function ScoreSection({
   showScores?: boolean
 }) {
   const score = publicScore(editorial, showScores)
-  if (!score) return null
+  if (!score || !editorial) return null
   return (
-    <section aria-labelledby="score-heading" data-score-section="" className="min-w-0 space-y-4">
+    <section aria-labelledby="score-heading" data-score-section="" className="min-w-0 space-y-4 break-words">
       <h2 id="score-heading" className="font-semibold text-3xl">
         {score.heading}
       </h2>
-      <div className="flex flex-wrap items-center gap-3">
-        <StarRating score={score.overall} showScores={showScores} />
-        <p className="font-semibold">{score.overallText}</p>
-      </div>
+      {editorial.ratingStatus === UNMAINTAINED_NOTICE ? (
+        <p role="status" data-maintenance-notice className="max-w-2xl rounded-2xl border border-line px-4 py-3 text-sm font-semibold">
+          {UNMAINTAINED_NOTICE}
+        </p>
+      ) : null}
+      <RankLine editorial={editorial} />
       <dl className="max-w-xl min-w-0 space-y-3">
         {score.criteria.map((part) => (
           <CriterionBar key={part.label} label={part.label} value={part.value} text={part.text} />
         ))}
       </dl>
-      <p className="max-w-2xl text-muted">{score.rationale}</p>
-      <div>
-        <h3 className="font-semibold text-xl">{score.howWeScoreHeading}</h3>
-        <p className="mt-2 max-w-2xl text-sm text-muted">{score.howWeScore}</p>
-        <p className="mt-2 text-sm text-muted">Reviewed {formatUsDate(score.reviewedAt)}.</p>
-      </div>
+      <p>
+        <Link href="/how-we-rate" className="inline-flex max-w-full flex-wrap items-center gap-3 underline-offset-4 hover:underline">
+          <StarRating score={score.overall} showScores={showScores} />
+          <span className="text-sm text-muted">{score.overallText}</span>
+        </Link>
+      </p>
+      {editorial.note ? <p data-score-note className="max-w-2xl text-sm text-muted">{editorial.note}</p> : null}
+      {score.rationale.trim() ? <p className="max-w-2xl text-muted">{score.rationale}</p> : null}
+      <p className="text-sm text-muted">Reviewed {formatUsDate(score.reviewedAt)}.</p>
     </section>
   )
 }
@@ -117,6 +129,16 @@ export function ProsConsSection({ pros, cons }: { pros: ProCon[]; cons: ProCon[]
       {pros.length > 0 ? <PointList title="Pros" points={pros} /> : null}
       {cons.length > 0 ? <PointList title="Cons" points={cons} /> : null}
     </section>
+  )
+}
+
+function RankLine({ editorial, compact = false }: { editorial: EditorialScore; compact?: boolean }) {
+  if (editorial.hideRank) return null
+  return (
+    <p data-category-rank={editorial.categoryRankDisplay} className={compact ? 'text-sm font-semibold' : 'font-semibold text-2xl'}>
+      {editorial.tied ? <span data-tie="true">Tied · </span> : null}
+      {editorial.categoryRankDisplay}
+    </p>
   )
 }
 

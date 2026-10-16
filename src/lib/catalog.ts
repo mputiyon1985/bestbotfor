@@ -21,7 +21,7 @@ async function loadCatalog(): Promise<Catalog> {
   return assembleCatalog(taskRows, toolRows, fitRows, affiliateRows, scoreRows, proConRows)
 }
 
-export const getCatalog = unstable_cache(loadCatalog, ['catalog-v3'], { revalidate: 3600 })
+export const getCatalog = unstable_cache(loadCatalog, ['catalog-v4'], { revalidate: 3600 })
 
 export async function getTool(slug: string): Promise<CatalogTool | undefined> {
   const [tool] = await readToolsBySlugs(getDb(), [slug])

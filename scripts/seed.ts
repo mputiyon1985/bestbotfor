@@ -1,8 +1,9 @@
+import { notInArray } from 'drizzle-orm'
 import { comparePairSeeds, taskSeeds, toolSeeds } from '../src/data/catalog'
-import { editorialSeeds } from '../src/data/scores-pros-cons.seed'
+import { keptProsConsSeeds, ratingSeeds } from '../src/data/scores-v23.seed'
 import { getDb } from '../src/lib/db/client'
 import { affiliatePrograms, tasks, toolProsCons, toolScores, toolTasks, tools } from '../src/lib/db/schema'
-import { validateEditorialSeeds } from '../src/lib/editorial'
+import { validateProsConsSeeds, validateRatingSeeds } from '../src/lib/editorial'
 import { reviewedToolUrl } from '../src/lib/redirect'
 
 export async function seed(): Promise<void> {
@@ -10,13 +11,16 @@ for (const tool of toolSeeds) reviewedToolUrl(tool)
 
 const db = getDb()
 
-validateEditorialSeeds(
-  editorialSeeds,
-  new Set(toolSeeds.map((tool) => tool.slug)),
-  new Set(toolSeeds.filter((tool) => tool.needsVerification).map((tool) => tool.slug)),
-)
+const knownSlugs = new Set(toolSeeds.map((tool) => tool.slug))
+validateRatingSeeds(ratingSeeds, knownSlugs)
+validateProsConsSeeds(keptProsConsSeeds, knownSlugs)
+const ratedSlugs = new Set(ratingSeeds.map((row) => row.slug))
+for (const entry of keptProsConsSeeds) {
+  if (!ratedSlugs.has(entry.slug)) throw new Error(`${entry.slug} keeps pros and cons without a v2.3 score`)
+}
 
-// One transaction, upserts only. Rows that are not in this seed stay in place.
+// One transaction. Catalog rows that are not in this seed stay in place.
+// Score rows and pros/cons are rewritten so only v2.3-rated tools keep them.
 await db.transaction(async (tx) => {
 for (const task of taskSeeds) {
   await tx
@@ -127,9 +131,11 @@ for (const [a, b] of comparePairSeeds) {
   if (!toolId.has(a) || !toolId.has(b)) throw new Error(`Compare pair ${a} vs ${b} is not in the catalog`)
 }
 
-for (const entry of editorialSeeds) {
+const ratedIds: number[] = []
+for (const entry of ratingSeeds) {
   const id = toolId.get(entry.slug)
-  if (!id) throw new Error(`Missing tool id for editorial seed ${entry.slug}`)
+  if (!id) throw new Error(`Missing tool id for rating seed ${entry.slug}`)
+  ratedIds.push(id)
   const score = {
     features: entry.features,
     value: entry.value,
@@ -139,6 +145,12 @@ for (const entry of editorialSeeds) {
     rationale: entry.rationale,
     sources: '[]',
     reviewedAt: entry.reviewedAt,
+    primaryCategory: entry.primaryCategory,
+    categoryRankDisplay: entry.categoryRankDisplay,
+    tieGroup: entry.tieGroup,
+    note: entry.note,
+    ratingStatus: entry.ratingStatus,
+    quizEligible: entry.quizEligible,
   }
   await tx
     .insert(toolScores)
@@ -147,7 +159,14 @@ for (const entry of editorialSeeds) {
       target: toolScores.toolId,
       set: score,
     })
+}
+await tx.delete(toolScores).where(notInArray(toolScores.toolId, ratedIds))
 
+const keptIds: number[] = []
+for (const entry of keptProsConsSeeds) {
+  const id = toolId.get(entry.slug)
+  if (!id) throw new Error(`Missing tool id for pros and cons ${entry.slug}`)
+  keptIds.push(id)
   const points = [
     ...entry.pros.map((point, index) => ({ kind: 'pro', position: index + 1, body: point.text, sourceUrl: point.sourceUrl })),
     ...entry.cons.map((point, index) => ({ kind: 'con', position: index + 1, body: point.text, sourceUrl: point.sourceUrl })),
@@ -162,6 +181,7 @@ for (const entry of editorialSeeds) {
       })
   }
 }
+await tx.delete(toolProsCons).where(notInArray(toolProsCons.toolId, keptIds))
 
 const storedPrograms = await tx.select().from(affiliatePrograms)
 if (storedPrograms.some((row) => row.affiliateUrl)) {

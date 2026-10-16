@@ -46,8 +46,12 @@ describe('sqlite file directories', () => {
     expect(ids).toContain('0005_tool_scores_pros_cons.sql')
     expect(ids).toContain('0006_tool_needs_verification.sql')
     expect(ids).toContain('0007_drop_non_forge_scores.sql')
+    expect(ids).toContain('0008_ratings_v23.sql')
     const columns = await client.execute('PRAGMA table_info(tools)')
     expect(columns.rows.some((row) => row.name === 'needs_verification')).toBe(true)
+    const scoreColumns = await client.execute('PRAGMA table_info(tool_scores)')
+    const scoreNames = scoreColumns.rows.map((row) => String(row.name))
+    expect(scoreNames).toEqual(expect.arrayContaining(['primary_category', 'category_rank_display', 'tie_group', 'note', 'rating_status', 'quiz_eligible']))
     const tables = await client.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('tool_scores', 'tool_pros_cons') ORDER BY name",
     )

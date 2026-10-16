@@ -9,7 +9,7 @@ import { getDb, resetDbCache } from './client'
 import { applyMigrations } from './migrate'
 import { generateMetadata as toolMetadata } from '@/app/tools/[slug]/page'
 import { editorialSeeds } from '@/data/scores-pros-cons.seed'
-import { UNRATED_SLUGS } from '@/lib/editorial'
+import { keptProsConsSeeds, ratingSeeds, unratedSlugs } from '@/data/scores-v23.seed'
 import { affiliatePrograms, clicks, tasks, toolProsCons, toolScores, toolTasks, tools } from './schema'
 
 const previousUrl = process.env.TURSO_DATABASE_URL
@@ -180,7 +180,7 @@ describe('catalog seed', () => {
     expect(eleven?.notes).toBe('Eleven Music generates songs with vocals; commercial use needs a paid plan.')
   })
 
-  it('upserts editorial scores and leaves a row that is not in the seed', async () => {
+  it('replaces v2.3 scores and drops score rows for tools that are not rated', async () => {
     await useTempDatabase()
     await seed()
     const db = getDb()
@@ -212,29 +212,33 @@ describe('catalog seed', () => {
 
     const scores = await db.select().from(toolScores)
     const points = await db.select().from(toolProsCons)
-    const expectedPoints = editorialSeeds.reduce((total, row) => total + row.pros.length + row.cons.length, 0)
-    expect(scores).toHaveLength(editorialSeeds.length + 1)
-    expect(points).toHaveLength(expectedPoints + 1)
+    const expectedPoints = keptProsConsSeeds.reduce((total, row) => total + row.pros.length + row.cons.length, 0)
+    expect(scores).toHaveLength(ratingSeeds.length)
+    expect(points).toHaveLength(expectedPoints)
+    const claudeRating = ratingSeeds.find((row) => row.slug === 'claude')
     const restored = scores.find((row) => row.toolId === claude.id)
-    expect(restored?.rationale).toBe(editorialSeeds.find((row) => row.slug === 'claude')?.rationale)
-    expect(restored?.overall).toBe(4.5)
+    expect(restored?.rationale).toBe(claudeRating?.rationale)
+    expect(restored?.overall).toBe(claudeRating?.overall)
     expect(restored?.sources).toBe('[]')
+    expect(restored?.categoryRankDisplay).toBe(claudeRating?.categoryRankDisplay)
+    expect(restored?.note).toBe(claudeRating?.note ?? '')
     const windsurf = toolRows.find((row) => row.slug === 'windsurf')
     expect(windsurf?.name).toBe('Devin Desktop (formerly Windsurf)')
     expect(windsurf?.vendor).toBe('Cognition')
     expect(windsurf?.url).toBe('https://devin.ai/desktop')
     expect(windsurf?.needsVerification).toBe(false)
-    expect(scores.some((row) => row.toolId === windsurf?.id)).toBe(false)
+    expect(scores.some((row) => row.toolId === windsurf?.id)).toBe(true)
     expect(points.some((row) => row.toolId === windsurf?.id)).toBe(false)
     const relevance = toolRows.find((row) => row.slug === 'relevance-ai')
     expect(relevance?.hasFreeTier).toBe(false)
     expect(relevance?.priceFromUsd).toBe(19)
-    const sentinel = scores.find((row) => row.toolId === 999_999)
-    expect(sentinel?.rationale).toBe('Keep this sentinel score.')
-    const sentinelPoint = points.find((row) => row.toolId === 999_999)
-    expect(sentinelPoint?.body).toBe('Keep this sentinel point.')
+    expect(scores.some((row) => row.toolId === relevance?.id)).toBe(false)
+    expect(points.some((row) => row.toolId === relevance?.id)).toBe(false)
+    expect(scores.some((row) => row.toolId === 999_999)).toBe(false)
+    expect(points.some((row) => row.toolId === 999_999)).toBe(false)
     const claudePros = points.filter((row) => row.toolId === claude.id && row.kind === 'pro')
-    expect(claudePros).toHaveLength(3)
+    const v1Pros = keptProsConsSeeds.find((row) => row.slug === 'claude')?.pros.map((point) => point.text)
+    expect(claudePros.map((row) => row.body)).toEqual(v1Pros)
   })
 
   it('rates exactly the CSV slugs', async () => {
@@ -255,32 +259,47 @@ describe('catalog seed', () => {
     const points = await db.select().from(toolProsCons)
     const idToSlug = new Map(toolRows.map((row) => [row.id, row.slug]))
     const rated = scores.map((row) => idToSlug.get(row.toolId)).sort()
-    const csvSlugs = editorialSeeds.map((row) => row.slug).sort()
-    expect(editorialSeeds).toHaveLength(146)
+    const csvSlugs = ratingSeeds.map((row) => row.slug).sort()
+    const v1Slugs = new Set(editorialSeeds.map((row) => row.slug))
+    expect(ratingSeeds).toHaveLength(91)
+    expect(unratedSlugs).toHaveLength(68)
     expect(rated).toEqual(csvSlugs)
     expect(new Set(rated)).toEqual(new Set(csvSlugs))
-    expect(csvSlugs).not.toContain('cursor')
-    expect(csvSlugs).not.toContain('windsurf')
+    expect(csvSlugs).toContain('cursor')
+    expect(csvSlugs).toContain('windsurf')
     expect(scores.every((row) => row.sources === '[]')).toBe(true)
     expect(JSON.stringify(scores)).not.toContain('pcmag.com')
     expect(JSON.stringify(scores)).not.toContain('techradar.com')
+    expect(JSON.stringify(scores)).not.toContain('evidence.jsonl')
     expect(JSON.stringify(scores)).not.toContain('third_party')
     expect(JSON.stringify(scores)).not.toContain('source_urls')
-    expect(scores.some((row) => row.toolId === cursor.id)).toBe(false)
-    expect(scores.some((row) => row.toolId === windsurf.id)).toBe(false)
+    expect(scores.some((row) => row.toolId === cursor.id)).toBe(true)
+    expect(scores.some((row) => row.toolId === windsurf.id)).toBe(true)
     expect(points.some((row) => row.toolId === cursor.id)).toBe(false)
     expect(points.some((row) => row.toolId === windsurf.id)).toBe(false)
     expect(scores.some((row) => row.toolId === chatgpt.id)).toBe(true)
+    const kept = keptProsConsSeeds.length
+    const removedSlugs = editorialSeeds.filter((row) => !csvSlugs.includes(row.slug))
+    expect(kept).toBe(87)
+    expect(removedSlugs).toHaveLength(59)
+    expect(ratingSeeds.filter((row) => !v1Slugs.has(row.slug)).map((row) => row.slug).sort()).toEqual([
+      'cursor',
+      'grok',
+      'semantic-scholar',
+      'windsurf',
+    ])
+    const keptPoints = keptProsConsSeeds.reduce((total, row) => total + row.pros.length + row.cons.length, 0)
+    const removedPoints = removedSlugs.reduce((total, row) => total + row.pros.length + row.cons.length, 0)
+    expect(keptPoints).toBe(439)
+    expect(removedPoints).toBe(296)
+    expect(points).toHaveLength(keptPoints)
 
-    expect(UNRATED_SLUGS).toHaveLength(13)
-    expect(UNRATED_SLUGS).toContain('windsurf')
-    expect(UNRATED_SLUGS).toContain('cursor')
-    for (const slug of UNRATED_SLUGS) {
+    for (const slug of unratedSlugs) {
       const tool = bySlug.get(slug)
       expect(tool, slug).toBeTruthy()
       expect(scores.some((row) => row.toolId === tool?.id), slug).toBe(false)
       expect(points.some((row) => row.toolId === tool?.id), slug).toBe(false)
-      expect(editorialSeeds.some((row) => row.slug === slug), slug).toBe(false)
+      expect(ratingSeeds.some((row) => row.slug === slug), slug).toBe(false)
     }
     expect(windsurf.name).toBe('Devin Desktop (formerly Windsurf)')
     expect(windsurf.vendor).toBe('Cognition')
@@ -301,41 +320,25 @@ describe('catalog seed', () => {
     expect(relevance?.pricingModel).toBe('paid')
     expect(relevance?.priceFromUsd).toBe(19)
 
-    await db.insert(toolScores).values({
-      toolId: cursor.id,
-      features: 4,
-      value: 3,
-      ease: 3,
-      quality: 4,
-      overall: 3.6,
-      rationale: 'Sample score that is not in the Forge CSV.',
-      sources: '[]',
-      reviewedAt: '2026-10-16',
-    })
-    await db.insert(toolProsCons).values({
-      toolId: cursor.id,
-      kind: 'pro',
-      position: 1,
-      body: 'Sample pro that is not in the Forge CSV.',
-      sourceUrl: 'https://cursor.com/docs',
-    })
     const sql = await readFile(path.join(process.cwd(), 'drizzle/0007_drop_non_forge_scores.sql'), 'utf8')
+    const named = [...new Set([...sql.matchAll(/slug IN \('([^']+)'\)/g)].map((match) => match[1]))]
+    expect(named).toEqual(['cursor'])
     await db.$client.executeMultiple(sql)
     const deleted = await db.select().from(toolScores)
-    const deletedPoints = await db.select().from(toolProsCons)
-    const deletedRated = deleted.map((row) => idToSlug.get(row.toolId)).sort()
-    expect(deletedRated).toEqual(csvSlugs)
     expect(deleted.some((row) => row.toolId === cursor.id)).toBe(false)
-    expect(deletedPoints.some((row) => row.toolId === cursor.id)).toBe(false)
     expect(deleted.some((row) => row.toolId === chatgpt.id)).toBe(true)
     await seed()
     const restoredRows = await db.select().from(tools)
     const restoredIds = new Map(restoredRows.map((row) => [row.id, row.slug]))
     const restoredCursor = restoredRows.find((row) => row.slug === 'cursor')
-    const restored = (await db.select().from(toolScores)).map((row) => restoredIds.get(row.toolId)).sort()
+    const restoredScores = await db.select().from(toolScores)
+    const restored = restoredScores.map((row) => restoredIds.get(row.toolId)).sort()
     const restoredPoints = await db.select().from(toolProsCons)
     expect(restored).toEqual(csvSlugs)
     expect(restoredPoints.some((row) => row.toolId === restoredCursor?.id)).toBe(false)
+    const cursorScore = restoredScores.find((row) => row.toolId === restoredCursor?.id)
+    expect(cursorScore?.overall).toBe(ratingSeeds.find((row) => row.slug === 'cursor')?.overall)
+    expect(cursorScore?.sources).toBe('[]')
 
     const previousEnv = process.env.VERCEL_ENV
     process.env.VERCEL_ENV = 'production'

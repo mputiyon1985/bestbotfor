@@ -1,59 +1,55 @@
-import { expect, test, type Page } from '@playwright/test'
-import { editorialSeeds } from '../src/data/scores-pros-cons.seed'
-import { UNRATED_SLUGS } from '../src/lib/editorial'
+import { expect, test } from '@playwright/test'
+import { keptProsConsSeeds, ratingSeeds, unratedSlugs } from '../src/data/scores-v23.seed'
+import { ratingAriaLabel, starFills } from '../src/lib/editorial'
 import { toolSeeds } from '../src/data/catalog'
 
-const claude = editorialSeeds.find((row) => row.slug === 'claude')
-const chatgpt = editorialSeeds.find((row) => row.slug === 'chatgpt')
+const claude = ratingSeeds.find((row) => row.slug === 'claude')
+const chatgpt = ratingSeeds.find((row) => row.slug === 'chatgpt')
+const claudePoints = keptProsConsSeeds.find((row) => row.slug === 'claude')
+const chatgptPoints = keptProsConsSeeds.find((row) => row.slug === 'chatgpt')
 
-const SCORE_PAGES = [
-  '/tools/chatgpt',
-  '/tools',
-  '/best/chat',
-  '/best/coding',
-  '/compare/chatgpt-vs-claude',
-  '/result?task=chat&budget=any&skill=beginner',
-  '/result?task=chat&view=all',
-] as const
+test('a scored tool shows fractional stars, the rubric, and no review schema', async ({ page }) => {
+  expect(claude).toBeTruthy()
+  expect(claudePoints).toBeTruthy()
+  if (!claude || !claudePoints) return
+  const label = ratingAriaLabel(claude.overall)
+  expect(claude.overall).toBe(4)
+  expect(starFills(claude.overall)).toEqual([1, 1, 1, 1, 0])
 
-async function expectNoScoreComponent(page: Page, path: string) {
-  await expect(page.locator('[data-score-section]'), path).toHaveCount(0)
-  await expect(page.locator('[data-star-rating]'), path).toHaveCount(0)
-  await expect(page.locator('[data-criterion-row]'), path).toHaveCount(0)
-  await expect(page.getByRole('heading', { name: 'BestBotFor score' }), path).toHaveCount(0)
-  await expect(page.getByRole('heading', { name: 'How we score' }), path).toHaveCount(0)
-  await expect(page.getByRole('img', { name: /Rated / }), path).toHaveCount(0)
-  await expect(page.getByRole('meter'), path).toHaveCount(0)
-  await expect(page.getByText(/\bout of 5\b/), path).toHaveCount(0)
-}
+  await page.goto('/tools/claude')
+  const stars = page.getByRole('img', { name: label })
+  await expect(stars).toBeVisible()
+  await expect(stars.locator('svg').first()).toHaveAttribute('aria-hidden', 'true')
+  const fills = await stars.locator('[data-star-fill]').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-star-fill')))
+  expect(fills).toEqual(starFills(claude.overall).map(String))
 
-test('/tools/chatgpt shows pros and cons and hides the score', async ({ page }) => {
-  expect(chatgpt).toBeTruthy()
-  if (!chatgpt) return
-
-  await page.goto('/tools/chatgpt')
+  await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toBeVisible()
+  await expect(page.locator('[data-category-rank]')).toHaveText('#4 of 4 in Chat')
+  await expect(page.locator('[data-tie]')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'How we score' })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: /out of 5/ })).toHaveAttribute('href', '/how-we-rate')
   const prosAndCons = page.getByRole('region', { name: 'Pros and cons' })
   await expect(prosAndCons).toBeVisible()
-  await expect(prosAndCons.getByRole('heading', { name: 'Pros', exact: true })).toBeVisible()
-  await expect(prosAndCons.getByRole('heading', { name: 'Cons', exact: true })).toBeVisible()
-  await expect(prosAndCons.getByText(chatgpt.pros[0]?.text ?? '')).toBeVisible()
-  await expect(prosAndCons.getByText(chatgpt.cons[0]?.text ?? '')).toBeVisible()
-  await expectNoScoreComponent(page, '/tools/chatgpt')
+  await expect(prosAndCons.getByText(claudePoints.pros[0]?.text ?? '')).toBeVisible()
   await expect(page.getByRole('link', { name: 'Source', exact: true })).toHaveCount(0)
-
-  const description = (await page.locator('meta[name="description"]').getAttribute('content')) ?? ''
-  const ogDescription = (await page.locator('meta[property="og:description"]').getAttribute('content')) ?? ''
-  const ogTitle = (await page.locator('meta[property="og:title"]').getAttribute('content')) ?? ''
-  for (const text of [description, ogDescription, ogTitle]) {
-    expect(text).not.toMatch(/out of 5|BestBotFor score|How we score|Rated /)
+  for (const label of ['Quality', 'Features', 'Value', 'Ease']) {
+    const meter = page.getByRole('meter', { name: new RegExp(`^${label} `) })
+    await expect(meter).toBeVisible()
+    await expect(meter).toHaveAttribute('aria-valuemax', '5')
   }
-
   const html = await page.content()
   expect(html).not.toContain('pcmag.com')
   expect(html).not.toContain('zdnet.com')
   expect(html).not.toContain('techradar.com')
-  expect(html).not.toContain('chatgpt.com/pricing')
+  expect(html).not.toContain('claude.com/pricing')
   expect(html).not.toContain('third_party')
+  expect(html).not.toContain('evidence.jsonl')
+  expect(html).not.toContain('source_urls')
+
+  const description = (await page.locator('meta[name="description"]').getAttribute('content')) ?? ''
+  const ogDescription = (await page.locator('meta[property="og:description"]').getAttribute('content')) ?? ''
+  expect(description).not.toMatch(/out of 5|BestBotFor score|How we score|Rated /)
+  expect(ogDescription).not.toMatch(/out of 5|BestBotFor score|How we score|Rated /)
 
   const blocks = await page.locator('script[type="application/ld+json"]').allTextContents()
   const combined = blocks.join('\n')
@@ -61,66 +57,64 @@ test('/tools/chatgpt shows pros and cons and hides the score', async ({ page }) 
   expect(combined).not.toContain('Review')
   expect(combined).not.toContain('ratingValue')
   expect(combined).not.toContain('out of 5')
-  expect(combined).not.toContain('BestBotFor score')
-})
-
-test('no page renders the score component', async ({ page }) => {
-  for (const path of SCORE_PAGES) {
-    await page.goto(path)
-    await expect(page.getByRole('heading', { level: 1 }), path).toBeVisible()
-    await expectNoScoreComponent(page, path)
-    const description = (await page.locator('meta[name="description"]').getAttribute('content')) ?? ''
-    const ogDescription = (await page.locator('meta[property="og:description"]').getAttribute('content')) ?? ''
-    expect(description, path).not.toMatch(/out of 5|BestBotFor score|How we score/)
-    expect(ogDescription, path).not.toMatch(/out of 5|BestBotFor score|How we score/)
-    const blocks = await page.locator('script[type="application/ld+json"]').allTextContents()
-    const combined = blocks.join('\n')
-    expect(combined, path).not.toContain('AggregateRating')
-    expect(combined, path).not.toContain('ratingValue')
-    expect(combined, path).not.toContain('out of 5')
-  }
 })
 
 test('blank tools hide the score and the pros', async ({ page }) => {
-  for (const slug of UNRATED_SLUGS) {
+  test.setTimeout(180_000)
+  expect(unratedSlugs).toHaveLength(68)
+  for (const slug of unratedSlugs) {
     const tool = toolSeeds.find((item) => item.slug === slug)
     await page.goto(`/tools/${slug}`)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(tool?.name ?? slug)
     await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'How we score' })).toHaveCount(0)
+    await expect(page.locator('[data-category-rank]')).toHaveCount(0)
+    await expect(page.locator('[data-score-note]')).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'Pros and cons' })).toHaveCount(0)
     await expect(page.getByRole('img', { name: /Rated/ })).toHaveCount(0)
     await expect(page.getByRole('link', { name: 'Source', exact: true })).toHaveCount(0)
     const html = await page.content()
     expect(html).not.toContain('pcmag.com')
     expect(html).not.toContain('third_party')
+    expect(html).not.toContain('evidence.jsonl')
+    expect(html).not.toContain('source_urls')
   }
 })
 
 test('result cards show a compact pros list only for tools that have one', async ({ page }) => {
   expect(chatgpt).toBeTruthy()
+  expect(chatgptPoints).toBeTruthy()
   expect(claude).toBeTruthy()
-  if (!chatgpt || !claude) return
+  if (!chatgpt || !chatgptPoints || !claude) return
 
   await page.goto('/result?task=chat&budget=any&skill=beginner')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('ChatGPT')
-  await expect(page.getByText(chatgpt.pros[0]?.text ?? '', { exact: false }).first()).toBeVisible()
-  await expectNoScoreComponent(page, '/result?task=chat&budget=any&skill=beginner')
+  await expect(page.getByRole('img', { name: ratingAriaLabel(chatgpt.overall) }).first()).toBeVisible()
+  await expect(page.getByText('#1 of 4 in Chat').first()).toBeVisible()
+  await expect(page.getByText(chatgptPoints.pros[0]?.text ?? '', { exact: false }).first()).toBeVisible()
 
   const claudeCard = page.getByRole('listitem').filter({
     has: page.getByRole('heading', { level: 3, name: 'Claude', exact: true }),
   })
+  await expect(claudeCard.getByRole('img', { name: ratingAriaLabel(claude.overall) })).toBeVisible()
   await expect(claudeCard.getByText('Pros:', { exact: false })).toBeVisible()
   await expect(claudeCard.getByText('Cons:', { exact: false })).toBeVisible()
-  await expect(claudeCard.locator('[data-star-rating]')).toHaveCount(0)
 
   const grokCard = page.getByRole('listitem').filter({
     has: page.getByRole('heading', { level: 3, name: 'Grok', exact: true }),
   })
   await expect(grokCard).toBeVisible()
+  await expect(grokCard.getByText('Tied', { exact: false })).toBeVisible()
   await expect(grokCard.getByText('Pros:', { exact: false })).toHaveCount(0)
-  await expect(grokCard.getByRole('img', { name: /Rated/ })).toHaveCount(0)
+  await expect(grokCard.getByRole('img', { name: /Rated/ })).toBeVisible()
   await expect(grokCard.getByRole('link', { name: 'Source', exact: true })).toHaveCount(0)
+
+  const perplexityCard = page.getByRole('listitem').filter({
+    has: page.getByRole('heading', { level: 3, name: 'Perplexity', exact: true }),
+  })
+  await expect(perplexityCard).toBeVisible()
+  await expect(perplexityCard.getByText('Pros:', { exact: false })).toHaveCount(0)
+  await expect(perplexityCard.getByRole('img', { name: /Rated/ })).toHaveCount(0)
 })
 
 test('windsurf stays at its slug, cursor and relevance show the reviewed prices, and source columns stay off the page', async ({ page }) => {
@@ -130,9 +124,10 @@ test('windsurf stays at its slug, cursor and relevance show the reviewed prices,
   await expect(page.getByText('Cognition', { exact: true })).toBeVisible()
   await expect(page.getByText('Free tier, then $20 and up')).toBeVisible()
   await expect(page.getByText('https://devin.ai/pricing: Free $0 and Pro $20.')).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toBeVisible()
+  await expect(page.locator('[data-category-rank]')).toHaveText('#10 of 12 in Coding')
+  await expect(page.locator('[data-tie]')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Pros and cons' })).toHaveCount(0)
-  await expect(page.getByRole('img', { name: /Rated/ })).toHaveCount(0)
   const comparison = page.getByRole('link', { name: 'Devin Desktop (formerly Windsurf) vs Cursor' })
   await expect(comparison).toHaveAttribute('href', '/compare/cursor-vs-windsurf')
   let html = await page.content()
@@ -141,6 +136,7 @@ test('windsurf stays at its slug, cursor and relevance show the reviewed prices,
   expect(html).not.toContain('pcmag.com')
   expect(html).not.toContain('docs.devin.ai')
   expect(html).not.toContain('third_party')
+  expect(html).not.toContain('evidence.jsonl')
   expect(html).not.toContain('source_urls')
   expect(html).not.toContain('windsurf.com')
 
@@ -156,7 +152,8 @@ test('windsurf stays at its slug, cursor and relevance show the reviewed prices,
   await expect(page.getByRole('link', { name: 'Devin Desktop (formerly Windsurf) profile' })).toHaveAttribute('href', '/tools/windsurf')
 
   await page.goto('/tools/cursor')
-  await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toBeVisible()
+  await expect(page.locator('[data-category-rank]')).toContainText('#2 of 12 in Coding')
   await expect(page.getByRole('heading', { name: 'Pros and cons' })).toHaveCount(0)
   await expect(page.getByText('Free tier, then $8 and up')).toBeVisible()
   await expect(page.getByText('Plus $8 (Grok models only)')).toBeVisible()
@@ -170,6 +167,7 @@ test('windsurf stays at its slug, cursor and relevance show the reviewed prices,
   expect(html).not.toContain('techradar.com')
   expect(html).not.toContain('zapier.com')
   expect(html).not.toContain('third_party')
+  expect(html).not.toContain('evidence.jsonl')
   expect(html).not.toContain('source_urls')
   expect(html).not.toContain('cursor.com/pricing')
 
@@ -192,5 +190,59 @@ test('windsurf stays at its slug, cursor and relevance show the reviewed prices,
   html = await page.content()
   expect(html).not.toContain('relevanceai.com/docs')
   expect(html).not.toContain('third_party')
+  expect(html).not.toContain('evidence.jsonl')
   expect(html).not.toContain('source_urls')
+})
+
+test('the how we rate page uses the public copy and no source columns', async ({ page }) => {
+  const response = await page.goto('/how-we-rate')
+  expect(response?.status()).toBe(200)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('How we rate AI tools')
+  await expect(page.getByText('Quality (40%)')).toBeVisible()
+  await expect(page.getByText('tools within 0.1 of each other are shown as tied', { exact: false })).toBeVisible()
+  const html = await page.content()
+  expect(html).not.toContain('pcmag.com')
+  expect(html).not.toContain('evidence.jsonl')
+  expect(html).not.toContain('source_urls')
+  expect(html).not.toContain('AggregateRating')
+})
+
+test('a single-tool category hides the rank and a note shows when it is filled', async ({ page }) => {
+  await page.goto('/tools/craft')
+  await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toBeVisible()
+  await expect(page.locator('[data-category-rank]')).toHaveCount(0)
+  await expect(page.locator('[data-tie]')).toHaveCount(0)
+  let html = await page.content()
+  expect(html).not.toContain('#1 of 1')
+  expect(html).not.toContain('evidence.jsonl')
+  expect(html).not.toContain('www.craft.do/pricing')
+
+  await page.goto('/tools/chatgpt')
+  await expect(page.locator('[data-category-rank]')).toHaveText('#1 of 4 in Chat')
+  await expect(page.locator('[data-score-note]')).toHaveText('regular price not published; value neutral')
+  html = await page.content()
+  expect(html).not.toContain('pcmag.com')
+  expect(html).not.toContain('evidence.jsonl')
+  expect(html).not.toContain('chatgpt.com/pricing')
+})
+
+test('archived tools stay live, show the notice, and stay off quiz results', async ({ page }) => {
+  const flowise = await page.goto('/tools/flowise')
+  expect(flowise?.status()).toBe(200)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Flowise')
+  await expect(page.locator('[data-maintenance-notice]')).toHaveText('Unmaintained (repo archived)')
+  await expect(page.locator('[data-category-rank]')).toHaveText('Tied · #5 of 6 in Agents')
+  await expect(page.locator('[data-tie]')).toBeVisible()
+
+  const roo = await page.goto('/tools/roo-code')
+  expect(roo?.status()).toBe(200)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Roo Code')
+  await expect(page.locator('[data-maintenance-notice]')).toHaveText('Unmaintained (repo archived)')
+  await expect(page.locator('[data-category-rank]')).toHaveText('#12 of 12 in Coding')
+  await expect(page.locator('[data-tie]')).toHaveCount(0)
+
+  await page.goto('/result?task=agents&budget=any&skill=intermediate')
+  await expect(page.getByRole('heading', { name: 'Flowise', exact: true })).toHaveCount(0)
+  await page.goto('/result?task=coding&budget=any&skill=intermediate')
+  await expect(page.getByRole('heading', { name: 'Roo Code', exact: true })).toHaveCount(0)
 })

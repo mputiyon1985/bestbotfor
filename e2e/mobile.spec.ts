@@ -3,10 +3,10 @@ import { expect, test } from '@playwright/test'
 const WIDTHS = [375, 390, 768] as const
 
 const PAGES = [
-  { name: 'result', path: '/result?task=chat&budget=any&skill=beginner', pagination: false },
-  { name: 'all matches', path: '/result?task=chat&view=all', pagination: true },
-  { name: 'coding matches', path: '/result?task=coding&view=all', pagination: true },
-  { name: 'tool', path: '/tools/chatgpt', pagination: false },
+  { name: 'result', path: '/result?task=chat&budget=any&skill=beginner', pagination: false, bars: 0 },
+  { name: 'all matches', path: '/result?task=chat&view=all', pagination: true, bars: 0 },
+  { name: 'coding matches', path: '/result?task=coding&view=all', pagination: true, bars: 0 },
+  { name: 'tool', path: '/tools/chatgpt', pagination: false, bars: 4 },
 ] as const
 
 test('pros and pagination fit at 375, 390, and 768', async ({ page }) => {
@@ -19,7 +19,7 @@ test('pros and pagination fit at 375, 390, and 768', async ({ page }) => {
     for (const target of PAGES) {
       await page.goto(target.path)
       await expect(page.getByRole('heading', { level: 1 })).toBeVisible()
-      await expect(page.locator('[data-score-section], [data-star-rating]')).toHaveCount(0)
+      await expect(page.getByRole('img', { name: /^Rated / }).first()).toBeVisible()
 
       const fit = await page.evaluate(() => {
         const scrollWidth = Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)
@@ -71,8 +71,8 @@ test('pros and pagination fit at 375, 390, and 768', async ({ page }) => {
       expect(fit.widgetOverflow, `${target.name} widgets at ${width}px`).toEqual([])
       expect(fit.smallText, `${target.name} text at ${width}px`).toEqual([])
       expect(fit.pros, `${target.name} pros at ${width}px`).toBeGreaterThan(0)
-      expect(fit.bars, `${target.name} bars at ${width}px`).toBe(0)
-      expect(fit.scores, `${target.name} scores at ${width}px`).toBe(0)
+      expect(fit.bars, `${target.name} bars at ${width}px`).toBe(target.bars)
+      expect(fit.scores, `${target.name} scores at ${width}px`).toBeGreaterThan(0)
 
       const pagesNav = page.getByRole('navigation', { name: 'Pages' })
       if (target.pagination) {

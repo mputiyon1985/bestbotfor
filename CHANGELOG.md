@@ -2,10 +2,12 @@
 
 ## Unreleased
 
-- Windsurf stays at `/tools/windsurf` and at `/compare/cursor-vs-windsurf`. The name is Devin Desktop (formerly Windsurf), the vendor is Cognition, the site is https://devin.ai/desktop, and pricing is Free $0 and Pro $20 at https://devin.ai/pricing. `devin.ai` is an allowed host. Cursor and Windsurf stay out of `tool_scores` and `tool_pros_cons` until the next rubric. The rated set remains the 146 slugs already on main.
+- `SHOW_SCORES` is true, so the v2.3 ratings render. Turning it off hides the score heading, rank, stars, bars, note, and maintenance notice. Pros and cons stay. Pages still do not emit AggregateRating.
+- Ratings v2.3 replace the v1 scores in one seed transaction. 91 tools are rated. 87 existing score rows are replaced, 4 are inserted (cursor, grok, semantic-scholar, windsurf), and 59 v1 score rows are removed. v1 pros and cons text stays for the 87 tools that are still rated (439 point rows). The 59 dropped tools lose their 296 point rows. The 4 newly rated tools have no pros or cons. Evidence and source URL columns are not stored on the score row and are not rendered.
 - Cursor’s current plans are Free $0, Plus $8 (Grok models only), and Premium $30 (third-party models billed extra). Pro $20 is for legacy subscribers only.
 - Relevance AI stays without a free plan. Pro is $19 a month billed yearly.
-- Scores and pros/cons come only from Forge’s CSV. Migration `0007` deletes the sample Cursor score and its pros and cons, the only slug that was seeded and is not in that file.
+- Windsurf stays at `/tools/windsurf` and at `/compare/cursor-vs-windsurf`. The name is Devin Desktop (formerly Windsurf), the vendor is Cognition, the site is https://devin.ai/desktop, and pricing is Free $0 and Pro $20 at https://devin.ai/pricing. `devin.ai` is an allowed host. Cursor and Windsurf now have v2.3 scores and no pros or cons.
+- Scores and pros/cons come from the approved v2.3 file plus the v1 pros and cons kept for tools that file still rates. Migration `0007` already deleted the sample Cursor score. The seed writes Cursor’s v2.3 score back and does not restore Cursor pros or cons.
 - The tagline is “The right AI in 30 seconds.” The home title is “BestBotFor — The right AI in 30 seconds.”
 - The home eyebrow says “Answer 3 quick questions.”
 - The not-found page sets its own title, “Page not found | BestBotFor”, its own description, and `noindex, nofollow`. It does not reuse the home canonical or the home social titles.
@@ -16,8 +18,10 @@
 - The default Open Graph and Twitter image is the new 1200×630 card, `og-default-1200x630.676bae0e.png`.
 - The quiz result shows one pick and up to six alternatives that clear a fit score of 50. When fewer qualify, the page still says few strong options exist.
 - All-matches pages list six tools and show “Showing 1–6 of N” with numbered page links. Budget filters stay noindex, rel prev/next and the canonical rules are unchanged, and a page past the end is still a 404.
-- Tool pages can show a BestBotFor score from 0 to 5, with a fractional star, the features/value/ease/quality rubric, and a short note on how the equal-weight average is calculated. The score is editorial. Pages do not emit AggregateRating or Review schema.
-- Pros and cons render on the tool page, and a shorter version renders on result cards, only when a tool has verified rows with source URLs.
+- Tool pages lead with the category rank (for example “#3 of 12 in Coding”) and four criteria bars. The overall score is secondary and links to `/how-we-rate`. Tools that share a tie group are marked tied. Ranks are hidden for the single-tool categories backend, design, games, and productivity. A filled note is shown. Unrated tools hide the ratings section. Pages do not emit AggregateRating or Review schema.
+- Pros and cons render as text on the tool page, and a shorter version renders on result cards, only when a still-rated tool has v1 rows. Source URLs stay in the database and are not shown.
+- Flowise and Roo Code stay live and show “Unmaintained (repo archived)”. They are left out of quiz picks and alternatives.
+- NotebookLM’s public name is Gemini Notebook and its site is https://notebooklm.google/plans. `notebooklm.google` stays on the allowlist. Craft’s category is Productivity. SE Ranking’s category is SEO.
 - Tool pages show a bar for features, value, ease, and quality next to the overall stars.
 - Quiz results, all-matches lists, and tool pages keep the stars, score bars, pros and cons, and numbered pagination inside the screen at 375, 390, and 768 pixels. Pagination links are at least 44 pixels tall, and text stays at least 12 pixels.
 - Text links in the breadcrumbs, best-of lists, footer, and tablet header keep a 44 pixel tap height. Page controls are full-size buttons. The header sits clear of the breadcrumb and “Back to the questions” on a phone, and “See my best bot” stays on screen at 390 pixels.
@@ -27,7 +31,7 @@
 - “See all N matches” keeps the quiz budget. Match and quiz titles use the task’s own name.
 - `/tools` page numbers that are not a real page return 404, including category filters, so each indexable canonical belongs to one page.
 - Encoded dot segments under `/go`, `/best`, and `/tools` return 404 instead of the home page. `/go` responses send `X-Robots-Tag: noindex, nofollow`.
-- The catalog seed runs in one transaction and still only upserts. It does not delete rows.
+- The catalog seed runs in one transaction. It upserts the catalog, then replaces score rows for v2.3-rated tools and deletes score and pros/cons rows for every other tool.
 - Expand the catalog with 108 reviewed tools. Affiliate status on the new tools stays unknown, and outbound links stay on official sites.
 - `/tools` stays paginated and filters by category with a shareable `?category=` URL. Every catalog tool lists the hosts `/go` may redirect to.
 - Apply the approved concept 1 brand: Poppins, the indigo and mint palette, lockups in the header and footer, kit favicons, and kit Open Graph art.

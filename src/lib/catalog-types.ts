@@ -72,6 +72,8 @@ export type CatalogTool = {
   editorial: EditorialScore | null
   pros: ProCon[]
   cons: ProCon[]
+  /** False excludes the tool from quiz picks and alternatives. Pages stay live. */
+  quizEligible: boolean
 }
 
 export type Catalog = {
