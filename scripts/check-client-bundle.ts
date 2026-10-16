@@ -3,7 +3,19 @@ import path from 'node:path'
 
 const STATIC_ROOT = path.join(process.cwd(), '.next', 'static')
 
-const FORBIDDEN = ['libsql://', 'TURSO_AUTH_TOKEN', '@libsql/client']
+const FORBIDDEN = [
+  'libsql://',
+  'TURSO_AUTH_TOKEN',
+  '@libsql/client',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'STRIPE_ALLOW_LIVE',
+  'whsec_',
+  ['sk_', 'live_'].join(''),
+  ['rk_', 'live_'].join(''),
+  ['sk_', 'test_'].join(''),
+  ['rk_', 'test_'].join(''),
+]
 
 async function filesIn(directory: string): Promise<string[]> {
   const found: string[] = []
@@ -45,11 +57,11 @@ async function main(): Promise<void> {
   }
 
   if (hits.length > 0) {
-    console.error('Client bundle leaked a database credential or libsql URL:')
+    console.error('Client bundle leaked a secret or a Stripe key:')
     for (const hit of hits) console.error(hit)
     process.exit(1)
   }
-  console.log(`Scanned ${files.length} client files. No Turso token or libsql URL.`)
+  console.log(`Scanned ${files.length} client files. No database or Stripe secrets.`)
 }
 
 main().catch((error: unknown) => {

@@ -2,6 +2,8 @@ import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 
 const NEEDLES = ['sk_', 'rk_', 'pk_'].map((prefix) => prefix + 'live_')
+const LIVE_OPT_IN = /STRIPE_ALLOW_LIVE\s*=(?!=)\s*['"]?true\b/
+const WEBHOOK_SECRET = /whsec_[A-Za-z0-9]{24,}/
 
 const SKIP_DIRECTORIES = new Set([
   'node_modules',
@@ -47,6 +49,7 @@ export async function findLiveStripeKeys(root: string): Promise<string[]> {
         continue
       }
       if (NEEDLES.some((needle) => text.includes(needle))) hits.push(full)
+      if (LIVE_OPT_IN.test(text) || WEBHOOK_SECRET.test(text)) hits.push(full)
     }
   }
 

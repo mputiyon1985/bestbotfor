@@ -6,6 +6,7 @@ export const ACTION_LIMITS = {
   result: { limit: 30, windowMs: 60_000 },
   checkout: { limit: 8, windowMs: 60 * 60_000 },
   portal: { limit: 12, windowMs: 60 * 60_000 },
+  sponsor: { limit: 8, windowMs: 60 * 60_000 },
 } as const
 
 /** A slow or failed limiter must not turn the page into a hang. Over-limit still blocks. */

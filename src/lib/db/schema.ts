@@ -93,6 +93,28 @@ export const stripeEvents = sqliteTable('stripe_events', {
   processedAt: integer('processed_at').notNull(),
 })
 
+export const sponsorships = sqliteTable(
+  'sponsorships',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    stripeCheckoutSessionId: text('stripe_checkout_session_id').notNull().unique(),
+    stripePaymentIntentId: text('stripe_payment_intent_id'),
+    stripeCustomerId: text('stripe_customer_id'),
+    stripePriceId: text('stripe_price_id'),
+    offering: text('offering').notNull(),
+    status: text('status').notNull(),
+    email: text('email'),
+    company: text('company'),
+    taskSlug: text('task_slug'),
+    issueDate: text('issue_date'),
+    amountTotal: integer('amount_total'),
+    currency: text('currency'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [index('sponsorships_status_idx').on(table.status)],
+)
+
 export const savedPicks = sqliteTable(
   'saved_picks',
   {

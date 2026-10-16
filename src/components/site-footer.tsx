@@ -35,6 +35,7 @@ export function SiteFooter() {
             <li><Link className="underline-offset-4 hover:underline" href="/terms">Terms</Link></li>
             <li><Link className="underline-offset-4 hover:underline" href="/newsletter">Newsletter</Link></li>
             <li><Link className="underline-offset-4 hover:underline" href="/pricing">Pricing</Link></li>
+            <li><Link className="underline-offset-4 hover:underline" href="/sponsor">Sponsor</Link></li>
           </ul>
         </nav>
       </div>

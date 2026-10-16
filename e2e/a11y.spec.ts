@@ -6,6 +6,7 @@ import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
 const category = toolCategories(catalogFromSeeds().tools)[0]
 const pages = [
   '/',
+  '/sponsor',
   '/newsletter',
   '/best/coding',
   '/tools',

@@ -2,10 +2,12 @@ import { eq, sql } from 'drizzle-orm'
 import type Stripe from 'stripe'
 import { z } from 'zod'
 import type { Database } from './db'
-import { stripeEvents, subscriptions } from './db/schema'
+import { sponsorships, stripeEvents, subscriptions } from './db/schema'
 import { getDb } from './db'
 import { isDeadline, withDeadline } from './deadline'
+import { sponsorOffering } from './sponsor-offerings'
 import { getStripe, stripeWebhookSecret } from './stripe'
+import { liveModeAllowed } from './stripe-key'
 
 const WEBHOOK_DB_BUDGET_MS = 2_000
 
@@ -52,6 +54,7 @@ export async function handleStripeWebhook(input: {
   stripe?: Stripe | null
   secret?: string | null
   deadlineMs?: number
+  allowLive?: boolean
 }): Promise<WebhookResult> {
   const stripe = input.stripe === undefined ? getStripe() : input.stripe
   const secret = input.secret === undefined ? stripeWebhookSecret() : input.secret
@@ -69,7 +72,8 @@ export async function handleStripeWebhook(input: {
     return { status: 400, body: { error: 'invalid-signature' } }
   }
 
-  if (event.livemode) {
+  const allowLive = input.allowLive ?? liveModeAllowed()
+  if (event.livemode && !allowLive) {
     return { status: 400, body: { error: 'live-mode-rejected' } }
   }
 
@@ -116,7 +120,111 @@ async function applyWebhook(db: Database, event: Stripe.Event): Promise<'ok' | '
   return 'ok'
 }
 
+const KNOWN_EVENT_TYPES = new Set([
+  'checkout.session.completed',
+  'checkout.session.async_payment_succeeded',
+  'checkout.session.async_payment_failed',
+  'customer.subscription.created',
+  'customer.subscription.updated',
+  'customer.subscription.deleted',
+])
+
+const sponsorshipCheckoutSchema = z.object({
+  id: z.string().min(1).max(255),
+  payment_status: z.string().optional(),
+  customer: z.union([z.string(), z.object({ id: z.string() })]).nullable().optional(),
+  payment_intent: z.union([z.string(), z.object({ id: z.string() })]).nullable().optional(),
+  customer_email: z.string().max(320).nullable().optional(),
+  amount_total: z.number().int().nullable().optional(),
+  currency: z.string().max(12).nullable().optional(),
+  metadata: z
+    .object({
+      kind: z.literal('sponsorship'),
+      offering: z.string().min(1).max(80),
+      email: z.string().max(320).optional(),
+      company: z.string().max(200).optional(),
+      task_slug: z.string().max(80).optional(),
+      issue_date: z.string().max(40).optional(),
+      price_id: z.string().max(255).optional(),
+    })
+    .optional(),
+})
+
+function isSponsorshipEvent(event: Stripe.Event): boolean {
+  if (!KNOWN_EVENT_TYPES.has(event.type) || !event.type.startsWith('checkout.session.')) return false
+  const object = event.data?.object
+  if (!object || typeof object !== 'object' || !('metadata' in object)) return false
+  const metadata = object.metadata
+  return Boolean(metadata && typeof metadata === 'object' && 'kind' in metadata && metadata.kind === 'sponsorship')
+}
+
+function stripeId(value: string | { id: string } | null | undefined): string | null {
+  if (!value) return null
+  return typeof value === 'string' ? value : value.id
+}
+
+function sponsorshipStatus(type: string, paymentStatus: string | undefined): 'pending' | 'paid' | 'failed' {
+  if (type === 'checkout.session.async_payment_failed') return 'failed'
+  if (type === 'checkout.session.async_payment_succeeded') return paymentStatus === 'unpaid' ? 'pending' : 'paid'
+  return paymentStatus === 'paid' ? 'paid' : 'pending'
+}
+
+async function applySponsorship(db: Database, event: Stripe.Event): Promise<void> {
+  const parsed = sponsorshipCheckoutSchema.safeParse(event.data.object)
+  if (!parsed.success || parsed.data.metadata?.kind !== 'sponsorship') {
+    throw new Error('sponsorship payload failed validation')
+  }
+  const offering = sponsorOffering(parsed.data.metadata.offering)
+  if (!offering) throw new Error('sponsorship payload failed validation')
+  const priceId = parsed.data.metadata.price_id
+  const now = Date.now()
+  const status = sponsorshipStatus(event.type, parsed.data.payment_status)
+  await db
+    .insert(sponsorships)
+    .values({
+      stripeCheckoutSessionId: parsed.data.id,
+      stripePaymentIntentId: stripeId(parsed.data.payment_intent),
+      stripeCustomerId: stripeId(parsed.data.customer),
+      stripePriceId: priceId && priceId.startsWith('price_') ? priceId : null,
+      offering: offering.id,
+      status,
+      email: parsed.data.customer_email ?? parsed.data.metadata.email ?? null,
+      company: parsed.data.metadata.company || null,
+      taskSlug: parsed.data.metadata.task_slug || null,
+      issueDate: parsed.data.metadata.issue_date || null,
+      amountTotal: parsed.data.amount_total ?? null,
+      currency: parsed.data.currency ?? null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: sponsorships.stripeCheckoutSessionId,
+      set: {
+        stripePaymentIntentId: sql`coalesce(excluded.stripe_payment_intent_id, ${sponsorships.stripePaymentIntentId})`,
+        stripeCustomerId: sql`coalesce(excluded.stripe_customer_id, ${sponsorships.stripeCustomerId})`,
+        stripePriceId: sql`coalesce(excluded.stripe_price_id, ${sponsorships.stripePriceId})`,
+        status: sql`CASE
+          WHEN ${sponsorships.status} = 'paid' OR excluded.status = 'paid' THEN 'paid'
+          WHEN ${sponsorships.status} = 'failed' AND excluded.status = 'pending' THEN ${sponsorships.status}
+          ELSE excluded.status
+        END`,
+        email: sql`coalesce(excluded.email, ${sponsorships.email})`,
+        company: sql`coalesce(excluded.company, ${sponsorships.company})`,
+        taskSlug: sql`coalesce(excluded.task_slug, ${sponsorships.taskSlug})`,
+        issueDate: sql`coalesce(excluded.issue_date, ${sponsorships.issueDate})`,
+        amountTotal: sql`coalesce(excluded.amount_total, ${sponsorships.amountTotal})`,
+        currency: sql`coalesce(excluded.currency, ${sponsorships.currency})`,
+        updatedAt: now,
+      },
+    })
+}
+
 async function applyEvent(db: Database, event: Stripe.Event): Promise<void> {
+  if (isSponsorshipEvent(event)) {
+    await applySponsorship(db, event)
+    return
+  }
+
   if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
     const parsed = checkoutSchema.safeParse(event.data.object)
     if (!parsed.success || parsed.data.mode !== 'subscription' || !parsed.data.subscription) return
@@ -151,6 +259,11 @@ async function applyEvent(db: Database, event: Stripe.Event): Promise<void> {
       priceId: item?.price?.id ?? null,
       periodEnd: item?.current_period_end ?? null,
     })
+    return
+  }
+
+  if (!KNOWN_EVENT_TYPES.has(event.type)) {
+    console.info('stripe webhook event', event.type)
   }
 }
 

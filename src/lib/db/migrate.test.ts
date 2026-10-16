@@ -67,4 +67,21 @@ describe('sqlite file directories', () => {
     expect(Number(count.rows[0]?.n)).toBe(afterIds.length)
     third.close()
   })
+
+  it('applies 0005_sponsorships.sql after 0004 and keeps stripe_events', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'bestbotfor-sponsor-migrate-'))
+    directories.push(root)
+    const url = `file:${path.join(root, 'migrate.db')}`
+    await applyMigrations(url)
+    const client = createClient({ url })
+    const recorded = await client.execute('SELECT id FROM schema_migrations ORDER BY id')
+    const ids = recorded.rows.map((row) => String(row.id))
+    expect(ids).toContain('0004_retire_quiz_fits.sql')
+    expect(ids).toContain('0005_sponsorships.sql')
+    const tables = await client.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('stripe_events', 'sponsorships') ORDER BY name",
+    )
+    expect(tables.rows.map((row) => String(row.name))).toEqual(['sponsorships', 'stripe_events'])
+    client.close()
+  })
 })

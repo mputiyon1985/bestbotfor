@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import type Stripe from 'stripe'
-import { stripeEvents, subscriptions } from './db/schema'
+import { sponsorships, stripeEvents, subscriptions } from './db/schema'
 import { handleStripeWebhook } from './stripe-webhook'
 import { createTestDatabase } from '@/test/db'
 
@@ -18,6 +18,37 @@ function stripeStub(events: Stripe.Event[]): Stripe {
       },
     },
   } as unknown as Stripe
+}
+
+function sponsorshipEvent(id: string, type = 'checkout.session.completed', overrides: Record<string, unknown> = {}): Stripe.Event {
+  return {
+    id,
+    type,
+    livemode: false,
+    data: {
+      object: {
+        id: 'cs_test_sponsor',
+        mode: 'payment',
+        payment_status: 'paid',
+        customer: 'cus_sponsor',
+        payment_intent: 'pi_sponsor',
+        customer_email: 'sponsor@example.com',
+        amount_total: 29900,
+        currency: 'usd',
+        metadata: {
+          kind: 'sponsorship',
+          offering: 'placement_monthly',
+          email: 'sponsor@example.com',
+          company: 'Example Tools',
+          task_slug: 'coding',
+          issue_date: '',
+          price_id: 'price_e2e_monthly',
+        },
+        payment_method: { card: { number: '4242424242424242' } },
+        ...overrides,
+      },
+    },
+  } as unknown as Stripe.Event
 }
 
 function subscriptionEvent(id: string, livemode = false): Stripe.Event {
@@ -201,6 +232,97 @@ describe('handleStripeWebhook', () => {
     expect(result.status).toBe(500)
     expect(result.status).not.toBe(503)
     expect(result.body.error).toBe('webhook-timeout')
+  })
+
+  it('records a paid sponsorship once and ignores a duplicate delivery', async () => {
+    const { db, close } = await createTestDatabase()
+    const event = sponsorshipEvent('evt_sponsor_once')
+    const input = {
+      rawBody: JSON.stringify(event),
+      signature: 'valid',
+      db,
+      stripe: stripeStub([event]),
+      secret: SECRET,
+    }
+    const first = await handleStripeWebhook(input)
+    const second = await handleStripeWebhook(input)
+    expect(first).toEqual({ status: 200, body: { received: true } })
+    expect(second).toEqual({ status: 200, body: { received: true, duplicate: true } })
+    const rows = await db.select().from(sponsorships)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({
+      stripeCheckoutSessionId: 'cs_test_sponsor',
+      stripePaymentIntentId: 'pi_sponsor',
+      stripeCustomerId: 'cus_sponsor',
+      stripePriceId: 'price_e2e_monthly',
+      offering: 'placement_monthly',
+      status: 'paid',
+      email: 'sponsor@example.com',
+      company: 'Example Tools',
+      taskSlug: 'coding',
+      amountTotal: 29900,
+      currency: 'usd',
+    })
+    expect(JSON.stringify(rows[0])).not.toContain('4242424242424242')
+    await close()
+  })
+
+  it('keeps an unpaid checkout pending until the async payment succeeds', async () => {
+    const { db, close } = await createTestDatabase()
+    const pending = sponsorshipEvent('evt_sponsor_pending', 'checkout.session.completed', { payment_status: 'unpaid' })
+    const paid = sponsorshipEvent('evt_sponsor_paid', 'checkout.session.async_payment_succeeded', { payment_status: 'paid' })
+    const stripe = stripeStub([pending, paid])
+    await handleStripeWebhook({ rawBody: JSON.stringify(pending), signature: 'valid', db, stripe, secret: SECRET })
+    const midway = await db.select().from(sponsorships)
+    expect(midway).toHaveLength(1)
+    expect(midway[0]?.status).toBe('pending')
+    const result = await handleStripeWebhook({ rawBody: JSON.stringify(paid), signature: 'valid', db, stripe, secret: SECRET })
+    expect(result.status).toBe(200)
+    const rows = await db.select().from(sponsorships)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.status).toBe('paid')
+    await close()
+  })
+
+  it('marks a sponsorship failed when the async payment fails', async () => {
+    const { db, close } = await createTestDatabase()
+    const event = sponsorshipEvent('evt_sponsor_failed', 'checkout.session.async_payment_failed', { payment_status: 'unpaid' })
+    const result = await handleStripeWebhook({
+      rawBody: JSON.stringify(event),
+      signature: 'valid',
+      db,
+      stripe: stripeStub([event]),
+      secret: SECRET,
+    })
+    expect(result.status).toBe(200)
+    const rows = await db.select().from(sponsorships)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]?.status).toBe('failed')
+    await close()
+  })
+
+  it('logs an unknown event by type only', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const { db, close } = await createTestDatabase()
+    const event = {
+      id: 'evt_unknown',
+      type: 'payment_intent.succeeded',
+      livemode: false,
+      data: { object: { id: 'pi_unknown', email: 'person-unknown@example.com' } },
+    } as unknown as Stripe.Event
+    const result = await handleStripeWebhook({
+      rawBody: JSON.stringify(event),
+      signature: 'valid',
+      db,
+      stripe: stripeStub([event]),
+      secret: SECRET,
+    })
+    expect(result).toEqual({ status: 200, body: { received: true } })
+    expect(info).toHaveBeenCalledWith('stripe webhook event', 'payment_intent.succeeded')
+    expect(info.mock.calls.flat().map(String).join(' ')).not.toContain('person-unknown@example.com')
+    expect(await db.select().from(sponsorships)).toEqual([])
+    info.mockRestore()
+    await close()
   })
 
   it('reports billing as disabled when Stripe is not passed in', async () => {
