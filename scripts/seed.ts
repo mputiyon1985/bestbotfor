@@ -1,12 +1,20 @@
 import { comparePairSeeds, taskSeeds, toolSeeds } from '../src/data/catalog'
+import { editorialSeeds } from '../src/data/scores-pros-cons.seed'
 import { getDb } from '../src/lib/db/client'
-import { affiliatePrograms, tasks, toolTasks, tools } from '../src/lib/db/schema'
+import { affiliatePrograms, tasks, toolProsCons, toolScores, toolTasks, tools } from '../src/lib/db/schema'
+import { validateEditorialSeeds } from '../src/lib/editorial'
 import { reviewedToolUrl } from '../src/lib/redirect'
 
 export async function seed(): Promise<void> {
 for (const tool of toolSeeds) reviewedToolUrl(tool)
 
 const db = getDb()
+
+validateEditorialSeeds(
+  editorialSeeds,
+  new Set(toolSeeds.map((tool) => tool.slug)),
+  new Set(toolSeeds.filter((tool) => tool.needsVerification).map((tool) => tool.slug)),
+)
 
 // One transaction, upserts only. Rows that are not in this seed stay in place.
 await db.transaction(async (tx) => {
@@ -38,6 +46,7 @@ for (const tool of toolSeeds) {
       platforms: JSON.stringify(tool.platforms),
       lastVerifiedAt: tool.lastVerifiedAt,
       status: 'active',
+      needsVerification: tool.needsVerification === true,
     })
     .onConflictDoUpdate({
       target: tools.slug,
@@ -55,6 +64,7 @@ for (const tool of toolSeeds) {
         platforms: JSON.stringify(tool.platforms),
         lastVerifiedAt: tool.lastVerifiedAt,
         status: 'active',
+        needsVerification: tool.needsVerification === true,
       },
     })
 }
@@ -115,6 +125,42 @@ for (const tool of toolSeeds) {
 
 for (const [a, b] of comparePairSeeds) {
   if (!toolId.has(a) || !toolId.has(b)) throw new Error(`Compare pair ${a} vs ${b} is not in the catalog`)
+}
+
+for (const entry of editorialSeeds) {
+  const id = toolId.get(entry.slug)
+  if (!id) throw new Error(`Missing tool id for editorial seed ${entry.slug}`)
+  const score = {
+    features: entry.features,
+    value: entry.value,
+    ease: entry.ease,
+    quality: entry.quality,
+    overall: entry.overall,
+    rationale: entry.rationale,
+    sources: '[]',
+    reviewedAt: entry.reviewedAt,
+  }
+  await tx
+    .insert(toolScores)
+    .values({ toolId: id, ...score })
+    .onConflictDoUpdate({
+      target: toolScores.toolId,
+      set: score,
+    })
+
+  const points = [
+    ...entry.pros.map((point, index) => ({ kind: 'pro', position: index + 1, body: point.text, sourceUrl: point.sourceUrl })),
+    ...entry.cons.map((point, index) => ({ kind: 'con', position: index + 1, body: point.text, sourceUrl: point.sourceUrl })),
+  ]
+  for (const point of points) {
+    await tx
+      .insert(toolProsCons)
+      .values({ toolId: id, ...point })
+      .onConflictDoUpdate({
+        target: [toolProsCons.toolId, toolProsCons.kind, toolProsCons.position],
+        set: { body: point.body, sourceUrl: point.sourceUrl },
+      })
+  }
 }
 
 const storedPrograms = await tx.select().from(affiliatePrograms)

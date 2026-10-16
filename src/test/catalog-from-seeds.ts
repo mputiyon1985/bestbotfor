@@ -1,5 +1,7 @@
 import { taskSeeds, toolSeeds } from '../data/catalog'
+import { editorialSeeds } from '../data/scores-pros-cons.seed'
 import type { Catalog, CatalogTool } from '../lib/catalog-types'
+import type { ProCon } from '../lib/editorial'
 
 /** In-memory catalog built from the seed module, for tests that should follow the data. */
 export function catalogFromSeeds(): Catalog {
@@ -26,6 +28,27 @@ export function catalogFromSeeds(): Catalog {
       notes: fit.notes,
     })),
     affiliate: { ...tool.affiliate, affiliateUrl: null },
+    ...(tool.needsVerification ? { editorial: null, pros: [], cons: [] } : editorialFor(tool.slug)),
   }))
   return { tasks: taskSeeds, tools }
+}
+
+function editorialFor(slug: string): Pick<CatalogTool, 'editorial' | 'pros' | 'cons'> {
+  const entry = editorialSeeds.find((item) => item.slug === slug)
+  if (!entry) return { editorial: null, pros: [], cons: [] }
+  const pros: ProCon[] = entry.pros.map((point) => ({ kind: 'pro', text: point.text, sourceUrl: point.sourceUrl }))
+  const cons: ProCon[] = entry.cons.map((point) => ({ kind: 'con', text: point.text, sourceUrl: point.sourceUrl }))
+  return {
+    editorial: {
+      features: entry.features,
+      value: entry.value,
+      ease: entry.ease,
+      quality: entry.quality,
+      overall: entry.overall,
+      rationale: entry.rationale,
+      reviewedAt: entry.reviewedAt,
+    },
+    pros,
+    cons,
+  }
 }

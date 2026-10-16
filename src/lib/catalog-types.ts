@@ -1,3 +1,4 @@
+import type { EditorialScore, ProCon } from './editorial'
 import type { Skill } from './validation'
 
 export type PricingModel = 'free' | 'freemium' | 'paid'
@@ -37,6 +38,8 @@ export type ToolSeed = {
   lastVerifiedAt: string
   fits: { task: string; score: number; notes: string }[]
   affiliate: AffiliateSeed
+  /** The public name and URL still need a fresh check. No editorial score is shown. */
+  needsVerification?: boolean
 }
 
 export type CatalogTask = TaskSeed
@@ -65,6 +68,10 @@ export type CatalogTool = {
   lastVerifiedAt: string
   fits: CatalogFit[]
   affiliate: AffiliateSeed & { affiliateUrl: string | null }
+  /** Null when this tool has no verified editorial score. */
+  editorial: EditorialScore | null
+  pros: ProCon[]
+  cons: ProCon[]
 }
 
 export type Catalog = {

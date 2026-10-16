@@ -9,7 +9,17 @@ import { getTask, listTaskCandidates } from '@/lib/catalog'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
 import { breadcrumbJsonLd, faqJsonLd, itemListJsonLd } from '@/lib/jsonld'
 import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
-import { bestGuideDescription } from '@/lib/descriptions'
+import {
+  bestGuideCrumb,
+  bestGuideDescription,
+  bestGuideFitAnswer,
+  bestGuideHeading,
+  bestGuideLead,
+  bestGuideListName,
+  bestGuideQuestion,
+  bestGuideTitle,
+  taskGerund,
+} from '@/lib/descriptions'
 import { pageMetadata } from '@/lib/metadata'
 import { slugSchema } from '@/lib/validation'
 
@@ -21,7 +31,7 @@ export async function generateMetadata({ params }: { params: Promise<{ task: str
   const task = await getTask(slug)
   if (!task) return pageMetadata({ title: 'Not found', description: 'That guide is not in the catalog.', path: `/best/${slug}`, noIndex: true })
   return pageMetadata({
-    title: `Best AI tool for ${task.name.toLowerCase()}`,
+    title: bestGuideTitle(task.name),
     description: bestGuideDescription(task.name),
     path: `/best/${task.slug}`,
   })
@@ -41,8 +51,8 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
   const freeOption = ranked.find((tool) => tool.hasFreeTier)
   const faqs = [
     {
-      question: `What is the best AI tool for ${task.name.toLowerCase()}?`,
-      answer: `${top.name} is the top pick in this catalog for ${task.name.toLowerCase()}. ${top.notes}`,
+      question: bestGuideQuestion(task.name),
+      answer: `${bestGuideFitAnswer(task.name, top.name)} ${top.notes}`,
     },
     {
       question: 'Is there a free option?',
@@ -57,18 +67,18 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
   ]
   const crumbs = [
     { name: 'Home', path: '/' },
-    { name: `Best for ${task.name.toLowerCase()}`, path: `/best/${task.slug}` },
+    { name: bestGuideCrumb(task.name), path: `/best/${task.slug}` },
   ]
 
   return (
     <article className="space-y-8">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
-      <JsonLd data={itemListJsonLd(`Best AI tools for ${task.name.toLowerCase()}`, `/best/${task.slug}`, ranked.slice(0, 5))} nonce={nonce} />
+      <JsonLd data={itemListJsonLd(bestGuideListName(task.name), `/best/${task.slug}`, ranked.slice(0, 5))} nonce={nonce} />
       <JsonLd data={faqJsonLd(faqs)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
-      <h1 className="font-bold text-5xl leading-tight">Best AI tool for {task.name.toLowerCase()}</h1>
+      <h1 className="font-bold text-5xl leading-tight">{bestGuideHeading(task.name)}</h1>
       <p className="text-lg">
-        The best AI tool for {task.name.toLowerCase()} is {top.name}. {top.shortDesc}
+        {bestGuideLead(task.name, top.name)} {top.shortDesc}
       </p>
       <p className="text-sm text-muted">Last reviewed {verified}. Prices change, so confirm them on the vendor’s site.</p>
       <p>
@@ -78,7 +88,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
       </p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
-          <caption className="sr-only">Tools ranked for {task.name}</caption>
+          <caption className="sr-only">Tools ranked for {taskGerund(task.name)}</caption>
           <thead>
             <tr className="border-b border-line">
               <th scope="col" className="py-2 pr-3">Tool</th>
@@ -91,7 +101,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
             {ranked.slice(0, 5).map((tool) => (
               <tr key={tool.slug} className="border-b border-line align-top">
                 <th scope="row" className="py-3 pr-3 font-semibold">
-                  <Link href={`/tools/${tool.slug}`} className="underline">
+                  <Link href={`/tools/${tool.slug}`} className="inline-flex min-h-11 items-center underline">
                     {tool.name}
                   </Link>
                 </th>

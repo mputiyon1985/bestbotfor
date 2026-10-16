@@ -22,7 +22,7 @@ const darkMarkup = inlineLockup(LOGO_DARK_PATH)
  */
 export function BrandLockup() {
   return (
-    <Link href="/" aria-label="BestBotFor" className="inline-flex shrink-0">
+    <Link href="/" aria-label="BestBotFor" className="relative z-10 inline-flex h-10 shrink-0 items-center overflow-hidden">
       <span className="dark:hidden [&_svg]:h-10 [&_svg]:w-auto" dangerouslySetInnerHTML={{ __html: lightMarkup }} />
       <span className="hidden dark:block [&_svg]:h-10 [&_svg]:w-auto" dangerouslySetInnerHTML={{ __html: darkMarkup }} />
     </Link>

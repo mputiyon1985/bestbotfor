@@ -1,11 +1,17 @@
 import { request as httpRequest } from 'node:http'
 import { expect, test } from '@playwright/test'
-import { homeTitle, notFoundTitle } from '../src/lib/metadata'
+import { homeDescription, homeTitle, notFoundDescription, notFoundTitle } from '../src/lib/metadata'
 import { toolCategories } from '../src/lib/tool-index'
 import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
 
 function documentTitle(html: string): string {
   return html.match(/<title>([^<]*)<\/title>/)?.[1] ?? ''
+}
+
+function metaContent(html: string, attr: 'name' | 'property', key: string): string {
+  const tags = [...html.matchAll(/<meta\b[^>]*>/gi)].map((match) => match[0])
+  const tag = tags.find((item) => new RegExp(`\\b${attr}=["']${key}["']`, 'i').test(item))
+  return tag?.match(/\bcontent=["']([^"']*)["']/i)?.[1] ?? ''
 }
 
 function robotsDirectives(html: string): string[] {
@@ -98,6 +104,16 @@ test('a missing page is the not-found screen, not the home page', async () => {
   expect(robots.length).toBeGreaterThan(0)
   expect(robots.every((content) => content.includes('noindex'))).toBe(true)
   expect(robots).toContain('noindex, nofollow')
+  expect(missing.body).not.toMatch(/<link rel="canonical"/)
+  expect(metaContent(missing.body, 'property', 'og:url')).toBe('')
+  expect(metaContent(missing.body, 'name', 'description')).toBe(notFoundDescription)
+  expect(metaContent(missing.body, 'name', 'description')).not.toBe(homeDescription)
+  expect(metaContent(missing.body, 'property', 'og:title')).toBe(notFoundTitle)
+  expect(metaContent(missing.body, 'property', 'og:title')).not.toBe(homeTitle)
+  expect(metaContent(missing.body, 'name', 'twitter:title')).toBe(notFoundTitle)
+  expect(metaContent(missing.body, 'name', 'twitter:title')).not.toBe(homeTitle)
+  expect(metaContent(missing.body, 'property', 'og:description')).toBe(notFoundDescription)
+  expect(metaContent(missing.body, 'name', 'twitter:description')).toBe(notFoundDescription)
 })
 
 test('the tools index is served and still rejects an unsafe slug', async () => {

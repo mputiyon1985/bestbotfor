@@ -5,12 +5,12 @@ import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
 
 const answers = { task: 'chat', budget: 'any', skill: 'beginner' } as const
 
-test('three questions produce one pick and five alternatives', async ({ page }) => {
+test('three questions produce one pick and six alternatives', async ({ page }) => {
   const result = recommend(catalogFromSeeds(), answers)
   const pick = result?.picks[0]
   const alternatives = result?.picks.slice(1) ?? []
   expect(pick).toBeTruthy()
-  expect(alternatives.length).toBeGreaterThanOrEqual(5)
+  expect(alternatives.length).toBeGreaterThanOrEqual(6)
   if (!pick) return
 
   await page.goto('/')
@@ -42,7 +42,7 @@ test('a free budget labels the best fits that sit just over budget', async ({ pa
   const result = recommend(catalogFromSeeds(), tight)
   const alternatives = result?.picks.slice(1) ?? []
   const over = alternatives.filter((pick) => pick.budgetFit === 'over')
-  expect(result?.picks.length).toBe(6)
+  expect(result?.picks.length).toBe(7)
   expect(result?.picks.every((pick) => pick.fitScore >= 50)).toBe(true)
   expect(over.length).toBeGreaterThan(0)
   expect(result?.picks.some((pick) => pick.slug === 'hyperwrite')).toBe(false)
@@ -71,7 +71,7 @@ test('a short list says few strong options exist', async ({ page }) => {
   const games = { task: 'games', budget: 'any', skill: 'beginner' } as const
   const result = recommend(catalogFromSeeds(), games)
   const alternatives = result?.picks.slice(1) ?? []
-  expect(alternatives.length).toBeLessThan(5)
+  expect(alternatives.length).toBeLessThan(6)
   expect(alternatives.length).toBeGreaterThan(0)
 
   await page.goto(`/result?task=${games.task}&budget=${games.budget}&skill=${games.skill}`)

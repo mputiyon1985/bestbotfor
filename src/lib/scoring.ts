@@ -85,8 +85,11 @@ export function rankTools<T extends ScoreableTool>(
   return ranked
 }
 
-/** Maximum shortlist: one pick plus up to five alternatives. */
-export const QUIZ_RESULT_COUNT = 6
+/** Maximum shortlist: one pick plus up to six alternatives. */
+export const QUIZ_RESULT_COUNT = 7
+
+/** Alternatives under the top pick. The few-options line shows when fewer qualify. */
+export const QUIZ_ALTERNATIVE_COUNT = QUIZ_RESULT_COUNT - 1
 
 /** Tools below this editorial fit are not shown on the quiz result. */
 export const MIN_QUIZ_FIT_SCORE = 50
@@ -128,7 +131,7 @@ export type QuizPick<T extends ScoreableTool> = T &
 
 /**
  * Keep tools that clear the minimum fit, rank them by fit plus the budget and
- * skill adjustments, and return at most one pick and five alternatives.
+ * skill adjustments, and return at most one pick and six alternatives.
  * A tool just over budget can appear only when it clears that minimum.
  * The list is not padded when fewer tools qualify.
  */

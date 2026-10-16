@@ -58,7 +58,8 @@ export const metadata: Metadata = {
   },
   openGraph: {
     title: homeTitle,
-    description: TAGLINE,
+    description: homeDescription,
+    url: getSiteUrl(),
     siteName: SITE_NAME,
     locale: 'en_US',
     type: 'website',
@@ -78,7 +79,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const content = (
     <>
       <SiteHeader />
-      <main id="main" className="mx-auto min-h-[70vh] max-w-5xl px-4 py-10">
+      <main id="main" className="mx-auto min-h-[70vh] min-w-0 max-w-5xl px-4 pt-14 pb-10 md:py-10">
         {children}
       </main>
       <SiteFooter />

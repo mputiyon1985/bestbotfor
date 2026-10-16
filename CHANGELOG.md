@@ -3,9 +3,21 @@
 ## Unreleased
 
 - The tagline is “The right AI in 30 seconds.” The home title is “BestBotFor — The right AI in 30 seconds.”
-- The not-found page sets its own title, “Page not found | BestBotFor”, and `noindex, nofollow`.
+- The home eyebrow says “Answer 3 quick questions.”
+- The not-found page sets its own title, “Page not found | BestBotFor”, its own description, and `noindex, nofollow`. It does not reuse the home canonical or the home social titles.
+- Pages publish `og:url` as the absolute canonical URL.
+- Sub-page Open Graph and Twitter titles end with “| BestBotFor”. The home `og:description` reuses the home meta description. Best-of titles read “Best AI for making music”.
+- Best-of pages use that gerund in the heading, lead, breadcrumb, FAQ, list name, and meta description (“Best AI tool for making music”). Score bars are a valid description list, and Lighthouse scores a rated tool page.
 - Home explains the three questions, and the public meta descriptions use the 30-second pick.
 - The default Open Graph and Twitter image is the new 1200×630 card, `og-default-1200x630.676bae0e.png`.
+- The quiz result shows one pick and up to six alternatives that clear a fit score of 50. When fewer qualify, the page still says few strong options exist.
+- All-matches pages list six tools and show “Showing 1–6 of N” with numbered page links. Budget filters stay noindex, rel prev/next and the canonical rules are unchanged, and a page past the end is still a 404.
+- Tool pages can show a BestBotFor score from 0 to 5, with a fractional star, the features/value/ease/quality rubric, and a short note on how the equal-weight average is calculated. The score is editorial. Pages do not emit AggregateRating or Review schema.
+- Pros and cons render on the tool page, and a shorter version renders on result cards, only when a tool has verified rows with source URLs.
+- `src/data/scores-pros-cons.csv` is the editorial seed for 146 tools. The 13 tools without a row hide the score and the pros and cons. `source_urls` and third-party columns are not stored and are not rendered. Tool pages show a bar for features, value, ease, and quality next to the overall stars.
+- Relevance AI’s free plan is retired, so the seed upserts `hasFreeTier` as false. Windsurf keeps its name, is flagged `needs_verification`, and has no score.
+- Quiz results, all-matches lists, and tool pages keep the stars, score bars, pros and cons, and numbered pagination inside the screen at 375, 390, and 768 pixels. Pagination links are at least 44 pixels tall, and text stays at least 12 pixels.
+- Text links in the breadcrumbs, best-of lists, footer, and tablet header keep a 44 pixel tap height. Page controls are full-size buttons. The header sits clear of the breadcrumb and “Back to the questions” on a phone, and “See my best bot” stays on screen at 390 pixels.
 - Encoded and raw dot segments return 404 from a Vercel route and from the app server. The global `URL` constructor and `http.Server` are no longer patched.
 - Quiz result URLs and budget-filtered match lists are `noindex, follow`. `/result?task=X&view=all` page 1 stays indexable and in the sitemap. Lighthouse scores SEO on that indexable list. The production-env check asserts the quiz and budget-filtered pages render `noindex, follow`.
 - The first paint uses a metric-matched fallback for every Poppins weight, so the delayed swap does not reflow the tools directory.

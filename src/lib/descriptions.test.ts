@@ -1,12 +1,59 @@
 import { describe, expect, it } from 'vitest'
 import { comparePairSeeds, taskSeeds, toolSeeds } from '@/data/catalog'
-import { bestGuideDescription, compareDescription } from './descriptions'
+import {
+  bestGuideCrumb,
+  bestGuideDescription,
+  bestGuideFitAnswer,
+  bestGuideHeading,
+  bestGuideLead,
+  bestGuideListName,
+  bestGuideQuestion,
+  bestGuideTitle,
+  compareDescription,
+  taskGerund,
+} from './descriptions'
 import { homeDescription } from './metadata'
 
 describe('meta descriptions', () => {
   it('keeps the home description within 155 characters', () => {
     expect(homeDescription.length).toBeLessThanOrEqual(155)
     expect(homeDescription.startsWith('The right AI in 30 seconds.')).toBe(true)
+  })
+
+  it('names each best guide as a natural phrase', () => {
+    expect(bestGuideTitle('Make music')).toBe('Best AI for making music')
+    expect(bestGuideHeading('Make music')).toBe('Best AI tool for making music')
+    expect(bestGuideTitle('Chat and brainstorm')).toBe('Best AI for chatting and brainstorming')
+    expect(bestGuideTitle('Improve SEO')).toBe('Best AI for improving SEO')
+    for (const task of taskSeeds) {
+      const title = bestGuideTitle(task.name)
+      expect(title, task.slug).toMatch(/^Best AI for \S+ing\b/)
+      expect(title, task.slug).not.toContain('tool for')
+      expect(title.toLowerCase(), task.slug).not.toContain(task.name.toLowerCase())
+    }
+  })
+
+  it('uses the gerund on every best-of surface for all 17 tasks', () => {
+    expect(taskSeeds).toHaveLength(17)
+    const infinitive = /\bfor (add|automate|brainstorm|build|chat|create|design|generate|improve|make|research|take|write)\b/i
+    for (const task of taskSeeds) {
+      const phrase = taskGerund(task.name)
+      const copies = [
+        bestGuideTitle(task.name),
+        bestGuideHeading(task.name),
+        bestGuideLead(task.name, 'Sample'),
+        bestGuideCrumb(task.name),
+        bestGuideQuestion(task.name),
+        bestGuideFitAnswer(task.name, 'Sample'),
+        bestGuideListName(task.name),
+        bestGuideDescription(task.name),
+        `Tools ranked for ${phrase}`,
+      ]
+      for (const copy of copies) {
+        expect(copy, `${task.slug}: ${copy}`).not.toMatch(infinitive)
+        expect(copy.toLowerCase(), task.slug).toContain(phrase.toLowerCase())
+      }
+    }
   })
 
   it('keeps seeded best and compare descriptions within 160 characters', () => {

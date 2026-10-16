@@ -2,14 +2,19 @@ import Link from 'next/link'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { EditorialCompact } from '@/components/editorial'
 import { priceLabel } from '@/lib/format'
 import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/jsonld'
-import { matchBudgetLabel, matchBudgets, matchesPath } from '@/lib/matches'
+import { MATCHES_PAGE_SIZE, matchBudgetLabel, matchBudgets, matchesPath } from '@/lib/matches'
+import { paginationItems, showingLabel } from '@/lib/pagination'
 import { matchesPageTitle } from '@/lib/result-index'
 import type { CatalogTask } from '@/lib/catalog-types'
+import type { EditorialScore, ProCon } from '@/lib/editorial'
 import type { QuizPick, RankBudget, ScoreableTool } from '@/lib/scoring'
 
-type MatchTool = QuizPick<ScoreableTool & { shortDesc?: string }>
+type MatchTool = QuizPick<
+  ScoreableTool & { shortDesc?: string; editorial?: EditorialScore | null; pros?: ProCon[]; cons?: ProCon[] }
+>
 
 export function AllMatches({
   task,
@@ -37,11 +42,11 @@ export function AllMatches({
   const noun = total === 1 ? 'match' : 'matches'
 
   return (
-    <article className="space-y-8">
+    <article className="min-w-0 space-y-8 break-words">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
       <JsonLd data={itemListJsonLd(`Matches for ${task.name.toLowerCase()}`, path, tools)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
-      <h1 className="font-bold text-5xl leading-tight">{matchesPageTitle(task.name, budget, page)}</h1>
+      <h1 className="break-words font-bold text-5xl leading-tight">{matchesPageTitle(task.name, budget, page)}</h1>
       <p className="text-muted">
         {total} {noun} with a strong fit. Page {page} of {pageCount}. Ranked for {matchBudgetLabel[budget].toLowerCase()}.
       </p>
@@ -73,6 +78,7 @@ export function AllMatches({
                 </Link>
               </h2>
               <p className="mt-2 text-sm text-muted">{tool.reason}</p>
+              <EditorialCompact editorial={tool.editorial} pros={tool.pros} cons={tool.cons} />
               <p className="mt-2 text-sm">{priceLabel(tool)}</p>
               <OutboundLink slug={tool.slug} className="mt-3 inline-flex min-h-12 items-center font-semibold underline">
                 Visit {tool.name}
@@ -81,17 +87,42 @@ export function AllMatches({
           ))}
         </ul>
       ) : null}
-      <nav aria-label="Pages" className="flex flex-wrap items-center gap-4 text-sm font-semibold">
-        {page > 1 ? (
-          <Link className="underline" href={matchesPath(task.slug, budget, page - 1)}>
-            Previous page
-          </Link>
-        ) : null}
-        {page < pageCount ? (
-          <Link className="underline" href={matchesPath(task.slug, budget, page + 1)}>
-            Next page
-          </Link>
-        ) : null}
+      <nav aria-label="Pages" className="max-w-full space-y-4 text-sm font-semibold">
+        <p>{showingLabel(page, MATCHES_PAGE_SIZE, total)}</p>
+        <ol className="flex max-w-full flex-wrap items-center gap-2">
+          {paginationItems(page, pageCount).map((item, index) =>
+            item === 'ellipsis' ? (
+              <li key={`ellipsis-${index}`} aria-hidden="true" className="px-1 text-muted">
+                …
+              </li>
+            ) : (
+              <li key={item}>
+                <Link
+                  href={matchesPath(task.slug, budget, item)}
+                  aria-label={`Page ${item}`}
+                  aria-current={item === page ? 'page' : undefined}
+                  className={`inline-flex min-h-12 min-w-12 items-center justify-center rounded-full border px-3 ${
+                    item === page ? 'border-indigo bg-indigo text-white' : 'border-line bg-card hover:border-accent'
+                  }`}
+                >
+                  {item}
+                </Link>
+              </li>
+            ),
+          )}
+        </ol>
+        <div className="flex max-w-full flex-wrap items-center gap-4">
+          {page > 1 ? (
+            <Link className="inline-flex min-h-12 items-center justify-center rounded-full border border-line bg-card px-4 hover:border-accent" href={matchesPath(task.slug, budget, page - 1)}>
+              Previous page
+            </Link>
+          ) : null}
+          {page < pageCount ? (
+            <Link className="inline-flex min-h-12 items-center justify-center rounded-full border border-line bg-card px-4 hover:border-accent" href={matchesPath(task.slug, budget, page + 1)}>
+              Next page
+            </Link>
+          ) : null}
+        </div>
       </nav>
     </article>
   )

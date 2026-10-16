@@ -7,7 +7,8 @@ import { taskSeeds, toolSeeds } from '@/data/catalog'
 import { seed } from '../../../scripts/seed'
 import { getDb, resetDbCache } from './client'
 import { applyMigrations } from './migrate'
-import { affiliatePrograms, clicks, tasks, toolTasks, tools } from './schema'
+import { editorialSeeds } from '@/data/scores-pros-cons.seed'
+import { affiliatePrograms, clicks, tasks, toolProsCons, toolScores, toolTasks, tools } from './schema'
 
 const previousUrl = process.env.TURSO_DATABASE_URL
 const previousToken = process.env.TURSO_AUTH_TOKEN
@@ -175,5 +176,58 @@ describe('catalog seed', () => {
     const eleven = afterSeed.find((row) => pair(row) === 'elevenlabs:music')
     expect(eleven?.fitScore).toBe(86)
     expect(eleven?.notes).toBe('Eleven Music generates songs with vocals; commercial use needs a paid plan.')
+  })
+
+  it('upserts editorial scores and leaves a row that is not in the seed', async () => {
+    await useTempDatabase()
+    await seed()
+    const db = getDb()
+    const toolRows = await db.select().from(tools)
+    const claude = toolRows.find((row) => row.slug === 'claude')
+    expect(claude).toBeTruthy()
+    if (!claude) return
+    await db.insert(toolScores).values({
+      toolId: 999_999,
+      features: 1,
+      value: 1,
+      ease: 1,
+      quality: 1,
+      overall: 1,
+      rationale: 'Keep this sentinel score.',
+      sources: '["https://example.com"]',
+      reviewedAt: '2026-10-16',
+    })
+    await db.insert(toolProsCons).values({
+      toolId: 999_999,
+      kind: 'pro',
+      position: 1,
+      body: 'Keep this sentinel point.',
+      sourceUrl: 'https://example.com',
+    })
+    await db.update(toolScores).set({ rationale: 'stale rationale' }).where(eq(toolScores.toolId, claude.id))
+
+    await seed()
+
+    const scores = await db.select().from(toolScores)
+    const points = await db.select().from(toolProsCons)
+    const expectedPoints = editorialSeeds.reduce((total, row) => total + row.pros.length + row.cons.length, 0)
+    expect(scores).toHaveLength(editorialSeeds.length + 1)
+    expect(points).toHaveLength(expectedPoints + 1)
+    const restored = scores.find((row) => row.toolId === claude.id)
+    expect(restored?.rationale).toBe(editorialSeeds.find((row) => row.slug === 'claude')?.rationale)
+    expect(restored?.overall).toBe(4.5)
+    expect(restored?.sources).toBe('[]')
+    const windsurf = toolRows.find((row) => row.slug === 'windsurf')
+    expect(windsurf?.name).toBe('Windsurf')
+    expect(windsurf?.needsVerification).toBe(true)
+    expect(scores.some((row) => row.toolId === windsurf?.id)).toBe(false)
+    const relevance = toolRows.find((row) => row.slug === 'relevance-ai')
+    expect(relevance?.hasFreeTier).toBe(false)
+    const sentinel = scores.find((row) => row.toolId === 999_999)
+    expect(sentinel?.rationale).toBe('Keep this sentinel score.')
+    const sentinelPoint = points.find((row) => row.toolId === 999_999)
+    expect(sentinelPoint?.body).toBe('Keep this sentinel point.')
+    const claudePros = points.filter((row) => row.toolId === claude.id && row.kind === 'pro')
+    expect(claudePros).toHaveLength(3)
   })
 })

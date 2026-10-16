@@ -138,12 +138,12 @@ export default async function ToolsPage({ searchParams }: { searchParams: Promis
       {listing ? (
         <nav aria-label="Pages" className="flex flex-wrap items-center gap-4 text-sm font-semibold">
           {listing.page > 1 ? (
-            <Link className="underline" href={toolsPath(selected?.slug ?? null, listing.page - 1)}>
+            <Link className="inline-flex min-h-12 items-center justify-center rounded-full border border-line bg-card px-4 hover:border-accent" href={toolsPath(selected?.slug ?? null, listing.page - 1)}>
               Previous page
             </Link>
           ) : null}
           {listing.page < listing.pageCount ? (
-            <Link className="underline" href={toolsPath(selected?.slug ?? null, listing.page + 1)}>
+            <Link className="inline-flex min-h-12 items-center justify-center rounded-full border border-line bg-card px-4 hover:border-accent" href={toolsPath(selected?.slug ?? null, listing.page + 1)}>
               Next page
             </Link>
           ) : null}

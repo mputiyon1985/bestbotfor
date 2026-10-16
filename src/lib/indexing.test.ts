@@ -2,7 +2,8 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { metadata as notFoundMetadata } from '@/app/not-found'
 import robots from '@/app/robots'
 import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from './indexing'
-import { homeTitle, notFoundTitle, pageMetadata } from './metadata'
+import { homeDescription, homeTitle, notFoundDescription, notFoundTitle, pageMetadata } from './metadata'
+import { getSiteUrl } from './site'
 
 const original = process.env.VERCEL_ENV
 
@@ -54,7 +55,34 @@ describe('preview indexing', () => {
     expect(notFoundTitle).toBe('Page not found | BestBotFor')
     expect(notFoundTitle).not.toBe(homeTitle)
     expect(notFoundMetadata.title).toEqual({ absolute: notFoundTitle })
+    expect(notFoundMetadata.description).toBe(notFoundDescription)
+    expect(notFoundMetadata.description).not.toBe(homeDescription)
+    expect(notFoundMetadata.alternates).toEqual({})
+    expect(notFoundMetadata.openGraph?.title).toEqual({ absolute: notFoundTitle })
+    expect(notFoundMetadata.openGraph?.description).toBe(notFoundDescription)
+    expect(notFoundMetadata.twitter?.title).toEqual({ absolute: notFoundTitle })
+    expect(notFoundMetadata.twitter?.description).toBe(notFoundDescription)
     expect(notFoundMetadata.robots).toEqual({ index: false, follow: false })
+  })
+
+  it('sets og:url to the absolute canonical', () => {
+    const meta = pageMetadata({ title: 'About', description: 'About BestBotFor', path: '/about' })
+    const canonical = new URL('/about', getSiteUrl()).toString()
+    expect(meta.alternates?.canonical).toBe(canonical)
+    expect(meta.openGraph && 'url' in meta.openGraph ? meta.openGraph.url : null).toBe(canonical)
+  })
+
+  it('adds the brand to sub-page Open Graph and Twitter titles', () => {
+    const meta = pageMetadata({ title: 'About', description: 'About BestBotFor', path: '/about' })
+    expect(meta.title).toBe('About')
+    expect(meta.openGraph?.title).toBe('About | BestBotFor')
+    expect(meta.twitter?.title).toBe('About | BestBotFor')
+    const branded = pageMetadata({
+      title: 'Page not found | BestBotFor',
+      description: 'Missing',
+      path: '/missing',
+    })
+    expect(branded.openGraph?.title).toBe('Page not found | BestBotFor')
   })
 
   it('can noindex a production page and still follow its links', () => {

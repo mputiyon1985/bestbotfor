@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { budgetDelta, fitsBudget, MIN_QUIZ_FIT_SCORE, QUIZ_RESULT_COUNT, quizBudgetFit, rankTools, selectQuizPicks, skillDelta, type ScoreableTool } from './scoring'
+import { budgetDelta, fitsBudget, MIN_QUIZ_FIT_SCORE, QUIZ_ALTERNATIVE_COUNT, QUIZ_RESULT_COUNT, quizBudgetFit, rankTools, selectQuizPicks, skillDelta, type ScoreableTool } from './scoring'
 
 function tool(overrides: Partial<ScoreableTool> = {}): ScoreableTool {
   return {
@@ -44,13 +44,15 @@ describe('rankTools', () => {
     expect(skillDelta('beginner', 'beginner')).toBe(12)
   })
 
-  it('shows at most one pick and five alternatives that clear the minimum fit', () => {
+  it('shows at most one pick and six alternatives that clear the minimum fit', () => {
     const tools = [
       tool({ slug: 'free-a', name: 'Free A', fitScore: 90, pricingModel: 'free', hasFreeTier: true, priceFromUsd: null }),
       tool({ slug: 'free-b', name: 'Free B', fitScore: 70, pricingModel: 'freemium', hasFreeTier: true, priceFromUsd: 10, notes: 'Free B starts on a free tier.' }),
       tool({ slug: 'paid-high', name: 'Paid High', fitScore: 99, pricingModel: 'paid', hasFreeTier: false, priceFromUsd: 80, notes: 'Paid High is the strongest specialist.' }),
       tool({ slug: 'paid-mid', name: 'Paid Mid', fitScore: 88, pricingModel: 'paid', hasFreeTier: false, priceFromUsd: 40 }),
       tool({ slug: 'low-price', name: 'Low Price', fitScore: 60, pricingModel: 'paid', hasFreeTier: false, priceFromUsd: 20, notes: 'Low Price stays under a low budget.' }),
+      tool({ slug: 'extra', name: 'Extra', fitScore: 55, pricingModel: 'paid', hasFreeTier: false, priceFromUsd: 25, notes: 'Extra stays inside a low budget.' }),
+      tool({ slug: 'tail', name: 'Tail', fitScore: 51, pricingModel: 'paid', hasFreeTier: false, priceFromUsd: 200, notes: 'Tail is the last tool that still clears the minimum.' }),
       tool({ slug: 'paid-c', name: 'Paid C', fitScore: 50, pricingModel: 'paid', hasFreeTier: false, priceFromUsd: 100 }),
       tool({ slug: 'paid-d', name: 'Paid D', fitScore: 40, pricingModel: 'paid', hasFreeTier: false, priceFromUsd: 100 }),
       tool({ slug: 'paid-e', name: 'Paid E', fitScore: 30, pricingModel: 'paid', hasFreeTier: false, priceFromUsd: null }),
@@ -58,13 +60,18 @@ describe('rankTools', () => {
 
     const free = selectQuizPicks(tools, { budget: 'free', skill: 'beginner' })
     expect(MIN_QUIZ_FIT_SCORE).toBe(50)
+    expect(QUIZ_RESULT_COUNT).toBe(7)
+    expect(QUIZ_ALTERNATIVE_COUNT).toBe(6)
     expect(free).toHaveLength(QUIZ_RESULT_COUNT)
-    expect(free.map((pick) => pick.slug)).toEqual(['free-a', 'free-b', 'paid-high', 'paid-mid', 'low-price', 'paid-c'])
+    expect(free.slice(1)).toHaveLength(QUIZ_ALTERNATIVE_COUNT)
+    expect(free.map((pick) => pick.slug)).toEqual(['free-a', 'free-b', 'paid-high', 'paid-mid', 'low-price', 'extra', 'tail'])
+    expect(free.some((pick) => pick.slug === 'paid-c')).toBe(false)
     expect(free.filter((pick) => pick.budgetFit === 'over').map((pick) => pick.slug)).toEqual([
       'paid-high',
       'paid-mid',
       'low-price',
-      'paid-c',
+      'extra',
+      'tail',
     ])
     expect(free.every((pick) => pick.fitScore >= MIN_QUIZ_FIT_SCORE)).toBe(true)
     expect(free.every((pick) => pick.reason === pick.notes && !pick.reason.includes('\n'))).toBe(true)
@@ -72,13 +79,15 @@ describe('rankTools', () => {
     expect(fitsBudget(tools[4]!, 'free')).toBe(false)
 
     const low = selectQuizPicks(tools, { budget: 'low', skill: 'beginner' })
-    expect(low.map((pick) => pick.slug)).toEqual(['free-a', 'paid-high', 'free-b', 'paid-mid', 'low-price', 'paid-c'])
+    expect(low.map((pick) => pick.slug)).toEqual(['free-a', 'paid-high', 'free-b', 'paid-mid', 'low-price', 'extra', 'tail'])
     expect(low.find((pick) => pick.slug === 'paid-high')?.budgetFit).toBe('over')
     expect(low.find((pick) => pick.slug === 'low-price')?.budgetFit).toBe('within')
+    expect(low.find((pick) => pick.slug === 'extra')?.budgetFit).toBe('within')
+    expect(low.find((pick) => pick.slug === 'tail')?.budgetFit).toBe('over')
 
     const any = selectQuizPicks(tools, { budget: 'any', skill: 'beginner' })
     expect(any.every((pick) => pick.budgetFit === 'within')).toBe(true)
-    expect(any.map((pick) => pick.slug)).toEqual(['paid-high', 'free-a', 'paid-mid', 'free-b', 'low-price', 'paid-c'])
+    expect(any.map((pick) => pick.slug)).toEqual(['paid-high', 'free-a', 'paid-mid', 'free-b', 'low-price', 'extra', 'tail'])
   })
 
   it('treats a missing paid price as unknown on a low budget', () => {
@@ -99,7 +108,7 @@ describe('rankTools', () => {
     expect(picks[0]?.budgetFit).toBe('unknown')
   })
 
-  it('does not pad the shortlist when fewer than five alternatives clear the minimum', () => {
+  it('does not pad the shortlist when fewer than six alternatives clear the minimum', () => {
     const picks = selectQuizPicks(
       [
         tool({ slug: 'only', name: 'Only', fitScore: 70, pricingModel: 'free', hasFreeTier: true }),

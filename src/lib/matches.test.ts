@@ -31,14 +31,16 @@ function candidates(task: string): ScoreableTool[] {
 }
 
 describe('all matches', () => {
-  it('pages every qualified tool five at a time in rank order', () => {
-    const matches = listMatches(candidates('music'), 'any')
+  it('pages every qualified tool six at a time in rank order', () => {
+    const matches = listMatches(candidates('coding'), 'any')
     expect(matches.length).toBeGreaterThan(MATCHES_PAGE_SIZE)
     expect(pageOfMatches(matches, 1)).toHaveLength(MATCHES_PAGE_SIZE)
-    expect(pageOfMatches(matches, 2).map((tool) => tool.slug)).toEqual(matches.slice(MATCHES_PAGE_SIZE).map((tool) => tool.slug))
+    expect(pageOfMatches(matches, 2).map((tool) => tool.slug)).toEqual(
+      matches.slice(MATCHES_PAGE_SIZE, MATCHES_PAGE_SIZE * 2).map((tool) => tool.slug),
+    )
     expect(pageOfMatches(matches, 1).some((tool) => tool.slug === pageOfMatches(matches, 2)[0]?.slug)).toBe(false)
     expect(matches.every((tool) => tool.fitScore >= 50 && tool.reason === tool.notes)).toBe(true)
-    const shortlist = recommend(catalogFromSeeds(), { task: 'music', budget: 'any', skill: 'beginner' })
+    const shortlist = recommend(catalogFromSeeds(), { task: 'coding', budget: 'any', skill: 'beginner' })
     expect(pageOfMatches(matches, 1).map((tool) => tool.slug)).toEqual(shortlist?.picks.slice(0, MATCHES_PAGE_SIZE).map((tool) => tool.slug))
   })
 

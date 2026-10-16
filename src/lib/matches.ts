@@ -11,8 +11,8 @@ export const matchBudgets: RankBudget[] = ['any', 'free', 'low', 'mid']
 import { isPageInRange, parsePageNumber } from './page-number'
 import type { Skill } from './validation'
 
-/** Five tools per all-matches page, after the quiz shortlist of one pick plus five. */
-export const MATCHES_PAGE_SIZE = 5
+/** Six tools per all-matches page. */
+export const MATCHES_PAGE_SIZE = 6
 
 /** Public all-matches order uses one skill so the URL does not split by experience. */
 export const MATCHES_SKILL: Skill = 'beginner'

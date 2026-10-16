@@ -11,7 +11,7 @@ const faqs = [
   {
     question: 'How does BestBotFor pick a tool?',
     answer:
-      'You answer three questions: the job, your budget, and your experience. We rank tools that clear a minimum fit score by editorial fit, then adjust for budget and skill. You get one pick and up to five alternatives. A tool just over budget can still appear when it clears that bar, and it is labeled. When fewer than five alternatives qualify, the page says so. Affiliate programs do not change the rank.',
+      'You answer three questions: the job, your budget, and your experience. We rank tools that clear a minimum fit score by editorial fit, then adjust for budget and skill. You get one pick and up to six alternatives. A tool just over budget can still appear when it clears that bar, and it is labeled. When fewer than six alternatives qualify, the page says so. Affiliate programs do not change the rank.',
   },
   {
     question: 'Does it really take 30 seconds?',
@@ -39,17 +39,17 @@ export default async function HomePage() {
   const tasks = catalogTasks.length > 0 ? catalogTasks : taskSeeds
 
   return (
-    <div className="space-y-16">
+    <div className="space-y-8 md:space-y-16">
       <JsonLd data={faqJsonLd(faqs)} nonce={nonce} />
-      <section className="grid gap-8 md:grid-cols-[1.1fr_0.9fr] md:items-end">
+      <section className="grid gap-3 md:grid-cols-[1.1fr_0.9fr] md:items-end md:gap-8">
         <div>
-          <p className="text-sm font-medium uppercase tracking-wide text-accent">Three questions. One best bot.</p>
-          <h1 className="mt-3 font-headline text-5xl leading-tight md:text-6xl">{TAGLINE}</h1>
-          <p className="mt-4 max-w-xl text-lg text-muted">
-            Answer three quick questions: what you want to do, what you can spend, and how experienced you are. You’ll get one AI tool for the job and up to five alternatives, with a plain-English reason for each.
+          <p className="text-sm font-medium uppercase tracking-wide text-accent">Answer 3 quick questions</p>
+          <h1 className="mt-3 font-headline text-4xl leading-tight md:text-6xl">{TAGLINE}</h1>
+          <p className="mt-2 max-w-xl text-base text-muted md:mt-4 md:text-lg">
+            Answer three quick questions: what you want to do, what you can spend, and how experienced you are. You’ll get one AI tool for the job and up to six alternatives, with a plain-English reason for each.
           </p>
         </div>
-        <p className="rounded-3xl bg-mist px-5 py-4 text-sm text-accent">
+        <p className="rounded-3xl bg-mist px-4 py-3 text-sm text-accent md:px-5 md:py-4">
           No account needed. Your result gets its own link, so you can share it with your team or your Discord.
         </p>
       </section>
@@ -70,7 +70,7 @@ export default async function HomePage() {
             <span className="mt-1 block text-sm text-muted">Beginner, intermediate, or advanced.</span>
           </li>
         </ol>
-        <p className="mt-4 text-muted">You get one pick and up to five alternatives, side by side, with the reason we chose each. Budget and experience change the answer. That’s why we ask.</p>
+        <p className="mt-4 text-muted">You get one pick and up to six alternatives, side by side, with the reason we chose each. Budget and experience change the answer. That’s why we ask.</p>
       </section>
 
       <PickerForm tasks={tasks} />

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { homeDescription } from '../src/lib/metadata'
 import {
   ANDROID_CHROME_192_PATH,
   APPLE_TOUCH_ICON_PATH,
@@ -19,11 +20,16 @@ test('header and footer inline the lockup and the tagline', async ({ page }) => 
   await expect(headerLogo.locator('svg').nth(0)).toBeVisible()
   const footerLogo = page.getByRole('contentinfo').getByRole('link', { name: 'BestBotFor' })
   await expect(footerLogo.locator('svg').nth(0)).toBeVisible()
+  await expect(page.getByText('Answer 3 quick questions', { exact: true })).toBeVisible()
+  await expect(page.getByText('Three questions. One best bot.', { exact: true })).toHaveCount(0)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('The right AI in 30 seconds.')
   await expect(page).toHaveTitle('BestBotFor — The right AI in 30 seconds.')
   await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', /The right AI in 30 seconds\./)
+  const canonical = await page.locator('link[rel="canonical"]').getAttribute('href')
+  expect(canonical).toMatch(/^https?:\/\/[^/]+\/?$/)
+  await expect(page.locator('meta[property="og:url"]')).toHaveAttribute('content', canonical ?? '')
   await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', 'BestBotFor — The right AI in 30 seconds.')
-  await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', 'The right AI in 30 seconds.')
+  await expect(page.locator('meta[property="og:description"]')).toHaveAttribute('content', homeDescription)
   await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', 'BestBotFor — The right AI in 30 seconds.')
   await expect(page.locator('meta[name="twitter:description"]')).toHaveAttribute('content', 'The right AI in 30 seconds.')
   await expect(page.getByRole('contentinfo')).toContainText('The right AI in 30 seconds.')

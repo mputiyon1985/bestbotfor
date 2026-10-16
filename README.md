@@ -2,7 +2,9 @@
 
 The right AI in 30 seconds.
 
-BestBotFor asks for the job, the budget, and experience, then names one AI tool and up to five alternatives. The public catalog is free. A membership saves picks and unlocks the longer comparison notes.
+BestBotFor asks for the job, the budget, and experience, then names one AI tool and up to six alternatives. The public catalog is free. A membership saves picks and unlocks the longer comparison notes.
+
+A BestBotFor score is an editorial rating from 0 to 5, not a user review. The stars are an equal-weight average of features, value, ease, and quality (25% each). Tool pages also show a bar for each of those four parts, because the scores sit close together. Pros and cons appear only when a tool has verified rows. Source URL columns from the editorial file stay internal: they are not stored in bulk and they are not shown. `src/data/scores-pros-cons.csv` is Forge’s full file (146 of 159 tools, reviewed October 16, 2026). The seed parses that file, checks the equal-weight average, and upserts it in the same transaction as the catalog. It does not delete rows that are absent from the file. The 13 tools without a row hide both sections. Windsurf stays under that name and is flagged `needs_verification`, so it has no score. Relevance AI’s free plan is retired, so the catalog upserts `hasFreeTier` as false.
 
 Production origin: `https://bestbotfor.com`.
 

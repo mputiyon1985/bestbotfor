@@ -17,7 +17,7 @@ export default function AboutPage() {
       <p>{TAGLINE}</p>
       <p>
         BestBotFor is a United States guide for people who want a straight answer: which AI tool should I use for this job?
-        You answer three questions: what you want to do, what you can spend, and how experienced you are. We name one tool and up to five alternatives that clear a minimum fit score. A strong tool just over your budget can still appear, and it is labeled.
+        You answer three questions: what you want to do, what you can spend, and how experienced you are. We name one tool and up to six alternatives that clear a minimum fit score. A strong tool just over your budget can still appear, and it is labeled.
       </p>
       <p>
         The rank starts from an editorial fit score for the job. Budget and experience shift that score by a fixed amount.
