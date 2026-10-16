@@ -148,6 +148,7 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: none,
   }),
+  // pricing verified 2026-10-16 at https://cursor.com/pricing | Free $0, Plus $8, Premium $30
   tool({
     slug: 'cursor',
     name: 'Cursor',
@@ -156,13 +157,14 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['cursor.com'],
     category: 'Coding',
     shortDesc: 'An AI code editor for working inside a repository you already have.',
-    longDesc: 'Cursor is a desktop editor with chat, inline edits, and agents that can read the project. It is for people who want the model in the editor, not a separate chat tab.',
+    longDesc:
+      'Cursor is a desktop editor with chat, inline edits, and agents that can read the project. It is for people who want the model in the editor, not a separate chat tab. Current plans are Free $0, Plus $8 (Grok models only), and Premium $30 (third-party models billed extra). Pro $20 is for legacy subscribers only.',
     pricingModel: 'freemium',
-    priceFromUsd: null,
+    priceFromUsd: 8,
     hasFreeTier: true,
     skillLevel: 'intermediate',
     platforms: ['macOS', 'Windows', 'Linux'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: '2026-10-16',
     fits: [
       { task: 'coding', score: 96, notes: 'Built to edit a real codebase, which is the job.' },
       { task: 'vibe-coding', score: 68, notes: 'Can scaffold features, but it expects you to live in the editor.' },
@@ -307,22 +309,23 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: none,
   }),
+  // pricing verified 2026-10-16 at https://devin.ai/pricing | Free $0, Pro $20
   tool({
     slug: 'windsurf',
-    name: 'Windsurf',
-    vendor: 'Codeium',
-    url: 'https://windsurf.com',
-    allowedHosts: ['windsurf.com'],
+    name: 'Devin Desktop (formerly Windsurf)',
+    vendor: 'Cognition',
+    url: 'https://devin.ai/desktop',
+    allowedHosts: ['devin.ai', 'windsurf.com'],
     category: 'Coding assistant',
     shortDesc: 'An AI editor with an agent that can take a task across several files.',
-    longDesc: 'Windsurf is an editor built around an agent workflow. It competes with Cursor for people who want the model to edit the project, not only complete the current line.',
+    longDesc:
+      'Devin Desktop, formerly Windsurf, is Cognition’s editor built around an agent workflow. It competes with Cursor for people who want the model to edit the project, not only complete the current line. Pricing is listed at https://devin.ai/pricing: Free $0 and Pro $20.',
     pricingModel: 'freemium',
-    priceFromUsd: null,
+    priceFromUsd: 20,
     hasFreeTier: true,
-    needsVerification: true,
     skillLevel: 'intermediate',
     platforms: ['macOS', 'Windows', 'Linux'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: '2026-10-16',
     fits: [
       { task: 'coding', score: 88, notes: 'An agent-style editor for multi-file changes.' },
       { task: 'vibe-coding', score: 64, notes: 'Can build from a prompt, still inside an editor.' },
@@ -510,6 +513,7 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
+  // pricing verified 2026-10-16 at https://relevanceai.com/docs/get-started/pricing | Pro $19/mo billed yearly, no free plan
   tool({
     slug: 'relevance-ai',
     name: 'Relevance AI',
@@ -518,13 +522,14 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['relevanceai.com'],
     category: 'Agent builder',
     shortDesc: 'A workspace for building agents that call tools and follow a job.',
-    longDesc: 'Relevance AI is aimed at teams assembling agents, not at chatting once and leaving. You define the job and the tools. Expect a setup step before the agent does anything useful.',
+    longDesc:
+      'Relevance AI is aimed at teams assembling agents, not at chatting once and leaving. You define the job and the tools. Expect a setup step before the agent does anything useful. The free plan is retired. Pro is $19 a month billed yearly.',
     pricingModel: 'paid',
-    priceFromUsd: null,
+    priceFromUsd: 19,
     hasFreeTier: false,
     skillLevel: 'intermediate',
     platforms: ['Web'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: '2026-10-16',
     fits: [
       { task: 'agents', score: 88, notes: 'The product is the agent, not a side feature of a chat app.' },
     ],

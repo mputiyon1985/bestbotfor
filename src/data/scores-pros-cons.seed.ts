@@ -4,6 +4,7 @@ import type { EditorialSeed, EditorialSeedPoint } from '@/lib/editorial'
 
 /**
  * Forge's full editorial file, reviewed 2026-10-16. 146 rated tools.
+ * Cursor and Windsurf stay out of this file until the next rubric.
  * `source_urls` and `third_party_sources` are checked for presence and then dropped.
  * They are not stored and not rendered. Each pro and con keeps its own source URL in the database.
  */

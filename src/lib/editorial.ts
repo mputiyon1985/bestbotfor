@@ -53,7 +53,7 @@ export type EditorialSeed = Rubric & {
   cons: EditorialSeedPoint[]
 }
 
-/** Catalog tools Forge could not verify. They have no score and no pros or cons. */
+/** Catalog tools with no editorial row yet. They have no score and no pros or cons. */
 export const UNRATED_SLUGS = [
   'perplexity',
   'canva',

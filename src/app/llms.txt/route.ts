@@ -18,7 +18,11 @@ export async function GET() {
     ...taskList.map((task) => `- [Best AI tool for ${task.name}](${site}/best/${task.slug}): ${task.description}`),
     '',
     '## Comparisons',
-    ...comparePairSeeds.map(([a, b]) => `- [${a} vs ${b}](${site}/compare/${a}-vs-${b})`),
+    ...comparePairSeeds.map(([a, b]) => {
+      const left = toolList.find((tool) => tool.slug === a)?.name ?? a
+      const right = toolList.find((tool) => tool.slug === b)?.name ?? b
+      return `- [${left} vs ${right}](${site}/compare/${a}-vs-${b})`
+    }),
     '',
     '## Tools',
     `- [All tools](${site}/tools): the catalog, one page at a time. Filter with \`?category=\`.`,

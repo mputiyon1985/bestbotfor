@@ -7,6 +7,7 @@ import { taskSeeds, toolSeeds } from '@/data/catalog'
 import { seed } from '../../../scripts/seed'
 import { getDb, resetDbCache } from './client'
 import { applyMigrations } from './migrate'
+import { generateMetadata as toolMetadata } from '@/app/tools/[slug]/page'
 import { editorialSeeds } from '@/data/scores-pros-cons.seed'
 import { UNRATED_SLUGS } from '@/lib/editorial'
 import { affiliatePrograms, clicks, tasks, toolProsCons, toolScores, toolTasks, tools } from './schema'
@@ -219,11 +220,15 @@ describe('catalog seed', () => {
     expect(restored?.overall).toBe(4.5)
     expect(restored?.sources).toBe('[]')
     const windsurf = toolRows.find((row) => row.slug === 'windsurf')
-    expect(windsurf?.name).toBe('Windsurf')
-    expect(windsurf?.needsVerification).toBe(true)
+    expect(windsurf?.name).toBe('Devin Desktop (formerly Windsurf)')
+    expect(windsurf?.vendor).toBe('Cognition')
+    expect(windsurf?.url).toBe('https://devin.ai/desktop')
+    expect(windsurf?.needsVerification).toBe(false)
     expect(scores.some((row) => row.toolId === windsurf?.id)).toBe(false)
+    expect(points.some((row) => row.toolId === windsurf?.id)).toBe(false)
     const relevance = toolRows.find((row) => row.slug === 'relevance-ai')
     expect(relevance?.hasFreeTier).toBe(false)
+    expect(relevance?.priceFromUsd).toBe(19)
     const sentinel = scores.find((row) => row.toolId === 999_999)
     expect(sentinel?.rationale).toBe('Keep this sentinel score.')
     const sentinelPoint = points.find((row) => row.toolId === 999_999)
@@ -232,17 +237,69 @@ describe('catalog seed', () => {
     expect(claudePros).toHaveLength(3)
   })
 
-  it('rates exactly the CSV slugs and deletes the sample cursor score', async () => {
+  it('rates exactly the CSV slugs', async () => {
     await useTempDatabase()
     await seed()
     const db = getDb()
     const toolRows = await db.select().from(tools)
     const bySlug = new Map(toolRows.map((row) => [row.slug, row]))
     const cursor = bySlug.get('cursor')
+    const windsurf = bySlug.get('windsurf')
     const chatgpt = bySlug.get('chatgpt')
     expect(cursor).toBeTruthy()
+    expect(windsurf).toBeTruthy()
     expect(chatgpt).toBeTruthy()
-    if (!cursor || !chatgpt) return
+    if (!cursor || !windsurf || !chatgpt) return
+
+    const scores = await db.select().from(toolScores)
+    const points = await db.select().from(toolProsCons)
+    const idToSlug = new Map(toolRows.map((row) => [row.id, row.slug]))
+    const rated = scores.map((row) => idToSlug.get(row.toolId)).sort()
+    const csvSlugs = editorialSeeds.map((row) => row.slug).sort()
+    expect(editorialSeeds).toHaveLength(146)
+    expect(rated).toEqual(csvSlugs)
+    expect(new Set(rated)).toEqual(new Set(csvSlugs))
+    expect(csvSlugs).not.toContain('cursor')
+    expect(csvSlugs).not.toContain('windsurf')
+    expect(scores.every((row) => row.sources === '[]')).toBe(true)
+    expect(JSON.stringify(scores)).not.toContain('pcmag.com')
+    expect(JSON.stringify(scores)).not.toContain('techradar.com')
+    expect(JSON.stringify(scores)).not.toContain('third_party')
+    expect(JSON.stringify(scores)).not.toContain('source_urls')
+    expect(scores.some((row) => row.toolId === cursor.id)).toBe(false)
+    expect(scores.some((row) => row.toolId === windsurf.id)).toBe(false)
+    expect(points.some((row) => row.toolId === cursor.id)).toBe(false)
+    expect(points.some((row) => row.toolId === windsurf.id)).toBe(false)
+    expect(scores.some((row) => row.toolId === chatgpt.id)).toBe(true)
+
+    expect(UNRATED_SLUGS).toHaveLength(13)
+    expect(UNRATED_SLUGS).toContain('windsurf')
+    expect(UNRATED_SLUGS).toContain('cursor')
+    for (const slug of UNRATED_SLUGS) {
+      const tool = bySlug.get(slug)
+      expect(tool, slug).toBeTruthy()
+      expect(scores.some((row) => row.toolId === tool?.id), slug).toBe(false)
+      expect(points.some((row) => row.toolId === tool?.id), slug).toBe(false)
+      expect(editorialSeeds.some((row) => row.slug === slug), slug).toBe(false)
+    }
+    expect(windsurf.name).toBe('Devin Desktop (formerly Windsurf)')
+    expect(windsurf.vendor).toBe('Cognition')
+    expect(windsurf.url).toBe('https://devin.ai/desktop')
+    expect(windsurf.needsVerification).toBe(false)
+    expect(windsurf.priceFromUsd).toBe(20)
+    expect(windsurf.hasFreeTier).toBe(true)
+    expect(cursor.priceFromUsd).toBe(8)
+    expect(cursor.hasFreeTier).toBe(true)
+    expect(cursor.longDesc).toContain('Pro $20 is for legacy subscribers only')
+
+    const relevance = bySlug.get('relevance-ai')
+    const seeded = toolSeeds.find((tool) => tool.slug === 'relevance-ai')
+    expect(seeded?.hasFreeTier).toBe(false)
+    expect(seeded?.pricingModel).toBe('paid')
+    expect(seeded?.priceFromUsd).toBe(19)
+    expect(relevance?.hasFreeTier).toBe(false)
+    expect(relevance?.pricingModel).toBe('paid')
+    expect(relevance?.priceFromUsd).toBe(19)
 
     await db.insert(toolScores).values({
       toolId: cursor.id,
@@ -262,40 +319,34 @@ describe('catalog seed', () => {
       body: 'Sample pro that is not in the Forge CSV.',
       sourceUrl: 'https://cursor.com/docs',
     })
-
     const sql = await readFile(path.join(process.cwd(), 'drizzle/0007_drop_non_forge_scores.sql'), 'utf8')
-    const named = [...new Set([...sql.matchAll(/slug IN \('([^']+)'\)/g)].map((match) => match[1]))]
-    expect(named).toEqual(['cursor'])
-    expect(named.every((slug) => !editorialSeeds.some((row) => row.slug === slug))).toBe(true)
     await db.$client.executeMultiple(sql)
+    const deleted = await db.select().from(toolScores)
+    const deletedPoints = await db.select().from(toolProsCons)
+    const deletedRated = deleted.map((row) => idToSlug.get(row.toolId)).sort()
+    expect(deletedRated).toEqual(csvSlugs)
+    expect(deleted.some((row) => row.toolId === cursor.id)).toBe(false)
+    expect(deletedPoints.some((row) => row.toolId === cursor.id)).toBe(false)
+    expect(deleted.some((row) => row.toolId === chatgpt.id)).toBe(true)
+    await seed()
+    const restoredRows = await db.select().from(tools)
+    const restoredIds = new Map(restoredRows.map((row) => [row.id, row.slug]))
+    const restoredCursor = restoredRows.find((row) => row.slug === 'cursor')
+    const restored = (await db.select().from(toolScores)).map((row) => restoredIds.get(row.toolId)).sort()
+    const restoredPoints = await db.select().from(toolProsCons)
+    expect(restored).toEqual(csvSlugs)
+    expect(restoredPoints.some((row) => row.toolId === restoredCursor?.id)).toBe(false)
 
-    const scores = await db.select().from(toolScores)
-    const points = await db.select().from(toolProsCons)
-    const idToSlug = new Map(toolRows.map((row) => [row.id, row.slug]))
-    const rated = scores.map((row) => idToSlug.get(row.toolId)).sort()
-    const csvSlugs = editorialSeeds.map((row) => row.slug).sort()
-    expect(rated).toEqual(csvSlugs)
-    expect(new Set(rated)).toEqual(new Set(csvSlugs))
-    expect(points.some((row) => row.toolId === cursor.id)).toBe(false)
-    expect(scores.some((row) => row.toolId === chatgpt.id)).toBe(true)
-
-    expect(UNRATED_SLUGS).toHaveLength(13)
-    expect(UNRATED_SLUGS).toContain('windsurf')
-    expect(UNRATED_SLUGS).toContain('cursor')
-    for (const slug of UNRATED_SLUGS) {
-      const tool = bySlug.get(slug)
-      expect(tool, slug).toBeTruthy()
-      expect(scores.some((row) => row.toolId === tool?.id), slug).toBe(false)
-      expect(points.some((row) => row.toolId === tool?.id), slug).toBe(false)
-      expect(editorialSeeds.some((row) => row.slug === slug), slug).toBe(false)
+    const previousEnv = process.env.VERCEL_ENV
+    process.env.VERCEL_ENV = 'production'
+    try {
+      const meta = await toolMetadata({ params: Promise.resolve({ slug: 'windsurf' }) })
+      expect(meta.robots).toEqual({ index: true, follow: true })
+      expect(meta.title).toBe('Devin Desktop (formerly Windsurf)')
+      expect(String(meta.alternates?.canonical)).toBe('https://bestbotfor.com/tools/windsurf')
+    } finally {
+      if (previousEnv === undefined) delete process.env.VERCEL_ENV
+      else process.env.VERCEL_ENV = previousEnv
     }
-    expect(bySlug.get('windsurf')?.needsVerification).toBe(true)
-
-    const relevance = bySlug.get('relevance-ai')
-    const seeded = toolSeeds.find((tool) => tool.slug === 'relevance-ai')
-    expect(seeded?.hasFreeTier).toBe(false)
-    expect(seeded?.pricingModel).toBe('paid')
-    expect(relevance?.hasFreeTier).toBe(false)
-    expect(relevance?.pricingModel).toBe('paid')
   })
 })

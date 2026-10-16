@@ -1,13 +1,20 @@
-import { HOW_WE_SCORE, ratingAriaLabel, starFills, type EditorialScore, type ProCon } from '@/lib/editorial'
+import { ratingAriaLabel, starFills, type EditorialScore, type ProCon } from '@/lib/editorial'
 import { formatUsDate } from '@/lib/format'
+import { publicScore, scoresPublished } from '@/lib/score-visibility'
 
 const STAR_PATH =
   'M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z'
 
-export function StarRating({ score }: { score: number }) {
+export function StarRating({ score, showScores = scoresPublished() }: { score: number; showScores?: boolean }) {
+  if (!showScores) return null
   const fills = starFills(score)
   return (
-    <span role="img" aria-label={ratingAriaLabel(score)} className="inline-flex max-w-full flex-wrap items-center gap-0.5">
+    <span
+      role="img"
+      aria-label={ratingAriaLabel(score)}
+      data-star-rating=""
+      className="inline-flex max-w-full flex-wrap items-center gap-0.5"
+    >
       {fills.map((fill, index) => (
         <span key={index} data-star-fill={fill} className="relative inline-block h-5 w-5">
           <svg aria-hidden="true" viewBox="0 0 24 24" className="h-5 w-5 fill-soft">
@@ -28,15 +35,19 @@ export function EditorialCompact({
   editorial,
   pros = [],
   cons = [],
+  showScores = scoresPublished(),
 }: {
   editorial?: EditorialScore | null
   pros?: ProCon[]
   cons?: ProCon[]
+  /** Pages leave this unset so SHOW_SCORES decides. */
+  showScores?: boolean
 }) {
-  if (!editorial && pros.length === 0 && cons.length === 0) return null
+  const score = publicScore(editorial, showScores)
+  if (!score && pros.length === 0 && cons.length === 0) return null
   return (
     <div data-pros-cons="compact" className="mt-3 min-w-0 space-y-2 break-words">
-      {editorial ? <StarRating score={editorial.overall} /> : null}
+      {score ? <StarRating score={score.overall} showScores={showScores} /> : null}
       <ProsConsCompact pros={pros} cons={cons} />
     </div>
   )
@@ -62,33 +73,35 @@ export function ProsConsCompact({ pros, cons }: { pros: ProCon[]; cons: ProCon[]
   )
 }
 
-export function ScoreSection({ editorial }: { editorial: EditorialScore | null }) {
-  if (!editorial) return null
-  const parts = [
-    ['Features', editorial.features],
-    ['Value', editorial.value],
-    ['Ease', editorial.ease],
-    ['Quality', editorial.quality],
-  ] as const
+export function ScoreSection({
+  editorial,
+  showScores = scoresPublished(),
+}: {
+  editorial: EditorialScore | null
+  /** Pages leave this unset so SHOW_SCORES decides. */
+  showScores?: boolean
+}) {
+  const score = publicScore(editorial, showScores)
+  if (!score) return null
   return (
-    <section aria-labelledby="score-heading" className="min-w-0 space-y-4">
+    <section aria-labelledby="score-heading" data-score-section="" className="min-w-0 space-y-4">
       <h2 id="score-heading" className="font-semibold text-3xl">
-        BestBotFor score
+        {score.heading}
       </h2>
       <div className="flex flex-wrap items-center gap-3">
-        <StarRating score={editorial.overall} />
-        <p className="font-semibold">{formatScore(editorial.overall)} out of 5</p>
+        <StarRating score={score.overall} showScores={showScores} />
+        <p className="font-semibold">{score.overallText}</p>
       </div>
       <dl className="max-w-xl min-w-0 space-y-3">
-        {parts.map(([label, value]) => (
-          <CriterionBar key={label} label={label} value={value} />
+        {score.criteria.map((part) => (
+          <CriterionBar key={part.label} label={part.label} value={part.value} text={part.text} />
         ))}
       </dl>
-      <p className="max-w-2xl text-muted">{editorial.rationale}</p>
+      <p className="max-w-2xl text-muted">{score.rationale}</p>
       <div>
-        <h3 className="font-semibold text-xl">How we score</h3>
-        <p className="mt-2 max-w-2xl text-sm text-muted">{HOW_WE_SCORE}</p>
-        <p className="mt-2 text-sm text-muted">Reviewed {formatUsDate(editorial.reviewedAt)}.</p>
+        <h3 className="font-semibold text-xl">{score.howWeScoreHeading}</h3>
+        <p className="mt-2 max-w-2xl text-sm text-muted">{score.howWeScore}</p>
+        <p className="mt-2 text-sm text-muted">Reviewed {formatUsDate(score.reviewedAt)}.</p>
       </div>
     </section>
   )
@@ -122,9 +135,8 @@ function PointList({ title, points }: { title: string; points: ProCon[] }) {
   )
 }
 
-function CriterionBar({ label, value }: { label: string; value: number }) {
+function CriterionBar({ label, value, text }: { label: string; value: number; text: string }) {
   const width = Math.min(100, Math.max(0, (value / 5) * 100))
-  const text = formatScore(value)
   return (
     <div data-criterion-row className="relative min-w-0">
       <dt className="pr-10 text-sm font-semibold">{label}</dt>
@@ -144,9 +156,4 @@ function CriterionBar({ label, value }: { label: string; value: number }) {
       </dd>
     </div>
   )
-}
-
-function formatScore(value: number): string {
-  const tenths = Math.round(value * 10)
-  return tenths % 10 === 0 ? String(tenths / 10) : (tenths / 10).toFixed(1)
 }

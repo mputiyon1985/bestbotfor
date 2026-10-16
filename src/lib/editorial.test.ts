@@ -38,13 +38,19 @@ describe('BestBotFor score', () => {
 
   it('accepts the checked seed and rejects invented or incomplete rows', () => {
     expect(editorialSeeds).toHaveLength(146)
+    expect(UNRATED_SLUGS).toHaveLength(13)
+    expect(UNRATED_SLUGS).toContain('cursor')
+    expect(UNRATED_SLUGS).toContain('windsurf')
+    expect(editorialSeeds.some((row) => row.slug === 'cursor' || row.slug === 'windsurf')).toBe(false)
     expect(toolSeeds).toHaveLength(159)
     const rated = new Set(editorialSeeds.map((row) => row.slug))
     expect([...slugs].filter((slug) => !rated.has(slug)).sort()).toEqual([...UNRATED_SLUGS].sort())
     expect(JSON.stringify(editorialSeeds)).not.toContain('pcmag.com')
+    expect(JSON.stringify(editorialSeeds)).not.toContain('techradar.com')
     expect(JSON.stringify(editorialSeeds)).not.toContain('third_party')
+    expect(JSON.stringify(editorialSeeds)).not.toContain('source_urls')
     const blocked = new Set(toolSeeds.filter((tool) => tool.needsVerification).map((tool) => tool.slug))
-    expect(blocked).toEqual(new Set(['windsurf']))
+    expect(blocked.size).toBe(0)
     expect(() => validateEditorialSeeds(editorialSeeds, slugs, blocked)).not.toThrow()
     for (const row of editorialSeeds) {
       expect(row.overall).toBe(overallScore(row))
@@ -64,7 +70,9 @@ describe('BestBotFor score', () => {
     expect(loaded).toHaveLength(1)
     expect(JSON.stringify(loaded)).not.toContain('pcmag.com')
     expect(() => validateEditorialSeeds(loaded, slugs, blocked)).not.toThrow()
-    expect(() => validateEditorialSeeds([{ ...loaded[0]!, slug: 'windsurf' }], slugs, blocked)).toThrow(/needs verification/)
+    expect(() => validateEditorialSeeds([{ ...loaded[0]!, slug: 'windsurf' }], slugs, new Set(['windsurf']))).toThrow(
+      /needs verification/,
+    )
 
     const base = editorialSeeds[0]
     expect(base).toBeTruthy()
@@ -132,11 +140,28 @@ describe('BestBotFor score', () => {
 
   it('hides scores for blank tools and keeps a free-budget quiz working without a retired free plan', () => {
     const windsurf = toolSeeds.find((tool) => tool.slug === 'windsurf')
-    expect(windsurf?.name).toBe('Windsurf')
-    expect(windsurf?.needsVerification).toBe(true)
+    expect(windsurf?.name).toBe('Devin Desktop (formerly Windsurf)')
+    expect(windsurf?.vendor).toBe('Cognition')
+    expect(windsurf?.url).toBe('https://devin.ai/desktop')
+    expect(windsurf?.allowedHosts).toContain('devin.ai')
+    expect(windsurf?.priceFromUsd).toBe(20)
+    expect(windsurf?.hasFreeTier).toBe(true)
+    expect(windsurf?.needsVerification).toBeFalsy()
+    expect(windsurf?.longDesc).toContain('https://devin.ai/pricing')
+    expect(windsurf?.longDesc).toContain('Free $0')
+    expect(windsurf?.longDesc).toContain('Pro $20')
+    const cursor = toolSeeds.find((tool) => tool.slug === 'cursor')
+    expect(cursor?.priceFromUsd).toBe(8)
+    expect(cursor?.hasFreeTier).toBe(true)
+    expect(cursor?.longDesc).toContain('Free $0')
+    expect(cursor?.longDesc).toContain('Plus $8 (Grok models only)')
+    expect(cursor?.longDesc).toContain('Premium $30 (third-party models billed extra)')
+    expect(cursor?.longDesc).toContain('Pro $20 is for legacy subscribers only')
     const relevance = toolSeeds.find((tool) => tool.slug === 'relevance-ai')
     expect(relevance?.hasFreeTier).toBe(false)
     expect(relevance?.pricingModel).toBe('paid')
+    expect(relevance?.priceFromUsd).toBe(19)
+    expect(relevance?.longDesc).toContain('Pro is $19 a month billed yearly')
 
     const catalog = catalogFromSeeds()
     for (const slug of UNRATED_SLUGS) {
@@ -145,7 +170,15 @@ describe('BestBotFor score', () => {
       expect(tool?.pros, slug).toEqual([])
       expect(tool?.cons, slug).toEqual([])
     }
-    expect(catalog.tools.find((tool) => tool.slug === 'windsurf')?.name).toBe('Windsurf')
+    const ratedWindsurf = catalog.tools.find((tool) => tool.slug === 'windsurf')
+    expect(ratedWindsurf?.name).toBe('Devin Desktop (formerly Windsurf)')
+    expect(ratedWindsurf?.editorial).toBeNull()
+    expect(ratedWindsurf?.pros).toEqual([])
+    expect(ratedWindsurf?.cons).toEqual([])
+    const ratedCursor = catalog.tools.find((tool) => tool.slug === 'cursor')
+    expect(ratedCursor?.editorial).toBeNull()
+    expect(ratedCursor?.pros).toEqual([])
+    expect(ratedCursor?.cons).toEqual([])
 
     const freeAgents = recommend(catalog, { task: 'agents', budget: 'free', skill: 'beginner' })
     expect(freeAgents?.picks.length).toBeGreaterThan(0)
