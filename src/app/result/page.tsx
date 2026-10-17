@@ -207,7 +207,7 @@ export default async function ResultPage({
       ) : access.reason === 'unauthenticated' ? (
         <p>
           <Link href={savePickSignUpHref(sharePath)} className="inline-flex min-h-11 items-center font-semibold underline">
-            Save this pick: create a free account
+            Create a free account to keep up with new tools
           </Link>
         </p>
       ) : (
