@@ -40,8 +40,11 @@ export type RetentionCopyInput =
  * The public page says the job is on only when production can write:
  * the launch constant is true, DATA_RETENTION_PURGE is exactly "on",
  * and DATA_RETENTION_DRY_RUN is exactly "off". A boolean argument is the
- * whole answer, for tests. The launch pull request sets all three.
- * It does not edit these sentences one by one.
+ * whole answer, for tests. This is the write condition, not the launch
+ * sequence. The launch pull request sets the code constant to true and
+ * nothing else. The first production run leaves dry-run on or unset.
+ * A later step sets dry-run to off. This function does not edit the
+ * sentences one by one.
  */
 export function retentionCopyOn(input: RetentionCopyInput = {}): boolean {
   if (typeof input === 'boolean') return input
