@@ -23,7 +23,6 @@ const HIDDEN_COPY = [
   'Rate this tool',
   'What users say',
   'How user ratings work',
-  'Our rating',
   'No user ratings yet',
   'not enough ratings yet',
   'aggregateRating',
@@ -46,7 +45,7 @@ test('rating routes 404 while the flag is off', async ({ request }) => {
 test('the tool page keeps the editorial score and hides user ratings', async ({ page }) => {
   await page.goto('/tools/chatgpt')
   await expect(page.getByRole('heading', { level: 1, name: 'ChatGPT' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Our rating', exact: true })).toBeVisible()
   const body = await page.content()
   for (const phrase of HIDDEN_COPY) {
     expect(body, phrase).not.toContain(phrase)

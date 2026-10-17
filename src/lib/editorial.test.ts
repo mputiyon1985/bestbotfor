@@ -22,7 +22,7 @@ import { selectQuizPicks } from './scoring'
 
 const slugs = new Set(toolSeeds.map((tool) => tool.slug))
 
-describe('BestBotFor score', () => {
+describe('Our rating', () => {
   it('weights the four parts and rounds half up to one decimal', () => {
     expect(SCORE_WEIGHTS.quality + SCORE_WEIGHTS.features + SCORE_WEIGHTS.value + SCORE_WEIGHTS.ease).toBe(100)
     expect(SCORE_WEIGHTS).toEqual({ quality: 40, features: 25, value: 20, ease: 15 })
