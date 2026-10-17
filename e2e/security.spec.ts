@@ -80,6 +80,15 @@ test('encoded dot segments do not render the home page', async () => {
   }
 })
 
+test('a 404 keeps exactly one noindex meta after hydration', async ({ page }) => {
+  for (const path of ['/no-such-page', '/foo/bar/baz', '/tools/not-a-real-tool', '/compare/not-a-tool-vs-also-missing', '/best/not-a-real-task']) {
+    await page.goto(path, { waitUntil: 'load' })
+    const metas = page.locator('meta[name="robots"]')
+    await expect(metas, path).toHaveCount(1)
+    await expect(metas, path).toHaveAttribute('content', 'noindex')
+  }
+})
+
 test('a real 404 from next start has exactly one noindex meta', async () => {
   // rawStatus buffers the whole response, including anything Next streams after the head.
   for (const path of ['/no-such-page', '/this-page-does-not-exist', '/tools/not-a-real-tool', '/compare/not-a-tool-vs-also-missing']) {
