@@ -36,6 +36,7 @@ export function SiteFooter() {
             <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/terms">Terms</Link></li>
             <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/newsletter">Newsletter</Link></li>
             <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/pricing">Pricing</Link></li>
+            <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/sponsor">Sponsor</Link></li>
           </ul>
         </nav>
       </div>

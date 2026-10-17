@@ -1,11 +1,13 @@
-import { eq, sql } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 import type Stripe from 'stripe'
 import { z } from 'zod'
 import type { Database } from './db'
-import { stripeEvents, subscriptions } from './db/schema'
+import { sponsorships, stripeEvents, subscriptions } from './db/schema'
 import { getDb } from './db'
 import { isDeadline, withDeadline } from './deadline'
+import { sponsorOffering, sponsorPriceId } from './sponsor-offerings'
 import { getStripe, stripeWebhookSecret } from './stripe'
+import { liveModeAllowed } from './stripe-key'
 
 const WEBHOOK_DB_BUDGET_MS = 2_000
 
@@ -43,7 +45,8 @@ export type WebhookResult = { status: number; body: Record<string, unknown> }
  * only after the subscription write succeeds. A retry of a finished event
  * returns 200 without applying again. A retry of an unfinished claim still
  * applies, including when the timeout cleanup could not delete the row.
- * If applying fails, the event row is removed so Stripe can retry safely.
+ * If applying fails, the unfinished event row (processed_at = 0) is removed so
+ * Stripe can retry safely. A finished claim is left in place.
  */
 export async function handleStripeWebhook(input: {
   rawBody: string
@@ -52,6 +55,7 @@ export async function handleStripeWebhook(input: {
   stripe?: Stripe | null
   secret?: string | null
   deadlineMs?: number
+  allowLive?: boolean
 }): Promise<WebhookResult> {
   const stripe = input.stripe === undefined ? getStripe() : input.stripe
   const secret = input.secret === undefined ? stripeWebhookSecret() : input.secret
@@ -69,7 +73,8 @@ export async function handleStripeWebhook(input: {
     return { status: 400, body: { error: 'invalid-signature' } }
   }
 
-  if (event.livemode) {
+  const allowLive = input.allowLive ?? liveModeAllowed()
+  if (event.livemode && !allowLive) {
     return { status: 400, body: { error: 'live-mode-rejected' } }
   }
 
@@ -77,13 +82,13 @@ export async function handleStripeWebhook(input: {
   const deadlineMs = input.deadlineMs ?? WEBHOOK_DB_BUDGET_MS
 
   try {
-    const outcome = await withDeadline(applyWebhook(db, event), deadlineMs)
+    const outcome = await withDeadline(applyWebhook(db, stripe, event), deadlineMs)
     if (outcome === 'duplicate') return { status: 200, body: { received: true, duplicate: true } }
     return { status: 200, body: { received: true } }
   } catch (error) {
     if (isDeadline(error)) {
       try {
-        await withDeadline(db.delete(stripeEvents).where(eq(stripeEvents.id, event.id)), Math.min(deadlineMs, 300))
+        await withDeadline(deleteUnfinishedClaim(db, event.id), Math.min(deadlineMs, 300))
       } catch (cleanup) {
         console.error('stripe webhook cleanup failed', cleanup instanceof Error ? cleanup.name : 'error')
       }
@@ -94,7 +99,13 @@ export async function handleStripeWebhook(input: {
   }
 }
 
-async function applyWebhook(db: Database, event: Stripe.Event): Promise<'ok' | 'duplicate'> {
+function deleteUnfinishedClaim(db: Database, eventId: string) {
+  return db
+    .delete(stripeEvents)
+    .where(and(eq(stripeEvents.id, eventId), eq(stripeEvents.processedAt, 0)))
+}
+
+async function applyWebhook(db: Database, stripe: Stripe, event: Stripe.Event): Promise<'ok' | 'duplicate'> {
   const inserted = await db
     .insert(stripeEvents)
     .values({ id: event.id, type: event.type, processedAt: 0 })
@@ -107,16 +118,138 @@ async function applyWebhook(db: Database, event: Stripe.Event): Promise<'ok' | '
   }
 
   try {
-    await applyEvent(db, event)
+    await applyEvent(db, stripe, event)
     await db.update(stripeEvents).set({ processedAt: Date.now() }).where(eq(stripeEvents.id, event.id))
   } catch (error) {
-    await db.delete(stripeEvents).where(eq(stripeEvents.id, event.id))
+    await deleteUnfinishedClaim(db, event.id)
     throw error
   }
   return 'ok'
 }
 
-async function applyEvent(db: Database, event: Stripe.Event): Promise<void> {
+const KNOWN_EVENT_TYPES = new Set([
+  'checkout.session.completed',
+  'checkout.session.async_payment_succeeded',
+  'checkout.session.async_payment_failed',
+  'customer.subscription.created',
+  'customer.subscription.updated',
+  'customer.subscription.deleted',
+])
+
+const sponsorshipCheckoutSchema = z.object({
+  id: z.string().min(1).max(255),
+  payment_status: z.string().optional(),
+  customer: z.union([z.string(), z.object({ id: z.string() })]).nullable().optional(),
+  payment_intent: z.union([z.string(), z.object({ id: z.string() })]).nullable().optional(),
+  customer_email: z.string().max(320).nullable().optional(),
+  amount_total: z.number().int().nullable().optional(),
+  currency: z.string().max(12).nullable().optional(),
+  metadata: z
+    .object({
+      kind: z.literal('sponsorship'),
+      offering: z.string().min(1).max(80),
+      email: z.string().max(320).optional(),
+      company: z.string().max(200).optional(),
+      task_slug: z.string().max(80).optional(),
+      issue_date: z.string().max(40).optional(),
+      price_id: z.string().max(255).optional(),
+    })
+    .optional(),
+})
+
+function isSponsorshipEvent(event: Stripe.Event): boolean {
+  if (!KNOWN_EVENT_TYPES.has(event.type) || !event.type.startsWith('checkout.session.')) return false
+  const object = event.data?.object
+  if (!object || typeof object !== 'object' || !('metadata' in object)) return false
+  const metadata = object.metadata
+  return Boolean(metadata && typeof metadata === 'object' && 'kind' in metadata && metadata.kind === 'sponsorship')
+}
+
+function stripeId(value: string | { id: string } | null | undefined): string | null {
+  if (!value) return null
+  return typeof value === 'string' ? value : value.id
+}
+
+function sponsorshipStatus(type: string, paymentStatus: string | undefined): 'pending' | 'paid' | 'failed' {
+  if (type === 'checkout.session.async_payment_failed') return 'failed'
+  if (type === 'checkout.session.async_payment_succeeded') return paymentStatus === 'unpaid' ? 'pending' : 'paid'
+  return paymentStatus === 'paid' ? 'paid' : 'pending'
+}
+
+function sponsorshipLine(session: Stripe.Checkout.Session): { priceId: string | null; quantity: number | null } {
+  const items = session.line_items?.data ?? []
+  if (items.length !== 1) return { priceId: null, quantity: null }
+  const item = items[0]
+  if (!item) return { priceId: null, quantity: null }
+  const price = item.price
+  const priceId = !price ? null : typeof price === 'string' ? price : price.id
+  const quantity = typeof item.quantity === 'number' ? item.quantity : null
+  return { priceId, quantity }
+}
+
+async function applySponsorship(db: Database, stripe: Stripe, event: Stripe.Event): Promise<void> {
+  const parsed = sponsorshipCheckoutSchema.safeParse(event.data.object)
+  if (!parsed.success || parsed.data.metadata?.kind !== 'sponsorship') {
+    throw new Error('sponsorship payload failed validation')
+  }
+  const offering = sponsorOffering(parsed.data.metadata.offering)
+  if (!offering) throw new Error('sponsorship payload failed validation')
+  const expectedPriceId = sponsorPriceId(offering.id)
+  if (!expectedPriceId) throw new Error('sponsorship price is not configured')
+  const session = await stripe.checkout.sessions.retrieve(parsed.data.id, { expand: ['line_items'] })
+  const line = sponsorshipLine(session)
+  if (session.id !== parsed.data.id || line.priceId !== expectedPriceId) {
+    throw new Error('sponsorship price mismatch')
+  }
+  if (line.quantity !== 1) throw new Error('sponsorship quantity mismatch')
+  const now = Date.now()
+  const status = sponsorshipStatus(event.type, parsed.data.payment_status)
+  await db
+    .insert(sponsorships)
+    .values({
+      stripeCheckoutSessionId: parsed.data.id,
+      stripePaymentIntentId: stripeId(parsed.data.payment_intent),
+      stripeCustomerId: stripeId(parsed.data.customer),
+      stripePriceId: expectedPriceId,
+      offering: offering.id,
+      status,
+      email: parsed.data.customer_email ?? parsed.data.metadata.email ?? null,
+      company: parsed.data.metadata.company || null,
+      taskSlug: parsed.data.metadata.task_slug || null,
+      issueDate: parsed.data.metadata.issue_date || null,
+      amountTotal: parsed.data.amount_total ?? null,
+      currency: parsed.data.currency ?? null,
+      createdAt: now,
+      updatedAt: now,
+    })
+    .onConflictDoUpdate({
+      target: sponsorships.stripeCheckoutSessionId,
+      set: {
+        stripePaymentIntentId: sql`coalesce(excluded.stripe_payment_intent_id, ${sponsorships.stripePaymentIntentId})`,
+        stripeCustomerId: sql`coalesce(excluded.stripe_customer_id, ${sponsorships.stripeCustomerId})`,
+        stripePriceId: sql`coalesce(excluded.stripe_price_id, ${sponsorships.stripePriceId})`,
+        status: sql`CASE
+          WHEN ${sponsorships.status} = 'paid' OR excluded.status = 'paid' THEN 'paid'
+          WHEN ${sponsorships.status} = 'failed' AND excluded.status = 'pending' THEN ${sponsorships.status}
+          ELSE excluded.status
+        END`,
+        email: sql`coalesce(excluded.email, ${sponsorships.email})`,
+        company: sql`coalesce(excluded.company, ${sponsorships.company})`,
+        taskSlug: sql`coalesce(excluded.task_slug, ${sponsorships.taskSlug})`,
+        issueDate: sql`coalesce(excluded.issue_date, ${sponsorships.issueDate})`,
+        amountTotal: sql`coalesce(excluded.amount_total, ${sponsorships.amountTotal})`,
+        currency: sql`coalesce(excluded.currency, ${sponsorships.currency})`,
+        updatedAt: now,
+      },
+    })
+}
+
+async function applyEvent(db: Database, stripe: Stripe, event: Stripe.Event): Promise<void> {
+  if (isSponsorshipEvent(event)) {
+    await applySponsorship(db, stripe, event)
+    return
+  }
+
   if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
     const parsed = checkoutSchema.safeParse(event.data.object)
     if (!parsed.success || parsed.data.mode !== 'subscription' || !parsed.data.subscription) return
@@ -151,6 +284,11 @@ async function applyEvent(db: Database, event: Stripe.Event): Promise<void> {
       priceId: item?.price?.id ?? null,
       periodEnd: item?.current_period_end ?? null,
     })
+    return
+  }
+
+  if (!KNOWN_EVENT_TYPES.has(event.type)) {
+    console.info('stripe webhook event', event.type)
   }
 }
 
