@@ -20,12 +20,11 @@ export const AFFILIATE_LINKS_LIVE: boolean = false
 export const SHOW_USER_AGGREGATE_JSONLD: boolean = false
 
 /**
- * Lawyer review of /privacy, /terms, and /disclosure was recorded on
- * 2026-10-17 (James, 10:46 AM ET). Those pages use ordinary page metadata,
- * so production indexes them. They stay in the sitemap and robots.txt does
- * not disallow them.
- * /review-guidelines and /how-user-ratings-work stay noindex, nofollow until
- * user ratings launch. This constant stays false until that launch PR, which
- * is also what keeps those two pages out of search. It does not turn ratings on.
+ * ratings-not-launched gate for /review-guidelines and /how-user-ratings-work.
+ * Lawyer review was recorded on October 17, 2026. This constant is not that
+ * switch. It stays false until the ratings launch PR, which keeps those two
+ * pages noindex, nofollow. It does not turn ratings on.
+ * /privacy, /terms, and /disclosure use ordinary page metadata. They were
+ * already indexed on main.
  */
 export const POLICY_PAGES_LAWYER_APPROVED: boolean = false

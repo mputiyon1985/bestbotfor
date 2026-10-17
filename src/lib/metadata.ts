@@ -55,9 +55,10 @@ function socialTitle(title: string): string {
 
 /**
  * /review-guidelines and /how-user-ratings-work only.
- * /privacy, /terms, and /disclosure use pageMetadata and index in production.
- * Until ratings launch, these two pages are noindex, nofollow in every
- * environment, including production.
+ * POLICY_PAGES_LAWYER_APPROVED is the ratings-not-launched gate for these
+ * two pages. While it is false they are noindex, nofollow in every
+ * environment, including production. /privacy, /terms, and /disclosure use
+ * pageMetadata.
  */
 export function policyPageMetadata(input: { title: string; description: string; path: string }): Metadata {
   const metadata = pageMetadata(input)

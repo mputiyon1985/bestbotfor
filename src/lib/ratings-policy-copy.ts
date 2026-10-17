@@ -4,17 +4,17 @@
  */
 
 export const LAWYER_REVIEW_NOTICE =
-  'Pending lawyer review. This draft is not legal advice and is not in effect until that review is recorded.'
+  'Lawyer review was recorded on October 17, 2026. User ratings are not launched, so this copy is not in effect yet.'
 
 export const PRIVACY_UPDATED = 'October 17, 2026'
 
 export const PRIVACY_UPDATED_WITH_RATINGS =
-  'October 17, 2026. The ratings and reviews section below is draft copy pending lawyer review.'
+  'October 17, 2026. Lawyer review of the ratings and reviews section was recorded that day. The section is not in effect until user ratings launch.'
 
 export const TERMS_UPDATED = 'October 15, 2026'
 
 export const TERMS_UPDATED_WITH_RATINGS =
-  'October 17, 2026. The link to the review guidelines is draft copy pending lawyer review.'
+  'October 17, 2026. Lawyer review of the review-guidelines link was recorded that day. That link is not in effect until user ratings launch.'
 
 export const ATTESTATION =
   "I'm rating this tool from my own experience. I don't work for [Vendor] and I'm not posting on its behalf. Nobody paid me or gave me anything for this rating, and nobody asked me to make it positive or negative. If I have any other connection to [Vendor], I've described it above."
