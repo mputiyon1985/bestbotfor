@@ -11,7 +11,7 @@ const markdown = readFileSync(path.join(process.cwd(), 'src/content/how-we-rate.
 export const metadata: Metadata = pageMetadata({
   title: 'How we rate',
   description:
-    'BestBotFor scores each AI tool against rivals that do the same job. Quality is 40%, features 25%, value 20%, and ease 15%. The score is editorial.',
+    'Our rating compares each AI tool against rivals that do the same job. Quality is 40%, features 25%, value 20%, and ease 15%. The score is editorial.',
   path: '/how-we-rate',
 })
 

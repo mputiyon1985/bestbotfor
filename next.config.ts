@@ -17,6 +17,10 @@ import {
   ORGANIZATION_LOGO_PATH,
   SVG_CONTENT_SECURITY_POLICY,
 } from './src/lib/brand'
+import { assertReviewHmacSecrets } from './src/lib/review-hmac-secrets'
+
+// Fail the build (and any later config load) before Next compiles pages.
+assertReviewHmacSecrets()
 
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -73,6 +77,11 @@ const nextConfig: NextConfig = {
         source,
         headers: [{ key: 'Cache-Control', value: HASHED_ASSET_CACHE_CONTROL }],
       })),
+      // Slug URLs, not content hashes. A replaced tile waits out the year.
+      {
+        source: '/logos/:path*',
+        headers: [{ key: 'Cache-Control', value: HASHED_ASSET_CACHE_CONTROL }],
+      },
     ]
   },
 }

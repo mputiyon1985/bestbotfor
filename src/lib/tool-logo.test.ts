@@ -7,12 +7,15 @@ import manifestJson from '@/data/logo-manifest.json'
 import logoSlugsJson from '@/data/logo-slugs.json'
 import { LOGO_PUBLIC_DIR, monogramLetter, TOOL_LOGO_MARK_FILL } from '@/lib/logo-source'
 import { monogramFontSize, resolveToolLogo, TOOL_LOGO_SIZE } from '@/lib/tool-logo'
-import { markLongSideFill, normalizeLogo, readSources, sanitizeSvg } from '../../scripts/fetch-tool-logos'
+import { MONOGRAM_OVERRIDES, NEUTRAL_TILE_FILL, NEUTRAL_TILE_SLUGS, markLongSideFill, normalizeLogo, readSources, sanitizeSvg } from '../../scripts/fetch-tool-logos'
 
 type ManifestEntry = { slug: string; sourceUrl: string; fetchedAt: string }
 
 const manifest = manifestJson as ManifestEntry[]
-const MISSING = ['chatgpt', 'jules', 'leonardo-ai', 'midjourney', 'openai-codex', 'replit', 'sunsama']
+const MISSING = ['midjourney']
+const LOW_RES = ['clearscope', 'clipdrop', 'jules', 'letsenhance', 'neuronwriter', 'wolfram-alpha']
+const HOSTED = 151
+const monogramOverrides = new Set<string>(MONOGRAM_OVERRIDES)
 
 function sourceFiles(directory: string): string[] {
   const found: string[] = []
@@ -55,15 +58,19 @@ describe('tool logos', () => {
     const sources = await readSources()
     const bySlug = new Map(sources.map((row) => [row.slug, row]))
     expect(sources).toHaveLength(toolSeeds.length)
-    expect(sources.filter((row) => row.status === 'ok')).toHaveLength(126)
-    expect(sources.filter((row) => row.status === 'low_res')).toHaveLength(26)
+    expect(sources.filter((row) => row.status === 'ok')).toHaveLength(152)
+    expect(sources.filter((row) => row.status === 'low_res')).toHaveLength(6)
     const missing = sources.filter((row) => row.status === 'missing').map((row) => row.slug).sort()
     expect(missing).toEqual(MISSING)
+    const lowRes = sources.filter((row) => row.status === 'low_res').map((row) => row.slug).sort()
+    expect(lowRes).toEqual(LOW_RES)
+    expect([...MONOGRAM_OVERRIDES]).toEqual(['playground'])
+    expect([...NEUTRAL_TILE_SLUGS]).toEqual(['deepgram'])
 
     const manifestSlugs = manifest.map((entry) => entry.slug)
     expect(new Set(manifestSlugs).size).toBe(manifest.length)
     expect(logoSlugsJson).toEqual(manifestSlugs)
-    expect(manifest).toHaveLength(126)
+    expect(manifest).toHaveLength(HOSTED)
     for (const entry of manifest) {
       const row = bySlug.get(entry.slug)
       expect(row?.status).toBe('ok')
@@ -73,11 +80,12 @@ describe('tool logos', () => {
       expect(tool, entry.slug).toBeTruthy()
       if (!tool) continue
       expect(resolveToolLogo(tool.slug, tool.name).kind).toBe('file')
+      expect(monogramOverrides.has(entry.slug)).toBe(false)
     }
     for (const tool of toolSeeds) {
       const row = bySlug.get(tool.slug)
       const logo = resolveToolLogo(tool.slug, tool.name)
-      const usesFile = row?.status === 'ok'
+      const usesFile = row?.status === 'ok' && !monogramOverrides.has(tool.slug)
       expect(logo.kind === 'file').toBe(usesFile)
       expect(manifestSlugs.includes(tool.slug)).toBe(usesFile)
     }
@@ -120,12 +128,28 @@ describe('tool logos', () => {
     expect(monogramFontSize(TOOL_LOGO_SIZE)).toBe(23)
   })
 
-  it('strips scripts and event handlers from an svg before tiling', async () => {
-    const dirty = '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" onload="alert(1)"><script>alert(1)</script><circle cx="64" cy="64" r="40" fill="#111111"/></svg>'
+  it('strips scripts, event handlers, external refs, and foreignObject before tiling', async () => {
+    const dirty = [
+      '<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">',
+      '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="128" height="128" onload="alert(1)">',
+      '<script>alert(1)</script>',
+      '<foreignObject width="10" height="10"><iframe src="https://evil.example/x"></iframe></foreignObject>',
+      '<image href="https://evil.example/a.png" width="10" height="10"/>',
+      '<rect width="128" height="128" fill="#111111"/>',
+      '<circle cx="64" cy="64" r="40" fill="url(#grad)" style="fill:url(https://evil.example/a.png)"/>',
+      '</svg>',
+    ].join('')
     const clean = sanitizeSvg(dirty)
-    expect(clean.toLowerCase()).not.toContain('<script')
+    const lower = clean.toLowerCase()
+    expect(lower).not.toContain('<script')
+    expect(lower).not.toContain('<foreignobject')
+    expect(lower).not.toContain('<iframe')
+    expect(lower).not.toContain('<!doctype')
+    expect(lower).not.toContain('https:')
+    expect(lower).not.toContain('javascript:')
     expect(clean).not.toMatch(/\son[a-z]+\s*=/i)
     expect(clean).toContain('<circle')
+    expect(clean).toContain('url(#grad)')
     const tile = await normalizeLogo(Buffer.from(dirty))
     expect(tile).not.toBeNull()
     const meta = await sharp(tile!).metadata()
@@ -133,4 +157,29 @@ describe('tool logos', () => {
     expect(meta.width).toBe(128)
     expect(meta.height).toBe(128)
   })
+
+  it('draws a single-colour mark on the neutral tile and keeps other tiles white', async () => {
+    const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128"><rect width="128" height="128" fill="#000000"/></svg>'
+    const neutral = await normalizeLogo(Buffer.from(svg), NEUTRAL_TILE_FILL)
+    const white = await normalizeLogo(Buffer.from(svg))
+    expect(neutral).not.toBeNull()
+    expect(white).not.toBeNull()
+    if (!neutral || !white) return
+    const neutralEdge = await pixel(neutral, 6, 64)
+    const whiteEdge = await pixel(white, 6, 64)
+    expect(neutralEdge).toEqual(hexRgb(NEUTRAL_TILE_FILL))
+    expect(whiteEdge).toEqual([255, 255, 255, 255])
+    const saved = await pixel(readFileSync(path.join(process.cwd(), LOGO_PUBLIC_DIR, 'deepgram.webp')), 6, 64)
+    expect(saved).toEqual(hexRgb(NEUTRAL_TILE_FILL))
+  })
 })
+
+async function pixel(input: Buffer, x: number, y: number): Promise<number[]> {
+  const { data, info } = await sharp(input).ensureAlpha().raw().toBuffer({ resolveWithObject: true })
+  const index = (y * info.width + x) * info.channels
+  return [data[index] ?? 0, data[index + 1] ?? 0, data[index + 2] ?? 0, data[index + 3] ?? 0]
+}
+
+function hexRgb(hex: string): number[] {
+  return [parseInt(hex.slice(1, 3), 16), parseInt(hex.slice(3, 5), 16), parseInt(hex.slice(5, 7), 16), 255]
+}

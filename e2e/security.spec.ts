@@ -80,6 +80,25 @@ test('encoded dot segments do not render the home page', async () => {
   }
 })
 
+test('a 404 keeps exactly one noindex meta after hydration', async ({ page }) => {
+  for (const path of ['/no-such-page', '/foo/bar/baz', '/tools/not-a-real-tool', '/compare/not-a-tool-vs-also-missing', '/best/not-a-real-task']) {
+    await page.goto(path, { waitUntil: 'load' })
+    const metas = page.locator('meta[name="robots"]')
+    await expect(metas, path).toHaveCount(1)
+    await expect(metas, path).toHaveAttribute('content', 'noindex')
+  }
+})
+
+test('a real 404 from next start has exactly one noindex meta', async () => {
+  // rawStatus buffers the whole response, including anything Next streams after the head.
+  for (const path of ['/no-such-page', '/this-page-does-not-exist', '/tools/not-a-real-tool', '/compare/not-a-tool-vs-also-missing']) {
+    const response = await rawStatus(path)
+    expect(response.status, path).toBe(404)
+    expect(response.body, path).toContain('</html>')
+    expect(robotsDirectives(response.body), path).toEqual(['noindex'])
+  }
+})
+
 test('a missing page is the not-found screen, not the home page', async () => {
   const home = await rawStatus('/')
   expect(home.status).toBe(200)
@@ -100,10 +119,13 @@ test('a missing page is the not-found screen, not the home page', async () => {
   expect(documentTitle(missing.body)).not.toBe(homeTitle)
   expect(missing.body).toContain('That page is not in the catalog.')
   expect(missing.body).toContain(HOME_MARKER)
-  const robots = robotsDirectives(missing.body)
-  expect(robots.length).toBeGreaterThan(0)
-  expect(robots.every((content) => content.includes('noindex'))).toBe(true)
-  expect(robots).toContain('noindex, nofollow')
+  expect(robotsDirectives(missing.body)).toEqual(['noindex'])
+  const missingTool = await rawStatus('/tools/not-a-real-tool')
+  expect(missingTool.status).toBe(404)
+  expect(robotsDirectives(missingTool.body)).toEqual(['noindex'])
+  const missingCompare = await rawStatus('/compare/not-a-tool-vs-also-missing')
+  expect(missingCompare.status).toBe(404)
+  expect(robotsDirectives(missingCompare.body)).toEqual(['noindex'])
   expect(missing.body).not.toMatch(/<link rel="canonical"/)
   expect(metaContent(missing.body, 'property', 'og:url')).toBe('')
   expect(metaContent(missing.body, 'name', 'description')).toBe(notFoundDescription)

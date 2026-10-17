@@ -47,7 +47,8 @@ describe('sqlite file directories', () => {
     expect(ids).toContain('0006_tool_needs_verification.sql')
     expect(ids).toContain('0007_drop_non_forge_scores.sql')
     expect(ids).toContain('0008_ratings_v23.sql')
-    expect(ids).toContain('0010_result_rate_windows.sql')
+    expect(ids).toContain('0012_result_rate_windows.sql')
+    expect(ids).not.toContain('0010_result_rate_windows.sql')
     const windows = await client.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'result_rate_windows'",
     )
@@ -88,15 +89,37 @@ describe('sqlite file directories', () => {
 })
 
 describe('drizzle journal', () => {
-  it('matches the sql files and records the result window migration as 0010', async () => {
+  it('keeps one idx per migration once sponsorships, reviews, and the result window are together', async () => {
     const journal = JSON.parse(await readFile(path.join(process.cwd(), 'drizzle/meta/_journal.json'), 'utf8')) as {
       entries: { idx: number; tag: string }[]
     }
     const tags = journal.entries.map((entry) => entry.tag)
+    const idxs = journal.entries.map((entry) => entry.idx)
+    // Filename order after #10 (0009), #32 (0011), and this PR (0012) all land.
+    // 0010 is unused so this migration does not sort between those two.
+    expect(tags).toEqual([
+      '0001_init',
+      '0002_catalog_indexes',
+      '0003_tool_tasks_unique',
+      '0004_retire_quiz_fits',
+      '0005_tool_scores_pros_cons',
+      '0006_tool_needs_verification',
+      '0007_drop_non_forge_scores',
+      '0008_ratings_v23',
+      '0009_sponsorships',
+      '0011_user_reviews',
+      '0012_result_rate_windows',
+    ])
+    expect(idxs).toEqual(tags.map((_, index) => index))
+    expect(new Set(idxs).size).toBe(idxs.length)
+    expect(journal.entries.find((entry) => entry.tag === '0009_sponsorships')?.idx).toBe(8)
+    expect(journal.entries.find((entry) => entry.tag === '0011_user_reviews')?.idx).toBe(9)
+    expect(journal.entries.find((entry) => entry.tag === '0012_result_rate_windows')?.idx).toBe(10)
+
     const sqlFiles = (await readdir(path.join(process.cwd(), 'drizzle'))).filter((name) => name.endsWith('.sql')).sort()
-    expect(tags.map((tag) => `${tag}.sql`)).toEqual(sqlFiles)
-    expect(tags).toContain('0010_result_rate_windows')
-    expect(tags).not.toContain('0009_result_rate_windows')
-    expect(journal.entries.map((entry) => entry.idx)).toEqual(tags.map((_, index) => index))
+    const arrivingWithOtherPrs = new Set(['0009_sponsorships.sql', '0011_user_reviews.sql'])
+    expect(sqlFiles).toEqual(tags.map((tag) => `${tag}.sql`).filter((name) => !arrivingWithOtherPrs.has(name)))
+    expect(sqlFiles).toContain('0012_result_rate_windows.sql')
+    expect(sqlFiles).not.toContain('0010_result_rate_windows.sql')
   })
 })

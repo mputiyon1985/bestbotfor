@@ -29,11 +29,10 @@ import { slugSchema } from '@/lib/validation'
 
 export async function generateMetadata({ params }: { params: Promise<{ task: string }> }): Promise<Metadata> {
   const { task: slug } = await params
-  if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) {
-    return pageMetadata({ title: 'Not found', description: 'That guide is not in the catalog.', path: '/best', noIndex: true })
-  }
+  // Missing guides call notFound() so their noindex metadata is not hydrated as a second robots meta.
+  if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) notFound()
   const task = await getTask(slug)
-  if (!task) return pageMetadata({ title: 'Not found', description: 'That guide is not in the catalog.', path: `/best/${slug}`, noIndex: true })
+  if (!task) notFound()
   return pageMetadata({
     title: bestGuideTitle(task.name),
     description: bestGuideDescription(task.name),

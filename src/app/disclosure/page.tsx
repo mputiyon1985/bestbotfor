@@ -1,6 +1,11 @@
 import type { Metadata } from 'next'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { LawyerReviewNotice } from '@/components/lawyer-review-notice'
+import { userRatingsEnabled } from '@/lib/flags'
 import { pageMetadata } from '@/lib/metadata'
+import { DISCLOSURE_ADVERTISER_PARAGRAPH } from '@/lib/ratings-policy-copy'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Affiliate disclosure',
@@ -9,6 +14,7 @@ export const metadata: Metadata = pageMetadata({
 })
 
 export default function DisclosurePage() {
+  const ratings = userRatingsEnabled()
   return (
     <article className="max-w-2xl space-y-4">
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Affiliate disclosure', path: '/disclosure' }]} />
@@ -28,6 +34,12 @@ export default function DisclosurePage() {
       </p>
       <p>Recommendations are opinions based on the catalog, not a promise that a tool will work for your project.</p>
       <p>Tool logos and icons are trademarks of their owners. They are used on BestBotFor for identification only and do not imply endorsement.</p>
+      {ratings ? (
+        <>
+          <LawyerReviewNotice />
+          <p>{DISCLOSURE_ADVERTISER_PARAGRAPH}</p>
+        </>
+      ) : null}
     </article>
   )
 }

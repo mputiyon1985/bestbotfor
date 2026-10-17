@@ -19,9 +19,10 @@ import { parseComparePair } from '@/lib/validation'
 export async function generateMetadata({ params }: { params: Promise<{ pair: string }> }): Promise<Metadata> {
   const { pair } = await params
   const parsed = parseComparePair(pair)
-  if (!parsed) return pageMetadata({ title: 'Comparison', description: 'That comparison is not available.', path: `/compare/${pair}`, noIndex: true })
+  // Missing pairs call notFound() so their noindex metadata is not hydrated as a second robots meta.
+  if (!parsed) notFound()
   const [a, b] = await orderedPair(parsed.a, parsed.b)
-  if (!a || !b) return pageMetadata({ title: 'Comparison', description: 'That comparison is not available.', path: `/compare/${pair}`, noIndex: true })
+  if (!a || !b) notFound()
   return pageMetadata({
     title: `${a.name} vs ${b.name}`,
     description: compareDescription(a.name, b.name),

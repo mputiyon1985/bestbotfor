@@ -61,8 +61,22 @@
     {
       "idx": 8,
       "version": "6",
+      "when": 1792179424000,
+      "tag": "0009_sponsorships",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1792182000000,
+      "tag": "0011_user_reviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
       "when": 1792183000000,
-      "tag": "0010_result_rate_windows",
+      "tag": "0012_result_rate_windows",
       "breakpoints": true
     }
   ]

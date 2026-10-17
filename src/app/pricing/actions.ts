@@ -2,6 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { ACTION_LIMITS, allowRate } from '@/lib/action-limit'
+import { billingNoticeQuery } from '@/lib/billing-notice'
 import { getDb } from '@/lib/db'
 import { isClerkConfigured } from '@/lib/flags'
 import { rateLimitKey } from '@/lib/ip'
@@ -22,8 +23,9 @@ export async function checkoutAction(): Promise<void> {
     rateLimitKey(userId, 'checkout'),
     ACTION_LIMITS.checkout.limit,
     ACTION_LIMITS.checkout.windowMs,
+    { onError: 'closed' },
   )
-  if (!allowed) redirect('/pricing?notice=rate')
+  if (allowed !== 'allow') redirect(`/pricing?notice=${billingNoticeQuery(allowed)}`)
 
   const customer = await stripeCustomerIdForUser(userId)
   const session = await stripe.checkout.sessions.create({
