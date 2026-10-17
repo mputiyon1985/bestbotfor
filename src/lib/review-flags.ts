@@ -20,9 +20,11 @@ export const AFFILIATE_LINKS_LIVE: boolean = false
 export const SHOW_USER_AGGREGATE_JSONLD: boolean = false
 
 /**
- * Review guidelines and "How user ratings work" stay out of search until a
- * lawyer signs off on the draft. While this is false, those pages hard-set
- * robots to noindex, nofollow in every environment, including production.
- * A later PR sets this to true after that review is recorded.
+ * ratings-not-launched gate for /review-guidelines and /how-user-ratings-work.
+ * Lawyer review was recorded on October 17, 2026. This constant is not that
+ * switch. It stays false until the ratings launch PR, which keeps those two
+ * pages noindex, nofollow. It does not turn ratings on.
+ * /privacy, /terms, and /disclosure use ordinary page metadata. They were
+ * already indexed on main.
  */
 export const POLICY_PAGES_LAWYER_APPROVED: boolean = false

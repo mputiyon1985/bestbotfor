@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { createClient } from '@libsql/client'
@@ -103,11 +103,16 @@ describe('sqlite file directories', () => {
     expect(ids).toContain('0015_sponsorship_slot_claims.sql')
     expect(ids).toContain('0016_sponsorship_card_review.sql')
     expect(ids).toContain('0017_sponsorship_daily_counts.sql')
+    expect(ids).toContain('0018_retention_indexes.sql')
     expect(ids).not.toContain('0010_result_rate_windows.sql')
     const windows = await client.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'result_rate_windows'",
     )
     expect(windows.rows).toHaveLength(1)
+    const retentionIndexes = await client.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name IN ('rate_limits_reset_at_idx', 'clicks_ts_idx') ORDER BY name",
+    )
+    expect(retentionIndexes.rows.map((row) => String(row.name))).toEqual(['clicks_ts_idx', 'rate_limits_reset_at_idx'])
     expect(ids).toContain('0011_user_reviews.sql')
     const columns = await client.execute('PRAGMA table_info(tools)')
     expect(columns.rows.some((row) => row.name === 'needs_verification')).toBe(true)
@@ -168,6 +173,7 @@ describe('sqlite file directories', () => {
       '0015_sponsorship_slot_claims.sql',
       '0016_sponsorship_card_review.sql',
       '0017_sponsorship_daily_counts.sql',
+      '0018_retention_indexes.sql',
     ])
     const tables = await client.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('stripe_events', 'sponsorships') ORDER BY name",
@@ -257,6 +263,7 @@ describe('sqlite file directories', () => {
       '0015_sponsorship_slot_claims.sql',
       '0016_sponsorship_card_review.sql',
       '0017_sponsorship_daily_counts.sql',
+      '0018_retention_indexes.sql',
     ])
     const columns = await after.execute('PRAGMA table_info(sponsorships)')
     const beforeCols = before.rows.map((row) => ({
@@ -299,7 +306,7 @@ describe('sqlite file directories', () => {
     await applyMigrations(url)
     const again = createClient({ url })
     const count = await again.execute('SELECT COUNT(*) AS n FROM schema_migrations')
-    expect(Number(count.rows[0]?.n)).toBe(MAIN_MIGRATIONS.length + 9)
+    expect(Number(count.rows[0]?.n)).toBe(MAIN_MIGRATIONS.length + 10)
     const stillThere = await again.execute({
       sql: "SELECT id FROM schema_migrations WHERE id = '0005_sponsorships.sql'",
     })
@@ -397,6 +404,78 @@ describe('sqlite file directories', () => {
     expect(recorded.rows).toHaveLength(1)
     after.close()
   })
+
+  it('applies 0018 with 0009 already on disk, then applies later sponsor files when they land', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'bestbotfor-order-'))
+    directories.push(root)
+    const sqlDir = path.join(root, 'drizzle')
+    await mkdir(sqlDir)
+    const source = path.join(process.cwd(), 'drizzle')
+    for (const name of await readdir(source)) {
+      if (!name.endsWith('.sql')) continue
+      await copyFile(path.join(source, name), path.join(sqlDir, name))
+    }
+    const url = `file:${path.join(root, 'order.db')}`
+    await applyMigrations(url, undefined, sqlDir)
+
+    const reserved = [
+      '0009_sponsorships.sql',
+      '0013_sponsorship_paid_at.sql',
+      '0014_sponsorship_creatives.sql',
+      '0015_sponsorship_slot_claims.sql',
+      '0016_sponsorship_card_review.sql',
+      '0017_sponsorship_daily_counts.sql',
+    ]
+    const onDisk = new Set((await readdir(sqlDir)).filter((name) => name.endsWith('.sql')))
+    const present = reserved.filter((name) => onDisk.has(name))
+    const late = reserved.filter((name) => !onDisk.has(name))
+    const client = createClient({ url })
+    const first = await client.execute('SELECT id FROM schema_migrations ORDER BY id')
+    const firstIds = first.rows.map((row) => String(row.id))
+    expect(firstIds).toContain('0018_retention_indexes.sql')
+    expect(firstIds).toContain('0011_user_reviews.sql')
+    expect(firstIds).toContain('0012_result_rate_windows.sql')
+    expect(present).toContain('0009_sponsorships.sql')
+    for (const name of present) expect(firstIds).toContain(name)
+    for (const name of late) expect(firstIds).not.toContain(name)
+    const indexes = await client.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name IN ('rate_limits_reset_at_idx', 'clicks_ts_idx') ORDER BY name",
+    )
+    expect(indexes.rows.map((row) => String(row.name))).toEqual(['clicks_ts_idx', 'rate_limits_reset_at_idx'])
+    client.close()
+
+    for (const name of late) {
+      const table = `late_${name.slice(0, 4)}`
+      await writeFile(path.join(sqlDir, name), `CREATE TABLE IF NOT EXISTS ${table} (id INTEGER PRIMARY KEY);\n`)
+    }
+    await applyMigrations(url, undefined, sqlDir)
+
+    const again = createClient({ url })
+    const second = await again.execute('SELECT id, COUNT(*) AS n FROM schema_migrations GROUP BY id')
+    const counts = new Map(second.rows.map((row) => [String(row.id), Number(row.n)]))
+    expect(counts.get('0018_retention_indexes.sql')).toBe(1)
+    for (const name of present) expect(counts.get(name)).toBe(1)
+    for (const name of late) expect(counts.get(name)).toBe(1)
+    for (const name of late) {
+      const table = `late_${name.slice(0, 4)}`
+      const created = await again.execute({
+        sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+        args: [table],
+      })
+      expect(created.rows).toHaveLength(1)
+    }
+    const still = await again.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'clicks_ts_idx'",
+    )
+    expect(still.rows).toHaveLength(1)
+    again.close()
+
+    await applyMigrations(url, undefined, sqlDir)
+    const third = createClient({ url })
+    const finalCount = await third.execute('SELECT COUNT(*) AS n FROM schema_migrations')
+    expect(Number(finalCount.rows[0]?.n)).toBe(firstIds.length + late.length)
+    third.close()
+  })
 })
 
 describe('drizzle journal', () => {
@@ -425,6 +504,7 @@ describe('drizzle journal', () => {
     expect(idxOf('0015_sponsorship_slot_claims')).toBe(13)
     expect(idxOf('0016_sponsorship_card_review')).toBe(14)
     expect(idxOf('0017_sponsorship_daily_counts')).toBe(15)
+    expect(idxOf('0018_retention_indexes')).toBe(16)
     const migration = await readFile(path.join(process.cwd(), 'drizzle/0013_sponsorship_paid_at.sql'), 'utf8')
     const executable = executableSql(migration).toLowerCase()
     expect(executable).not.toContain('add column if not exists')
@@ -468,5 +548,7 @@ describe('drizzle journal', () => {
     expect(daily).not.toContain('user_agent')
     expect(daily).not.toContain('cookie')
     expect(daily).not.toContain('user_id')
+    expect(sqlFiles).not.toContain('0013_retention_indexes.sql')
+    expect(sqlFiles).not.toContain('0016_retention_indexes.sql')
   })
 })
