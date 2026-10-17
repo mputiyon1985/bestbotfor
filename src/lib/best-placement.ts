@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 import type { Database } from './db/client'
 import { sponsorships } from './db/schema'
+import { sanitizeSponsorCompany } from './sponsor-company'
 
 /** Visible label for a /best placement that comes from an active sponsorship. */
 export const SPONSORED_LABEL = 'Sponsored'
@@ -14,7 +15,8 @@ export type SponsorshipPlacementRow = {
   status: string
   taskSlug: string | null
   company: string | null
-  updatedAt: number
+  paidAt: number | null
+  refundedAt: number | null
 }
 
 export type ActiveBestPlacement = {
@@ -32,8 +34,8 @@ export function placementWindowMs(offering: string): number | null {
 
 /**
  * The placement shown on one /best page. Only a paid weekly or monthly
- * sponsorship for that task, still inside its window, qualifies. `updatedAt`
- * is when the paid row was written.
+ * sponsorship for that task, not refunded, still inside the window that
+ * starts at paidAt, qualifies. paidAt is the first time the row became paid.
  */
 export function activeBestPlacement(
   rows: SponsorshipPlacementRow[],
@@ -41,15 +43,16 @@ export function activeBestPlacement(
   now: number,
 ): ActiveBestPlacement | null {
   const matches = rows.filter((row) => {
-    if (row.status !== 'paid' || row.taskSlug !== taskSlug) return false
+    if (row.status !== 'paid' || row.taskSlug !== taskSlug || row.refundedAt != null) return false
     const windowMs = placementWindowMs(row.offering)
-    if (windowMs == null || !Number.isFinite(row.updatedAt) || !Number.isFinite(now)) return false
-    return now >= row.updatedAt && now < row.updatedAt + windowMs
+    const start = row.paidAt
+    if (windowMs == null || start == null || !Number.isFinite(start) || !Number.isFinite(now)) return false
+    return now >= start && now < start + windowMs
   })
-  matches.sort((left, right) => right.updatedAt - left.updatedAt)
+  matches.sort((left, right) => (right.paidAt ?? 0) - (left.paidAt ?? 0))
   const current = matches[0]
   if (!current) return null
-  const company = current.company?.trim() ?? ''
+  const company = sanitizeSponsorCompany(current.company ?? '')
   return {
     label: SPONSORED_LABEL,
     company: company.length > 0 ? company : null,
@@ -68,9 +71,27 @@ export async function activeBestPlacementForTask(
       status: sponsorships.status,
       taskSlug: sponsorships.taskSlug,
       company: sponsorships.company,
-      updatedAt: sponsorships.updatedAt,
+      paidAt: sponsorships.paidAt,
+      refundedAt: sponsorships.refundedAt,
     })
     .from(sponsorships)
     .where(and(eq(sponsorships.taskSlug, taskSlug), eq(sponsorships.status, 'paid')))
   return activeBestPlacement(rows, taskSlug, now)
+}
+
+/**
+ * /best calls this so a sponsorship read cannot take down the guide.
+ * The log is the error name only. Company names and emails are not logged.
+ */
+export async function readActiveBestPlacement(
+  open: () => Database,
+  taskSlug: string,
+  now = Date.now(),
+): Promise<ActiveBestPlacement | null> {
+  try {
+    return await activeBestPlacementForTask(open(), taskSlug, now)
+  } catch (error) {
+    console.error('best placement lookup failed', error instanceof Error ? error.name : 'error')
+    return null
+  }
 }

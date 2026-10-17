@@ -152,6 +152,10 @@ export const sponsorships = sqliteTable(
     currency: text('currency'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
+    /** First time status became paid. The placement window starts here and is not moved later. */
+    paidAt: integer('paid_at'),
+    /** Set once when a refund event matches this payment. The placement stops showing. */
+    refundedAt: integer('refunded_at'),
   },
   (table) => [index('sponsorships_status_idx').on(table.status)],
 )

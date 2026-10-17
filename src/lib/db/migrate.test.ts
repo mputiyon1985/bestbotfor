@@ -98,6 +98,7 @@ describe('sqlite file directories', () => {
     expect(ids).toContain('0008_ratings_v23.sql')
     expect(ids).toContain('0009_sponsorships.sql')
     expect(ids).toContain('0012_result_rate_windows.sql')
+    expect(ids).toContain('0013_sponsorship_paid_at.sql')
     expect(ids).not.toContain('0010_result_rate_windows.sql')
     const windows = await client.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'result_rate_windows'",
@@ -158,6 +159,7 @@ describe('sqlite file directories', () => {
       '0009_sponsorships.sql',
       '0011_user_reviews.sql',
       '0012_result_rate_windows.sql',
+      '0013_sponsorship_paid_at.sql',
     ])
     const tables = await client.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('stripe_events', 'sponsorships') ORDER BY name",
@@ -180,6 +182,8 @@ describe('sqlite file directories', () => {
       'currency',
       'created_at',
       'updated_at',
+      'paid_at',
+      'refunded_at',
     ])
     client.close()
   })
@@ -240,31 +244,50 @@ describe('sqlite file directories', () => {
       '0009_sponsorships.sql',
       '0011_user_reviews.sql',
       '0012_result_rate_windows.sql',
+      '0013_sponsorship_paid_at.sql',
     ])
     const columns = await after.execute('PRAGMA table_info(sponsorships)')
-    expect(columns.rows.map((row) => String(row.name))).toEqual(before.rows.map((row) => String(row.name)))
-    expect(columns.rows.map((row) => [String(row.name), String(row.type), Number(row.notnull), Number(row.pk)])).toEqual(
-      before.rows.map((row) => [String(row.name), String(row.type), Number(row.notnull), Number(row.pk)]),
-    )
+    const beforeCols = before.rows.map((row) => ({
+      name: String(row.name),
+      type: String(row.type),
+      notnull: Number(row.notnull),
+      pk: Number(row.pk),
+    }))
+    const afterCols = columns.rows.map((row) => ({
+      name: String(row.name),
+      type: String(row.type),
+      notnull: Number(row.notnull),
+      pk: Number(row.pk),
+    }))
+    expect(afterCols.slice(0, beforeCols.length)).toEqual(beforeCols)
+    expect(afterCols.slice(beforeCols.length)).toEqual([
+      { name: 'paid_at', type: 'INTEGER', notnull: 0, pk: 0 },
+      { name: 'refunded_at', type: 'INTEGER', notnull: 0, pk: 0 },
+    ])
     const tableSql = await after.execute(
       "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'sponsorships'",
     )
-    expect(String(tableSql.rows[0]?.sql)).toBe(String(beforeSql.rows[0]?.sql))
+    const afterSql = String(tableSql.rows[0]?.sql)
+    expect(String(beforeSql.rows[0]?.sql)).toContain("CHECK (status IN ('pending', 'paid', 'failed'))")
+    expect(afterSql).toContain("CHECK (status IN ('pending', 'paid', 'failed'))")
+    expect(afterSql).toContain('paid_at')
+    expect(afterSql).toContain('refunded_at')
+    expect(afterSql.toLowerCase()).not.toContain('drop')
     const index = await after.execute(
       "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'sponsorships_status_idx'",
     )
     expect(index.rows).toHaveLength(1)
     const kept = await after.execute({
-      sql: 'SELECT company, status FROM sponsorships WHERE stripe_checkout_session_id = ?',
+      sql: 'SELECT company, status, paid_at, refunded_at FROM sponsorships WHERE stripe_checkout_session_id = ?',
       args: ['cs_test_stray_preview'],
     })
-    expect(kept.rows).toEqual([{ company: 'Stray Preview Co', status: 'pending' }])
+    expect(kept.rows).toEqual([{ company: 'Stray Preview Co', status: 'pending', paid_at: null, refunded_at: null }])
     after.close()
 
     await applyMigrations(url)
     const again = createClient({ url })
     const count = await again.execute('SELECT COUNT(*) AS n FROM schema_migrations')
-    expect(Number(count.rows[0]?.n)).toBe(MAIN_MIGRATIONS.length + 4)
+    expect(Number(count.rows[0]?.n)).toBe(MAIN_MIGRATIONS.length + 5)
     const stillThere = await again.execute({
       sql: "SELECT id FROM schema_migrations WHERE id = '0005_sponsorships.sql'",
     })
@@ -334,6 +357,8 @@ describe('sqlite file directories', () => {
         'currency',
         'created_at',
         'updated_at',
+        'paid_at',
+        'refunded_at',
       ]),
     )
     const index = await after.execute(
@@ -345,6 +370,11 @@ describe('sqlite file directories', () => {
       args: ['cs_test_partial'],
     })
     expect(kept.rows.map((row) => String(row.status))).toEqual(['paid'])
+    const stamped = await after.execute({
+      sql: 'SELECT paid_at, refunded_at FROM sponsorships WHERE stripe_checkout_session_id = ?',
+      args: ['cs_test_partial'],
+    })
+    expect(stamped.rows).toEqual([{ paid_at: 2, refunded_at: null }])
     const stray = await after.execute(
       "SELECT id FROM schema_migrations WHERE id = '0005_sponsorships.sql'",
     )
@@ -378,5 +408,12 @@ describe('drizzle journal', () => {
     expect(idxOf('0009_sponsorships')).toBe(8)
     expect(idxOf('0011_user_reviews')).toBe(9)
     expect(idxOf('0012_result_rate_windows')).toBe(10)
+    expect(idxOf('0013_sponsorship_paid_at')).toBe(11)
+    const migration = await readFile(path.join(process.cwd(), 'drizzle/0013_sponsorship_paid_at.sql'), 'utf8')
+    const executable = executableSql(migration).toLowerCase()
+    expect(executable).not.toContain('add column if not exists')
+    expect(executable).not.toContain('drop')
+    expect(executable).not.toContain('delete')
+    expect(executable).toContain('create index if not exists sponsorships_status_idx')
   })
 })

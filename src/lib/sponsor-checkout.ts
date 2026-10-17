@@ -12,6 +12,7 @@ import {
   type SponsorOfferingId,
 } from './sponsor-offerings'
 import type { RateLimitDecision } from './action-limit'
+import { sanitizeSponsorCompany } from './sponsor-company'
 import { emailSchema } from './validation'
 
 const COMPANY = /^[^\r\n<>]{2,120}$/
@@ -43,7 +44,7 @@ export function parseSponsorCheckout(formData: FormData, env: Record<string, str
   const email = emailSchema.safeParse(String(formData.get('email') ?? ''))
   if (!email.success) return { ok: false, message: 'Enter a valid work email.' }
 
-  const company = String(formData.get('company') ?? '').trim()
+  const company = sanitizeSponsorCompany(String(formData.get('company') ?? ''))
   if (!COMPANY.test(company)) return { ok: false, message: 'Enter the company name.' }
 
   const requestId = String(formData.get('request_id') ?? '')

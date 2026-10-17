@@ -573,6 +573,195 @@ describe('handleStripeWebhook', () => {
     await close()
   })
 
+  it('sets paid_at once and does not move it when a later event updates the row', async () => {
+    const { db, close } = await createTestDatabase()
+    const paidAt = 1_700_000_000_000
+    const later = paidAt + 60_000
+    const pending = sponsorshipEvent('evt_clock_pending', 'checkout.session.completed', { payment_status: 'unpaid' })
+    const paid = sponsorshipEvent('evt_clock_paid', 'checkout.session.async_payment_succeeded', { payment_status: 'paid' })
+    const failed = sponsorshipEvent('evt_clock_failed', 'checkout.session.async_payment_failed', { payment_status: 'unpaid' })
+    const stripe = stripeStub([pending, paid, failed])
+    await handleStripeWebhook({
+      rawBody: JSON.stringify(pending),
+      signature: 'valid',
+      db,
+      stripe,
+      secret: SECRET,
+      now: paidAt - 1,
+    })
+    const waiting = await db.select().from(sponsorships)
+    expect(waiting[0]).toMatchObject({ status: 'pending', paidAt: null, refundedAt: null })
+    await handleStripeWebhook({
+      rawBody: JSON.stringify(paid),
+      signature: 'valid',
+      db,
+      stripe,
+      secret: SECRET,
+      now: paidAt,
+    })
+    const active = await db.select().from(sponsorships)
+    expect(active[0]).toMatchObject({ status: 'paid', paidAt, updatedAt: paidAt })
+    await handleStripeWebhook({
+      rawBody: JSON.stringify(failed),
+      signature: 'valid',
+      db,
+      stripe,
+      secret: SECRET,
+      now: later,
+    })
+    const after = await db.select().from(sponsorships)
+    expect(after).toHaveLength(1)
+    expect(after[0]).toMatchObject({ status: 'paid', paidAt, updatedAt: later, refundedAt: null })
+    await close()
+  })
+
+  it('stores a company name with bidi and control characters removed', async () => {
+    const { db, close } = await createTestDatabase()
+    const event = sponsorshipEvent('evt_company_bidi', 'checkout.session.completed', {
+      metadata: {
+        kind: 'sponsorship',
+        offering: 'placement_monthly',
+        email: 'sponsor@example.com',
+        company: '\u202EExample\u0000 Tools',
+        task_slug: 'coding',
+        issue_date: '',
+        price_id: 'price_e2e_monthly',
+      },
+    })
+    const result = await handleStripeWebhook({
+      rawBody: JSON.stringify(event),
+      signature: 'valid',
+      db,
+      stripe: stripeStub([event]),
+      secret: SECRET,
+    })
+    expect(result.status).toBe(200)
+    const rows = await db.select().from(sponsorships)
+    expect(rows[0]?.company).toBe('Example Tools')
+    await close()
+  })
+
+  it('sets refunded_at once for charge.refunded and a succeeded refund, and ignores a failed refund', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const errorLog = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { db, close } = await createTestDatabase()
+    const paidAt = 1_700_000_000_000
+    const paid = sponsorshipEvent('evt_refund_paid')
+    const stripe = stripeStub([paid])
+    await handleStripeWebhook({
+      rawBody: JSON.stringify(paid),
+      signature: 'valid',
+      db,
+      stripe,
+      secret: SECRET,
+      now: paidAt,
+    })
+    const failedRefund = {
+      id: 'evt_refund_failed',
+      type: 'refund.failed',
+      livemode: false,
+      data: {
+        object: {
+          id: 're_failed',
+          object: 'refund',
+          payment_intent: 'pi_sponsor',
+          status: 'failed',
+          amount: 29_900,
+          receipt_email: 'sponsor@example.com',
+        },
+      },
+    } as unknown as Stripe.Event
+    const partial = {
+      id: 'evt_charge_refunded',
+      type: 'charge.refunded',
+      livemode: false,
+      data: {
+        object: {
+          id: 'ch_sponsor',
+          object: 'charge',
+          payment_intent: 'pi_sponsor',
+          refunded: false,
+          amount_refunded: 1_000,
+          billing_details: { email: 'sponsor@example.com', name: 'Example Tools' },
+        },
+      },
+    } as unknown as Stripe.Event
+    const again = {
+      id: 'evt_refund_succeeded',
+      type: 'refund.updated',
+      livemode: false,
+      data: {
+        object: {
+          id: 're_succeeded',
+          object: 'refund',
+          payment_intent: { id: 'pi_sponsor' },
+          status: 'succeeded',
+          amount: 29_900,
+          receipt_email: 'sponsor@example.com',
+        },
+      },
+    } as unknown as Stripe.Event
+    const other = {
+      id: 'evt_other_charge',
+      type: 'charge.refunded',
+      livemode: false,
+      data: {
+        object: {
+          id: 'ch_other',
+          object: 'charge',
+          payment_intent: 'pi_other',
+          refunded: true,
+          amount_refunded: 29_900,
+        },
+      },
+    } as unknown as Stripe.Event
+    await handleStripeWebhook({
+      rawBody: JSON.stringify(failedRefund),
+      signature: 'valid',
+      db,
+      stripe: stripeStub([failedRefund]),
+      secret: SECRET,
+      now: paidAt + 1,
+    })
+    const stillPaid = await db.select().from(sponsorships)
+    expect(stillPaid[0]).toMatchObject({ status: 'paid', paidAt, refundedAt: null })
+    await handleStripeWebhook({
+      rawBody: JSON.stringify(partial),
+      signature: 'valid',
+      db,
+      stripe: stripeStub([partial]),
+      secret: SECRET,
+      now: paidAt + 2,
+    })
+    const refunded = await db.select().from(sponsorships)
+    expect(refunded[0]).toMatchObject({ status: 'paid', paidAt, refundedAt: paidAt + 2, updatedAt: paidAt + 2 })
+    await handleStripeWebhook({
+      rawBody: JSON.stringify(again),
+      signature: 'valid',
+      db,
+      stripe: stripeStub([again]),
+      secret: SECRET,
+      now: paidAt + 3,
+    })
+    await handleStripeWebhook({
+      rawBody: JSON.stringify(other),
+      signature: 'valid',
+      db,
+      stripe: stripeStub([other]),
+      secret: SECRET,
+      now: paidAt + 4,
+    })
+    const finalRows = await db.select().from(sponsorships)
+    expect(finalRows).toHaveLength(1)
+    expect(finalRows[0]).toMatchObject({ status: 'paid', paidAt, refundedAt: paidAt + 2 })
+    const logged = [...info.mock.calls, ...errorLog.mock.calls].flat().join(' ')
+    expect(logged).not.toContain('sponsor@example.com')
+    expect(logged).not.toContain('Example Tools')
+    info.mockRestore()
+    errorLog.mockRestore()
+    await close()
+  })
+
   it('reports billing as disabled when Stripe is not passed in', async () => {
     const { db, close } = await createTestDatabase()
     const result = await handleStripeWebhook({

@@ -31,7 +31,7 @@ export async function GET() {
     '## Policies',
     `- [About](${site}/about)`,
     `- [How we rate](${site}/how-we-rate)`,
-    `- [Affiliate disclosure](${site}/disclosure)`,
+    `- [Disclosures](${site}/disclosure)`,
     `- [Privacy](${site}/privacy)`,
     `- [Terms](${site}/terms)`,
   ]
