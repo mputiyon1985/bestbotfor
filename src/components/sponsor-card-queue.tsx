@@ -3,9 +3,9 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useReverification } from '@clerk/nextjs'
-import { reviewSponsorCardAction } from '@/app/admin/sponsor-cards/actions'
-import type { PendingSponsorCard } from '@/lib/sponsor-card'
-import { SPONSOR_REFUND_NOTE } from '@/lib/sponsor-offerings'
+import { markSponsorRefundedAction, reviewSponsorCardAction } from '@/app/admin/sponsor-cards/actions'
+import type { PendingSponsorCard, RefundPendingSponsorCard } from '@/lib/sponsor-card'
+import { SPONSOR_INVISIBLE_WARNING, SPONSOR_MARK_REFUNDED_NOTE, SPONSOR_REFUND_NOTE } from '@/lib/sponsor-offerings'
 
 export function SponsorCardQueue({ cards }: { cards: PendingSponsorCard[] }) {
   const router = useRouter()
@@ -37,13 +37,17 @@ export function SponsorCardQueue({ cards }: { cards: PendingSponsorCard[] }) {
                 <p className="text-sm">{card.description}</p>
                 <p className="text-sm break-all">{card.url}</p>
                 <p className="mt-1 text-sm text-muted">
-                  {card.company ?? 'No company'} · {card.taskSlug ?? 'No task'} · {card.offering}
+                  {card.company ?? 'No company'} · {card.taskSlug ?? 'No task'} · {card.offering} · Version {card.version}
                 </p>
+                {card.hadInvisible ? <p className="mt-1 text-sm text-danger">{SPONSOR_INVISIBLE_WARNING}</p> : null}
               </div>
             </div>
             <form action={submit} className="mt-4">
               <input type="hidden" name="creative_id" value={card.id} />
               <input type="hidden" name="decision" value="approved" />
+              <input type="hidden" name="version" value={card.version} />
+              <input type="hidden" name="updated_at" value={card.updatedAt} />
+              <input type="hidden" name="content_hash" value={card.contentHash} />
               <button type="submit" className="min-h-11 rounded-full bg-indigo px-4 font-medium text-white">
                 Approve
               </button>
@@ -51,6 +55,9 @@ export function SponsorCardQueue({ cards }: { cards: PendingSponsorCard[] }) {
             <form action={submit} className="mt-3 space-y-2">
               <input type="hidden" name="creative_id" value={card.id} />
               <input type="hidden" name="decision" value="rejected" />
+              <input type="hidden" name="version" value={card.version} />
+              <input type="hidden" name="updated_at" value={card.updatedAt} />
+              <input type="hidden" name="content_hash" value={card.contentHash} />
               <label htmlFor={`reject-${card.id}`} className="text-sm font-semibold">
                 Rejection reason
               </label>
@@ -65,6 +72,56 @@ export function SponsorCardQueue({ cards }: { cards: PendingSponsorCard[] }) {
               <p className="text-sm text-muted">{SPONSOR_REFUND_NOTE}</p>
               <button type="submit" className="min-h-11 underline">
                 Reject
+              </button>
+            </form>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+export function SponsorRefundQueue({ cards }: { cards: RefundPendingSponsorCard[] }) {
+  const router = useRouter()
+  const [message, setMessage] = useState('')
+  const mark = useReverification(async (formData: FormData) => markSponsorRefundedAction(formData))
+
+  async function submit(formData: FormData) {
+    const result = await mark(formData)
+    if (result && typeof result === 'object' && 'ok' in result && result.ok) {
+      setMessage('Marked refunded.')
+      router.refresh()
+      return
+    }
+    if (result && typeof result === 'object' && 'message' in result && typeof result.message === 'string') {
+      setMessage(result.message)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      {message ? <p role="status">{message}</p> : null}
+      <ul className="space-y-6">
+        {cards.map((card) => (
+          <li key={card.id} className="rounded-2xl border border-line p-4">
+            <p className="font-semibold">{card.name}</p>
+            <p className="text-sm text-muted">
+              refund_pending · {card.company ?? 'No company'} · {card.taskSlug ?? 'No task'} · {card.offering}
+            </p>
+            <form action={submit} className="mt-3 space-y-2">
+              <input type="hidden" name="creative_id" value={card.id} />
+              <p className="text-sm text-muted">{SPONSOR_MARK_REFUNDED_NOTE}</p>
+              <label htmlFor={`refund-${card.id}`} className="text-sm font-semibold">
+                Note
+              </label>
+              <textarea
+                id={`refund-${card.id}`}
+                name="reason"
+                maxLength={500}
+                className="block min-h-20 w-full rounded-xl border border-line px-3 py-2"
+              />
+              <button type="submit" className="min-h-11 underline">
+                Mark refunded
               </button>
             </form>
           </li>

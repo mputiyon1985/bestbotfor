@@ -1,5 +1,5 @@
 -- Daily totals for an approved Sponsored placement.
--- Numbered 0015 so it sorts after 0014_sponsorship_creatives. Journal idx 13.
+-- Numbered 0017 so it sorts after 0016_sponsorship_card_review. Journal idx 15.
 -- 0010 is unused.
 --
 -- One row per placement per UTC day. The only values are the placement id,

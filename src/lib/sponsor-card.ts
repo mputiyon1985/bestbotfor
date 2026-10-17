@@ -1,20 +1,31 @@
-import { and, desc, eq, inArray, isNull, or } from 'drizzle-orm'
+import { createHash } from 'node:crypto'
+import { and, desc, eq, gt, inArray, isNull, lte, or, sql } from 'drizzle-orm'
 import type { StepUpDecision } from './admin'
 import type { Database } from './db/client'
-import { sponsorshipCreatives, sponsorshipReviewEvents, sponsorships } from './db/schema'
-import { sanitizeSponsorCompany } from './sponsor-company'
+import { sponsorshipCreatives, sponsorshipRefundEvents, sponsorshipReviewEvents, sponsorships } from './db/schema'
+import { sanitizeSponsorCompany, sponsorTextHadInvisible } from './sponsor-company'
+import { stripSponsorLogoMetadata } from './sponsor-logo'
+import { SPONSOR_LOGO_MAX_BYTES } from './sponsor-offerings'
+import type { VerifiedSponsorCheckout } from './sponsor-session'
 
 export { SPONSOR_REFUND_NOTE, SPONSOR_REVIEW_NOTICE } from './sponsor-offerings'
+export { SPONSOR_LOGO_MAX_BYTES } from './sponsor-offerings'
 
 export const SPONSOR_CARD_NAME_MIN = 2
 export const SPONSOR_CARD_NAME_MAX = 60
 export const SPONSOR_CARD_DESCRIPTION_MIN = 12
 export const SPONSOR_CARD_DESCRIPTION_MAX = 140
 export const SPONSOR_CARD_URL_MAX = 300
-export const SPONSOR_LOGO_MAX_BYTES = 200 * 1024
 export const SPONSOR_REVIEW_REASON_MAX = 500
+export const SPONSOR_RESUBMISSION_WINDOW_MS = 7 * 24 * 60 * 60 * 1000
+export const SPONSOR_CARD_CHANGED =
+  'That tool card changed since you opened it. Refresh and review the current version.'
+export const SPONSOR_CARD_CLOSED = 'This tool card can no longer be edited.'
+export const SPONSOR_RESUBMIT_CLOSED = 'The resubmission window has ended.'
 
+const LOGO_MESSAGE = 'Upload a PNG, JPEG, or WebP logo under 64 KB.'
 const LOGO_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp'])
+const NOT_WAITING = 'That tool card is not waiting for review.'
 
 export type SponsorLogo = {
   mime: 'image/png' | 'image/jpeg' | 'image/webp'
@@ -26,6 +37,7 @@ export type ValidSponsorCard = {
   description: string
   url: string
   logo: SponsorLogo
+  hadInvisible: boolean
 }
 
 export type PublicSponsorCard = {
@@ -48,6 +60,22 @@ function logoMagic(mime: string, bytes: Buffer): boolean {
   return false
 }
 
+function isIpLiteral(hostname: string): boolean {
+  const host = hostname.toLowerCase()
+  if (host.includes(':')) return true
+  if (/^\d+$/.test(host) || /^0x[0-9a-f]+$/i.test(host)) return true
+  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(host)) return true
+  if (/^(?:0x[0-9a-f]+\.){3}0x[0-9a-f]+$/i.test(host)) return true
+  return false
+}
+
+function isBlockedSponsorHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/\.$/, '')
+  if (!host || host === 'localhost' || host.endsWith('.localhost')) return true
+  if (host.endsWith('.local') || host.endsWith('.internal') || host.endsWith('.localdomain')) return true
+  return isIpLiteral(host)
+}
+
 export function parseSponsorHttpsUrl(raw: string): string | null {
   const stripped = sanitizeSponsorCompany(raw)
   if (stripped.length < 12 || stripped.length > SPONSOR_CARD_URL_MAX) return null
@@ -60,15 +88,36 @@ export function parseSponsorHttpsUrl(raw: string): string | null {
   }
   if (url.protocol !== 'https:') return null
   if (url.username || url.password) return null
-  if (!url.hostname || url.hostname === 'localhost' || url.hostname.endsWith('.localhost')) return null
+  if (isBlockedSponsorHost(url.hostname)) return null
   return url.href
 }
 
 export function parseSponsorLogo(mime: string, bytes: Buffer): SponsorLogo | null {
   if (!LOGO_TYPES.has(mime)) return null
-  if (bytes.length < 8 || bytes.length > SPONSOR_LOGO_MAX_BYTES) return null
-  if (!logoMagic(mime, bytes)) return null
-  return { mime: mime as SponsorLogo['mime'], bytes }
+  const stripped = stripSponsorLogoMetadata(mime, bytes)
+  if (!stripped || stripped.length < 4 || stripped.length > SPONSOR_LOGO_MAX_BYTES) return null
+  if (!logoMagic(mime, stripped)) return null
+  return { mime: mime as SponsorLogo['mime'], bytes: stripped }
+}
+
+export function sponsorCardContentHash(card: {
+  toolName: string
+  description: string
+  url: string
+  logoMime: string
+  logoBytes: Buffer
+}): string {
+  return createHash('sha256')
+    .update(card.toolName)
+    .update('\0')
+    .update(card.description)
+    .update('\0')
+    .update(card.url)
+    .update('\0')
+    .update(card.logoMime)
+    .update('\0')
+    .update(card.logoBytes)
+    .digest('hex')
 }
 
 export function parseSponsorCardFields(input: {
@@ -78,6 +127,7 @@ export function parseSponsorCardFields(input: {
   logoMime: string
   logoBytes: Buffer
 }): CardResult {
+  const hadInvisible = sponsorTextHadInvisible(input.toolName) || sponsorTextHadInvisible(input.description)
   const toolName = sanitizeSponsorCompany(input.toolName)
   if (toolName.length < SPONSOR_CARD_NAME_MIN || toolName.length > SPONSOR_CARD_NAME_MAX || /[<>]/.test(toolName)) {
     return { ok: false, message: 'Enter the tool name.' }
@@ -93,8 +143,8 @@ export function parseSponsorCardFields(input: {
   const url = parseSponsorHttpsUrl(input.url)
   if (!url) return { ok: false, message: 'Enter an https URL for the tool.' }
   const logo = parseSponsorLogo(input.logoMime, input.logoBytes)
-  if (!logo) return { ok: false, message: 'Upload a PNG, JPEG, or WebP logo under 200 KB.' }
-  return { ok: true, card: { toolName, description, url, logo } }
+  if (!logo) return { ok: false, message: LOGO_MESSAGE }
+  return { ok: true, card: { toolName, description, url, logo, hadInvisible } }
 }
 
 function asBuffer(value: unknown): Buffer | null {
@@ -106,12 +156,10 @@ function asBuffer(value: unknown): Buffer | null {
 export async function readSponsorCardForm(formData: FormData): Promise<CardResult> {
   const logo = formData.get('logo')
   if (!logo || typeof logo !== 'object' || !('arrayBuffer' in logo) || !('type' in logo) || !('size' in logo)) {
-    return { ok: false, message: 'Upload a PNG, JPEG, or WebP logo under 200 KB.' }
+    return { ok: false, message: LOGO_MESSAGE }
   }
   const file = logo as { type: string; size: number; arrayBuffer: () => Promise<ArrayBuffer> }
-  if (file.size > SPONSOR_LOGO_MAX_BYTES) {
-    return { ok: false, message: 'Upload a PNG, JPEG, or WebP logo under 200 KB.' }
-  }
+  if (file.size > SPONSOR_LOGO_MAX_BYTES) return { ok: false, message: LOGO_MESSAGE }
   const bytes = Buffer.from(await file.arrayBuffer())
   return parseSponsorCardFields({
     toolName: String(formData.get('tool_name') ?? ''),
@@ -150,109 +198,167 @@ export function toPublicSponsorCard(input: {
   }
 }
 
-async function writeCard(
-  db: Database,
-  card: ValidSponsorCard,
-  now: number,
-  where: { id: number } | { requestKey: string; sessionId?: string; sponsorshipId?: number | null },
-): Promise<number> {
-  const values = {
+function cardValues(card: ValidSponsorCard, now: number) {
+  return {
     toolName: card.toolName,
     description: card.description,
     url: card.url,
     logoMime: card.logo.mime,
     logoBytes: card.logo.bytes,
+    contentHash: sponsorCardContentHash({
+      toolName: card.toolName,
+      description: card.description,
+      url: card.url,
+      logoMime: card.logo.mime,
+      logoBytes: card.logo.bytes,
+    }),
+    hadInvisible: card.hadInvisible ? 1 : 0,
     updatedAt: now,
   }
-  if ('id' in where) {
-    await db.update(sponsorshipCreatives).set(values).where(eq(sponsorshipCreatives.id, where.id))
-    return where.id
-  }
-  const inserted = await db
-    .insert(sponsorshipCreatives)
-    .values({
-      ...values,
-      requestKey: where.requestKey,
-      stripeCheckoutSessionId: where.sessionId ?? null,
-      sponsorshipId: where.sponsorshipId ?? null,
-      status: 'pending',
-      createdAt: now,
-    })
-    .returning({ id: sponsorshipCreatives.id })
-  const id = inserted[0]?.id
-  if (!id) throw new Error('sponsor card was not stored')
-  return id
 }
 
-/** Checkout stores one pending card per form request. A retry updates that row. */
+/** Checkout stores one pending card per form request. A retry updates that row only while it is pending. */
 export async function savePendingSponsorCard(
   db: Database,
   input: { requestKey: string; card: ValidSponsorCard; now: number },
 ): Promise<{ ok: true; id: number } | { ok: false; message: string }> {
-  const existing = await db
-    .select({ id: sponsorshipCreatives.id, status: sponsorshipCreatives.status })
-    .from(sponsorshipCreatives)
-    .where(eq(sponsorshipCreatives.requestKey, input.requestKey))
-  const row = existing[0]
-  if (row && row.status !== 'pending') return { ok: false, message: 'This tool card was already reviewed.' }
-  const id = row
-    ? await writeCard(db, input.card, input.now, { id: row.id })
-    : await writeCard(db, input.card, input.now, { requestKey: input.requestKey })
+  const values = cardValues(input.card, input.now)
+  const inserted = await db
+    .insert(sponsorshipCreatives)
+    .values({
+      ...values,
+      requestKey: input.requestKey,
+      status: 'pending',
+      version: 1,
+      resubmissionCount: 0,
+      createdAt: input.now,
+    })
+    .onConflictDoUpdate({
+      target: sponsorshipCreatives.requestKey,
+      set: {
+        ...values,
+        version: sql`${sponsorshipCreatives.version} + 1`,
+      },
+      setWhere: eq(sponsorshipCreatives.status, 'pending'),
+    })
+    .returning({ id: sponsorshipCreatives.id })
+  const id = inserted[0]?.id
+  if (!id) return { ok: false, message: 'This tool card was already reviewed.' }
   return { ok: true, id }
 }
 
-const SESSION_ID = /^cs_[A-Za-z0-9_]{8,200}$/
-
-/** After payment, the buyer can submit or replace a card that is still pending. */
+/** After payment, store a new card, replace a pending one, or accept the one resubmission. */
 export async function saveSponsorCardForSession(
   db: Database,
-  input: { sessionId: string; card: ValidSponsorCard; now: number },
+  input: { card: ValidSponsorCard; now: number; checkout: VerifiedSponsorCheckout },
 ): Promise<{ ok: true } | { ok: false; message: string }> {
-  if (!SESSION_ID.test(input.sessionId)) return { ok: false, message: 'That checkout session is not a paid placement.' }
+  await expireSponsorResubmissions(db, input.now)
+  const sessionId = input.checkout.sessionId
   const sponsorship = await db
     .select({
       id: sponsorships.id,
       status: sponsorships.status,
       offering: sponsorships.offering,
+      taskSlug: sponsorships.taskSlug,
       refundedAt: sponsorships.refundedAt,
     })
     .from(sponsorships)
-    .where(eq(sponsorships.stripeCheckoutSessionId, input.sessionId))
+    .where(eq(sponsorships.stripeCheckoutSessionId, sessionId))
   const paid = sponsorship[0]
-  if (paid && (paid.status !== 'paid' || paid.refundedAt != null || !paid.offering.startsWith('placement_'))) {
-    return { ok: false, message: 'That checkout session is not a paid placement.' }
+  if (paid) {
+    const matches =
+      paid.status === 'paid' &&
+      paid.refundedAt == null &&
+      paid.offering === input.checkout.offering &&
+      paid.taskSlug === input.checkout.taskSlug
+    if (!matches) return { ok: false, message: 'That checkout session is not a paid placement.' }
   }
   const existing = await db
-    .select({ id: sponsorshipCreatives.id, status: sponsorshipCreatives.status })
+    .select({
+      id: sponsorshipCreatives.id,
+      status: sponsorshipCreatives.status,
+      refundStatus: sponsorshipCreatives.refundStatus,
+      resubmissionCount: sponsorshipCreatives.resubmissionCount,
+      rejectedAt: sponsorshipCreatives.rejectedAt,
+    })
     .from(sponsorshipCreatives)
     .where(
       paid
-        ? or(eq(sponsorshipCreatives.stripeCheckoutSessionId, input.sessionId), eq(sponsorshipCreatives.sponsorshipId, paid.id))
-        : eq(sponsorshipCreatives.stripeCheckoutSessionId, input.sessionId),
+        ? or(eq(sponsorshipCreatives.stripeCheckoutSessionId, sessionId), eq(sponsorshipCreatives.sponsorshipId, paid.id))
+        : eq(sponsorshipCreatives.stripeCheckoutSessionId, sessionId),
     )
   const row = existing[0]
-  if (row && row.status !== 'pending') return { ok: false, message: 'This tool card was already reviewed.' }
-  if (row) {
-    await db
-      .update(sponsorshipCreatives)
-      .set({
-        toolName: input.card.toolName,
-        description: input.card.description,
-        url: input.card.url,
-        logoMime: input.card.logo.mime,
-        logoBytes: input.card.logo.bytes,
-        stripeCheckoutSessionId: input.sessionId,
+  const values = cardValues(input.card, input.now)
+  if (!row) {
+    const inserted = await db
+      .insert(sponsorshipCreatives)
+      .values({
+        ...values,
+        requestKey: `session:${sessionId}`,
+        stripeCheckoutSessionId: sessionId,
         sponsorshipId: paid?.id ?? null,
-        updatedAt: input.now,
+        status: 'pending',
+        version: 1,
+        resubmissionCount: 0,
+        createdAt: input.now,
       })
-      .where(and(eq(sponsorshipCreatives.id, row.id), eq(sponsorshipCreatives.status, 'pending')))
+      .onConflictDoUpdate({
+        target: sponsorshipCreatives.requestKey,
+        set: {
+          ...values,
+          stripeCheckoutSessionId: sessionId,
+          sponsorshipId: paid?.id ?? null,
+          version: sql`${sponsorshipCreatives.version} + 1`,
+        },
+        setWhere: eq(sponsorshipCreatives.status, 'pending'),
+      })
+      .returning({ id: sponsorshipCreatives.id })
+    if (!inserted[0]) return { ok: false, message: SPONSOR_CARD_CLOSED }
     return { ok: true }
   }
-  await writeCard(db, input.card, input.now, {
-    requestKey: `session:${input.sessionId}`,
-    sessionId: input.sessionId,
-    sponsorshipId: paid?.id ?? null,
-  })
+  if (row.status === 'approved' || row.refundStatus === 'refunded') return { ok: false, message: SPONSOR_CARD_CLOSED }
+  if (row.refundStatus === 'refund_pending') return { ok: false, message: SPONSOR_RESUBMIT_CLOSED }
+  if (row.status === 'pending') {
+    const updated = await db
+      .update(sponsorshipCreatives)
+      .set({
+        ...values,
+        stripeCheckoutSessionId: sessionId,
+        sponsorshipId: paid?.id ?? null,
+        version: sql`${sponsorshipCreatives.version} + 1`,
+      })
+      .where(and(eq(sponsorshipCreatives.id, row.id), eq(sponsorshipCreatives.status, 'pending')))
+      .returning({ id: sponsorshipCreatives.id })
+    if (updated.length === 0) return { ok: false, message: SPONSOR_CARD_CLOSED }
+    return { ok: true }
+  }
+  const windowOpen =
+    row.status === 'rejected' &&
+    row.resubmissionCount === 0 &&
+    row.rejectedAt != null &&
+    row.rejectedAt > input.now - SPONSOR_RESUBMISSION_WINDOW_MS
+  if (!windowOpen) return { ok: false, message: SPONSOR_RESUBMIT_CLOSED }
+  const resubmitted = await db
+    .update(sponsorshipCreatives)
+    .set({
+      ...values,
+      status: 'pending',
+      resubmissionCount: 1,
+      stripeCheckoutSessionId: sessionId,
+      sponsorshipId: paid?.id ?? null,
+      version: sql`${sponsorshipCreatives.version} + 1`,
+    })
+    .where(
+      and(
+        eq(sponsorshipCreatives.id, row.id),
+        eq(sponsorshipCreatives.status, 'rejected'),
+        isNull(sponsorshipCreatives.refundStatus),
+        eq(sponsorshipCreatives.resubmissionCount, 0),
+        gt(sponsorshipCreatives.rejectedAt, input.now - SPONSOR_RESUBMISSION_WINDOW_MS),
+      ),
+    )
+    .returning({ id: sponsorshipCreatives.id })
+  if (resubmitted.length === 0) return { ok: false, message: SPONSOR_RESUBMIT_CLOSED }
   return { ok: true }
 }
 
@@ -294,12 +400,11 @@ export async function approvedCardsForSponsorships(
   const rows = await db
     .select({
       sponsorshipId: sponsorshipCreatives.sponsorshipId,
-      status: sponsorshipCreatives.status,
-      toolName: sponsorshipCreatives.toolName,
-      description: sponsorshipCreatives.description,
-      url: sponsorshipCreatives.url,
-      logoMime: sponsorshipCreatives.logoMime,
-      logoBytes: sponsorshipCreatives.logoBytes,
+      approvedToolName: sponsorshipCreatives.approvedToolName,
+      approvedDescription: sponsorshipCreatives.approvedDescription,
+      approvedUrl: sponsorshipCreatives.approvedUrl,
+      approvedLogoMime: sponsorshipCreatives.approvedLogoMime,
+      approvedLogoBytes: sponsorshipCreatives.approvedLogoBytes,
       updatedAt: sponsorshipCreatives.updatedAt,
     })
     .from(sponsorshipCreatives)
@@ -307,7 +412,17 @@ export async function approvedCardsForSponsorships(
     .orderBy(desc(sponsorshipCreatives.updatedAt))
   for (const row of rows) {
     if (row.sponsorshipId == null || found.has(row.sponsorshipId)) continue
-    const card = toPublicSponsorCard(row)
+    if (!row.approvedToolName || !row.approvedDescription || !row.approvedUrl || !row.approvedLogoMime) continue
+    const bytes = asBuffer(row.approvedLogoBytes)
+    if (!bytes) continue
+    const card = toPublicSponsorCard({
+      status: 'approved',
+      toolName: row.approvedToolName,
+      description: row.approvedDescription,
+      url: row.approvedUrl,
+      logoMime: row.approvedLogoMime,
+      logoBytes: bytes,
+    })
     if (card) found.set(row.sponsorshipId, card)
   }
   return found
@@ -327,10 +442,19 @@ function reviewReason(decision: 'approved' | 'rejected', raw: string): string | 
 
 export async function recordSponsorCardReview(
   db: Database,
-  input: { actorId: string; creativeId: number; decision: 'approved' | 'rejected'; reason: string; now: number },
+  input: {
+    actorId: string
+    creativeId: number
+    decision: 'approved' | 'rejected'
+    reason: string
+    now: number
+    version: number
+    updatedAt: number
+    contentHash: string
+  },
 ): Promise<{ ok: true } | { ok: false; message: string }> {
   const actorId = sanitizeSponsorCompany(input.actorId)
-  if (actorId.length < 1 || actorId.length > 200) return { ok: false, message: 'That tool card is not waiting for review.' }
+  if (actorId.length < 1 || actorId.length > 200) return { ok: false, message: NOT_WAITING }
   const reason = reviewReason(input.decision, input.reason)
   if (!reason) {
     return {
@@ -343,23 +467,127 @@ export async function recordSponsorCardReview(
       id: sponsorshipCreatives.id,
       status: sponsorshipCreatives.status,
       sponsorshipId: sponsorshipCreatives.sponsorshipId,
+      version: sponsorshipCreatives.version,
+      updatedAt: sponsorshipCreatives.updatedAt,
+      contentHash: sponsorshipCreatives.contentHash,
+      resubmissionCount: sponsorshipCreatives.resubmissionCount,
+      toolName: sponsorshipCreatives.toolName,
+      description: sponsorshipCreatives.description,
+      url: sponsorshipCreatives.url,
+      logoMime: sponsorshipCreatives.logoMime,
+      logoBytes: sponsorshipCreatives.logoBytes,
     })
     .from(sponsorshipCreatives)
     .where(eq(sponsorshipCreatives.id, input.creativeId))
   const row = existing[0]
-  if (!row || row.status !== 'pending') return { ok: false, message: 'That tool card is not waiting for review.' }
+  if (!row || row.status !== 'pending') return { ok: false, message: NOT_WAITING }
+  if (row.version !== input.version || row.updatedAt !== input.updatedAt || row.contentHash !== input.contentHash) {
+    return { ok: false, message: SPONSOR_CARD_CHANGED }
+  }
+  const bytes = asBuffer(row.logoBytes)
+  if (!bytes) return { ok: false, message: NOT_WAITING }
+  const refundPending = input.decision === 'rejected' && row.resubmissionCount >= 1
+  const updated = await db
+    .update(sponsorshipCreatives)
+    .set({
+      status: input.decision,
+      updatedAt: input.now,
+      rejectedAt: input.decision === 'rejected' ? input.now : undefined,
+      refundStatus: refundPending ? 'refund_pending' : undefined,
+      approvedToolName: input.decision === 'approved' ? row.toolName : undefined,
+      approvedDescription: input.decision === 'approved' ? row.description : undefined,
+      approvedUrl: input.decision === 'approved' ? row.url : undefined,
+      approvedLogoMime: input.decision === 'approved' ? row.logoMime : undefined,
+      approvedLogoBytes: input.decision === 'approved' ? bytes : undefined,
+      approvedContentHash: input.decision === 'approved' ? row.contentHash : undefined,
+      approvedVersion: input.decision === 'approved' ? row.version : undefined,
+    })
+    .where(
+      and(
+        eq(sponsorshipCreatives.id, row.id),
+        eq(sponsorshipCreatives.status, 'pending'),
+        eq(sponsorshipCreatives.version, input.version),
+        eq(sponsorshipCreatives.updatedAt, input.updatedAt),
+        eq(sponsorshipCreatives.contentHash, input.contentHash),
+      ),
+    )
+    .returning({ id: sponsorshipCreatives.id, sponsorshipId: sponsorshipCreatives.sponsorshipId })
+  if (updated.length === 0) return { ok: false, message: SPONSOR_CARD_CHANGED }
   await db.insert(sponsorshipReviewEvents).values({
     creativeId: row.id,
     sponsorshipId: row.sponsorshipId,
     actor: actorId,
     decision: input.decision,
     reason,
+    contentHash: input.contentHash,
+    version: input.version,
     createdAt: input.now,
   })
-  await db
+  if (refundPending) {
+    await db.insert(sponsorshipRefundEvents).values({
+      creativeId: row.id,
+      sponsorshipId: updated[0]?.sponsorshipId ?? row.sponsorshipId,
+      actor: actorId,
+      decision: 'refund_pending',
+      reason: 'Rejected again. Refund the payment in the Stripe dashboard.',
+      createdAt: input.now,
+    })
+  }
+  return { ok: true }
+}
+
+/** Move a first rejection to refund_pending once the 7-day window has ended. */
+export async function expireSponsorResubmissions(db: Database, now: number): Promise<void> {
+  const expired = await db
     .update(sponsorshipCreatives)
-    .set({ status: input.decision, updatedAt: input.now })
-    .where(and(eq(sponsorshipCreatives.id, row.id), eq(sponsorshipCreatives.status, 'pending')))
+    .set({ refundStatus: 'refund_pending', updatedAt: now })
+    .where(
+      and(
+        eq(sponsorshipCreatives.status, 'rejected'),
+        isNull(sponsorshipCreatives.refundStatus),
+        eq(sponsorshipCreatives.resubmissionCount, 0),
+        lte(sponsorshipCreatives.rejectedAt, now - SPONSOR_RESUBMISSION_WINDOW_MS),
+      ),
+    )
+    .returning({ id: sponsorshipCreatives.id, sponsorshipId: sponsorshipCreatives.sponsorshipId })
+  for (const row of expired) {
+    await db.insert(sponsorshipRefundEvents).values({
+      creativeId: row.id,
+      sponsorshipId: row.sponsorshipId,
+      actor: 'system',
+      decision: 'refund_pending',
+      reason: 'The 7-day resubmission window ended.',
+      createdAt: now,
+    })
+  }
+}
+
+export async function markSponsorRefunded(
+  db: Database,
+  input: { actorId: string; creativeId: number; reason: string; now: number },
+): Promise<{ ok: true } | { ok: false; message: string }> {
+  const actorId = sanitizeSponsorCompany(input.actorId)
+  if (actorId.length < 1 || actorId.length > 200) return { ok: false, message: 'That card is not waiting for a refund.' }
+  const trimmed = sanitizeSponsorCompany(input.reason)
+  if (/[<>]/.test(trimmed)) return { ok: false, message: 'Enter a shorter reason.' }
+  const reason = trimmed.length === 0 ? 'Refunded in the Stripe dashboard.' : trimmed
+  if (reason.length < 3 || reason.length > SPONSOR_REVIEW_REASON_MAX) {
+    return { ok: false, message: 'Enter a shorter reason.' }
+  }
+  const updated = await db
+    .update(sponsorshipCreatives)
+    .set({ refundStatus: 'refunded', updatedAt: input.now })
+    .where(and(eq(sponsorshipCreatives.id, input.creativeId), eq(sponsorshipCreatives.refundStatus, 'refund_pending')))
+    .returning({ id: sponsorshipCreatives.id, sponsorshipId: sponsorshipCreatives.sponsorshipId })
+  if (updated.length === 0) return { ok: false, message: 'That card is not waiting for a refund.' }
+  await db.insert(sponsorshipRefundEvents).values({
+    creativeId: input.creativeId,
+    sponsorshipId: updated[0]?.sponsorshipId ?? null,
+    actor: actorId,
+    decision: 'refunded',
+    reason,
+    createdAt: input.now,
+  })
   return { ok: true }
 }
 
@@ -367,7 +595,15 @@ export async function recordSponsorCardReview(
 export async function reviewSponsorCardIfAllowed(
   db: Database,
   access: StepUpDecision,
-  review: { creativeId: number; decision: 'approved' | 'rejected'; reason: string; now: number },
+  review: {
+    creativeId: number
+    decision: 'approved' | 'rejected'
+    reason: string
+    now: number
+    version: number
+    updatedAt: number
+    contentHash: string
+  },
 ): Promise<
   | { ok: true }
   | {
@@ -387,9 +623,14 @@ export type PendingSponsorCard = PublicSponsorCard & {
   company: string | null
   taskSlug: string | null
   offering: string
+  version: number
+  updatedAt: number
+  contentHash: string
+  hadInvisible: boolean
 }
 
 export async function listPendingSponsorCards(db: Database): Promise<PendingSponsorCard[]> {
+  await expireSponsorResubmissions(db, Date.now())
   const rows = await db
     .select({
       id: sponsorshipCreatives.id,
@@ -399,6 +640,10 @@ export async function listPendingSponsorCards(db: Database): Promise<PendingSpon
       url: sponsorshipCreatives.url,
       logoMime: sponsorshipCreatives.logoMime,
       logoBytes: sponsorshipCreatives.logoBytes,
+      version: sponsorshipCreatives.version,
+      updatedAt: sponsorshipCreatives.updatedAt,
+      contentHash: sponsorshipCreatives.contentHash,
+      hadInvisible: sponsorshipCreatives.hadInvisible,
       company: sponsorships.company,
       taskSlug: sponsorships.taskSlug,
       offering: sponsorships.offering,
@@ -409,14 +654,48 @@ export async function listPendingSponsorCards(db: Database): Promise<PendingSpon
   const cards: PendingSponsorCard[] = []
   for (const row of rows) {
     const card = toPublicSponsorCard({ ...row, status: 'approved' })
-    if (!card) continue
+    if (!card || !row.contentHash) continue
     cards.push({
       ...card,
       id: row.id,
       company: sanitizeSponsorCompany(row.company ?? '') || null,
       taskSlug: row.taskSlug,
       offering: row.offering,
+      version: row.version,
+      updatedAt: row.updatedAt,
+      contentHash: row.contentHash,
+      hadInvisible: row.hadInvisible === 1,
     })
   }
   return cards
+}
+
+export type RefundPendingSponsorCard = {
+  id: number
+  name: string
+  company: string | null
+  taskSlug: string | null
+  offering: string
+}
+
+export async function listRefundPendingSponsorCards(db: Database): Promise<RefundPendingSponsorCard[]> {
+  await expireSponsorResubmissions(db, Date.now())
+  const rows = await db
+    .select({
+      id: sponsorshipCreatives.id,
+      toolName: sponsorshipCreatives.toolName,
+      company: sponsorships.company,
+      taskSlug: sponsorships.taskSlug,
+      offering: sponsorships.offering,
+    })
+    .from(sponsorshipCreatives)
+    .innerJoin(sponsorships, eq(sponsorshipCreatives.sponsorshipId, sponsorships.id))
+    .where(eq(sponsorshipCreatives.refundStatus, 'refund_pending'))
+  return rows.map((row) => ({
+    id: row.id,
+    name: sanitizeSponsorCompany(row.toolName) || 'Tool card',
+    company: sanitizeSponsorCompany(row.company ?? '') || null,
+    taskSlug: row.taskSlug,
+    offering: row.offering,
+  }))
 }

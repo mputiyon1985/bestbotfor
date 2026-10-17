@@ -179,6 +179,13 @@ describe('sponsor daily counts', () => {
       logoMime: 'image/png',
       logoBytes: PNG,
       status: 'approved',
+      approvedToolName: 'Widget',
+      approvedDescription: 'A useful coding tool.',
+      approvedUrl: 'https://example.com/widget',
+      approvedLogoMime: 'image/png',
+      approvedLogoBytes: PNG,
+      approvedContentHash: 'a'.repeat(64),
+      approvedVersion: 1,
       createdAt: START,
       updatedAt: START,
     })
