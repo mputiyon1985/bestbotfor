@@ -34,6 +34,7 @@ describe('preview indexing', () => {
     const rules = Array.isArray(production.rules) ? production.rules : [production.rules]
     expect(rules.some((rule) => rule.userAgent === '*' && rule.allow === '/')).toBe(true)
     expect(production.sitemap).toContain('/sitemap.xml')
+    expect(JSON.stringify(production.rules)).toContain('"/admin"')
   })
 
   it('puts noindex on page metadata outside production', () => {

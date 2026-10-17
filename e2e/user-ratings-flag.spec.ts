@@ -17,6 +17,7 @@ const HIDDEN_ROUTES = [
   '/admin/audit',
   '/admin/vendor-domains',
   '/admin/sponsor-links',
+  '/admin/mfa-required',
   '/api/tools/chatgpt/reviews',
   '/review-guidelines',
   '/how-user-ratings-work',
