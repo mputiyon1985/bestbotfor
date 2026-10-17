@@ -56,6 +56,11 @@ const legacyAssetRedirects: { source: string; destination: string }[] = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Inlined at build time so the test IP hook in src/lib/reviews/ip.ts is
+  // compiled out unless this build was started with BBF_E2E_HOOKS=1.
+  env: {
+    BBF_E2E_HOOKS: process.env.BBF_E2E_HOOKS === '1' ? '1' : '',
+  },
   experimental: {
     // Tailwind CSS is small enough to inline, so the first paint does not wait on a stylesheet.
     inlineCss: true,

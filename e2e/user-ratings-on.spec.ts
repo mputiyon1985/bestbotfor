@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
+import { isAdminPath } from '../src/lib/admin-path'
 import { ATTESTATION, DISCLOSURE_ADVERTISER_PARAGRAPH, LAWYER_REVIEW_NOTICE, TRANSPARENCY_PLACEHOLDER } from '../src/lib/ratings-policy-copy'
 
 /**
@@ -49,6 +50,23 @@ test('member reviews fall through the ratings gate while the flag is on', async 
   expect(body).toContain('That page is not in the catalog.')
 })
 
+test('admin responses stay uncached and out of search while the flag is on', async ({ request }) => {
+  for (const path of ['/admin', '/Admin', '/ADMIN/mfa-required', '/%41dmin', '/sitemap.xml', '/llms.txt', '/llms-full.txt', '/robots.txt']) {
+    const response = await request.get(path)
+    const body = await response.text()
+    if (isAdminPath(path)) {
+      expect(response.status(), path).toBe(404)
+      expect(response.headers()['cache-control'] ?? '', path).toContain('no-store')
+      expect(response.headers()['x-robots-tag'] ?? '', path).toContain('noindex')
+      expect(body, path).toContain('That page is not in the catalog.')
+      expect(body, path).not.toBe('Not found.')
+    } else {
+      expect(response.status(), path).toBe(200)
+      expect(body, path).not.toContain('/admin')
+    }
+  }
+})
+
 test('the rest of the site still loads while the flag is on', async ({ request }) => {
   const home = await request.get('/')
   expect(home.status()).toBe(200)
@@ -57,6 +75,13 @@ test('the rest of the site still loads while the flag is on', async ({ request }
 })
 
 test('the lawyer-review pages explain ratings without banned claims', async ({ page }) => {
+  for (const path of ['/review-guidelines', '/how-user-ratings-work']) {
+    await page.goto(path, { waitUntil: 'load' })
+    const metas = page.locator('meta[name="robots"]')
+    await expect(metas, path).toHaveCount(1)
+    await expect(metas, path).toHaveAttribute('content', 'noindex, nofollow')
+  }
+
   await page.goto('/review-guidelines')
   await expect(page.getByRole('heading', { level: 1, name: 'Review guidelines' })).toBeVisible()
   await expect(page.getByRole('note')).toContainText(LAWYER_REVIEW_NOTICE)

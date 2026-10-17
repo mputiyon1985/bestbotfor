@@ -13,6 +13,7 @@ const ALLOWED = new Set([
   'scripts/migrate.ts',
   'drizzle/0004_retire_quiz_fits.sql',
   'drizzle/0007_drop_non_forge_scores.sql',
+  'drizzle/0011_user_reviews.sql',
 ])
 
 const ROOTS = ['src', 'scripts', 'drizzle']
