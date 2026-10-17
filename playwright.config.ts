@@ -25,6 +25,8 @@ export default defineConfig({
       // Faults are denied unless the runtime is explicitly preview or NODE_ENV=test.
       VERCEL_ENV: 'preview',
       RESULT_FAULTS: '1',
+      // Preview would enable user ratings if this were "on". E2E keeps the flag off.
+      USER_RATINGS: '',
       NEXT_PUBLIC_SITE_URL: siteUrl,
       NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID || 'G-TESTCONSENT',
     },
