@@ -4,7 +4,7 @@ import type Stripe from 'stripe'
 import type { Database } from './db/client'
 import { sponsorshipCreatives, sponsorships, stripeEvents, subscriptions } from './db/schema'
 import { activeBestPlacementForTask } from './best-placement'
-import { handleStripeWebhook } from './stripe-webhook'
+import { handleStripeWebhook, SPONSOR_REFUND_WEBHOOK_EVENTS } from './stripe-webhook'
 import { createTestDatabase } from '@/test/db'
 
 const SECRET = 'whsec_test_secret'
@@ -760,6 +760,58 @@ describe('handleStripeWebhook', () => {
     expect(logged).not.toContain('Example Tools')
     info.mockRestore()
     errorLog.mockRestore()
+    await close()
+  })
+
+  it('hides a placement when refund.created succeeds, including a partial amount', async () => {
+    expect(SPONSOR_REFUND_WEBHOOK_EVENTS).toEqual(['charge.refunded', 'refund.created', 'refund.updated'])
+    const { db, close } = await createTestDatabase()
+    const paid = sponsorshipEvent('evt_created_paid')
+    const stripe = stripeStub([paid])
+    await handleStripeWebhook({
+      rawBody: JSON.stringify(paid),
+      signature: 'valid',
+      db,
+      stripe,
+      secret: SECRET,
+      now: 1_700_000_000_000,
+    })
+    const created = {
+      id: 'evt_refund_created',
+      type: 'refund.created',
+      livemode: false,
+      data: {
+        object: {
+          id: 're_created',
+          object: 'refund',
+          payment_intent: 'pi_sponsor',
+          status: 'succeeded',
+          amount: 100,
+        },
+      },
+    } as unknown as Stripe.Event
+    const result = await handleStripeWebhook({
+      rawBody: JSON.stringify(created),
+      signature: 'valid',
+      db,
+      stripe: stripeStub([created]),
+      secret: SECRET,
+      now: 1_700_000_000_500,
+    })
+    expect(result.status).toBe(200)
+    const rows = await db.select().from(sponsorships)
+    expect(rows[0]?.refundedAt).toBe(1_700_000_000_500)
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    await handleStripeWebhook({
+      rawBody: JSON.stringify(created),
+      signature: 'valid',
+      db,
+      stripe: stripeStub([created]),
+      secret: SECRET,
+      now: 1_700_000_000_600,
+    })
+    expect(info).not.toHaveBeenCalledWith('stripe webhook event', 'refund.created')
+    info.mockRestore()
     await close()
   })
 

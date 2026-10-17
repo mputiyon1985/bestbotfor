@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { sponsorCheckoutAction, type SponsorFormState } from '@/app/sponsor/actions'
-import { SPONSOR_COMPANY_PUBLISHED, SPONSOR_ONE_TIME_NOTICE, SPONSOR_REVIEW_NOTICE } from '@/lib/sponsor-offerings'
+import { SPONSOR_COMPANY_PUBLISHED, SPONSOR_LOGO_HINT, SPONSOR_ONE_TIME_NOTICE, SPONSOR_REVIEW_NOTICE } from '@/lib/sponsor-offerings'
 
 export type SponsorFormOffering = {
   id: string
@@ -185,7 +185,7 @@ export function SponsorForm({ offerings, tasks }: { offerings: SponsorFormOfferi
               required
               className="mt-2 block w-full text-sm"
             />
-            <p className="mt-1 text-sm text-muted">PNG, JPEG, or WebP. 200 KB maximum.</p>
+            <p className="mt-1 text-sm text-muted">{SPONSOR_LOGO_HINT}</p>
           </div>
         </fieldset>
       ) : null}

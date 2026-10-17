@@ -26,11 +26,24 @@ export const SPONSOR_COMPANY_PUBLISHED = 'Your company name is published with a 
 
 /** Shown on /sponsor. The tool card is not public until an admin approves it. */
 export const SPONSOR_REVIEW_NOTICE =
-  'Your tool card is reviewed before it goes live. Rejected orders are refunded from the Stripe dashboard. An approved card is published with a Sponsored label.'
+  'Your tool card is reviewed before it goes live. If it is rejected, you can submit a new version once within 7 days. After that, the order is refunded from the Stripe dashboard. An approved card is published with a Sponsored label.'
 
 /** Shown on the admin reject control. Rejecting a card does not call Stripe. */
 export const SPONSOR_REFUND_NOTE =
   'Refunds are done in the Stripe dashboard. Rejecting a card does not refund the payment.'
+
+/** Shown when an admin marks a refund_pending card after the dashboard refund. */
+export const SPONSOR_MARK_REFUNDED_NOTE =
+  'Refund the payment in the Stripe dashboard first. Marking it here does not call Stripe.'
+
+/** Shown on a pending card whose original text contained invisible characters. */
+export const SPONSOR_INVISIBLE_WARNING =
+  'Invisible characters were removed from this card. Read the name and description carefully.'
+
+/** Buyer logo cap. Well under the old 200 KB limit so the page does not embed a large image. */
+export const SPONSOR_LOGO_MAX_BYTES = 64 * 1024
+
+export const SPONSOR_LOGO_HINT = 'PNG, JPEG, or WebP. 64 KB maximum.'
 
 /**
  * Stable label for this Checkout flow. A retried sponsor form must send the

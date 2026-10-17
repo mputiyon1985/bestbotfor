@@ -83,6 +83,56 @@ export async function adoptSponsorshipSchema(client: Client): Promise<void> {
   )
 }
 
+/**
+ * Columns added after 0014. SQLite rejects ADD COLUMN IF NOT EXISTS, so a
+ * missing name is added once and a present name is left alone. Nothing is
+ * dropped. Fresh databases create the base tables from SQL, then this fills
+ * the version, snapshot, and audit columns.
+ */
+const SPONSOR_CARD_ADOPT_COLUMNS: ReadonlyArray<{ name: string; ddl: string }> = [
+  { name: 'version', ddl: 'INTEGER NOT NULL DEFAULT 1' },
+  { name: 'content_hash', ddl: 'TEXT' },
+  { name: 'rejected_at', ddl: 'INTEGER' },
+  { name: 'resubmission_count', ddl: 'INTEGER NOT NULL DEFAULT 0' },
+  { name: 'refund_status', ddl: 'TEXT' },
+  { name: 'had_invisible', ddl: 'INTEGER NOT NULL DEFAULT 0' },
+  { name: 'approved_tool_name', ddl: 'TEXT' },
+  { name: 'approved_description', ddl: 'TEXT' },
+  { name: 'approved_url', ddl: 'TEXT' },
+  { name: 'approved_logo_mime', ddl: 'TEXT' },
+  { name: 'approved_logo_bytes', ddl: 'BLOB' },
+  { name: 'approved_content_hash', ddl: 'TEXT' },
+  { name: 'approved_version', ddl: 'INTEGER' },
+]
+
+const SPONSOR_REVIEW_ADOPT_COLUMNS: ReadonlyArray<{ name: string; ddl: string }> = [
+  { name: 'content_hash', ddl: 'TEXT' },
+  { name: 'version', ddl: 'INTEGER' },
+]
+
+async function addMissingColumns(
+  client: Client,
+  table: string,
+  columns: ReadonlyArray<{ name: string; ddl: string }>,
+): Promise<void> {
+  const tables = await client.execute({
+    sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+    args: [table],
+  })
+  if (tables.rows.length === 0) return
+  const info = await client.execute(`PRAGMA table_info(${table})`)
+  const present = new Set(info.rows.map((row) => String(row.name)))
+  for (const column of columns) {
+    if (present.has(column.name)) continue
+    await client.execute(`ALTER TABLE ${table} ADD COLUMN ${column.name} ${column.ddl}`)
+  }
+}
+
+export async function adoptSponsorCardSchema(client: Client): Promise<void> {
+  await addMissingColumns(client, 'sponsorship_creatives', SPONSOR_CARD_ADOPT_COLUMNS)
+  await addMissingColumns(client, 'sponsorship_review_events', SPONSOR_REVIEW_ADOPT_COLUMNS)
+}
+
 /** Create the parent directory for a file: database. Remote libsql URLs are unchanged. */
 export async function ensureSqliteDirectory(url: string): Promise<void> {
   const filePath = sqliteFilePath(url)
@@ -131,6 +181,7 @@ export async function applyMigrations(url: string, authToken?: string): Promise<
   // Ledger rows whose files are gone, including 0005_sponsorships.sql, are
   // never read, so they are left in place.
   await adoptSponsorshipSchema(client)
+  await adoptSponsorCardSchema(client)
 
   client.close()
 }

@@ -2,7 +2,7 @@
 
 import { useActionState } from 'react'
 import { submitSponsorCardAction, type SponsorFormState } from '@/app/sponsor/actions'
-import { SPONSOR_REVIEW_NOTICE } from '@/lib/sponsor-offerings'
+import { SPONSOR_LOGO_HINT, SPONSOR_REVIEW_NOTICE } from '@/lib/sponsor-offerings'
 
 const initial: SponsorFormState = { status: 'idle', message: '' }
 
@@ -45,6 +45,7 @@ export function SponsorCardFollowup({ sessionId }: { sessionId: string }) {
           Logo
         </label>
         <input id="followup-logo" name="logo" type="file" accept="image/png,image/jpeg,image/webp" required className="mt-2 block w-full text-sm" />
+        <p className="mt-1 text-sm text-muted">{SPONSOR_LOGO_HINT}</p>
       </div>
       <button type="submit" disabled={pending} className="min-h-12 rounded-full bg-indigo px-5 font-medium text-white disabled:opacity-60">
         {pending ? 'Submitting…' : 'Submit tool card'}

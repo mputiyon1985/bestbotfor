@@ -19,15 +19,32 @@ const BIDI = new Set<number>([
   0xfeff, // byte order mark
 ])
 
+/** Zero-width joiner and non-joiner stay. Other format characters are removed. */
+const KEEP_FORMAT = new Set<number>([0x200c, 0x200d])
+
 function isControl(code: number): boolean {
   return code <= 0x1f || (code >= 0x7f && code <= 0x9f)
 }
 
+function isFormat(code: number): boolean {
+  return /\p{Cf}/u.test(String.fromCodePoint(code))
+}
+
+/** True when the raw text contains a format character, including ones that are kept. */
+export function sponsorTextHadInvisible(value: string): boolean {
+  return /\p{Cf}/u.test(value)
+}
+
+/**
+ * NFKC, then drop controls, bidi overrides, and format characters other than
+ * ZWJ and ZWNJ. Café stays. Callers that publish the text use this result.
+ */
 export function sanitizeSponsorCompany(value: string): string {
   let cleaned = ''
-  for (const char of value) {
+  for (const char of value.normalize('NFKC')) {
     const code = char.codePointAt(0) ?? 0
     if (isControl(code) || BIDI.has(code)) continue
+    if (isFormat(code) && !KEEP_FORMAT.has(code)) continue
     cleaned += char
   }
   return cleaned.trim()

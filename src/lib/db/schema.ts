@@ -174,6 +174,22 @@ export const sponsorshipCreatives = sqliteTable(
     logoMime: text('logo_mime').notNull(),
     logoBytes: blob('logo_bytes', { mode: 'buffer' }).notNull(),
     status: text('status').notNull(),
+    /** Increments when the buyer replaces the card. Approval is bound to this value. */
+    version: integer('version').notNull().default(1),
+    contentHash: text('content_hash'),
+    rejectedAt: integer('rejected_at'),
+    /** How many times the buyer resubmitted after a rejection. One is the maximum. */
+    resubmissionCount: integer('resubmission_count').notNull().default(0),
+    /** null, refund_pending, or refunded. Set after the resubmission window ends. */
+    refundStatus: text('refund_status'),
+    hadInvisible: integer('had_invisible').notNull().default(0),
+    approvedToolName: text('approved_tool_name'),
+    approvedDescription: text('approved_description'),
+    approvedUrl: text('approved_url'),
+    approvedLogoMime: text('approved_logo_mime'),
+    approvedLogoBytes: blob('approved_logo_bytes', { mode: 'buffer' }),
+    approvedContentHash: text('approved_content_hash'),
+    approvedVersion: integer('approved_version'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
   },
@@ -194,10 +210,35 @@ export const sponsorshipReviewEvents = sqliteTable(
     actor: text('actor').notNull(),
     decision: text('decision').notNull(),
     reason: text('reason').notNull(),
+    contentHash: text('content_hash'),
+    version: integer('version'),
     createdAt: integer('created_at').notNull(),
   },
   (table) => [index('sponsorship_review_events_creative_idx').on(table.creativeId)],
 )
+
+/** Append-only refund workflow. Separate from approve/reject so that check stays unchanged. */
+export const sponsorshipRefundEvents = sqliteTable(
+  'sponsorship_refund_events',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    creativeId: integer('creative_id').notNull(),
+    sponsorshipId: integer('sponsorship_id'),
+    actor: text('actor').notNull(),
+    decision: text('decision').notNull(),
+    reason: text('reason').notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [index('sponsorship_refund_events_creative_idx').on(table.creativeId)],
+)
+
+/** One live checkout hold per task page. No buyer identity is stored. */
+export const sponsorshipSlotClaims = sqliteTable('sponsorship_slot_claims', {
+  taskSlug: text('task_slug').primaryKey(),
+  requestKey: text('request_key').notNull(),
+  offering: text('offering').notNull(),
+  claimedAt: integer('claimed_at').notNull(),
+})
 
 export const savedPicks = sqliteTable(
   'saved_picks',
