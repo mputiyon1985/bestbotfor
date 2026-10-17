@@ -47,6 +47,7 @@ describe('sqlite file directories', () => {
     expect(ids).toContain('0006_tool_needs_verification.sql')
     expect(ids).toContain('0007_drop_non_forge_scores.sql')
     expect(ids).toContain('0008_ratings_v23.sql')
+    expect(ids).toContain('0011_user_reviews.sql')
     const columns = await client.execute('PRAGMA table_info(tools)')
     expect(columns.rows.some((row) => row.name === 'needs_verification')).toBe(true)
     const scoreColumns = await client.execute('PRAGMA table_info(tool_scores)')
