@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
   if (!userRatingsEnabled()) notFound()
   return policyPageMetadata({
     title: 'How user ratings work',
-    description: 'Draft explanation of the user-rating formula, tiers, and moderation reasons. Pending lawyer review.',
+    description: 'How the user-rating formula, tiers, and moderation reasons work. Lawyer review was recorded on October 17, 2026. User ratings are not launched.',
     path: '/how-user-ratings-work',
   })
 }
