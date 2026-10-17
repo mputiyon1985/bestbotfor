@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 /**
- * Playwright starts with VERCEL_ENV=preview and USER_RATINGS blank, so the
+ * Playwright starts with VERCEL_ENV=test and USER_RATINGS blank, so the
  * ratings flag is off. The proxy answers these paths with a plain-text 404
  * before the members sign-in redirect. Case and percent-encoding are the same gate.
  * The editorial heading is "Our rating" after #34.

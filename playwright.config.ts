@@ -8,10 +8,12 @@ const sitePort = new URL(siteUrl).port || '3000'
 const sharedEnv = {
   ...process.env,
   TURSO_AUTH_TOKEN: process.env.TURSO_AUTH_TOKEN || 'local',
-  // Faults are denied unless the runtime is explicitly preview or NODE_ENV=test.
-  // npm start sets NODE_ENV=production. This server stays on preview for faults.
-  VERCEL_ENV: 'preview',
+  // Faults are denied unless VERCEL_ENV is development or test.
+  // npm start sets NODE_ENV=production, so the servers below set VERCEL_ENV=test.
+  VERCEL_ENV: 'test',
   RESULT_FAULTS: '1',
+  // The two-process /result burst shares one file and needs the longer budget.
+  RESULT_SHARED_LIMIT_MS: '800',
   NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID || 'G-TESTCONSENT',
   // Boot runs the review-secret validator. These are test keys, distinct from each other.
   // The flag-on server sets USER_RATINGS=on, so the review secret and key id are required.
@@ -53,7 +55,7 @@ export default defineConfig({
         ...sharedEnv,
         PORT: sitePort,
         TURSO_DATABASE_URL: databaseUrl,
-        // Preview would enable user ratings if this were "on". This server keeps the flag off.
+        // Blank keeps user ratings off. VERCEL_ENV=test still allows result faults.
         USER_RATINGS: '',
         NEXT_PUBLIC_SITE_URL: siteUrl,
       },
@@ -68,8 +70,6 @@ export default defineConfig({
         PORT: '3001',
         TURSO_DATABASE_URL: 'file:./data/e2e-ratings-on.db',
         USER_RATINGS: 'on',
-        // npm start sets NODE_ENV=production. Ratings follow VERCEL_ENV, so this must be test.
-        VERCEL_ENV: 'test',
         NEXT_PUBLIC_SITE_URL: ratingsOnUrl,
       },
     },

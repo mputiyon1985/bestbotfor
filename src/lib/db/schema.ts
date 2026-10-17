@@ -153,6 +153,17 @@ export const rateLimits = sqliteTable('rate_limits', {
   resetAt: integer('reset_at').notNull(),
 })
 
+/** One row per hashed client and fixed window. Expired rows are deleted after the response. */
+export const resultRateWindows = sqliteTable(
+  'result_rate_windows',
+  {
+    bucket: text('bucket').primaryKey(),
+    count: integer('count').notNull(),
+    expiresAt: integer('expires_at').notNull(),
+  },
+  (table) => [index('result_rate_windows_expires_idx').on(table.expiresAt)],
+)
+
 /**
  * One rating per user per tool. latest_version_id and published_version_id
  * reference review_versions. That cycle is DEFERRABLE in the SQL migration.

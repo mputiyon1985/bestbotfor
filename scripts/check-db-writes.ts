@@ -3,6 +3,7 @@ import path from 'node:path'
 
 const ALLOWED = new Set([
   'src/lib/rate-limit.ts',
+  'src/lib/db/client.ts',
   'src/lib/newsletter.ts',
   'src/lib/stripe-webhook.ts',
   'src/lib/members.ts',
