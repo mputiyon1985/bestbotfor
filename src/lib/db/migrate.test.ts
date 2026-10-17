@@ -102,6 +102,7 @@ describe('sqlite file directories', () => {
     expect(ids).toContain('0014_sponsorship_creatives.sql')
     expect(ids).toContain('0015_sponsorship_slot_claims.sql')
     expect(ids).toContain('0016_sponsorship_card_review.sql')
+    expect(ids).toContain('0017_sponsorship_daily_counts.sql')
     expect(ids).not.toContain('0010_result_rate_windows.sql')
     const windows = await client.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'result_rate_windows'",
@@ -166,6 +167,7 @@ describe('sqlite file directories', () => {
       '0014_sponsorship_creatives.sql',
       '0015_sponsorship_slot_claims.sql',
       '0016_sponsorship_card_review.sql',
+      '0017_sponsorship_daily_counts.sql',
     ])
     const tables = await client.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('stripe_events', 'sponsorships') ORDER BY name",
@@ -254,6 +256,7 @@ describe('sqlite file directories', () => {
       '0014_sponsorship_creatives.sql',
       '0015_sponsorship_slot_claims.sql',
       '0016_sponsorship_card_review.sql',
+      '0017_sponsorship_daily_counts.sql',
     ])
     const columns = await after.execute('PRAGMA table_info(sponsorships)')
     const beforeCols = before.rows.map((row) => ({
@@ -296,7 +299,7 @@ describe('sqlite file directories', () => {
     await applyMigrations(url)
     const again = createClient({ url })
     const count = await again.execute('SELECT COUNT(*) AS n FROM schema_migrations')
-    expect(Number(count.rows[0]?.n)).toBe(MAIN_MIGRATIONS.length + 8)
+    expect(Number(count.rows[0]?.n)).toBe(MAIN_MIGRATIONS.length + 9)
     const stillThere = await again.execute({
       sql: "SELECT id FROM schema_migrations WHERE id = '0005_sponsorships.sql'",
     })
@@ -421,6 +424,7 @@ describe('drizzle journal', () => {
     expect(idxOf('0014_sponsorship_creatives')).toBe(12)
     expect(idxOf('0015_sponsorship_slot_claims')).toBe(13)
     expect(idxOf('0016_sponsorship_card_review')).toBe(14)
+    expect(idxOf('0017_sponsorship_daily_counts')).toBe(15)
     const migration = await readFile(path.join(process.cwd(), 'drizzle/0013_sponsorship_paid_at.sql'), 'utf8')
     const executable = executableSql(migration).toLowerCase()
     expect(executable).not.toContain('add column if not exists')
@@ -453,5 +457,16 @@ describe('drizzle journal', () => {
     expect(review).toContain('create table if not exists sponsorship_refund_events')
     expect(review).not.toContain('ip_hash')
     expect(review).not.toContain('user_agent')
+    const daily = executableSql(
+      await readFile(path.join(process.cwd(), 'drizzle/0017_sponsorship_daily_counts.sql'), 'utf8'),
+    ).toLowerCase()
+    expect(daily).not.toContain('add column if not exists')
+    expect(daily).not.toContain('drop')
+    expect(daily).not.toContain('delete')
+    expect(daily).toContain('create table if not exists sponsorship_daily_counts')
+    expect(daily).not.toContain('ip_hash')
+    expect(daily).not.toContain('user_agent')
+    expect(daily).not.toContain('cookie')
+    expect(daily).not.toContain('user_id')
   })
 })

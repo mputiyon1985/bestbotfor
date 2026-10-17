@@ -6,7 +6,8 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
-import { SponsoredPlacement } from '@/components/sponsored-placement'
+import { SponsoredPlacement, sponsoredCardIsVisible } from '@/components/sponsored-placement'
+import { scheduleSponsorImpression } from '@/lib/sponsor-impressions'
 import { readActiveBestPlacement } from '@/lib/best-placement'
 import { getTask, listTaskCandidates } from '@/lib/catalog'
 import { getDb } from '@/lib/db'
@@ -56,6 +57,19 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
   const top = ranked[0]
   if (!task || !top) notFound()
   const nonce = headerStore.get('x-nonce')
+  if (sponsoredCardIsVisible(placement)) {
+    scheduleSponsorImpression({
+      db: getDb(),
+      sponsorshipId: placement.sponsorshipId,
+      now: Date.now(),
+      method: headerStore.get('x-bbf-method'),
+      userAgent: headerStore.get('user-agent'),
+      purpose: headerStore.get('purpose'),
+      secPurpose: headerStore.get('sec-purpose'),
+      routerPrefetch: headerStore.get('next-router-prefetch') ?? headerStore.get('next-router-segment-prefetch'),
+      middlewarePrefetch: headerStore.get('x-middleware-prefetch'),
+    })
+  }
   const verified = formatUsDate(top.lastVerifiedAt)
   const freeOption = ranked.find((tool) => tool.hasFreeTier)
   const faqs = [

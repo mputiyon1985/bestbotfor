@@ -5,9 +5,18 @@ import { sanitizeSponsorCompany } from '@/lib/sponsor-company'
 
 const LOGO_SRC = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/
 
+/** True when the Sponsored box will include the approved card. */
+export function sponsoredCardIsVisible(placement: ActiveBestPlacement | null): placement is ActiveBestPlacement {
+  if (!placement) return false
+  if (!parseSponsorHttpsUrl(placement.card.url)) return false
+  const name = sanitizeSponsorCompany(placement.card.name)
+  const description = sanitizeSponsorCompany(placement.card.description)
+  return name.length > 0 && description.length > 0
+}
+
 /** Renders nothing unless an admin-approved card is still inside its paid window. */
 export function SponsoredPlacement({ placement }: { placement: ActiveBestPlacement | null }) {
-  if (!placement) return null
+  if (!sponsoredCardIsVisible(placement)) return null
   const url = parseSponsorHttpsUrl(placement.card.url)
   if (!url) return null
   const name = sanitizeSponsorCompany(placement.card.name)
@@ -25,7 +34,7 @@ export function SponsoredPlacement({ placement }: { placement: ActiveBestPlaceme
         <div className="mt-3 flex items-start gap-3">
           {logoSrc ? <img src={logoSrc} alt="" width={40} height={40} className="h-10 w-10 rounded-lg" /> : null}
           <div>
-            <a href={url} rel="sponsored nofollow" className="font-semibold underline">
+            <a href={`/go/s/${placement.sponsorshipId}`} rel="sponsored nofollow" className="font-semibold underline">
               {name}
             </a>
             <p className="mt-1 text-sm">{description}</p>

@@ -9,6 +9,8 @@ const ALLOWED = new Set([
   // Sponsor tool cards, their review audit log, and the checkout slot claim.
   'src/lib/sponsor-card.ts',
   'src/lib/sponsor-availability.ts',
+  // Daily placement impression and Sponsored-card click totals. No visitor identifier.
+  'src/lib/sponsor-impressions.ts',
   'src/lib/members.ts',
   'src/app/go/[slug]/route.ts',
   'src/lib/db/migrate.ts',
