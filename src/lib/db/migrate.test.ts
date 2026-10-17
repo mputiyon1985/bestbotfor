@@ -48,11 +48,16 @@ describe('sqlite file directories', () => {
     expect(ids).toContain('0007_drop_non_forge_scores.sql')
     expect(ids).toContain('0008_ratings_v23.sql')
     expect(ids).toContain('0012_result_rate_windows.sql')
+    expect(ids).toContain('0013_retention_indexes.sql')
     expect(ids).not.toContain('0010_result_rate_windows.sql')
     const windows = await client.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'result_rate_windows'",
     )
     expect(windows.rows).toHaveLength(1)
+    const retentionIndexes = await client.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name IN ('rate_limits_reset_at_idx', 'clicks_ts_idx') ORDER BY name",
+    )
+    expect(retentionIndexes.rows.map((row) => String(row.name))).toEqual(['clicks_ts_idx', 'rate_limits_reset_at_idx'])
     expect(ids).toContain('0011_user_reviews.sql')
     const columns = await client.execute('PRAGMA table_info(tools)')
     expect(columns.rows.some((row) => row.name === 'needs_verification')).toBe(true)
@@ -111,7 +116,9 @@ describe('drizzle journal', () => {
     const idxOf = (tag: string) => journal.entries.find((entry) => entry.tag === tag)?.idx
     const reviews = idxOf('0011_user_reviews')
     const windows = idxOf('0012_result_rate_windows')
+    const retentionIndexes = idxOf('0013_retention_indexes')
     expect(reviews).toEqual(expect.any(Number))
     expect(windows).toBeGreaterThan(reviews ?? 0)
+    expect(retentionIndexes).toBeGreaterThan(windows ?? 0)
   })
 })

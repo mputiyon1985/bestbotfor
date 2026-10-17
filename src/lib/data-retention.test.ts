@@ -1,6 +1,10 @@
 import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { createClient } from '@libsql/client'
+import { drizzle } from 'drizzle-orm/libsql'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createTestDatabase } from '@/test/db'
 import { clicks, rateLimits } from '@/lib/db/schema'
@@ -17,6 +21,7 @@ import {
   rateLimitCutoff,
   resultWindowCutoff,
   retentionLogLine,
+  retentionTargetOk,
   type RetentionReport,
 } from './data-retention'
 import { consumeRateLimit, consumeResultRateLimit, resetLocalRateLimits } from './rate-limit'
@@ -110,6 +115,23 @@ describe('data retention decisions', () => {
     expect(now - day - 1).toBeLessThan(rateLimitCutoff(now))
     expect(cutoff - windowMs).toBeLessThan(resultWindowCutoff(now))
     expect(cutoff).not.toBeLessThan(resultWindowCutoff(now))
+  })
+
+  it('allows a local file and refuses a production host outside production', () => {
+    const prod = 'libsql://bestbotfor-mputiyon1985.aws-us-east-1.turso.io'
+    expect(retentionTargetOk({ protocol: 'file' })).toBe(true)
+    expect(retentionTargetOk({ url: 'file:./data/retention.db', protocol: 'file', vercelEnv: 'test' })).toBe(true)
+    expect(retentionTargetOk({ url: prod, protocol: 'http', vercelEnv: 'test' })).toBe(false)
+    expect(retentionTargetOk({ url: prod, protocol: 'http', vercelEnv: 'production' })).toBe(true)
+    expect(retentionTargetOk({ url: prod, protocol: 'file', vercelEnv: 'production' })).toBe(false)
+    expect(retentionTargetOk({ protocol: 'http', vercelEnv: 'test' })).toBe(false)
+    expect(
+      retentionTargetOk({
+        url: 'libsql://bestbotfor-preview-test-mputiyon1985.aws-us-east-1.turso.io',
+        protocol: 'http',
+        vercelEnv: 'preview',
+      }),
+    ).toBe(true)
   })
 })
 
@@ -304,6 +326,54 @@ describe('data retention job', () => {
       expect(await countResultWindows(db)).toBe(4)
     } finally {
       await close()
+    }
+  })
+
+  it('counts eligible rows and writes nothing when the target does not match the client', async () => {
+    const { db, close } = await seed()
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const prod = 'libsql://bestbotfor-mputiyon1985.aws-us-east-1.turso.io'
+    try {
+      const report = await runDataRetention(db, { dryRun: false, now, url: prod, vercelEnv: 'test' })
+      expect(report.dryRun).toBe(false)
+      expect(report.wrote).toBe(false)
+      expect(report.rateLimitsEligible).toBe(1)
+      expect(report.resultWindowsEligible).toBe(2)
+      expect(report.clickHashesEligible).toBe(1)
+      expect(report.rateLimitsDeleted).toBe(0)
+      expect(report.resultWindowsDeleted).toBe(0)
+      expect(report.clickHashesCleared).toBe(0)
+      expect(report.truncated).toBe(false)
+      expect(await db.select().from(rateLimits)).toHaveLength(3)
+      expect(await countResultWindows(db)).toBe(4)
+      const logged = error.mock.calls.map((call) => call.map((part) => String(part)).join(' ')).join('\n')
+      expect(logged).toContain('target')
+      expect(logged).not.toContain(prod)
+      expect(retentionLogLine(report)).not.toContain('turso')
+      const clicksLeft = await db.select().from(clicks)
+      expect(clicksLeft.find((row) => row.page === '/tools/chatgpt')?.ipHash).toBe(oldHash)
+    } finally {
+      await close()
+    }
+  })
+
+  it('writes nothing when the expected tables are missing', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'bestbotfor-retention-'))
+    const client = createClient({ url: `file:${path.join(directory, 'empty.db')}` })
+    const db = drizzle(client, { schema: { clicks, rateLimits } })
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      const report = await runDataRetention(db, { dryRun: false, now, url: `file:${directory}/empty.db`, vercelEnv: 'test' })
+      expect(report.wrote).toBe(false)
+      expect(report.rateLimitsEligible).toBe(0)
+      expect(report.resultWindowsEligible).toBe(0)
+      expect(report.clickHashesEligible).toBe(0)
+      expect(report.rateLimitsDeleted).toBe(0)
+      const logged = error.mock.calls.map((call) => String(call[1])).join('\n')
+      expect(logged).toContain('schema')
+    } finally {
+      client.close()
+      await rm(directory, { recursive: true, force: true })
     }
   })
 

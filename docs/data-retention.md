@@ -8,7 +8,11 @@ The job is `GET /api/cron/data-retention`. Vercel Cron calls it every day at 08:
 - `result_rate_windows`: delete a row when `expires_at` is more than 24 hours in the past. `consumeResultRateLimit` writes these rows. The in-request purge can remove a window as soon as it closes. This job is the later pass for any window still present a day after `expires_at`. The bucket is not read into the log.
 - `clicks`: keep the row. Set `ip_hash` to null when `ts` is more than 90 days in the past and the hash is still set. `tool_id`, `page`, `ts`, and `country` stay.
 
-Each statement is limited to 500 rows, and one invocation runs at most 40 batches per table. After those writes, the job counts the eligible rows that are still there. `truncated: true` means that second count is not zero, so the next run continues. The flag follows that count, not the statement's affected-row total. Running it again after the tables are caught up changes nothing.
+Each statement is limited to 500 rows, and one invocation runs at most 40 batches per table. The deleted and cleared counts are the rows those statements changed. `truncated: true` means a change total is lower than the eligible count, so the next run continues. Running it again after the tables are caught up changes nothing.
+
+Before the first write, the job checks two things. The open client has to be the database named by `TURSO_DATABASE_URL`, and that URL has to be allowed for `VERCEL_ENV` (a local `file:` database, or a remote host the database guard allows). `rate_limits`, `result_rate_windows`, and `clicks` have to contain the columns the statements use. If either check fails, the response and the log contain the eligible counts, `wrote` is false, and nothing is deleted. The log does not include the URL or the host.
+
+`0013_retention_indexes.sql` adds indexes on `rate_limits.reset_at` and `clicks.ts`. Production prebuild applies that migration. It needs Mark's OK before it merges.
 
 ## What it does not change
 
