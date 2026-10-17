@@ -13,7 +13,7 @@ export default function PrivacyPage() {
     <article className="max-w-2xl space-y-4">
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Privacy', path: '/privacy' }]} />
       <h1 className="font-bold text-5xl">Privacy policy</h1>
-      <p>This policy covers bestbotfor.com, a United States site. It was last updated on October 15, 2026.</p>
+      <p>This policy covers bestbotfor.com, a United States site. It was last updated on October 17, 2026.</p>
       <h2 className="font-semibold text-3xl">What we collect</h2>
       <p>
         If you join the newsletter, we store your email address. When our digest is connected, we also send that email
@@ -31,8 +31,8 @@ export default function PrivacyPage() {
       </p>
       <p>
         When you use a “Visit” button, we log the tool, the time, the page path on our site if the referrer is ours,
-        and a country code when the host provides one. We store a hash of the IP address only if a server salt is
-        configured. Otherwise we store no IP. We never store the raw IP address.
+        and a country code when the host provides one. We store a keyed hash of the IP address. We never store the raw
+        IP address.
       </p>
       <h2 className="font-semibold text-3xl">Cookies and analytics</h2>
       <p>

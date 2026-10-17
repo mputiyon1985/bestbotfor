@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { checkoutNoticeMessage } from '@/lib/billing-notice'
 import { formatStripeAmount } from '@/lib/format'
 import { pageMetadata } from '@/lib/metadata'
 import { currentClerkUserId } from '@/lib/members'
@@ -21,7 +22,7 @@ export default async function PricingPage({
   const price = await getPublicPrice()
   const userId = await currentClerkUserId()
   const params = await searchParams
-  const notice = typeof params.notice === 'string' ? params.notice : ''
+  const notice = checkoutNoticeMessage(typeof params.notice === 'string' ? params.notice : '')
 
   return (
     <article className="max-w-2xl space-y-6">
@@ -30,9 +31,7 @@ export default async function PricingPage({
       <p role="note" className="rounded-2xl border border-line bg-mist px-4 py-3 text-sm">
         Checkout uses Stripe test mode. No real charges occur.
       </p>
-      {notice === 'rate' ? (
-        <p role="alert">Too many checkout attempts from this account. Try again in an hour.</p>
-      ) : null}
+      {notice ? <p role="alert">{notice}</p> : null}
       <p>Members can save picker results and read the longer comparison notes. The public guides stay free.</p>
       {price.available ? (
         <p className="font-bold text-4xl">{formatStripeAmount(price.unitAmount, price.currency, price.interval)}</p>

@@ -20,9 +20,16 @@ test('cookie settings reopens the banner', async ({ page, context }) => {
 })
 
 test('pricing says checkout is test mode', async ({ page }) => {
+  const notice = page.getByRole('main').getByRole('alert')
   await page.goto('/pricing')
   await expect(page.getByRole('note')).toContainText('Stripe test mode')
   await expect(page.getByRole('note')).toContainText('No real charges')
+  await expect(notice).toHaveCount(0)
+
+  await page.goto('/pricing?notice=rate')
+  await expect(notice).toHaveText('Too many checkout attempts from this account. Try again in an hour.')
+  await page.goto('/pricing?notice=unavailable')
+  await expect(notice).toHaveText('Checkout is temporarily unavailable. Try again.')
 })
 
 test('the tools directory is paginated', async ({ page }) => {

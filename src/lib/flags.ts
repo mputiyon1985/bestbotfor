@@ -10,15 +10,20 @@ export function isClerkConfigured(): boolean {
 export type UserRatingsEnv = {
   /** USER_RATINGS. Only the exact value "on" enables the feature. */
   userRatings?: string
-  /** VERCEL_ENV. The value "production" stays off unless the launch constant is true. */
+  /** VERCEL_ENV. Only preview, development, and test are on. Unset and unknown are off. */
   vercelEnv?: string
 }
 
+const RATINGS_VERCEL_ENVS = new Set(['preview', 'development', 'test'])
+
 /**
- * Spec 9.4. True only when USER_RATINGS is exactly "on" and either VERCEL_ENV
- * is not production or USER_RATINGS_PRODUCTION_LAUNCH is true.
+ * Spec 9.4. Fail closed.
+ * True only when USER_RATINGS is exactly "on" and VERCEL_ENV is preview,
+ * development, or test. An unset or unknown VERCEL_ENV is off. The Node
+ * environment is not consulted. Production stays off unless USER_RATINGS_PRODUCTION_LAUNCH
+ * is true.
  * App code calls this with no arguments. Tests pass the env explicitly.
- * While this is false, rating UI stays unrendered and the review routes 404.
+ * While this is false, the proxy 404s the ratings paths.
  * The Clerk deletion webhook is separate and stays active in every environment.
  */
 export function userRatingsEnabled(
@@ -31,5 +36,41 @@ export function userRatingsEnabled(
   if (env.userRatings?.trim() !== 'on') return false
   const vercelEnv = env.vercelEnv?.trim() ?? ''
   if (vercelEnv === 'production') return productionLaunch
-  return true
+  return RATINGS_VERCEL_ENVS.has(vercelEnv)
+}
+
+const RATINGS_EXACT_PATHS = new Set([
+  '/admin',
+  '/admin/reviews',
+  '/admin/reports',
+  '/admin/audit',
+  '/admin/vendor-domains',
+  '/admin/sponsor-links',
+  '/review-guidelines',
+  '/how-user-ratings-work',
+  '/members/reviews',
+])
+
+/**
+ * One decode, then lowercase. A bad percent-encoding is left as-is so the
+ * check still runs. The proxy calls this before matching a ratings route.
+ */
+export function normalizeRatingsPath(pathname: string): string {
+  let decoded = pathname
+  try {
+    decoded = decodeURIComponent(pathname)
+  } catch {
+    // A bad percent-encoding stays as written. The match still runs.
+  }
+  if (decoded.length > 1 && decoded.endsWith('/')) decoded = decoded.slice(0, -1)
+  return decoded.toLowerCase()
+}
+
+/** Ratings routes the proxy hides while userRatingsEnabled() is false. */
+export function isRatingsPath(pathname: string): boolean {
+  const path = normalizeRatingsPath(pathname)
+  if (RATINGS_EXACT_PATHS.has(path)) return true
+  if (/^\/tools\/[^/]+\/rate$/.test(path)) return true
+  if (/^\/api\/tools\/[^/]+\/reviews$/.test(path)) return true
+  return false
 }
