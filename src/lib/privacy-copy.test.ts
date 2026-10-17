@@ -1,8 +1,10 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
+import { CLICK_HASH_RETENTION_MS, RATE_LIMIT_RETENTION_MS } from './data-retention'
 import { OG_RATE_WINDOW_MS } from './og'
-import { CLICK_LOG_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, rateLimitPrivacyParagraphs, SHARING_PARAGRAPH, windowPhrase } from './privacy-copy'
+import { CLICK_LOG_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, rateLimitPrivacyParagraphs, RETENTION_JOB_PARAGRAPH, SHARING_PARAGRAPH, TURSO_BACKUP_PARAGRAPH, windowPhrase } from './privacy-copy'
+import { DATA_RETENTION_PRODUCTION_LAUNCH } from './retention-flags'
 import {
   CHECKOUT_RATE_WINDOW_MS,
   GO_RATE_WINDOW_MS,
@@ -13,7 +15,7 @@ import {
 } from './rate-windows'
 
 describe('privacy policy facts', () => {
-  it('names the rate-limit windows the code uses and does not claim a 24-hour delete', () => {
+  it('names the rate-limit windows and keeps the retention job off until it is switched on', () => {
     expect(NEWSLETTER_RATE_WINDOW_MS).toBe(60 * 60_000)
     expect(GO_RATE_WINDOW_MS).toBe(60_000)
     expect(OG_RATE_WINDOW_MS).toBe(60_000)
@@ -25,7 +27,7 @@ describe('privacy policy facts', () => {
     expect(windowPhrase(GO_RATE_WINDOW_MS)).toBe('one minute')
 
     const paragraphs = rateLimitPrivacyParagraphs()
-    const text = [CLICK_LOG_PARAGRAPH, ...paragraphs, GPC_PRIVACY_PARAGRAPH, SHARING_PARAGRAPH].join('\n')
+    const text = [CLICK_LOG_PARAGRAPH, ...paragraphs, RETENTION_JOB_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, SHARING_PARAGRAPH].join('\n')
     expect(text).toContain('secret key')
     expect(text).toContain('pseudonymous personal data')
     expect(text).toContain('one hour')
@@ -33,10 +35,18 @@ describe('privacy policy facts', () => {
     expect(text).toContain('word unknown')
     expect(text).toContain('do not delete those rows when the window ends')
     expect(text).toContain('After the window ends, the next request for the same code resets the count')
-    expect(text).toContain('stays in the database')
+    expect(text).toContain('stays in the database while the retention job is off')
     expect(text).toContain('If cleanup does not run, the expired row remains')
-    expect(text).toContain('no fixed deletion date today')
-    expect(text).not.toMatch(/24 hour/i)
+    expect(text).toContain('no fixed deletion date')
+    expect(text).toContain('about 24 to 48 hours after the window ends')
+    expect(text).toContain('about 90 days')
+    expect(text).toContain('leaves the rest of the click row')
+    expect(text).toContain('off in production now')
+    expect(text).toContain('only when the retention job is switched on')
+    expect(text).toContain('Until the job is switched on, those deletions do not run')
+    expect(RATE_LIMIT_RETENTION_MS).toBe(24 * 60 * 60 * 1000)
+    expect(CLICK_HASH_RETENTION_MS).toBe(90 * 24 * 60 * 60 * 1000)
+    expect(DATA_RETENTION_PRODUCTION_LAUNCH).toBe(false)
     expect(text).not.toMatch(/HMAC|Sec-GPC|SHA-256/i)
     expect(text).not.toMatch(/do not store your IP|never store the raw IP|do not store your IP address/i)
 
@@ -72,7 +82,17 @@ describe('privacy policy facts', () => {
     expect(SHARING_PARAGRAPH).toContain('when it is configured and analytics is allowed')
     const page = readFileSync(path.join(process.cwd(), 'src/app/privacy/page.tsx'), 'utf8')
     expect(page).toContain('CLICK_LOG_PARAGRAPH')
+    expect(page).toContain('RETENTION_JOB_PARAGRAPH')
+    expect(page).toContain('TURSO_BACKUP_PARAGRAPH')
     expect(page).toContain('SHARING_PARAGRAPH')
+    const noteStart = TURSO_BACKUP_PARAGRAPH.indexOf('[Lawyer note:')
+    const noteEnd = TURSO_BACKUP_PARAGRAPH.indexOf(']', noteStart)
+    expect(noteStart).toBeGreaterThan(0)
+    expect(noteEnd).toBeGreaterThan(noteStart)
+    const outside = `${TURSO_BACKUP_PARAGRAPH.slice(0, noteStart)} ${TURSO_BACKUP_PARAGRAPH.slice(noteEnd + 1)}`
+    expect(outside).not.toMatch(/\d+ (days|hours)/)
+    expect(TURSO_BACKUP_PARAGRAPH).toContain('does not state our backup period')
+    expect(TURSO_BACKUP_PARAGRAPH).toContain('does not record which Turso plan')
     expect(page).toContain('PRIVACY_UPDATED')
     const dates = readFileSync(path.join(process.cwd(), 'src/lib/ratings-policy-copy.ts'), 'utf8')
     expect(dates).toContain("export const PRIVACY_UPDATED = 'October 17, 2026'")

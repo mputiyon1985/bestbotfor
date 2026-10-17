@@ -4,7 +4,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { LawyerReviewNotice } from '@/components/lawyer-review-notice'
 import { userRatingsEnabled } from '@/lib/flags'
 import { pageMetadata } from '@/lib/metadata'
-import { CLICK_LOG_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, rateLimitPrivacyParagraphs, SHARING_PARAGRAPH } from '@/lib/privacy-copy'
+import { CLICK_LOG_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, rateLimitPrivacyParagraphs, RETENTION_JOB_PARAGRAPH, SHARING_PARAGRAPH, TURSO_BACKUP_PARAGRAPH } from '@/lib/privacy-copy'
 import { PRIVACY_RATINGS_PARAGRAPHS, PRIVACY_UPDATED, PRIVACY_UPDATED_WITH_RATINGS, RETENTION_ROWS } from '@/lib/ratings-policy-copy'
 
 export const dynamic = 'force-dynamic'
@@ -46,6 +46,7 @@ export default function PrivacyPage() {
       {rateLimitPrivacyParagraphs().map((paragraph) => (
         <p key={paragraph}>{paragraph}</p>
       ))}
+      <p>{RETENTION_JOB_PARAGRAPH}</p>
       <h2 className="font-semibold text-3xl">Cookies and analytics</h2>
       <p>
         Analytics cookies are off until you accept the banner. That choice is stored in a first-party cookie named
@@ -62,6 +63,7 @@ export default function PrivacyPage() {
       <p>Clerk and Stripe may set cookies that are required for sign-in and checkout. Those are not advertising cookies.</p>
       <h2 className="font-semibold text-3xl">Sharing</h2>
       <p>{SHARING_PARAGRAPH}</p>
+      <p>{TURSO_BACKUP_PARAGRAPH}</p>
       <h2 className="font-semibold text-3xl">Your choices</h2>
       <p>
         You can reject analytics on the banner. Global Privacy Control, described above, also opts you out of analytics.
