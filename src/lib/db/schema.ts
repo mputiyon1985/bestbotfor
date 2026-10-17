@@ -1,4 +1,5 @@
-import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { desc, sql } from 'drizzle-orm'
+import { check, index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 export const tools = sqliteTable('tools', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -150,4 +151,210 @@ export const rateLimits = sqliteTable('rate_limits', {
   key: text('key').primaryKey(),
   count: integer('count').notNull(),
   resetAt: integer('reset_at').notNull(),
+})
+
+/**
+ * One rating per user per tool. latest_version_id and published_version_id
+ * reference review_versions. That cycle is DEFERRABLE in the SQL migration.
+ * Drizzle builds references immediately, so those two columns stay plain
+ * integers here. ip_hmac is a keyed HMAC of the full submit IP.
+ * net_hmac is a keyed HMAC of the IPv4 /24 or IPv6 /48 bucket.
+ * ip_key_id is the key version, such as "k1". Both hashes use
+ * REVIEW_IP_HMAC_SECRET, with HKDF labels bestbotfor/review-ip/v1 and
+ * bestbotfor/review-net/v1. ip_hmac is HMAC-SHA256 of
+ * "bestbotfor-review-ip|v1|" plus the IP, under K_ip. Computing the
+ * hashes is A5. A competitor-domain match is a moderator hint only
+ * and has no column here, so it cannot block a review.
+ * No email is stored.
+ */
+export const reviews = sqliteTable(
+  'reviews',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    toolId: integer('tool_id')
+      .notNull()
+      .references(() => tools.id),
+    clerkUserId: text('clerk_user_id').notNull(),
+    status: text('status').notNull(),
+    publishedVersionId: integer('published_version_id'),
+    latestVersionId: integer('latest_version_id').notNull(),
+    weight: real('weight').notNull().default(1),
+    countsTowardScore: integer('counts_toward_score').notNull().default(1),
+    displayName: text('display_name').notNull(),
+    ipHmac: text('ip_hmac'),
+    netHmac: text('net_hmac'),
+    ipKeyId: text('ip_key_id'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+    publishedAt: integer('published_at'),
+  },
+  (table) => [
+    uniqueIndex('reviews_user_tool_unique').on(table.clerkUserId, table.toolId),
+    index('reviews_tool_status_published_idx').on(table.toolId, table.status, desc(table.publishedAt)),
+    index('reviews_status_created_idx').on(table.status, table.createdAt),
+    index('reviews_ip_created_idx').on(table.ipHmac, table.createdAt),
+    index('reviews_tool_net_created_idx').on(table.toolId, table.netHmac, table.createdAt),
+    check(
+      'reviews_status_check',
+      sql`${table.status} in ('pending', 'held', 'published', 'rejected', 'removed', 'withdrawn')`,
+    ),
+    check('reviews_weight_check', sql`${table.weight} in (1.0, 1.5)`),
+    check('reviews_counts_toward_score_check', sql`${table.countsTowardScore} in (0, 1)`),
+    check('reviews_display_name_check', sql`length(${table.displayName}) between 1 and 60`),
+  ],
+)
+
+/** Append-only edit history. Content changes insert a new row. */
+export const reviewVersions = sqliteTable(
+  'review_versions',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    reviewId: integer('review_id')
+      .notNull()
+      .references(() => reviews.id),
+    versionNo: integer('version_no').notNull(),
+    stars: integer('stars').notNull(),
+    pros: text('pros').notNull().default(''),
+    cons: text('cons').notNull().default(''),
+    useCaseText: text('use_case_text').notNull().default(''),
+    role: text('role'),
+    usageDuration: text('usage_duration'),
+    planType: text('plan_type'),
+    connection: text('connection').notNull(),
+    connectionText: text('connection_text').notNull().default(''),
+    attestationVersion: text('attestation_version').notNull(),
+    vendorDomainCheck: text('vendor_domain_check').notNull(),
+    decision: text('decision').notNull().default('pending'),
+    reasonCode: text('reason_code'),
+    contentHash: text('content_hash').notNull(),
+    createdAt: integer('created_at').notNull(),
+    decidedAt: integer('decided_at'),
+  },
+  (table) => [
+    uniqueIndex('review_versions_review_no_unique').on(table.reviewId, table.versionNo),
+    check('review_versions_stars_check', sql`${table.stars} between 1 and 5`),
+    check('review_versions_pros_check', sql`length(${table.pros}) <= 1000`),
+    check('review_versions_cons_check', sql`length(${table.cons}) <= 1000`),
+    check('review_versions_use_case_check', sql`length(${table.useCaseText}) <= 280`),
+    check('review_versions_connection_check', sql`${table.connection} in ('none', 'disclosed')`),
+    check(
+      'review_versions_connection_text_check',
+      sql`(${table.connection} = 'none' and ${table.connectionText} = '') or (${table.connection} = 'disclosed' and length(${table.connectionText}) between 1 and 140)`,
+    ),
+    check('review_versions_vendor_domain_check', sql`${table.vendorDomainCheck} in ('pass', 'no_corporate_domain')`),
+    check('review_versions_decision_check', sql`${table.decision} in ('pending', 'approved', 'rejected', 'superseded')`),
+  ],
+)
+
+export const reviewReports = sqliteTable(
+  'review_reports',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    reviewId: integer('review_id')
+      .notNull()
+      .references(() => reviews.id),
+    reporterUserId: text('reporter_user_id').notNull(),
+    reasonCode: text('reason_code').notNull(),
+    note: text('note').notNull().default(''),
+    status: text('status').notNull(),
+    createdAt: integer('created_at').notNull(),
+    resolvedAt: integer('resolved_at'),
+    resolvedBy: text('resolved_by'),
+  },
+  (table) => [
+    uniqueIndex('review_reports_review_reporter_unique').on(table.reviewId, table.reporterUserId),
+    index('review_reports_status_created_idx').on(table.status, table.createdAt),
+    check('review_reports_note_check', sql`length(${table.note}) <= 500`),
+    check('review_reports_status_check', sql`${table.status} in ('open', 'upheld', 'dismissed')`),
+  ],
+)
+
+/** Append-only audit log. Triggers abort any update or delete. */
+export const moderationEvents = sqliteTable(
+  'moderation_events',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    reviewId: integer('review_id'),
+    versionId: integer('version_id'),
+    reportId: integer('report_id'),
+    actorType: text('actor_type').notNull(),
+    actorRef: text('actor_ref').notNull(),
+    action: text('action').notNull(),
+    fromStatus: text('from_status'),
+    toStatus: text('to_status'),
+    reasonCode: text('reason_code'),
+    note: text('note').notNull().default(''),
+    createdAt: integer('created_at').notNull(),
+    prevHash: text('prev_hash'),
+    hash: text('hash'),
+  },
+  (table) => [
+    check('moderation_events_actor_type_check', sql`${table.actorType} in ('system', 'admin', 'user', 'webhook')`),
+    check('moderation_events_note_check', sql`length(${table.note}) <= 500`),
+  ],
+)
+
+/** Cache of published, counting ratings. Recomputed from reviews. */
+export const reviewAggregates = sqliteTable('review_aggregates', {
+  toolId: integer('tool_id')
+    .primaryKey()
+    .references(() => tools.id),
+  publishedCount: integer('published_count').notNull().default(0),
+  weightTotal: real('weight_total').notNull().default(0),
+  weightedSum: real('weighted_sum').notNull().default(0),
+  star1: integer('star_1').notNull().default(0),
+  star2: integer('star_2').notNull().default(0),
+  star3: integer('star_3').notNull().default(0),
+  star4: integer('star_4').notNull().default(0),
+  star5: integer('star_5').notNull().default(0),
+  updatedAt: integer('updated_at').notNull(),
+})
+
+export const toolVendorDomains = sqliteTable(
+  'tool_vendor_domains',
+  {
+    toolId: integer('tool_id')
+      .notNull()
+      .references(() => tools.id),
+    domain: text('domain').notNull(),
+    source: text('source').notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.toolId, table.domain] }),
+    check('tool_vendor_domains_source_check', sql`${table.source} in ('tool_url', 'manual')`),
+  ],
+)
+
+/**
+ * sponsorship_id is an optional id from the sponsorships table in PR #10.
+ * This schema does not declare that foreign key: the table is not here yet,
+ * and a reference to a missing table rejects every insert.
+ */
+export const toolSponsorLinks = sqliteTable(
+  'tool_sponsor_links',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    toolId: integer('tool_id')
+      .notNull()
+      .references(() => tools.id),
+    sponsorshipId: integer('sponsorship_id'),
+    startsAt: integer('starts_at').notNull(),
+    endsAt: integer('ends_at'),
+    createdBy: text('created_by').notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [index('tool_sponsor_links_tool_ends_idx').on(table.toolId, table.endsAt)],
+)
+
+export const userTombstones = sqliteTable('user_tombstones', {
+  userHmac: text('user_hmac').primaryKey(),
+  deletedAt: integer('deleted_at').notNull(),
+})
+
+/** Idempotency row for a Clerk webhook. id is the svix-id header. */
+export const webhookEvents = sqliteTable('webhook_events', {
+  id: text('id').primaryKey(),
+  type: text('type').notNull(),
+  processedAt: integer('processed_at').notNull(),
 })
