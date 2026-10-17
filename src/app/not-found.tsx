@@ -8,7 +8,9 @@ export const metadata: Metadata = {
   description: notFoundDescription,
   // Drop the layout canonical. A missing URL should not claim the home page.
   alternates: {},
-  robots: { index: false, follow: false },
+  // Next.js already emits one noindex meta for a 404. Null clears the layout robots
+  // so that tag is the only one.
+  robots: null,
   openGraph: {
     title: { absolute: notFoundTitle },
     description: notFoundDescription,

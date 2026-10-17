@@ -1,7 +1,7 @@
 import { ratingAriaLabel, starFills, type EditorialScore } from './editorial'
 import { SHOW_SCORES } from './site'
 
-export const SCORE_HEADING = 'BestBotFor score'
+export const SCORE_HEADING = 'Our rating'
 export const HOW_WE_SCORE_HEADING = 'How we score'
 
 const RATING_KEYS = new Set(['aggregateRating', 'ratingValue', 'reviewRating', 'bestRating', 'worstRating'])

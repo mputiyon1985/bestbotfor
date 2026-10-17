@@ -24,7 +24,7 @@ test('a scored tool shows fractional stars, the rubric, and no review schema', a
   const fills = await stars.locator('[data-star-fill]').evaluateAll((nodes) => nodes.map((node) => node.getAttribute('data-star-fill')))
   expect(fills).toEqual(starFills(claude.overall).map(String))
 
-  await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Our rating', exact: true })).toBeVisible()
   await expect(page.locator('[data-category-rank]')).toHaveText('#4 of 4 in Chat')
   await expect(page.locator('[data-tie]')).toHaveCount(0)
   await expect(page.getByRole('heading', { name: 'How we score' })).toHaveCount(0)
@@ -49,8 +49,8 @@ test('a scored tool shows fractional stars, the rubric, and no review schema', a
 
   const description = (await page.locator('meta[name="description"]').getAttribute('content')) ?? ''
   const ogDescription = (await page.locator('meta[property="og:description"]').getAttribute('content')) ?? ''
-  expect(description).not.toMatch(/out of 5|BestBotFor score|How we score|Rated /)
-  expect(ogDescription).not.toMatch(/out of 5|BestBotFor score|How we score|Rated /)
+  expect(description).not.toMatch(/out of 5|(?<![A-Za-z])Our rating\b|How we score|Rated /)
+  expect(ogDescription).not.toMatch(/out of 5|(?<![A-Za-z])Our rating\b|How we score|Rated /)
 
   const blocks = await page.locator('script[type="application/ld+json"]').allTextContents()
   const combined = blocks.join('\n')
@@ -68,7 +68,7 @@ test('unrated tools hide the score and keep pros and cons', async ({ page }) => 
     const v1 = editorialSeeds.find((row) => row.slug === slug)
     await page.goto(`/tools/${slug}`)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(tool?.name ?? slug)
-    await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Our rating', exact: true })).toHaveCount(0)
     await expect(page.getByRole('heading', { name: 'How we score' })).toHaveCount(0)
     await expect(page.locator('[data-category-rank]')).toHaveCount(0)
     await expect(page.locator('[data-score-note]')).toHaveCount(0)
@@ -134,7 +134,7 @@ test('windsurf stays at its slug, cursor and relevance show the reviewed prices,
   await expect(page.getByText('Cognition', { exact: true })).toBeVisible()
   await expect(page.getByText('Free tier, then $20 and up')).toBeVisible()
   await expect(page.getByText('The Free plan is $0 and Pro is $20 a month.')).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Our rating', exact: true })).toBeVisible()
   await expect(page.locator('[data-category-rank]')).toHaveText('Tied · #10 of 12 in Coding')
   await expect(page.locator('[data-tie]')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Pros and cons' })).toBeVisible()
@@ -164,7 +164,7 @@ test('windsurf stays at its slug, cursor and relevance show the reviewed prices,
   await expect(page.getByRole('link', { name: 'Devin Desktop (formerly Windsurf) profile' })).toHaveAttribute('href', '/tools/windsurf')
 
   await page.goto('/tools/cursor')
-  await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Our rating', exact: true })).toBeVisible()
   await expect(page.locator('[data-category-rank]')).toContainText('#2 of 12 in Coding')
   await expect(page.getByRole('heading', { name: 'Pros and cons' })).toBeVisible()
   await expect(page.getByText('Free plan includes limited agent requests', { exact: true })).toBeVisible()
@@ -199,7 +199,7 @@ test('windsurf stays at its slug, cursor and relevance show the reviewed prices,
   await expect(page.getByText('$19 and up')).toBeVisible()
   await expect(page.getByText('No', { exact: true })).toBeVisible()
   await expect(page.getByText('The free plan is retired. Pro is $19 a month billed yearly.')).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Our rating', exact: true })).toHaveCount(0)
   await expect(page.locator('[data-score-section]')).toHaveCount(0)
   await expect(page.locator('[data-category-rank]')).toHaveCount(0)
   const relevancePoints = editorialSeeds.find((row) => row.slug === 'relevance-ai')
@@ -237,7 +237,7 @@ test('the how we rate page uses the public copy and no source columns', async ({
 
 test('a single-tool category hides the rank and a note shows when it is filled', async ({ page }) => {
   await page.goto('/tools/craft')
-  await expect(page.getByRole('heading', { name: 'BestBotFor score' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Our rating', exact: true })).toBeVisible()
   await expect(page.locator('[data-category-rank]')).toHaveCount(0)
   await expect(page.locator('[data-tie]')).toHaveCount(0)
   let html = await page.content()

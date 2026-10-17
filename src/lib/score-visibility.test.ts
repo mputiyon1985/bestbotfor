@@ -33,7 +33,7 @@ const conText = 'The Go plan may include ads.'
 const pros: ProCon[] = [{ kind: 'pro', text: proText, sourceUrl: 'https://chatgpt.com/pricing' }]
 const cons: ProCon[] = [{ kind: 'con', text: conText, sourceUrl: 'https://chatgpt.com/pricing' }]
 
-const scoredCopy = 'ChatGPT by OpenAI. Rated 4.6 out of 5. BestBotFor score. How we score.'
+const scoredCopy = 'ChatGPT by OpenAI. Rated 4.6 out of 5. Our rating. How we score.'
 
 function html(node: ReturnType<typeof createElement>): string {
   return renderToStaticMarkup(node)
@@ -84,7 +84,7 @@ describe('SHOW_SCORES', () => {
     expect(publicScore(null, true)).toBeNull()
 
     const view = publicScore(editorial)
-    expect(view?.heading).toBe('BestBotFor score')
+    expect(view?.heading).toBe('Our rating')
     expect(view?.overallText).toBe('4.3 out of 5')
     expect(view?.ariaLabel).toBe('Rated 4.3 out of 5')
     expect(view?.fills).toEqual([1, 1, 1, 1, 0.3])
@@ -103,6 +103,9 @@ describe('SHOW_SCORES', () => {
     expect(omitScoreText('Free plan includes unlimited everyday text chats.')).toBe(
       'Free plan includes unlimited everyday text chats.',
     )
+    expect(omitScoreText('Your rating', false)).toBe('Your rating')
+    expect(omitScoreText('Choose Your rating. Our rating. How we score.', false)).toBe('Choose Your rating.')
+    expect(omitScoreText('Our rating', false)).toBe('')
 
     const meta = pageMetadata({ title: 'ChatGPT', description: scoredCopy, path: '/tools/chatgpt' })
     expect(meta.description).toBe(scoredCopy)
@@ -128,7 +131,7 @@ describe('SHOW_SCORES', () => {
     expect(encoded).not.toContain('ratingValue')
     expect(encoded).not.toContain('bestRating')
     expect(encoded).not.toContain('out of 5')
-    expect(encoded).not.toContain('BestBotFor score')
+    expect(encoded).not.toContain('Our rating')
     expect(encoded).toContain('ChatGPT')
 
     const markup = html(createElement(JsonLd, { data, nonce: null }))
@@ -162,20 +165,20 @@ describe('SHOW_SCORES', () => {
     expect(card).not.toContain('data-category-rank')
     expect(card).not.toContain('#1 of 2 in Chat')
     expect(card).not.toContain('Tied')
-    expect(card).not.toContain('BestBotFor score')
+    expect(card).not.toContain('Our rating')
     expect(card).not.toContain('out of 5')
 
     const section = html(createElement(ProsConsSection, { pros, cons }))
     expect(section).toContain('Pros and cons')
     expect(section).toContain(proText)
     expect(section).toContain(conText)
-    expect(section).not.toContain('BestBotFor score')
+    expect(section).not.toContain('Our rating')
   })
 
   it('renders the heading, stars, numeric score, and criteria bars when the flag is on', () => {
     const section = html(createElement(ScoreSection, { editorial, showScores: true }))
     expect(section).toContain('data-score-section')
-    expect(section).toContain('BestBotFor score')
+    expect(section).toContain('Our rating')
     expect(section).not.toContain('How we score')
     expect(section).toContain('#1 of 2 in Chat')
     expect(section).toContain('href="/how-we-rate"')
