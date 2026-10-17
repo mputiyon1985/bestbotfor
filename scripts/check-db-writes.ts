@@ -14,6 +14,14 @@ const ALLOWED = new Set([
   'drizzle/0004_retire_quiz_fits.sql',
   'drizzle/0007_drop_non_forge_scores.sql',
   'drizzle/0011_user_reviews.sql',
+  // Daily retention cron. Deletes rate_limits rows whose reset_at is more
+  // than 24 hours old, including rows left under a previous HMAC key, and
+  // result_rate_windows rows whose expires_at is more than 24 hours old.
+  // Those are the quiz /result rows written by consumeResultRateLimit.
+  // Clears clicks.ip_hash after 90 days. The flag fails closed, production
+  // stays off until DATA_RETENTION_PRODUCTION_LAUNCH, and dry-run is the default.
+  // No other cron route may write.
+  'src/app/api/cron/data-retention/route.ts',
 ])
 
 const ROOTS = ['src', 'scripts', 'drizzle']
