@@ -7,7 +7,7 @@ import {
   DEEPGRAM_PRICE_PRO_STALE,
   N8N_PRICE_LABEL,
 } from '@/data/catalog-corrections'
-import { compareCopy } from '@/data/compare-copy'
+import { COMPARE_SECONDARY_NOTE, compareCopy } from '@/data/compare-copy'
 import { editorialSeeds } from '@/data/scores-pros-cons.seed'
 import { a2CorrectionPlan } from '../../scripts/a2-catalog-corrections'
 import { catalogFromSeeds } from '@/test/catalog-from-seeds'
@@ -134,7 +134,15 @@ describe('curated compare copy', () => {
     const speech = viewFor('assemblyai-vs-deepgram')
     expect(speech.view.verdictPlain).not.toContain('scores higher')
     expect(cell(speech.view, 'Our rating')).toMatchObject({ a: 'Not yet rated', b: 'Not yet rated' })
+    expect(cell(speech.view, 'Skill level')).toMatchObject({ a: 'Advanced', b: 'Advanced' })
     expect(speech.view.rows.some((row) => row.label.startsWith('Fit:'))).toBe(false)
+    expect(COMPARE_SECONDARY_NOTE).toBe(
+      "[S] = secondary source (third party), not read directly on the vendor's page.",
+    )
+    expect(COMPARE_SECONDARY_NOTE).not.toContain('Confirm before publishing')
+    for (const entry of compareCopy) {
+      expect(entry.secondaryNote, entry.slug).toBe(COMPARE_SECONDARY_NOTE)
+    }
 
     for (const slug of Object.keys(LENGTHS)) {
       const rendered = viewFor(slug)

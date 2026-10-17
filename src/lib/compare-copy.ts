@@ -1,5 +1,6 @@
 import { compareCopyFor, type CompareCopy, type CompareRow } from '@/data/compare-copy'
 import type { CatalogTool } from './catalog-types'
+import { skillLabel } from './format'
 import { formatScore, publicScore } from './score-visibility'
 
 const FIT_TOKEN = /\{\{(a|b):([a-z0-9-]+)\}\}/g
@@ -90,6 +91,15 @@ export function resolveRows(
     }
     if (row.kind === 'fit') {
       rows.push({ label: row.label, a: fitCell(a, row.task), b: fitCell(b, row.task), source: row.source })
+      continue
+    }
+    if (row.kind === 'skill') {
+      rows.push({
+        label: row.label,
+        a: skillLabel[a.skillLevel],
+        b: skillLabel[b.skillLevel],
+        source: row.source,
+      })
       continue
     }
     rows.push({

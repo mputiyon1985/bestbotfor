@@ -102,7 +102,7 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
           </Link>
         </section>
       )}
-      {view ? <CompareNewsletter idSuffix="end" cta={view.cta} /> : null}
+      {view ? <CompareNewsletter idSuffix="end" cta={view.cta} label="The Daily Bot at the end of the page" /> : null}
     </article>
   )
 }
@@ -134,7 +134,7 @@ function CuratedBody({ view }: { view: CompareView }) {
       </div>
       <CuratedTable view={view} />
       <p className="text-sm text-muted">{view.secondaryNote}</p>
-      <CompareNewsletter idSuffix="after-table" cta={view.cta} />
+      <CompareNewsletter idSuffix="after-table" cta={view.cta} label="The Daily Bot after the table" />
       <p className="text-sm">
         <Link className="underline" href="/">find the right AI in 30 seconds</Link>
       </p>

@@ -28,7 +28,14 @@ export type CompareRatingRow = {
   source: string
 }
 
-export type CompareRow = CompareTextRow | CompareFitRow | CompareRatingRow
+/** Skill cells are `skillLabel` for each tool, so the catalog stays the source. */
+export type CompareSkillRow = {
+  label: string
+  kind: 'skill'
+  source: string
+}
+
+export type CompareRow = CompareTextRow | CompareFitRow | CompareRatingRow | CompareSkillRow
 
 export type CompareCopy = {
   /** Canonical pair slug, `{a}-vs-{b}`, matching comparePairSeeds order. */
@@ -55,7 +62,7 @@ export const COMPARE_CHECKED_LINE =
   "Last checked Oct 17, 2026. Prices change, so confirm on the vendor's site before you pay."
 
 export const COMPARE_SECONDARY_NOTE =
-  "[S] = secondary source (third party), not read directly on the vendor's page. Confirm before publishing."
+  "[S] = secondary source (third party), not read directly on the vendor's page."
 
 export const COMPARE_DIGEST_FINE_PRINT = 'Free. One email each weekday. Unsubscribe anytime.'
 
@@ -561,7 +568,7 @@ export const compareCopy: readonly CompareCopy[] = [
         b: 'Yes: Aura-2 $0.030 per 1,000 characters',
         source: '[15]',
       },
-      { label: 'Skill level', kind: 'text', a: 'Developer (API)', b: 'Developer (API)', source: 'BestBotFor catalog' },
+      { label: 'Skill level', kind: 'skill', source: 'BestBotFor catalog' },
     ],
     secondaryNote: COMPARE_SECONDARY_NOTE,
     cta: 'Speech AI prices fell again this year. Get **The Daily Bot** for daily AI and API pricing changes.',

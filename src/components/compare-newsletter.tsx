@@ -2,9 +2,17 @@ import { COMPARE_DIGEST_FINE_PRINT } from '@/data/compare-copy'
 import { inlineParts } from '@/lib/compare-copy'
 import { NewsletterForm } from './newsletter-form'
 
-export function CompareNewsletter({ idSuffix, cta }: { idSuffix: string; cta: string }) {
+export function CompareNewsletter({
+  idSuffix,
+  cta,
+  label,
+}: {
+  idSuffix: string
+  cta: string
+  label: string
+}) {
   return (
-    <section aria-label="The Daily Bot" className="rounded-3xl border border-line p-6">
+    <section aria-label={label} className="rounded-3xl border border-line p-6">
       <p>
         <Inline text={cta} />
       </p>
