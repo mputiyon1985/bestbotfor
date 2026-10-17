@@ -5,7 +5,7 @@ import { createClient } from '@libsql/client'
 import { drizzle } from 'drizzle-orm/libsql'
 import * as schema from '@/lib/db/schema'
 import type { Database } from '@/lib/db/client'
-import { adoptSponsorshipSchema } from '@/lib/db/migrate'
+import { adoptSponsorCardSchema, adoptSponsorshipSchema } from '@/lib/db/migrate'
 
 export async function createTestDatabase(): Promise<{ db: Database; url: string; close: () => Promise<void> }> {
   const directory = await mkdtemp(path.join(tmpdir(), 'bestbotfor-'))
@@ -19,6 +19,7 @@ export async function createTestDatabase(): Promise<{ db: Database; url: string;
     await client.executeMultiple(sql)
   }
   await adoptSponsorshipSchema(client)
+  await adoptSponsorCardSchema(client)
   const db = drizzle(client, { schema })
   return {
     db,

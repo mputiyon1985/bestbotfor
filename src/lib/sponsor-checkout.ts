@@ -33,6 +33,8 @@ export type SponsorCheckoutInput = {
   issueDate: string | null
   priceId: string
   requestId: string
+  /** Pending tool card stored before Checkout. Newsletter slots leave this unset. */
+  creativeId?: string
 }
 
 export function parseSponsorCheckout(formData: FormData, env: Record<string, string | undefined> = process.env):
@@ -110,6 +112,7 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
     task_slug: input.taskSlug ?? '',
     issue_date: input.issueDate ?? '',
     price_id: input.priceId,
+    creative_id: input.creativeId ?? '',
   }
   const fingerprintSource = [
     input.offering,
@@ -118,6 +121,7 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
     input.taskSlug ?? '',
     input.issueDate ?? '',
     input.priceId,
+    input.creativeId ?? '',
     input.successUrl,
     input.cancelUrl,
     SPONSOR_BUSINESS_NAME,

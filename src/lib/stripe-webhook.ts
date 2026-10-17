@@ -9,6 +9,7 @@ import { sponsorOffering, sponsorPriceId } from './sponsor-offerings'
 import { getStripe, stripeWebhookSecret } from './stripe'
 import { liveModeAllowed } from './stripe-key'
 import { sanitizeSponsorCompany } from './sponsor-company'
+import { linkSponsorCreative } from './sponsor-card'
 
 const WEBHOOK_DB_BUDGET_MS = 2_000
 
@@ -135,13 +136,17 @@ async function applyWebhook(
   return 'ok'
 }
 
-const KNOWN_EVENT_TYPES = new Set([
+/** Events the test-mode webhook is subscribed to for sponsor refunds. */
+export const SPONSOR_REFUND_WEBHOOK_EVENTS = ['charge.refunded', 'refund.created', 'refund.updated'] as const
+
+const KNOWN_EVENT_TYPES = new Set<string>([
   'checkout.session.completed',
   'checkout.session.async_payment_succeeded',
   'checkout.session.async_payment_failed',
   'customer.subscription.created',
   'customer.subscription.updated',
   'customer.subscription.deleted',
+  ...SPONSOR_REFUND_WEBHOOK_EVENTS,
 ])
 
 const sponsorshipCheckoutSchema = z.object({
@@ -161,6 +166,7 @@ const sponsorshipCheckoutSchema = z.object({
       task_slug: z.string().max(80).optional(),
       issue_date: z.string().max(40).optional(),
       price_id: z.string().max(255).optional(),
+      creative_id: z.string().max(20).optional(),
     })
     .optional(),
 })
@@ -257,6 +263,11 @@ async function applySponsorship(db: Database, stripe: Stripe, event: Stripe.Even
         updatedAt: now,
       },
     })
+  await linkSponsorCreative(db, {
+    creativeId: parsed.data.metadata.creative_id,
+    sessionId: parsed.data.id,
+    now,
+  })
 }
 
 function paymentIntentId(value: unknown): string | null {
