@@ -4,7 +4,7 @@ Refunds stay manual. Nothing in the app calls the Stripe refund API.
 
 ## Review
 
-Open `/admin/sponsor-cards` as an allowlisted admin with a recent second factor. The queue shows the pending card: name, description, logo, URL, task, and version. Approving or rejecting sends the version, update time, and content hash of the card you are looking at. If the buyer changed it, the action fails and you refresh. The public `/best` page renders only the frozen snapshot written at approval.
+Open `/admin/sponsors` as an allowlisted admin with a recent second factor. The page stays 404 unless `ADMIN_SPONSORS` is exactly `on` and `VERCEL_ENV` is `preview`, `development`, or `test`. An unset or any other value is off. Production stays off until `ADMIN_SPONSORS_PRODUCTION_LAUNCH` is true, which waits for the A18 real Clerk admin test. This flag does not turn user ratings on. The allowlist, a completed second factor, and a fresh step-up for approve, reject, and mark refunded still apply. Responses stay `Cache-Control: no-store` and `X-Robots-Tag: noindex, nofollow`. `/admin/mfa-required` is available when this flag or the ratings flag is on, and 404s when both are off. The queue shows the pending card: name, description, logo, URL, task, and version. Approving or rejecting sends the version, update time, and content hash of the card you are looking at. If the buyer changed it, the action fails and you refresh. The public `/best` page renders only the frozen snapshot written at approval.
 
 A card URL must be https. IP addresses, localhost, and internal host names are refused. Logos are PNG, JPEG, or WebP, at most 64 KB, with EXIF and other metadata removed. Text is normalized to NFKC. ZWJ and ZWNJ stay. Other invisible characters are removed, and the queue warns you when any were present.
 
@@ -22,7 +22,7 @@ When the status is `refund_pending`, open the payment in the Stripe dashboard an
 
 ## Marking refunded
 
-After the Stripe dashboard shows the refund, return to `/admin/sponsor-cards` and choose Mark refunded. That records your admin id, the time, and the note. It does not call Stripe. A second mark does nothing.
+After the Stripe dashboard shows the refund, return to `/admin/sponsors` and choose Mark refunded. That records your admin id, the time, and the note. It does not call Stripe. A second mark does nothing.
 
 ## Audit
 

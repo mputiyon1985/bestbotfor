@@ -6,6 +6,14 @@
 export const USER_RATINGS_PRODUCTION_LAUNCH: boolean = false
 
 /**
+ * Production launch switch for the sponsor admin queue.
+ * Ships false until the A18 real Clerk admin test passes.
+ * Production stays off until a launch PR sets this to true,
+ * even when ADMIN_SPONSORS is on. A code constant, same as SHOW_SCORES.
+ */
+export const ADMIN_SPONSORS_PRODUCTION_LAUNCH: boolean = false
+
+/**
  * Affiliate tracking links are not live.
  * The Advertiser label's affiliate clause stays off until this is true.
  * A code constant, same as SHOW_SCORES.
