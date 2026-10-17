@@ -10,7 +10,7 @@ test('a visitor can sign up for the newsletter', async ({ page }) => {
 test('a filled honeypot still looks like a successful signup', async ({ page }) => {
   await page.goto('/newsletter')
   await page.getByLabel('Email address').fill('bot@example.com')
-  await page.locator('#company_website').fill('https://spam.example')
+  await page.locator('input[name="company_website"]').fill('https://spam.example')
   await page.getByRole('button', { name: 'Get the daily digest' }).click()
   await expect(page.getByRole('status')).toHaveText("Thanks. You're on the list.")
 })
