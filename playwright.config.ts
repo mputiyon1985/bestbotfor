@@ -27,6 +27,13 @@ export default defineConfig({
       RESULT_FAULTS: '1',
       // Preview would enable user ratings if this were "on". E2E keeps the flag off.
       USER_RATINGS: '',
+      // Boot runs the review-secret validator. These are test keys, distinct from each other.
+      RATE_LIMIT_HMAC_SECRET: 'playwright-rate-limit-hmac-secret-48b',
+      REVIEW_IP_HMAC_SECRET: 'playwright-review-ip-hmac-secret-48b!',
+      REVIEW_IP_HMAC_KEY_ID: 'k1',
+      REVIEW_IP_HMAC_SECRET_PREVIOUS: '',
+      REVIEW_IP_HMAC_KEY_ID_PREVIOUS: '',
+      BBF_E2E_HOOKS: '',
       NEXT_PUBLIC_SITE_URL: siteUrl,
       NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID || 'G-TESTCONSENT',
     },

@@ -31,7 +31,7 @@ npm run dev
 | `TURSO_AUTH_TOKEN` | Single Turso token. Unused for `file:` databases |
 | `NEXT_PUBLIC_SITE_URL` | Canonical origin. Defaults to `https://bestbotfor.com` |
 | `IP_HASH_SALT` | Optional salt for click-log hashes. Unset means no IP is stored |
-| `RATE_LIMIT_HMAC_SECRET` | HMAC key for rate-limit bucket ids. When unset, HKDF-SHA256 derives a 32-byte key from another server secret of at least 16 characters, and a warning is logged. Changing it starts new windows |
+| `RATE_LIMIT_HMAC_SECRET` | HMAC key for rate-limit bucket ids. Production (`VERCEL_ENV=production`) requires at least 32 bytes, at build and at boot. Elsewhere, when unset, HKDF-SHA256 derives a 32-byte key from another server secret of at least 16 characters, and a warning is logged. Changing it starts new windows |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | Clerk. Both must be set or accounts stay off |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID` | Stripe test mode. All three are required before billing turns on |
 | `BEEHIIV_API_KEY`, `BEEHIIV_PUBLICATION_ID` | Optional. Unset stores newsletter emails locally |
@@ -39,6 +39,11 @@ npm run dev
 | `GOOGLE_SITE_VERIFICATION` | Optional Search Console token |
 | `SEED_PRUNE` | Set to `1` to delete score rows whose tools are not in `src/data/scores-v2.3.csv`. Unset, the seed only upserts |
 | `USER_RATINGS` | Server-only. The exact value `on` enables user ratings outside production. Production stays off until `USER_RATINGS_PRODUCTION_LAUNCH` in `src/lib/review-flags.ts` is true |
+| `REVIEW_IP_HMAC_SECRET` | Review IP HMAC key. Required in production and whenever `USER_RATINGS=on`. At least 32 bytes. No fallback. Must differ from `RATE_LIMIT_HMAC_SECRET` and from `REVIEW_IP_HMAC_SECRET_PREVIOUS` |
+| `REVIEW_IP_HMAC_KEY_ID` | Required with the review secret. Matches `^k[1-9][0-9]{0,3}$` (`k1` through `k9999`) |
+| `REVIEW_IP_HMAC_SECRET_PREVIOUS` | Optional previous review key. If set, at least 32 bytes, and `REVIEW_IP_HMAC_KEY_ID_PREVIOUS` is required |
+| `REVIEW_IP_HMAC_KEY_ID_PREVIOUS` | Previous key id, same format as `REVIEW_IP_HMAC_KEY_ID`, and different from it. Refused when the previous secret is unset |
+| `BBF_E2E_HOOKS` | E2E only. `1` fails the build when `VERCEL=1`, `VERCEL_ENV=production`, or `NODE_ENV=production` |
 
 Stripe billing accepts a test secret key only. CI fails if a live-mode Stripe key prefix appears anywhere in the tree. The webhook rejects live-mode events. Point Stripe’s test webhook at `/api/stripe/webhook`.
 

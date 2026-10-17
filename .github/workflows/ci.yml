@@ -39,6 +39,9 @@ jobs:
           TURSO_DATABASE_URL: file:./data/ci.db
           NEXT_PUBLIC_SITE_URL: https://bestbotfor.com
           NEXT_PUBLIC_GA_ID: G-TESTCONSENT
+          RATE_LIMIT_HMAC_SECRET: ci-rate-limit-hmac-secret-value-48-bytes
+          REVIEW_IP_HMAC_SECRET: ci-review-ip-hmac-secret-value-48-bytes-ok
+          REVIEW_IP_HMAC_KEY_ID: k1
       - name: Client bundle token scan
         run: npm run check:bundle
       - name: Install Playwright

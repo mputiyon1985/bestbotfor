@@ -17,6 +17,10 @@ import {
   ORGANIZATION_LOGO_PATH,
   SVG_CONTENT_SECURITY_POLICY,
 } from './src/lib/brand'
+import { assertReviewHmacSecrets } from './src/lib/review-hmac-secrets'
+
+// Fail the build (and any later config load) before Next compiles pages.
+assertReviewHmacSecrets()
 
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
