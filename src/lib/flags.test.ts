@@ -147,6 +147,13 @@ describe('user ratings flag', () => {
       '/review-guidelines',
       '/how-user-ratings-work',
       '/members/reviews',
+      '/Tools/ChatGPT/Rate',
+      '/TOOLS/CHATGPT/RATE/',
+      '/tools/chatgpt/%72ate',
+      '/tools/%43hatgpt/rate',
+      '/Admin/Reviews',
+      '/api/tools/ChatGPT/Reviews',
+      '/api/tools/chatgpt/%72eviews',
     ]
     for (const path of hidden) expect(isRatingsPath(path), path).toBe(true)
 
@@ -163,10 +170,17 @@ describe('user ratings flag', () => {
       '/admin/other',
       '/review-guidelines/extra',
       '/how-user-ratings-work/extra',
-      '/Tools/chatgpt/rate',
       '/tools/chatgpt/rate?x=1',
     ]
     for (const path of visible) expect(isRatingsPath(path), path).toBe(false)
+  })
+
+  it('decodes then lowercases a ratings path, and leaves a bad encoding unchanged', () => {
+    expect(isRatingsPath('/TOOLS/%43hatGPT/%72ate')).toBe(true)
+    expect(() => isRatingsPath('/%')).not.toThrow()
+    expect(isRatingsPath('/%')).toBe(false)
+    expect(isRatingsPath('/tools/chatgpt/%E0%A4%A')).toBe(false)
+    expect(isRatingsPath('/tools/chatgpt/%2572ate')).toBe(false)
   })
 
   it('is safe to import from proxy: no Clerk, database, or public ratings env', () => {

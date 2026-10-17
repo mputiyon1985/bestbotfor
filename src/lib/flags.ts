@@ -51,9 +51,24 @@ const RATINGS_EXACT_PATHS = new Set([
   '/members/reviews',
 ])
 
+/**
+ * One decode, then lowercase. A bad percent-encoding is left as-is so the
+ * check still runs. The proxy calls this before matching a ratings route.
+ */
+export function normalizeRatingsPath(pathname: string): string {
+  let decoded = pathname
+  try {
+    decoded = decodeURIComponent(pathname)
+  } catch {
+    // A bad percent-encoding stays as written. The match still runs.
+  }
+  if (decoded.length > 1 && decoded.endsWith('/')) decoded = decoded.slice(0, -1)
+  return decoded.toLowerCase()
+}
+
 /** Ratings routes the proxy hides while userRatingsEnabled() is false. */
 export function isRatingsPath(pathname: string): boolean {
-  const path = pathname.length > 1 && pathname.endsWith('/') ? pathname.slice(0, -1) : pathname
+  const path = normalizeRatingsPath(pathname)
   if (RATINGS_EXACT_PATHS.has(path)) return true
   if (/^\/tools\/[^/]+\/rate$/.test(path)) return true
   if (/^\/api\/tools\/[^/]+\/reviews$/.test(path)) return true

@@ -1,7 +1,7 @@
 import { clerkMiddleware } from '@clerk/nextjs/server'
 import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server'
 import { ACTION_LIMITS } from '@/lib/action-limit'
-import { CATALOG_REJECT_MESSAGE, CATALOG_REJECT_PATH, isUnsafeCatalogPath } from '@/lib/catalog-path'
+import { CATALOG_REJECT_MESSAGE, CATALOG_REJECT_PATH, isUnsafeCatalogPath, requestPath } from '@/lib/catalog-path'
 import { hasDotSegment } from '@/lib/dot-segment'
 import { buildContentSecurityPolicy, securityHeaders } from '@/lib/csp'
 import { getDb, peekCachedTaskSlugs } from '@/lib/db/client'
@@ -41,11 +41,13 @@ function isMembersPath(pathname: string): boolean {
 const RATINGS_HIDDEN_MESSAGE = 'Not found.'
 
 /**
- * Ratings routes 404 here while the flag is off, before the members sign-in
- * redirect. The body is plain text so it is distinct from the app not-found page.
+ * Ratings routes 404 here while the flag is off, before the catalog reject and
+ * the members sign-in redirect. The path is decoded and lowercased first.
+ * The body is plain text so it is distinct from the app not-found page.
  */
 function rejectHiddenRatings(request: NextRequest): NextResponse | null {
-  if (!isRatingsPath(request.nextUrl.pathname)) return null
+  const paths = [request.nextUrl.pathname, ...rawPaths(request).map((value) => requestPath(value))]
+  if (!paths.some((path) => isRatingsPath(path))) return null
   if (userRatingsEnabled()) return null
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   return applySecurity(
@@ -163,10 +165,10 @@ async function gateResult(request: NextRequest, event: NextFetchEvent): Promise<
 }
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
-  const rejected = rejectCatalogPath(request)
-  if (rejected) return rejected
   const hiddenRatings = rejectHiddenRatings(request)
   if (hiddenRatings) return hiddenRatings
+  const rejected = rejectCatalogPath(request)
+  if (rejected) return rejected
   const gated = await gateResult(request, event)
   if (gated) return gated
   if (!isClerkConfigured()) {

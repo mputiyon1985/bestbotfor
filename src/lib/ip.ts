@@ -20,11 +20,12 @@ export function clientIp(headerStore: Headers): string | null {
 
 /**
  * Click logs store this HMAC and nothing else about the address.
- * A missing address stores no hash. The key is the rate-limit secret.
+ * A missing address stores no hash. The key is an HKDF subkey of the
+ * rate-limit secret, not that secret and not a prefixed message.
  */
 export function hashIp(ip: string | null): string | null {
   if (!ip) return null
-  return hmacHex(`bestbotfor-click|${ip}`)
+  return createHmac('sha256', clickIpHmacKey()).update(ip).digest('hex')
 }
 
 /**
@@ -44,6 +45,7 @@ const RATE_LIMIT_FALLBACK_SECRETS = [
 
 const RATE_LIMIT_FALLBACK_MIN_LENGTH = 16
 const RATE_LIMIT_HKDF_SALT = 'bestbotfor/rate-limit-hkdf-salt/v1'
+const CLICK_IP_HKDF_INFO = 'bestbotfor/click-ip/v1'
 
 let rateLimitWarning: string | null = null
 let ephemeralRateLimitSecret: string | null = null
@@ -65,6 +67,8 @@ function fallbackHmacKey(secret: string, source: string): Buffer {
   )
 }
 
+type HmacMaterial = { secret: string; fallbackName: string | null }
+
 /**
  * RATE_LIMIT_HMAC_SECRET is the HMAC key itself when it is at least 16 characters.
  * A shorter value is ignored. Any other server secret is stretched with HKDF-SHA256 first.
@@ -72,10 +76,10 @@ function fallbackHmacKey(secret: string, source: string): Buffer {
  * The secret and the derived key are not logged.
  * A new key starts new windows; counters already in flight are left behind.
  */
-function rateLimitHmacSecret(): string | Buffer {
+function hmacMaterial(): HmacMaterial {
   const dedicated = serverSecret('RATE_LIMIT_HMAC_SECRET')
   const short = dedicated.length > 0 && dedicated.length < RATE_LIMIT_FALLBACK_MIN_LENGTH
-  if (dedicated.length >= RATE_LIMIT_FALLBACK_MIN_LENGTH) return dedicated
+  if (dedicated.length >= RATE_LIMIT_FALLBACK_MIN_LENGTH) return { secret: dedicated, fallbackName: null }
   for (const name of RATE_LIMIT_FALLBACK_SECRETS) {
     const value = serverSecret(name)
     if (value.length < RATE_LIMIT_FALLBACK_MIN_LENGTH) continue
@@ -84,7 +88,7 @@ function rateLimitHmacSecret(): string | Buffer {
         ? `RATE_LIMIT_HMAC_SECRET is shorter than 16 characters; deriving a 32-byte rate-limit HMAC key with HKDF-SHA256 from ${name}`
         : `RATE_LIMIT_HMAC_SECRET is unset; deriving a 32-byte rate-limit HMAC key with HKDF-SHA256 from ${name}`,
     )
-    return fallbackHmacKey(value, name)
+    return { secret: value, fallbackName: name }
   }
   if (!ephemeralRateLimitSecret) ephemeralRateLimitSecret = randomBytes(32).toString('hex')
   warnRateLimitSecret(
@@ -92,7 +96,18 @@ function rateLimitHmacSecret(): string | Buffer {
       ? 'RATE_LIMIT_HMAC_SECRET is shorter than 16 characters and no server secret of at least 16 characters is available; using a process-local rate-limit key'
       : 'RATE_LIMIT_HMAC_SECRET is unset and no server secret of at least 16 characters is available; using a process-local rate-limit key',
   )
-  return ephemeralRateLimitSecret
+  return { secret: ephemeralRateLimitSecret, fallbackName: null }
+}
+
+function rateLimitHmacSecret(): string | Buffer {
+  const material = hmacMaterial()
+  if (material.fallbackName) return fallbackHmacKey(material.secret, material.fallbackName)
+  return material.secret
+}
+
+/** HKDF subkey so a click hash cannot be reused as a rate-limit bucket id. */
+function clickIpHmacKey(): Buffer {
+  return Buffer.from(hkdfSync('sha256', hmacMaterial().secret, RATE_LIMIT_HKDF_SALT, CLICK_IP_HKDF_INFO, 32))
 }
 
 function hmacHex(payload: string): string {

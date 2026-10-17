@@ -41,8 +41,14 @@ function derivedKey(secret: string, source: string): Buffer {
   return Buffer.from(hkdfSync('sha256', secret, HKDF_SALT, `bestbotfor/rate-limit-key/v1:${source}`, 32))
 }
 
+const CLICK_IP_HKDF_INFO = 'bestbotfor/click-ip/v1'
+
 function hmac(key: string | Buffer, payload: string): string {
   return createHmac('sha256', key).update(payload).digest('hex')
+}
+
+function clickKey(secret: string): Buffer {
+  return Buffer.from(hkdfSync('sha256', secret, HKDF_SALT, CLICK_IP_HKDF_INFO, 32))
 }
 
 describe('rateLimitKey', () => {
@@ -155,12 +161,15 @@ describe('rateLimitKey', () => {
 })
 
 describe('hashIp', () => {
-  it('stores an HMAC under the rate-limit secret, not a salted SHA-256', () => {
+  it('stores an HMAC under an HKDF subkey of the rate-limit secret, not a prefix or a salted SHA-256', () => {
     process.env.RATE_LIMIT_HMAC_SECRET = 'dedicated-secret'
     process.env.IP_HASH_SALT = 'legacy-click-salt-value'
     const ip = '203.0.113.7'
     const digest = hashIp(ip)
-    expect(digest).toBe(hmac('dedicated-secret', `bestbotfor-click|${ip}`))
+    expect(clickKey('dedicated-secret')).toHaveLength(32)
+    expect(digest).toBe(hmac(clickKey('dedicated-secret'), ip))
+    expect(digest).not.toBe(hmac('dedicated-secret', ip))
+    expect(digest).not.toBe(hmac('dedicated-secret', `bestbotfor-click|${ip}`))
     expect(digest).not.toBe(createHash('sha256').update(`legacy-click-salt-value|${ip}`).digest('hex'))
     expect(digest).not.toBe(createHash('sha256').update(`dedicated-secret|${ip}`).digest('hex'))
     expect(digest).not.toBe(rateLimitKey(ip, 'go'))
@@ -168,19 +177,22 @@ describe('hashIp', () => {
     expect(hashIp('')).toBeNull()
   })
 
-  it('uses the HKDF fallback when the dedicated secret is shorter than 16 characters', () => {
+  it('derives the click subkey from the HKDF fallback secret when the dedicated secret is shorter than 16 characters', () => {
     const short = 's'.repeat(15)
     process.env.RATE_LIMIT_HMAC_SECRET = short
     process.env.CLERK_SECRET_KEY = 'clerk-server-secret'
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
     const ip = '198.51.100.20'
     const digest = hashIp(ip)
-    expect(digest).toBe(hmac(derivedKey('clerk-server-secret', 'CLERK_SECRET_KEY'), `bestbotfor-click|${ip}`))
-    expect(digest).not.toBe(hmac(short, `bestbotfor-click|${ip}`))
+    expect(digest).toBe(hmac(clickKey('clerk-server-secret'), ip))
+    expect(digest).not.toBe(hmac(clickKey(short), ip))
+    expect(digest).not.toBe(hmac(derivedKey('clerk-server-secret', 'CLERK_SECRET_KEY'), `bestbotfor-click|${ip}`))
+    expect(digest).not.toBe(hmac(short, ip))
     expect(digest).not.toBe(createHash('sha256').update(`${short}|${ip}`).digest('hex'))
     const message = String(warn.mock.calls[0]?.[0])
     expect(message).toContain('HKDF-SHA256')
     expect(message).not.toContain(short)
     expect(message).not.toContain('clerk-server-secret')
+    expect(message).not.toMatch(/[0-9a-f]{32,}/)
   })
 })

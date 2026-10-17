@@ -1,4 +1,4 @@
-import { createHash, createHmac } from 'node:crypto'
+import { createHash, createHmac, hkdfSync } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { resolveGoRedirect, type GoToolRecord } from './go-redirect'
 
@@ -85,7 +85,9 @@ describe('resolveGoRedirect', () => {
       expect(outcome.status).toBe(302)
       if (outcome.status !== 302) return
       const ip = '203.0.113.5'
-      expect(outcome.click?.ipHash).toBe(createHmac('sha256', 'dedicated-secret').update(`bestbotfor-click|${ip}`).digest('hex'))
+      const clickKey = Buffer.from(hkdfSync('sha256', 'dedicated-secret', 'bestbotfor/rate-limit-hkdf-salt/v1', 'bestbotfor/click-ip/v1', 32))
+      expect(outcome.click?.ipHash).toBe(createHmac('sha256', clickKey).update(ip).digest('hex'))
+      expect(outcome.click?.ipHash).not.toBe(createHmac('sha256', 'dedicated-secret').update(`bestbotfor-click|${ip}`).digest('hex'))
       expect(outcome.click?.ipHash).not.toBe(createHash('sha256').update(`legacy-click-salt-value|${ip}`).digest('hex'))
     } finally {
       if (previous === undefined) delete process.env.RATE_LIMIT_HMAC_SECRET
