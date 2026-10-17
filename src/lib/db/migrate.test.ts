@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { createClient } from '@libsql/client'
@@ -48,7 +48,8 @@ describe('sqlite file directories', () => {
     expect(ids).toContain('0007_drop_non_forge_scores.sql')
     expect(ids).toContain('0008_ratings_v23.sql')
     expect(ids).toContain('0012_result_rate_windows.sql')
-    expect(ids).toContain('0013_retention_indexes.sql')
+    expect(ids).toContain('0018_retention_indexes.sql')
+    expect(ids).not.toContain('0009_sponsorships.sql')
     expect(ids).not.toContain('0010_result_rate_windows.sql')
     const windows = await client.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'result_rate_windows'",
@@ -92,6 +93,72 @@ describe('sqlite file directories', () => {
     expect(Number(count.rows[0]?.n)).toBe(afterIds.length)
     third.close()
   })
+
+  it('applies 0018 before 0009 and 0013–0017, then applies those files when they land', async () => {
+    const root = await mkdtemp(path.join(tmpdir(), 'bestbotfor-order-'))
+    directories.push(root)
+    const sqlDir = path.join(root, 'drizzle')
+    await mkdir(sqlDir)
+    const source = path.join(process.cwd(), 'drizzle')
+    for (const name of await readdir(source)) {
+      if (!name.endsWith('.sql')) continue
+      await copyFile(path.join(source, name), path.join(sqlDir, name))
+    }
+    const url = `file:${path.join(root, 'order.db')}`
+    await applyMigrations(url, undefined, sqlDir)
+
+    const late = [
+      '0009_sponsorships.sql',
+      '0013_sponsorship_paid_at.sql',
+      '0014_sponsorship_creatives.sql',
+      '0015_sponsorship_slot_claims.sql',
+      '0016_sponsorship_card_review.sql',
+      '0017_sponsorship_daily_counts.sql',
+    ]
+    const client = createClient({ url })
+    const first = await client.execute('SELECT id FROM schema_migrations ORDER BY id')
+    const firstIds = first.rows.map((row) => String(row.id))
+    expect(firstIds).toContain('0018_retention_indexes.sql')
+    expect(firstIds).toContain('0011_user_reviews.sql')
+    expect(firstIds).toContain('0012_result_rate_windows.sql')
+    for (const name of late) expect(firstIds).not.toContain(name)
+    const indexes = await client.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name IN ('rate_limits_reset_at_idx', 'clicks_ts_idx') ORDER BY name",
+    )
+    expect(indexes.rows.map((row) => String(row.name))).toEqual(['clicks_ts_idx', 'rate_limits_reset_at_idx'])
+    client.close()
+
+    for (const name of late) {
+      const table = `late_${name.slice(0, 4)}`
+      await writeFile(path.join(sqlDir, name), `CREATE TABLE IF NOT EXISTS ${table} (id INTEGER PRIMARY KEY);\n`)
+    }
+    await applyMigrations(url, undefined, sqlDir)
+
+    const again = createClient({ url })
+    const second = await again.execute('SELECT id, COUNT(*) AS n FROM schema_migrations GROUP BY id')
+    const counts = new Map(second.rows.map((row) => [String(row.id), Number(row.n)]))
+    expect(counts.get('0018_retention_indexes.sql')).toBe(1)
+    for (const name of late) expect(counts.get(name)).toBe(1)
+    for (const name of late) {
+      const table = `late_${name.slice(0, 4)}`
+      const created = await again.execute({
+        sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+        args: [table],
+      })
+      expect(created.rows).toHaveLength(1)
+    }
+    const still = await again.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'clicks_ts_idx'",
+    )
+    expect(still.rows).toHaveLength(1)
+    again.close()
+
+    await applyMigrations(url, undefined, sqlDir)
+    const third = createClient({ url })
+    const finalCount = await third.execute('SELECT COUNT(*) AS n FROM schema_migrations')
+    expect(Number(finalCount.rows[0]?.n)).toBe(firstIds.length + late.length)
+    third.close()
+  })
 })
 
 describe('drizzle journal', () => {
@@ -116,9 +183,12 @@ describe('drizzle journal', () => {
     const idxOf = (tag: string) => journal.entries.find((entry) => entry.tag === tag)?.idx
     const reviews = idxOf('0011_user_reviews')
     const windows = idxOf('0012_result_rate_windows')
-    const retentionIndexes = idxOf('0013_retention_indexes')
+    const retentionIndexes = idxOf('0018_retention_indexes')
     expect(reviews).toEqual(expect.any(Number))
     expect(windows).toBeGreaterThan(reviews ?? 0)
-    expect(retentionIndexes).toBeGreaterThan(windows ?? 0)
+    // 0013–0017 belong to open sponsor PRs. This idx stays above those.
+    expect(retentionIndexes).toBe(16)
+    expect(sqlFiles).not.toContain('0013_retention_indexes.sql')
+    expect(sqlFiles).not.toContain('0016_retention_indexes.sql')
   })
 })

@@ -12,7 +12,7 @@ Each statement is limited to 500 rows, and one invocation runs at most 40 batche
 
 Before the first write, the job checks two things. The open client has to be the database named by `TURSO_DATABASE_URL`, and that URL has to be allowed for `VERCEL_ENV` (a local `file:` database, or a remote host the database guard allows). `rate_limits`, `result_rate_windows`, and `clicks` have to contain the columns the statements use. If either check fails, the response and the log contain the eligible counts, `wrote` is false, and nothing is deleted. The log does not include the URL or the host.
 
-`0013_retention_indexes.sql` adds indexes on `rate_limits.reset_at` and `clicks.ts`. Production prebuild applies that migration. It needs Mark's OK before it merges.
+`0018_retention_indexes.sql` adds indexes on `rate_limits.reset_at` and `clicks.ts`. `0009` and `0013`–`0017` belong to open sponsor pull requests, so this file is numbered after them. The migrator applies it even when those files are not on disk yet, and still applies them later. Production prebuild applies this migration. It needs Mark's OK before it merges.
 
 ## What it does not change
 
