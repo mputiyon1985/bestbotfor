@@ -27,10 +27,17 @@ describe('ratings launch plan', () => {
 
   it('lists the P2 completeness gates before A18', () => {
     expect(plan).toContain('**#58 lawyer packet sign-off.**')
-    expect(plan).toContain("Mark's explicit OK, then a dry-run first, then one deploy setting `DATA_RETENTION_PRODUCTION_LAUNCH=true`, `DATA_RETENTION_PURGE` on, and `DATA_RETENTION_DRY_RUN` off.")
+    expect(plan).toContain('`DATA_RETENTION_PRODUCTION_LAUNCH` is a code constant in `src/lib/retention-flags.ts`, not an environment variable.')
+    expect(plan).toContain('After Mark\'s explicit OK, a pull request sets that constant to true and changes nothing else.')
+    expect(plan).toContain('The first production run is a dry run: `DATA_RETENTION_PURGE` is exactly `on`, and `DATA_RETENTION_DRY_RUN` is left `on` or unset.')
+    expect(plan).toContain('Only then does a separate step set `DATA_RETENTION_DRY_RUN` to exactly `off`.')
+    expect(plan).toContain('A call before the constant is true returns `enabled: false` and does not open the database.')
+    expect(plan).not.toContain('one deploy')
+    expect(plan).not.toContain('DATA_RETENTION_PRODUCTION_LAUNCH=true')
     for (const gate of [
       '**Sponsorship: #51 P1 re-QA.**',
       '**Sponsorship: live webhook subscribed to refund events.**',
+      '`charge.refunded`, `refund.created`, and `refund.updated`',
       '**Sponsorship: refund runbook.**',
       '**Sponsorship: newsletter sponsor labels.**',
       '**Sponsorship: lawyer question on sponsorship wording.**',
@@ -39,7 +46,12 @@ describe('ratings launch plan', () => {
     }
     expect(plan).toContain('**ADMIN_SPONSORS production launch.**')
     expect(plan).toContain('It comes after the A18 Clerk admin test (gate 8).')
-    expect(plan).toContain("**Mark's OK on #61.** Recorded as given. James merged #61 as `dcfb9eb`.")
+    expect(plan).toContain('James relayed that Mark OK\'d #61 around 7 PM ET on October 17, 2026, and it was merged from the `mputiyon1985` account as `dcfb9eb`.')
+    expect(plan).toContain('The pull request itself has no direct written approval from Mark.')
+    expect(plan).toContain("Mark's written confirmation stays an open gate item.")
+    expect(plan).not.toContain('Recorded as given')
+    expect(plan).toContain('`USER_RATINGS_PRODUCTION_LAUNCH` is already in the code and is false. A18 sets that constant to true.')
+    expect(plan).not.toContain('arrive only in A18')
     expect(plan).toContain('**GitHub Actions billing lock.** This is its own gate.')
     expect(plan).toContain('**Required status checks on ruleset `25190130`.** Once CI runs, add the required status checks to ruleset `25190130`.')
   })
