@@ -9,6 +9,9 @@
  * is not recolored or cropped.
  *
  * status=low_res and status=missing are monogram fallbacks. No file is written.
+ * An ok row can also stay a monogram when the artwork is not the product mark
+ * (see MONOGRAM_OVERRIDES). A single-colour pinned-tab mark is drawn on a
+ * neutral tile so the ink stays visible on a light page and a dark page.
  *
  * Trademark note: all logos and icons are trademarks of their owners. They are
  * used on BestBotFor for identification only and do not imply endorsement.
@@ -44,7 +47,32 @@ const USER_AGENTS = [
 ]
 const CACHE_ROOT = process.env.LOGO_FETCH_CACHE === '0' ? null : path.join('/tmp', 'tool-logo-cache-v2')
 
-const MISSING_SLUGS = ['chatgpt', 'replit', 'midjourney', 'leonardo-ai', 'openai-codex', 'jules', 'sunsama'] as const
+const MISSING_SLUGS = ['midjourney'] as const
+const LOW_RES_SLUGS = ['clearscope', 'clipdrop', 'jules', 'letsenhance', 'neuronwriter', 'wolfram-alpha'] as const
+
+/**
+ * Pass 2 eyeball. The playgroundai GitHub org avatar is a cartoon person in a
+ * hoodie. Playground's own mark is a geometric cube, and the site icon is
+ * 84px, so this row stays on the monogram.
+ */
+export const MONOGRAM_OVERRIDES = ['playground'] as const
+
+/** White rounded tile used for every mark except the neutral-tile slugs. */
+export const WHITE_TILE_FILL = '#ffffff'
+
+/**
+ * Mid gray. A black pinned-tab mark disappears on the dark page color, and a
+ * white one disappears on a white tile. This gray keeps either visible, and
+ * it shows through a transparent cutout.
+ */
+export const NEUTRAL_TILE_FILL = '#a8a8b6'
+
+/** Deepgram's safari pinned-tab SVG is one black shape with a cutout waveform. */
+export const NEUTRAL_TILE_SLUGS = ['deepgram'] as const
+
+const OK_COUNT = 152
+const LOW_RES_COUNT = 6
+const MISSING_COUNT = 1
 
 type LogoStatus = 'ok' | 'low_res' | 'missing'
 
@@ -65,6 +93,9 @@ type ManifestEntry = {
 
 const fetchedAt = new Date().toISOString().slice(0, 10)
 
+/** GitHub's gray default avatar. avatars.githubusercontent.com/{org} was serving this instead of the org mark. */
+const GITHUB_DEFAULT_AVATAR = '2ae73e12cb1e9989929920c4e9da0b02b6f6f8f0bd1944ac9ebfbf6b4dca746b'
+
 async function main(): Promise<void> {
   const only = process.argv.find((arg) => arg.startsWith('--slug='))?.slice('--slug='.length)
   const sources = await readSources()
@@ -75,20 +106,29 @@ async function main(): Promise<void> {
   const outputDir = path.join(process.cwd(), LOGO_PUBLIC_DIR)
   await mkdir(outputDir, { recursive: true })
   if (CACHE_ROOT) await mkdir(CACHE_ROOT, { recursive: true })
+  const previous = await previousManifest()
 
   const entries: ManifestEntry[] = []
   const fallbacks: string[] = []
   const failures: string[] = []
   const results = await mapPool(selected, 8, async (row) => {
-    if (row.status !== 'ok') return { slug: row.slug, entry: null as ManifestEntry | null, error: '' }
+    if (row.status !== 'ok' || isOverride(MONOGRAM_OVERRIDES, row.slug)) {
+      return { slug: row.slug, entry: null as ManifestEntry | null, error: '' }
+    }
     try {
       const body = await downloadOnce(row.logoUrl)
-      const tile = await normalizeLogo(body)
+      if (createHash('sha256').update(body).digest('hex') === GITHUB_DEFAULT_AVATAR) {
+        throw new Error('GitHub returned the default avatar, not the org mark')
+      }
+      const tileFill = isOverride(NEUTRAL_TILE_SLUGS, row.slug) ? NEUTRAL_TILE_FILL : WHITE_TILE_FILL
+      const tile = await normalizeLogo(body, tileFill)
       if (!tile) throw new Error('could not normalize')
       await writeFile(path.join(outputDir, `${row.slug}.webp`), tile)
+      const prior = previous.get(row.slug)
+      const entryFetchedAt = prior?.sourceUrl === row.logoUrl ? prior.fetchedAt : fetchedAt
       return {
         slug: row.slug,
-        entry: { slug: row.slug, sourceUrl: row.logoUrl, fetchedAt } satisfies ManifestEntry,
+        entry: { slug: row.slug, sourceUrl: row.logoUrl, fetchedAt: entryFetchedAt } satisfies ManifestEntry,
         error: '',
       }
     } catch (error) {
@@ -168,30 +208,68 @@ function assertSources(sources: LogoSource[]): void {
   for (const slug of catalog) {
     if (!seen.has(slug)) throw new Error(`Verified list is missing catalog slug ${slug}`)
   }
-  if (counts.ok !== 126 || counts.low_res !== 26 || counts.missing !== 7) {
-    throw new Error(`Expected 126 ok, 26 low_res, 7 missing; got ${counts.ok}, ${counts.low_res}, ${counts.missing}`)
+  if (counts.ok !== OK_COUNT || counts.low_res !== LOW_RES_COUNT || counts.missing !== MISSING_COUNT) {
+    throw new Error(`Expected ${OK_COUNT} ok, ${LOW_RES_COUNT} low_res, ${MISSING_COUNT} missing; got ${counts.ok}, ${counts.low_res}, ${counts.missing}`)
   }
   const missing = sources.filter((row) => row.status === 'missing').map((row) => row.slug).sort()
   const expectedMissing = [...MISSING_SLUGS].sort()
   if (missing.join() !== expectedMissing.join()) {
     throw new Error(`Missing slugs are ${missing.join(', ')}`)
   }
+  const lowRes = sources.filter((row) => row.status === 'low_res').map((row) => row.slug).sort()
+  const expectedLowRes = [...LOW_RES_SLUGS].sort()
+  if (lowRes.join() !== expectedLowRes.join()) {
+    throw new Error(`Low-res slugs are ${lowRes.join(', ')}`)
+  }
+  for (const slug of [...MONOGRAM_OVERRIDES, ...NEUTRAL_TILE_SLUGS]) {
+    const row = sources.find((item) => item.slug === slug)
+    if (row?.status !== 'ok') throw new Error(`${slug} is reviewed by hand and must stay an ok row`)
+  }
 }
 
-/** Remove script elements and event-handler attributes before rasterizing. */
+function isOverride(slugs: readonly string[], slug: string): boolean {
+  return slugs.includes(slug)
+}
+
+async function previousManifest(): Promise<Map<string, ManifestEntry>> {
+  try {
+    const text = await readFile(path.join(process.cwd(), LOGO_MANIFEST_PATH), 'utf8')
+    const entries = JSON.parse(text) as ManifestEntry[]
+    return new Map(entries.map((entry) => [entry.slug, entry]))
+  } catch {
+    return new Map()
+  }
+}
+
+const EXTERNAL_URL = String.raw`(?:https?:|\/\/|javascript:)`
+
+/** Remove scripts, event handlers, foreignObject, and external references before rasterizing. */
 export function sanitizeSvg(source: string): string {
-  let text = source.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
+  let text = source.replace(/<!DOCTYPE\b[^>]*>/gi, '')
+  text = text.replace(/<!ENTITY\b[^>]*>/gi, '')
+  text = text.replace(/<\?xml-stylesheet\b[^?]*\?>/gi, '')
+  text = text.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
   text = text.replace(/<script\b[^>]*\/\s*>/gi, '')
   text = text.replace(/<foreignObject\b[^>]*>[\s\S]*?<\/foreignObject\s*>/gi, '')
   text = text.replace(/<foreignObject\b[^>]*\/\s*>/gi, '')
+  text = text.replace(/<(?:iframe|embed|object|link)\b[^>]*>[\s\S]*?<\/(?:iframe|embed|object|link)\s*>/gi, '')
+  text = text.replace(/<(?:iframe|embed|object|link)\b[^>]*\/\s*>/gi, '')
+  text = text.replace(
+    new RegExp(
+      `<(?:image|use|feImage)\\b[^>]*(?:href|xlink:href|src)\\s*=\\s*(["'])\\s*${EXTERNAL_URL}[^"']*\\1[^>]*(?:\\/>|>[\\s\\S]*?<\\/(?:image|use|feImage)\\s*>)`,
+      'gi',
+    ),
+    '',
+  )
   text = text.replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-  text = text.replace(/((?:href|xlink:href|src)\s*=\s*)(["'])\s*javascript:[^"']*\2/gi, '$1$2$2')
-  text = text.replace(/url\(\s*(["']?)\s*javascript:[^)]*\)/gi, 'url($1$1)')
+  text = text.replace(new RegExp(String.raw`\s(?:href|xlink:href|src)\s*=\s*(["'])\s*` + EXTERNAL_URL + String.raw`[^"']*\1`, 'gi'), '')
+  text = text.replace(new RegExp(String.raw`\s(?:href|xlink:href|src)\s*=\s*` + EXTERNAL_URL + String.raw`[^\s>]+`, 'gi'), '')
+  text = text.replace(new RegExp(String.raw`url\(\s*(["']?)\s*` + EXTERNAL_URL + String.raw`[^)"']*\1\s*\)`, 'gi'), 'none')
   return text
 }
 
-/** Pad the mark onto a 128px white rounded tile so its long side is about 80% of the tile. Returns null when the asset is too small, too wide, or unreadable. */
-export async function normalizeLogo(input: Buffer): Promise<Buffer | null> {
+/** Pad the mark onto a 128px rounded tile so its long side is about 80% of the tile. Returns null when the asset is too small, too wide, or unreadable. */
+export async function normalizeLogo(input: Buffer, tileFill: string = WHITE_TILE_FILL): Promise<Buffer | null> {
   const prepared = await prepareRaster(input)
   if (!prepared) return null
   const { raster, vector } = prepared
@@ -229,8 +307,9 @@ export async function normalizeLogo(input: Buffer): Promise<Buffer | null> {
   const height = resizedMeta.height ?? INNER
   const left = Math.round((SIZE - width) / 2)
   const top = Math.round((SIZE - height) / 2)
+  if (!/^#[0-9a-f]{6}$/i.test(tileFill)) throw new Error('tile fill must be a hex color')
   const tile = Buffer.from(
-    `<svg width="${SIZE}" height="${SIZE}" xmlns="http://www.w3.org/2000/svg"><rect width="${SIZE}" height="${SIZE}" rx="${RADIUS}" ry="${RADIUS}" fill="#ffffff"/></svg>`,
+    `<svg width="${SIZE}" height="${SIZE}" xmlns="http://www.w3.org/2000/svg"><rect width="${SIZE}" height="${SIZE}" rx="${RADIUS}" ry="${RADIUS}" fill="${tileFill}"/></svg>`,
   )
   return sharp(tile)
     .resize(SIZE, SIZE)
@@ -281,10 +360,11 @@ function sniffFormat(buffer: Buffer): 'svg' | 'png' | 'jpeg' | 'webp' | 'gif' | 
 function svgIsSafe(text: string): boolean {
   const lower = text.toLowerCase()
   if (lower.includes('<script') || lower.includes('javascript:')) return false
+  if (/<!doctype\b|<!entity\b/i.test(text)) return false
   if (/\s+on[a-z]+\s*=/i.test(text)) return false
-  if (/<foreignobject/i.test(text)) return false
-  if (/\s(?:href|xlink:href|src)\s*=\s*["']https?:/i.test(text)) return false
-  if (/url\(\s*["']?https?:/i.test(text)) return false
+  if (/<foreignobject|<iframe\b|<embed\b|<object\b/i.test(text)) return false
+  if (/\s(?:href|xlink:href|src)\s*=\s*["']?\s*(?:https?:|\/\/)/i.test(text)) return false
+  if (/url\(\s*["']?\s*(?:https?:|\/\/)/i.test(text)) return false
   return lower.includes('<svg')
 }
 
