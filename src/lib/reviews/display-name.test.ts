@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { checkDisplayName } from './display-name'
+import { checkDisplayName, DISPLAY_NAME_MAX_LENGTH, DISPLAY_NAME_TOO_LONG_MESSAGE } from './display-name'
 
 const chatgpt = { toolNames: ['ChatGPT'], vendorNames: ['OpenAI'] }
 
@@ -39,5 +39,31 @@ describe('checkDisplayName', () => {
     expect(checkDisplayName('Chat GPT', chatgpt)).toEqual({ ok: false, reason: 'reserved' })
     expect(checkDisplayName('Open AI', chatgpt)).toEqual({ ok: false, reason: 'reserved' })
     expect(checkDisplayName('Modi')).toEqual({ ok: true })
+  })
+
+  it('rejects a name over 64 characters before normalization, and checks a worst-case 64-character name quickly', () => {
+    const worst = 'a '.repeat(DISPLAY_NAME_MAX_LENGTH / 2)
+    expect(worst).toHaveLength(DISPLAY_NAME_MAX_LENGTH)
+    checkDisplayName('Maria L.')
+    const started = performance.now()
+    const decision = checkDisplayName(worst)
+    const elapsed = performance.now() - started
+    expect(decision).toEqual({ ok: true })
+    expect(elapsed).toBeLessThan(5)
+
+    const tooLong = 'a '.repeat(1000)
+    expect(tooLong.length).toBeGreaterThan(DISPLAY_NAME_MAX_LENGTH)
+    const rejectStarted = performance.now()
+    const rejected = checkDisplayName(tooLong)
+    const rejectElapsed = performance.now() - rejectStarted
+    expect(rejected).toEqual({ ok: false, reason: 'too_long', message: DISPLAY_NAME_TOO_LONG_MESSAGE })
+    expect(rejectElapsed).toBeLessThan(5)
+
+    expect(checkDisplayName('a'.repeat(DISPLAY_NAME_MAX_LENGTH)).ok).toBe(true)
+    expect(checkDisplayName('a'.repeat(DISPLAY_NAME_MAX_LENGTH + 1))).toEqual({
+      ok: false,
+      reason: 'too_long',
+      message: DISPLAY_NAME_TOO_LONG_MESSAGE,
+    })
   })
 })
