@@ -30,8 +30,8 @@ npm run dev
 | `TURSO_DATABASE_URL` | `file:` SQLite path, or a `libsql://` Turso URL |
 | `TURSO_AUTH_TOKEN` | Single Turso token. Unused for `file:` databases |
 | `NEXT_PUBLIC_SITE_URL` | Canonical origin. Defaults to `https://bestbotfor.com` |
-| `IP_HASH_SALT` | Optional salt for click-log hashes. Unset means no IP is stored |
-| `RATE_LIMIT_HMAC_SECRET` | HMAC key for rate-limit bucket ids. When unset, HKDF-SHA256 derives a 32-byte key from another server secret of at least 16 characters, and a warning is logged. Changing it starts new windows |
+| `IP_HASH_SALT` | Optional. Not a click-log salt. At least 16 characters, it can be the HKDF source when `RATE_LIMIT_HMAC_SECRET` is unset or shorter than 16 characters |
+| `RATE_LIMIT_HMAC_SECRET` | HMAC key for rate-limit bucket ids and click-log IP hashes. Shorter than 16 characters, it is ignored. When unset or too short, HKDF-SHA256 derives a 32-byte key from another server secret of at least 16 characters, and a warning is logged. The value is not logged. Changing it starts new windows and new click hashes |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | Clerk. Both must be set or accounts stay off |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID` | Stripe test mode. All three are required before billing turns on |
 | `BEEHIIV_API_KEY`, `BEEHIIV_PUBLICATION_ID` | Optional. Unset stores newsletter emails locally |

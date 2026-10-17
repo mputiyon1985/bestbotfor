@@ -1,3 +1,4 @@
+import { createHash, createHmac } from 'node:crypto'
 import { describe, expect, it } from 'vitest'
 import { resolveGoRedirect, type GoToolRecord } from './go-redirect'
 
@@ -68,6 +69,30 @@ describe('resolveGoRedirect', () => {
       loadTool: async () => tool('https://evil.example/phish'),
     })
     expect(outcome).toEqual({ status: 404, body: 'That tool is not in the catalog.' })
+  })
+
+  it('hashes the click IP with HMAC under the rate-limit secret', async () => {
+    const previous = process.env.RATE_LIMIT_HMAC_SECRET
+    const salt = process.env.IP_HASH_SALT
+    process.env.RATE_LIMIT_HMAC_SECRET = 'dedicated-secret'
+    process.env.IP_HASH_SALT = 'legacy-click-salt-value'
+    try {
+      const outcome = await resolveGoRedirect({
+        ...cursor,
+        limit: async () => ({ ok: true }),
+        loadTool: async () => tool(),
+      })
+      expect(outcome.status).toBe(302)
+      if (outcome.status !== 302) return
+      const ip = '203.0.113.5'
+      expect(outcome.click?.ipHash).toBe(createHmac('sha256', 'dedicated-secret').update(`bestbotfor-click|${ip}`).digest('hex'))
+      expect(outcome.click?.ipHash).not.toBe(createHash('sha256').update(`legacy-click-salt-value|${ip}`).digest('hex'))
+    } finally {
+      if (previous === undefined) delete process.env.RATE_LIMIT_HMAC_SECRET
+      else process.env.RATE_LIMIT_HMAC_SECRET = previous
+      if (salt === undefined) delete process.env.IP_HASH_SALT
+      else process.env.IP_HASH_SALT = salt
+    }
   })
 
   it('does not record a click for a prefetch', async () => {
