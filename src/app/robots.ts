@@ -9,7 +9,7 @@ export default function robots(): MetadataRoute.Robots {
     return { rules: [{ userAgent: '*', disallow: '/' }] }
   }
   const site = getSiteUrl()
-  const disallow = ['/go/', '/api/', '/members', '/sign-in', '/sign-up']
+  const disallow = ['/go/', '/api/', '/members', '/admin', '/sign-in', '/sign-up']
   return {
     rules: [
       { userAgent: '*', allow: '/', disallow },

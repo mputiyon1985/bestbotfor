@@ -49,6 +49,23 @@ test('member reviews fall through the ratings gate while the flag is on', async 
   expect(body).toContain('That page is not in the catalog.')
 })
 
+test('admin responses stay uncached and out of search while the flag is on', async ({ request }) => {
+  for (const path of ['/admin', '/admin/mfa-required', '/sitemap.xml', '/llms.txt', '/llms-full.txt', '/robots.txt']) {
+    const response = await request.get(path)
+    const body = await response.text()
+    if (path.startsWith('/admin')) {
+      expect(response.status(), path).toBe(404)
+      expect(response.headers()['cache-control'] ?? '', path).toContain('no-store')
+      expect(response.headers()['x-robots-tag'] ?? '', path).toContain('noindex')
+      expect(body, path).toContain('That page is not in the catalog.')
+      expect(body, path).not.toBe('Not found.')
+    } else {
+      expect(response.status(), path).toBe(200)
+      expect(body, path).not.toContain('/admin')
+    }
+  }
+})
+
 test('the rest of the site still loads while the flag is on', async ({ request }) => {
   const home = await request.get('/')
   expect(home.status()).toBe(200)
