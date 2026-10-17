@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { headers } from 'next/headers'
+import { DailyBotCapture } from '@/components/daily-bot-capture'
 import { JsonLd } from '@/components/json-ld'
 import { PICKER_QUESTIONS, PickerForm } from '@/components/picker-form'
 import { comparePairSeeds, taskSeeds, toolSeeds } from '@/data/catalog'
@@ -113,6 +114,8 @@ export default async function HomePage() {
           ))}
         </dl>
       </section>
+
+      <DailyBotCapture source="home" />
     </div>
   )
 }
