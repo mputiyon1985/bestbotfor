@@ -1,6 +1,12 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { LawyerReviewNotice } from '@/components/lawyer-review-notice'
+import { userRatingsEnabled } from '@/lib/flags'
 import { pageMetadata } from '@/lib/metadata'
+import { PRIVACY_RATINGS_PARAGRAPHS, PRIVACY_UPDATED, PRIVACY_UPDATED_WITH_RATINGS, RETENTION_ROWS } from '@/lib/ratings-policy-copy'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Privacy policy',
@@ -9,11 +15,16 @@ export const metadata: Metadata = pageMetadata({
 })
 
 export default function PrivacyPage() {
+  const ratings = userRatingsEnabled()
   return (
     <article className="max-w-2xl space-y-4">
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Privacy', path: '/privacy' }]} />
       <h1 className="font-bold text-5xl">Privacy policy</h1>
-      <p>This policy covers bestbotfor.com, a United States site. It was last updated on October 15, 2026.</p>
+      <p>
+        {ratings
+          ? `This policy covers bestbotfor.com, a United States site. It was last updated on ${PRIVACY_UPDATED_WITH_RATINGS}`
+          : `This policy covers bestbotfor.com, a United States site. It was last updated on ${PRIVACY_UPDATED}.`}
+      </p>
       <h2 className="font-semibold text-3xl">What we collect</h2>
       <p>
         If you join the newsletter, we store your email address. When our digest is connected, we also send that email
@@ -31,8 +42,8 @@ export default function PrivacyPage() {
       </p>
       <p>
         When you use a “Visit” button, we log the tool, the time, the page path on our site if the referrer is ours,
-        and a country code when the host provides one. We store a hash of the IP address only if a server salt is
-        configured. Otherwise we store no IP. We never store the raw IP address.
+        and a country code when the host provides one. We store a keyed hash of the IP address. We never store the raw
+        IP address.
       </p>
       <h2 className="font-semibold text-3xl">Cookies and analytics</h2>
       <p>
@@ -62,6 +73,38 @@ export default function PrivacyPage() {
         Residents of states with privacy laws, including California, can email that address to request access or deletion.
         We will not discriminate against you for asking.
       </p>
+      {ratings ? (
+        <>
+          <h2 className="font-semibold text-3xl">Ratings and reviews</h2>
+          <LawyerReviewNotice />
+          {PRIVACY_RATINGS_PARAGRAPHS.map((paragraph) => (
+            <p key={paragraph}>{paragraph}</p>
+          ))}
+          <h2 className="font-semibold text-3xl">How long we keep rating data</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[40rem] border-collapse text-left text-sm">
+              <caption className="sr-only">How long rating data is kept</caption>
+              <thead>
+                <tr className="border-b border-line">
+                  <th scope="col" className="py-2 pr-3">Data</th>
+                  <th scope="col" className="py-2">Kept for</th>
+                </tr>
+              </thead>
+              <tbody>
+                {RETENTION_ROWS.map((row) => (
+                  <tr key={row.data} className="border-b border-line">
+                    <th scope="row" className="py-3 pr-3 font-normal">{row.data}</th>
+                    <td className="py-3">{row.kept}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <p>
+            <Link href="/review-guidelines" className="underline">Review guidelines</Link>
+          </p>
+        </>
+      ) : null}
     </article>
   )
 }

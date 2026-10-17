@@ -1,14 +1,16 @@
 import { clerkMiddleware } from '@clerk/nextjs/server'
 import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server'
 import { ACTION_LIMITS } from '@/lib/action-limit'
-import { CATALOG_REJECT_MESSAGE, CATALOG_REJECT_PATH, isUnsafeCatalogPath } from '@/lib/catalog-path'
+import { CATALOG_REJECT_MESSAGE, CATALOG_REJECT_PATH, isUnsafeCatalogPath, requestPath } from '@/lib/catalog-path'
 import { hasDotSegment } from '@/lib/dot-segment'
 import { buildContentSecurityPolicy, securityHeaders } from '@/lib/csp'
 import { getDb, peekCachedTaskSlugs } from '@/lib/db/client'
-import { isClerkConfigured } from '@/lib/flags'
+import { isAdminPath } from '@/lib/admin-path'
+import { isClerkConfigured, isRatingsPath, userRatingsEnabled } from '@/lib/flags'
 import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from '@/lib/indexing'
 import { clientIp, rateLimitKey } from '@/lib/ip'
-import { consumeLocalRateLimit, persistResultRateLimit } from '@/lib/rate-limit'
+import { hasMalformedPercentEncoding, MALFORMED_PERCENT_MESSAGE } from '@/lib/percent-encoding'
+import { consumeResultRateLimit, scheduleResultWindowPurge } from '@/lib/rate-limit'
 import { acceptResultFault, faultedResultWork } from '@/lib/result-fault'
 import { decideResultGate } from '@/lib/result-gate'
 import { resultNotFoundHeaders, resultNotFoundHtml, resultRateLimitHeaders, resultRateLimitHtml, resultUnavailableHeaders, resultUnavailableHtml } from '@/lib/result-http'
@@ -31,11 +33,67 @@ function nextWithNonce(request: NextRequest): NextResponse {
   requestHeaders.set('x-nonce', nonce)
   requestHeaders.set('Content-Security-Policy', csp)
   const response = NextResponse.next({ request: { headers: requestHeaders } })
-  return applySecurity(response, nonce)
+  return adminHeaders(applySecurity(response, nonce), request.nextUrl.pathname)
+}
+
+/** Admin responses stay out of caches and search, including production. */
+function adminHeaders(response: NextResponse, pathname: string): NextResponse {
+  if (!isAdminPath(pathname)) return response
+  response.headers.set('cache-control', 'no-store')
+  response.headers.set('x-robots-tag', 'noindex, nofollow')
+  return response
 }
 
 function isMembersPath(pathname: string): boolean {
   return pathname === '/members' || pathname.startsWith('/members/')
+}
+
+const RATINGS_HIDDEN_MESSAGE = 'Not found.'
+
+/**
+ * Next decodes `/:path*` header params before this function runs. A truncated
+ * escape throws there and the failed 400 render becomes a 500. Reject the raw
+ * path here when the proxy does run. `scripts/serve.ts` and the `vercel.json`
+ * route see the path before that decode.
+ */
+function rejectMalformedEncoding(request: NextRequest): NextResponse | null {
+  const paths = [request.nextUrl.pathname, ...rawPaths(request)]
+  if (!paths.some((value) => hasMalformedPercentEncoding(value))) return null
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+  return applySecurity(
+    new NextResponse(MALFORMED_PERCENT_MESSAGE, {
+      status: 400,
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+        'cache-control': 'no-store',
+        'x-robots-tag': 'noindex, nofollow',
+      },
+    }),
+    nonce,
+  )
+}
+
+/**
+ * Ratings routes 404 here while the flag is off, before the catalog reject and
+ * the members sign-in redirect. The path is decoded and lowercased first.
+ * The body is plain text so it is distinct from the app not-found page.
+ */
+function rejectHiddenRatings(request: NextRequest): NextResponse | null {
+  const paths = [request.nextUrl.pathname, ...rawPaths(request).map((value) => requestPath(value))]
+  if (!paths.some((path) => isRatingsPath(path))) return null
+  if (userRatingsEnabled()) return null
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+  return applySecurity(
+    new NextResponse(RATINGS_HIDDEN_MESSAGE, {
+      status: 404,
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+        'cache-control': 'no-store',
+        'x-robots-tag': 'noindex, nofollow',
+      },
+    }),
+    nonce,
+  )
 }
 
 function rawPaths(request: NextRequest): string[] {
@@ -75,13 +133,19 @@ function rejectCatalogPath(request: NextRequest): NextResponse | null {
 }
 
 const withClerk = clerkMiddleware(async (auth, request) => {
-  if (isMembersPath(request.nextUrl.pathname)) {
+  const pathname = request.nextUrl.pathname
+  if (isMembersPath(pathname)) {
     await auth.protect()
+  }
+  if (isAdminPath(pathname)) {
+    const { userId } = await auth()
+    // Signed-out visitors 404 in the admin layout. protect() in middleware would send them to sign-in.
+    if (userId) await auth.protect()
   }
   return nextWithNonce(request)
 })
 
-/** Faults run only when Playwright sets RESULT_FAULTS=1 on an explicit test env. */
+/** Faults run only when Playwright sets RESULT_FAULTS=1 and VERCEL_ENV is development or test. */
 function resultFault(request: NextRequest) {
   return acceptResultFault(request.headers.get('x-bbf-result-fault'), {
     faults: process.env.RESULT_FAULTS,
@@ -96,8 +160,9 @@ function resultFault(request: NextRequest) {
  * Quiz views that pass the catalog check are rate limited with 429 and Retry-After.
  * When the catalog lookup fails or times out, the page's catalog read runs here.
  * A cached task list skips that retry. A miss is this same 404. A thrown read is 503.
- * A read that only runs long renders the page. The shared limiter write is not
- * awaited: the in-memory counter decides, and waitUntil records the row after.
+ * A read that only runs long renders the page. The shared fixed window is
+ * consulted with a short timeout. If it does not answer, the in-memory counter
+ * decides. Expired windows are deleted after the response.
  */
 async function gateResult(request: NextRequest, event: NextFetchEvent): Promise<NextResponse | null> {
   if (request.nextUrl.pathname !== '/result') return null
@@ -119,9 +184,8 @@ async function gateResult(request: NextRequest, event: NextFetchEvent): Promise<
     pageLookup: faultedResultWork(fault, 'page', readCatalog),
     limit: faultedResultWork(fault, 'limit', () => {
       const key = rateLimitKey(clientIp(request.headers), 'result')
-      const local = consumeLocalRateLimit(key, ACTION_LIMITS.result.limit, ACTION_LIMITS.result.windowMs)
-      if (local.ok) event.waitUntil(persistResultRateLimit(db, key, ACTION_LIMITS.result.limit, ACTION_LIMITS.result.windowMs))
-      return Promise.resolve(local)
+      event.waitUntil(scheduleResultWindowPurge(db))
+      return consumeResultRateLimit(db, key, ACTION_LIMITS.result.limit, ACTION_LIMITS.result.windowMs)
     }),
   })
   if (decision.type === 'not-found') {
@@ -140,6 +204,10 @@ async function gateResult(request: NextRequest, event: NextFetchEvent): Promise<
 }
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  const malformed = rejectMalformedEncoding(request)
+  if (malformed) return malformed
+  const hiddenRatings = rejectHiddenRatings(request)
+  if (hiddenRatings) return hiddenRatings
   const rejected = rejectCatalogPath(request)
   if (rejected) return rejected
   const gated = await gateResult(request, event)

@@ -17,6 +17,10 @@ import {
   ORGANIZATION_LOGO_PATH,
   SVG_CONTENT_SECURITY_POLICY,
 } from './src/lib/brand'
+import { assertReviewHmacSecrets } from './src/lib/review-hmac-secrets'
+
+// Fail the build (and any later config load) before Next compiles pages.
+assertReviewHmacSecrets()
 
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
@@ -52,6 +56,11 @@ const legacyAssetRedirects: { source: string; destination: string }[] = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Inlined at build time so the test IP hook in src/lib/reviews/ip.ts is
+  // compiled out unless this build was started with BBF_E2E_HOOKS=1.
+  env: {
+    BBF_E2E_HOOKS: process.env.BBF_E2E_HOOKS === '1' ? '1' : '',
+  },
   experimental: {
     // Tailwind CSS is small enough to inline, so the first paint does not wait on a stylesheet.
     inlineCss: true,
@@ -73,6 +82,11 @@ const nextConfig: NextConfig = {
         source,
         headers: [{ key: 'Cache-Control', value: HASHED_ASSET_CACHE_CONTROL }],
       })),
+      // Slug URLs, not content hashes. A replaced tile waits out the year.
+      {
+        source: '/logos/:path*',
+        headers: [{ key: 'Cache-Control', value: HASHED_ASSET_CACHE_CONTROL }],
+      },
     ]
   },
 }

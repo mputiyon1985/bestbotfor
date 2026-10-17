@@ -3,6 +3,7 @@ import path from 'node:path'
 
 const ALLOWED = new Set([
   'src/lib/rate-limit.ts',
+  'src/lib/db/client.ts',
   'src/lib/newsletter.ts',
   'src/lib/stripe-webhook.ts',
   'src/lib/members.ts',
@@ -15,18 +16,24 @@ const ALLOWED = new Set([
   // Sponsorship rows are inserted from src/lib/stripe-webhook.ts.
   // 0009 is reviewed DDL for stripe_events and sponsorships.
   'drizzle/0009_sponsorships.sql',
+  'drizzle/0011_user_reviews.sql',
 ])
 
 const ROOTS = ['src', 'scripts', 'drizzle']
 
-function isWrite(line: string): boolean {
+export function isWrite(line: string): boolean {
   if (/\b(?:db|client)\s*\.\s*(?:insert|update|delete|execute)\s*\(/.test(line)) return true
   if (/\$client\s*\.\s*execute\s*\(/.test(line)) return true
   if (/\bexecuteMultiple\s*\(/.test(line)) return true
   if (/\bINSERT\s+INTO\b/i.test(line)) return true
   if (/\bDELETE\s+FROM\b/i.test(line)) return true
   if (/\bDO\s+UPDATE\s+SET\b/i.test(line)) return true
-  if (/^\s*\.(?:insert|update|delete)\s*\(/.test(line)) return true
+  // A template-string argument can still be a SQL UPDATE statement.
+  // The HMAC line `.update(`bestbotfor-rate|...`)` has no UPDATE keyword.
+  if (/\bUPDATE\s+\w+\s+SET\b/i.test(line)) return true
+  // Drizzle chains `.update(table)`, `.update($set)`, or a bare `.update(`.
+  // HMAC `.update(\`...\`)` is not SQL. `$` here is a Drizzle identifier, not end of line.
+  if (/^\s*\.(?:insert|update|delete)\s*\(\s*(?:\$|[A-Za-z_]|$)/.test(line)) return true
   return false
 }
 
@@ -81,7 +88,14 @@ async function main(): Promise<void> {
   console.log('Database writes stay inside the allowlist.')
 }
 
-main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : 'DB write check failed')
-  process.exit(1)
-})
+const entry = process.argv[1]
+const invokedDirectly = entry
+  ? entry.endsWith(`${path.sep}check-db-writes.ts`) || entry.endsWith(`${path.sep}check-db-writes.js`)
+  : false
+
+if (invokedDirectly) {
+  main().catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : 'DB write check failed')
+    process.exit(1)
+  })
+}

@@ -34,6 +34,7 @@ describe('preview indexing', () => {
     const rules = Array.isArray(production.rules) ? production.rules : [production.rules]
     expect(rules.some((rule) => rule.userAgent === '*' && rule.allow === '/')).toBe(true)
     expect(production.sitemap).toContain('/sitemap.xml')
+    expect(JSON.stringify(production.rules)).toContain('"/admin"')
   })
 
   it('puts noindex on page metadata outside production', () => {
@@ -49,7 +50,7 @@ describe('preview indexing', () => {
     })
   })
 
-  it('gives the not-found page its own title and noindex in production', () => {
+  it('gives the not-found page its own title and leaves robots to Next’s single noindex tag', () => {
     process.env.VERCEL_ENV = 'production'
     expect(isProductionDeployment()).toBe(true)
     expect(notFoundTitle).toBe('Page not found | BestBotFor')
@@ -62,7 +63,8 @@ describe('preview indexing', () => {
     expect(notFoundMetadata.openGraph?.description).toBe(notFoundDescription)
     expect(notFoundMetadata.twitter?.title).toEqual({ absolute: notFoundTitle })
     expect(notFoundMetadata.twitter?.description).toBe(notFoundDescription)
-    expect(notFoundMetadata.robots).toEqual({ index: false, follow: false })
+    // Next.js emits the 404 noindex meta. A second robots field would duplicate it.
+    expect(notFoundMetadata.robots).toBeNull()
   })
 
   it('sets og:url to the absolute canonical', () => {

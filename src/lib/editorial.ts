@@ -1,5 +1,5 @@
 /**
- * BestBotFor score is an editorial rubric, not a user review.
+ * Our rating is an editorial rubric, not a user review.
  *
  * Each part is 0–5. The overall score is a weighted average:
  * quality 40%, features 25%, value 20%, ease 15%. Those weights sum to 100.

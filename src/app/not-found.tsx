@@ -8,7 +8,13 @@ export const metadata: Metadata = {
   description: notFoundDescription,
   // Drop the layout canonical. A missing URL should not claim the home page.
   alternates: {},
-  robots: { index: false, follow: false },
+  // Next inserts one `<meta name="robots" content="noindex">` when notFound()
+  // throws, and also when it renders this page as /404. Null clears the layout
+  // robots so that insertion stays the only tag. A robots value here is a
+  // second tag on next start and on missing tools. Vercel does not insert the
+  // tag for the built-in /_not-found route; unmatched URLs call notFound()
+  // from the root catch-all instead of rendering that route.
+  robots: null,
   openGraph: {
     title: { absolute: notFoundTitle },
     description: notFoundDescription,

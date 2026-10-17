@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, readdir, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { createClient } from '@libsql/client'
@@ -96,6 +96,14 @@ describe('sqlite file directories', () => {
     expect(ids).toContain('0006_tool_needs_verification.sql')
     expect(ids).toContain('0007_drop_non_forge_scores.sql')
     expect(ids).toContain('0008_ratings_v23.sql')
+    expect(ids).toContain('0009_sponsorships.sql')
+    expect(ids).toContain('0012_result_rate_windows.sql')
+    expect(ids).not.toContain('0010_result_rate_windows.sql')
+    const windows = await client.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'result_rate_windows'",
+    )
+    expect(windows.rows).toHaveLength(1)
+    expect(ids).toContain('0011_user_reviews.sql')
     const columns = await client.execute('PRAGMA table_info(tools)')
     expect(columns.rows.some((row) => row.name === 'needs_verification')).toBe(true)
     const scoreColumns = await client.execute('PRAGMA table_info(tool_scores)')
@@ -148,6 +156,8 @@ describe('sqlite file directories', () => {
       '0007_drop_non_forge_scores.sql',
       '0008_ratings_v23.sql',
       '0009_sponsorships.sql',
+      '0011_user_reviews.sql',
+      '0012_result_rate_windows.sql',
     ])
     const tables = await client.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('stripe_events', 'sponsorships') ORDER BY name",
@@ -228,6 +238,8 @@ describe('sqlite file directories', () => {
       '0007_drop_non_forge_scores.sql',
       '0008_ratings_v23.sql',
       '0009_sponsorships.sql',
+      '0011_user_reviews.sql',
+      '0012_result_rate_windows.sql',
     ])
     const columns = await after.execute('PRAGMA table_info(sponsorships)')
     expect(columns.rows.map((row) => String(row.name))).toEqual(before.rows.map((row) => String(row.name)))
@@ -252,7 +264,7 @@ describe('sqlite file directories', () => {
     await applyMigrations(url)
     const again = createClient({ url })
     const count = await again.execute('SELECT COUNT(*) AS n FROM schema_migrations')
-    expect(Number(count.rows[0]?.n)).toBe(MAIN_MIGRATIONS.length + 2)
+    expect(Number(count.rows[0]?.n)).toBe(MAIN_MIGRATIONS.length + 4)
     const stillThere = await again.execute({
       sql: "SELECT id FROM schema_migrations WHERE id = '0005_sponsorships.sql'",
     })
@@ -342,5 +354,29 @@ describe('sqlite file directories', () => {
     )
     expect(recorded.rows).toHaveLength(1)
     after.close()
+  })
+})
+
+describe('drizzle journal', () => {
+  it('gives every migration file on disk one increasing idx', async () => {
+    const journal = JSON.parse(await readFile(path.join(process.cwd(), 'drizzle/meta/_journal.json'), 'utf8')) as {
+      entries: { idx: number; tag: string }[]
+    }
+    const sqlFiles = (await readdir(path.join(process.cwd(), 'drizzle'))).filter((name) => name.endsWith('.sql')).sort()
+    const tagsFromFiles = sqlFiles.map((name) => name.slice(0, -'.sql'.length))
+    const tags = journal.entries.map((entry) => entry.tag)
+    const idxs = journal.entries.map((entry) => entry.idx)
+    expect(new Set(tags).size).toBe(tags.length)
+    expect(new Set(idxs).size).toBe(idxs.length)
+    for (let index = 1; index < idxs.length; index += 1) {
+      expect(idxs[index]).toBeGreaterThan(idxs[index - 1] ?? -1)
+    }
+    const present = tags.filter((tag) => tagsFromFiles.includes(tag))
+    expect(present).toEqual(tagsFromFiles)
+    expect(sqlFiles).not.toContain('0010_result_rate_windows.sql')
+    const idxOf = (tag: string) => journal.entries.find((entry) => entry.tag === tag)?.idx
+    expect(idxOf('0009_sponsorships')).toBe(8)
+    expect(idxOf('0011_user_reviews')).toBe(9)
+    expect(idxOf('0012_result_rate_windows')).toBe(10)
   })
 })

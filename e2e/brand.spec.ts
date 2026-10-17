@@ -85,3 +85,9 @@ test('hashed brand files are immutable for a year', async ({ request }) => {
   expect(response.status()).toBe(200)
   expect(response.headers()['cache-control']).toBe(HASHED_ASSET_CACHE_CONTROL)
 })
+
+test('tool logos are immutable for a year', async ({ request }) => {
+  const response = await request.get('/logos/chatgpt.webp')
+  expect(response.status()).toBe(200)
+  expect(response.headers()['cache-control']).toBe(HASHED_ASSET_CACHE_CONTROL)
+})

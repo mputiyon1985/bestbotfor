@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { OG_IMAGE_PATH } from './brand'
 import { isProductionDeployment } from './indexing'
+import { POLICY_PAGES_LAWYER_APPROVED } from './review-flags'
 import { omitScoreText } from './score-visibility'
 import { absoluteUrl, getSiteUrl, SITE_NAME, TAGLINE } from './site'
 
@@ -50,6 +51,16 @@ export function pageMetadata(input: {
 function socialTitle(title: string): string {
   const suffix = `| ${SITE_NAME}`
   return title.endsWith(suffix) ? title : `${title} ${suffix}`
+}
+
+/**
+ * Draft policy pages. Until POLICY_PAGES_LAWYER_APPROVED, robots are
+ * noindex, nofollow even when a production deployment would otherwise index.
+ */
+export function policyPageMetadata(input: { title: string; description: string; path: string }): Metadata {
+  const metadata = pageMetadata(input)
+  if (POLICY_PAGES_LAWYER_APPROVED) return metadata
+  return { ...metadata, robots: { index: false, follow: false } }
 }
 
 function pageRobots(input: { noIndex?: boolean; follow?: boolean }): { index: boolean; follow: boolean } {

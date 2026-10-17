@@ -20,7 +20,7 @@ function robotsDirectives(html: string): string[] {
     .map((match) => match[0].match(/content=["']([^"']*)["']/i)?.[1] ?? '')
 }
 
-function rawStatus(path: string): Promise<{ status: number; body: string }> {
+function rawStatus(path: string): Promise<{ status: number; body: string; headers: Record<string, string | string[] | undefined> }> {
   const base = new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://127.0.0.1:3000')
   return new Promise((resolve, reject) => {
     const req = httpRequest(
@@ -28,7 +28,9 @@ function rawStatus(path: string): Promise<{ status: number; body: string }> {
       (res) => {
         const chunks: Buffer[] = []
         res.on('data', (chunk: Buffer) => chunks.push(chunk))
-        res.on('end', () => resolve({ status: res.statusCode ?? 0, body: Buffer.concat(chunks).toString('utf8') }))
+        res.on('end', () =>
+          resolve({ status: res.statusCode ?? 0, body: Buffer.concat(chunks).toString('utf8'), headers: res.headers }),
+        )
       },
     )
     req.on('error', reject)
@@ -80,6 +82,60 @@ test('encoded dot segments do not render the home page', async () => {
   }
 })
 
+function headerValue(headers: Record<string, string | string[] | undefined>, name: string): string {
+  const value = headers[name]
+  return Array.isArray(value) ? value.join(', ') : (value ?? '')
+}
+
+test('a malformed percent-escape is a clean 400 and a valid encoding still resolves', async () => {
+  for (const path of ['/%E0%A4%A', '/admin/%E0%A4%A']) {
+    const response = await rawStatus(path)
+    expect(response.status, path).toBe(400)
+    expect(response.body, path).toBe('Bad request.')
+    expect(response.body, path).not.toContain('Internal Server Error')
+    expect(headerValue(response.headers, 'cache-control'), path).toContain('no-store')
+    expect(headerValue(response.headers, 'x-robots-tag'), path).toMatch(/noindex/i)
+  }
+
+  const tool = await rawStatus('/tools/chatgpt')
+  const encodedTool = await rawStatus('/tools/%63hatgpt')
+  const encodedMiddle = await rawStatus('/tools/chat%67pt')
+  expect(tool.status).toBe(200)
+  expect(encodedTool.status).toBe(200)
+  expect(encodedMiddle.status).toBe(200)
+  expect(encodedTool.body).not.toBe('Bad request.')
+  expect(documentTitle(encodedTool.body)).toBe(documentTitle(tool.body))
+  expect(documentTitle(encodedMiddle.body)).toBe(documentTitle(tool.body))
+
+  const validUtf8 = await rawStatus('/%E0%A4%A1')
+  expect(validUtf8.status).toBe(404)
+  expect(validUtf8.body).not.toBe('Bad request.')
+  expect(documentTitle(validUtf8.body)).toBe(notFoundTitle)
+
+  const encodedRate = await rawStatus('/tools/chatgpt/%72ate')
+  expect(encodedRate.status).toBe(404)
+  expect(encodedRate.body).toBe('Not found.')
+})
+
+test('a 404 keeps exactly one noindex meta after hydration', async ({ page }) => {
+  for (const path of ['/no-such-page', '/foo/bar/baz', '/tools/not-a-real-tool', '/compare/not-a-tool-vs-also-missing', '/best/not-a-real-task']) {
+    await page.goto(path, { waitUntil: 'load' })
+    const metas = page.locator('meta[name="robots"]')
+    await expect(metas, path).toHaveCount(1)
+    await expect(metas, path).toHaveAttribute('content', 'noindex')
+  }
+})
+
+test('a real 404 from next start has exactly one noindex meta', async () => {
+  // rawStatus buffers the whole response, including anything Next streams after the head.
+  for (const path of ['/no-such-page', '/this-page-does-not-exist', '/tools/not-a-real-tool', '/compare/not-a-tool-vs-also-missing']) {
+    const response = await rawStatus(path)
+    expect(response.status, path).toBe(404)
+    expect(response.body, path).toContain('</html>')
+    expect(robotsDirectives(response.body), path).toEqual(['noindex'])
+  }
+})
+
 test('a missing page is the not-found screen, not the home page', async () => {
   const home = await rawStatus('/')
   expect(home.status).toBe(200)
@@ -100,10 +156,13 @@ test('a missing page is the not-found screen, not the home page', async () => {
   expect(documentTitle(missing.body)).not.toBe(homeTitle)
   expect(missing.body).toContain('That page is not in the catalog.')
   expect(missing.body).toContain(HOME_MARKER)
-  const robots = robotsDirectives(missing.body)
-  expect(robots.length).toBeGreaterThan(0)
-  expect(robots.every((content) => content.includes('noindex'))).toBe(true)
-  expect(robots).toContain('noindex, nofollow')
+  expect(robotsDirectives(missing.body)).toEqual(['noindex'])
+  const missingTool = await rawStatus('/tools/not-a-real-tool')
+  expect(missingTool.status).toBe(404)
+  expect(robotsDirectives(missingTool.body)).toEqual(['noindex'])
+  const missingCompare = await rawStatus('/compare/not-a-tool-vs-also-missing')
+  expect(missingCompare.status).toBe(404)
+  expect(robotsDirectives(missingCompare.body)).toEqual(['noindex'])
   expect(missing.body).not.toMatch(/<link rel="canonical"/)
   expect(metaContent(missing.body, 'property', 'og:url')).toBe('')
   expect(metaContent(missing.body, 'name', 'description')).toBe(notFoundDescription)
