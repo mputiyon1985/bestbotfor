@@ -1,3 +1,4 @@
+import 'server-only'
 import prototypesJson from './data/confusables.json'
 
 /**

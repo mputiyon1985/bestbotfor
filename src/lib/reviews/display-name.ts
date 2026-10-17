@@ -73,13 +73,34 @@ function wordTokens(normalized: string): string[] {
     .filter((word) => word.length > 0)
 }
 
-function reservedPhrases(extra: readonly string[]): string[][] {
+function compactSkeleton(value: string): string {
+  return skeleton(stripCombiningMarks(value).replace(/[^\p{L}\p{N}]+/gu, ''))
+}
+
+function reservedTerms(extra: readonly string[]): { phrases: string[][]; compact: Set<string> } {
   const phrases: string[][] = []
+  const compact = new Set<string>()
   for (const term of [...RESERVED, ...extra]) {
-    const tokens = wordTokens(normalizeDisplayName(term))
+    const normalized = normalizeDisplayName(term)
+    const tokens = wordTokens(normalized)
     if (tokens.length > 0) phrases.push(tokens)
+    const folded = compactSkeleton(normalized)
+    if (folded.length > 0) compact.add(folded)
   }
-  return phrases
+  return { phrases, compact }
+}
+
+/** Every join of two or more neighboring tokens, so "ad" + "min" is "admin". */
+function joinedAdjacentTokens(tokens: string[]): string[] {
+  const joined: string[] = []
+  for (let start = 0; start < tokens.length; start += 1) {
+    let acc = ''
+    for (let end = start; end < tokens.length; end += 1) {
+      acc += tokens[end] ?? ''
+      if (end > start) joined.push(acc)
+    }
+  }
+  return joined
 }
 
 function hasReservedPhrase(tokens: string[], phrases: string[][]): boolean {
@@ -100,7 +121,11 @@ export function checkDisplayName(name: string, context: DisplayNameContext = {})
   if (words.some(mixesScripts)) return { ok: false, reason: 'mixed_script' }
   const tokens = wordTokens(normalized)
   if (tokens.length === 0) return { ok: false, reason: 'empty' }
-  const banned = reservedPhrases([...(context.toolNames ?? []), ...(context.vendorNames ?? [])])
-  if (hasReservedPhrase(tokens, banned)) return { ok: false, reason: 'reserved' }
+  const banned = reservedTerms([...(context.toolNames ?? []), ...(context.vendorNames ?? [])])
+  const compact = compactSkeleton(normalized)
+  const split = joinedAdjacentTokens(tokens).some((joined) => banned.compact.has(joined))
+  if (hasReservedPhrase(tokens, banned.phrases) || banned.compact.has(compact) || split) {
+    return { ok: false, reason: 'reserved' }
+  }
   return { ok: true }
 }
