@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type Stripe from 'stripe'
-import { SPONSOR_BUSINESS_NAME, SPONSOR_OFFERINGS } from './sponsor-offerings'
+import { SPONSOR_BUSINESS_NAME, SPONSOR_OFFERINGS, SPONSOR_ONE_TIME_NOTICE } from './sponsor-offerings'
 import { ensureSponsorPrice, setupSponsorPrices } from './sponsor-setup'
 
 const testKey = ['sk', 'test', 'example'].join('_')
@@ -51,6 +51,7 @@ describe('sponsor price setup', () => {
     await expect(ensureSponsorPrice(stripe, offering)).resolves.toBe('price_created')
     expect(products[0]).toMatchObject({
       name: SPONSOR_BUSINESS_NAME,
+      description: `Newsletter sponsor slot. ${SPONSOR_ONE_TIME_NOTICE}`,
       statement_descriptor: SPONSOR_BUSINESS_NAME,
     })
     expect(products[0]).not.toHaveProperty('tax_code')
@@ -76,7 +77,14 @@ describe('sponsor price setup', () => {
     expect(week.created[0]).not.toHaveProperty('recurring')
     expect(month.created[0]).toMatchObject({ unit_amount: 29_900, nickname: 'Featured placement, one month' })
     expect(month.created[0]).not.toHaveProperty('recurring')
-    expect(week.products[0]).toMatchObject({ name: 'BestBotFor', statement_descriptor: 'BestBotFor' })
+    expect(week.products[0]).toMatchObject({
+      name: 'BestBotFor',
+      description: 'Featured placement, one week. One-time payment, no auto-renewal.',
+      statement_descriptor: 'BestBotFor',
+    })
+    expect(month.products[0]).toMatchObject({
+      description: 'Featured placement, one month. One-time payment, no auto-renewal.',
+    })
   })
 
   it('does not reuse a recurring price with the same amount', async () => {

@@ -3,7 +3,7 @@ import { taskSeeds } from '@/data/catalog'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { SponsorForm } from '@/components/sponsor-form'
 import { pageMetadata } from '@/lib/metadata'
-import { SPONSOR_OFFERINGS, sponsorPriceId, sponsorPriceLabel } from '@/lib/sponsor-offerings'
+import { SPONSOR_OFFERINGS, SPONSOR_ONE_TIME_NOTICE, sponsorPriceId, sponsorPriceLabel } from '@/lib/sponsor-offerings'
 import { stripeKeyMode } from '@/lib/stripe'
 
 export const dynamic = 'force-dynamic'
@@ -44,9 +44,14 @@ export default function SponsorPage() {
       </p>
       <ul className="list-disc space-y-2 pl-5">
         <li>
-          Featured placement: {week} for one week, or {month} for one month.
+          Featured placement: {week} for one week. {SPONSOR_ONE_TIME_NOTICE}
         </li>
-        <li>Newsletter sponsor slot: {issue} per issue.</li>
+        <li>
+          Featured placement: {month} for one month. {SPONSOR_ONE_TIME_NOTICE}
+        </li>
+        <li>
+          Newsletter sponsor slot: {issue} per issue. {SPONSOR_ONE_TIME_NOTICE}
+        </li>
       </ul>
       <p className="text-sm text-muted">
         These are the current list prices from server configuration. They can be changed there. The form does not send

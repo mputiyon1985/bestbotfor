@@ -6,6 +6,7 @@ import { taskSeeds } from '@/data/catalog'
 import {
   SPONSOR_BUSINESS_NAME,
   SPONSOR_INTEGRATION_IDENTIFIER,
+  SPONSOR_ONE_TIME_NOTICE,
   sponsorOffering,
   sponsorPriceId,
   type SponsorOfferingId,
@@ -112,6 +113,7 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
     input.successUrl,
     input.cancelUrl,
     SPONSOR_BUSINESS_NAME,
+    SPONSOR_ONE_TIME_NOTICE,
   ].join('\n')
   const fingerprint = createHash('sha256').update(fingerprintSource).digest('hex').slice(0, 16)
   return {
@@ -126,6 +128,9 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
       payment_intent_data: {
         metadata,
         statement_descriptor_suffix: SPONSOR_BUSINESS_NAME,
+      },
+      custom_text: {
+        submit: { message: SPONSOR_ONE_TIME_NOTICE },
       },
       integration_identifier: SPONSOR_INTEGRATION_IDENTIFIER,
       // Advertising placements are not eligible for Managed Payments.

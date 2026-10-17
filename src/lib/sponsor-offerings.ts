@@ -18,6 +18,9 @@ export const SPONSOR_CURRENCY = 'usd'
  */
 export const SPONSOR_BUSINESS_NAME = 'BestBotFor'
 
+/** Shown beside each sponsor option and on the Checkout pay button. */
+export const SPONSOR_ONE_TIME_NOTICE = 'One-time payment, no auto-renewal.'
+
 /**
  * Stable label for this Checkout flow. A retried sponsor form must send the
  * same value, or Stripe rejects the reused idempotency key.

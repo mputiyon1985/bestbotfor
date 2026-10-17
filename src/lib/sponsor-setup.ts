@@ -1,5 +1,11 @@
 import type Stripe from 'stripe'
-import { SPONSOR_BUSINESS_NAME, SPONSOR_CURRENCY, SPONSOR_OFFERINGS, type SponsorOffering } from './sponsor-offerings'
+import {
+  SPONSOR_BUSINESS_NAME,
+  SPONSOR_CURRENCY,
+  SPONSOR_OFFERINGS,
+  SPONSOR_ONE_TIME_NOTICE,
+  type SponsorOffering,
+} from './sponsor-offerings'
 import { assertTestSetupKey, STRIPE_API_VERSION } from './stripe-key'
 
 export { STRIPE_API_VERSION }
@@ -39,10 +45,11 @@ export async function ensureSponsorPrice(stripe: Stripe, offering: SponsorOfferi
       await stripe.products.create(
         {
           name: SPONSOR_BUSINESS_NAME,
+          description: `${offering.productName}. ${SPONSOR_ONE_TIME_NOTICE}`,
           statement_descriptor: SPONSOR_BUSINESS_NAME,
           metadata: { offering: offering.id, lookup_key: offering.lookupKey },
         },
-        { idempotencyKey: `sponsor-product-${offering.lookupKey}-${SPONSOR_BUSINESS_NAME}` },
+        { idempotencyKey: `sponsor-product-${offering.lookupKey}-${SPONSOR_BUSINESS_NAME}-onetime` },
       )
     ).id
 

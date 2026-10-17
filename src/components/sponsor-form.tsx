@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { sponsorCheckoutAction, type SponsorFormState } from '@/app/sponsor/actions'
+import { SPONSOR_ONE_TIME_NOTICE } from '@/lib/sponsor-offerings'
 
 export type SponsorFormOffering = {
   id: string
@@ -48,6 +49,7 @@ export function SponsorForm({ offerings, tasks }: { offerings: SponsorFormOfferi
                 {offering.title} · {offering.priceLabel}
               </span>
               <span className="mt-1 block text-sm text-muted">{offering.summary}</span>
+              <span className="mt-1 block text-sm">{SPONSOR_ONE_TIME_NOTICE}</span>
               {offering.available ? null : (
                 <span className="mt-1 block text-sm">Checkout for this slot is not configured yet.</span>
               )}

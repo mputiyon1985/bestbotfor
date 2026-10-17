@@ -14,8 +14,16 @@ test('sponsor page creates a hosted checkout session from the server price', asy
   await page.goto('/sponsor')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Sponsor')
   await expect(page.getByRole('note')).toContainText('Stripe test mode')
-  await expect(page.getByText('Featured placement: $99 for one week, or $299 for one month.')).toBeVisible()
-  await expect(page.getByText('Newsletter sponsor slot: $49 per issue.')).toBeVisible()
+  await expect(page.getByRole('listitem').filter({ hasText: 'Featured placement: $99 for one week.' })).toContainText(
+    'One-time payment, no auto-renewal.',
+  )
+  await expect(page.getByRole('listitem').filter({ hasText: 'Featured placement: $299 for one month.' })).toContainText(
+    'One-time payment, no auto-renewal.',
+  )
+  await expect(page.getByRole('listitem').filter({ hasText: 'Newsletter sponsor slot: $49 per issue.' })).toContainText(
+    'One-time payment, no auto-renewal.',
+  )
+  await expect(page.getByRole('radio', { name: /One-time payment, no auto-renewal/ })).toHaveCount(3)
 
   await page.getByRole('radio', { name: /one month/ }).check()
   await page.getByLabel('Work email').fill('sponsor@example.com')
@@ -43,6 +51,7 @@ test('sponsor page creates a hosted checkout session from the server price', asy
   expect(session?.payment_method_types).toBeUndefined()
   expect(session?.['payment_method_types[0]']).toBeUndefined()
   expect(session?.integration_identifier).toBe(SPONSOR_INTEGRATION_IDENTIFIER)
+  expect(session?.['custom_text[submit][message]']).toBe('One-time payment, no auto-renewal.')
   expect(session?.['payment_intent_data[statement_descriptor_suffix]']).toBe('BestBotFor')
   expect(session?.['payment_intent_data[statement_descriptor]']).toBeUndefined()
   expect(session?.['managed_payments[enabled]']).toBe('false')

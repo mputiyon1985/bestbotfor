@@ -3,6 +3,7 @@ import {
   SPONSOR_BUSINESS_NAME,
   SPONSOR_INTEGRATION_IDENTIFIER,
   SPONSOR_OFFERINGS,
+  SPONSOR_ONE_TIME_NOTICE,
   sponsorPriceId,
   sponsorPriceLabel,
 } from './sponsor-offerings'
@@ -34,6 +35,7 @@ describe('sponsor offerings', () => {
       ['STRIPE_PRICE_NEWSLETTER_SLOT', 4_900, 'sponsor_newsletter_issue'],
     ])
     expect(SPONSOR_OFFERINGS.map((offering) => sponsorPriceLabel(offering.unitAmount))).toEqual(['$99', '$299', '$49'])
+    expect(SPONSOR_ONE_TIME_NOTICE).toBe('One-time payment, no auto-renewal.')
     expect(SPONSOR_BUSINESS_NAME).toBe('BestBotFor')
     expect(SPONSOR_BUSINESS_NAME.length).toBeLessThanOrEqual(22)
     expect(SPONSOR_BUSINESS_NAME).toMatch(/^[A-Za-z0-9 ]+$/)
@@ -132,6 +134,9 @@ describe('sponsorCheckoutParams', () => {
       statement_descriptor_suffix: 'BestBotFor',
     })
     expect(first.params.payment_intent_data).not.toHaveProperty('statement_descriptor')
+    expect(first.params.custom_text).toEqual({
+      submit: { message: 'One-time payment, no auto-renewal.' },
+    })
     expect(first.params.managed_payments).toEqual({ enabled: false })
     expect(first.params).not.toHaveProperty('automatic_tax')
     expect(first).toEqual(second)
