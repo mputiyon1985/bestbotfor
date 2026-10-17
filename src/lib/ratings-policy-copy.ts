@@ -95,7 +95,7 @@ export const RETENTION_ROWS = [
   { data: 'Reports', kept: '1 year after resolution. The reporter id is replaced with a keyed hash after 180 days' },
   { data: 'Moderation audit rows', kept: '2 years. Reason codes and admin notes only, not the rating text' },
   { data: 'Account-deletion tombstones', kept: '2 years' },
-  { data: 'Rate-limit rows', kept: 'Their window only' },
+  { data: 'Rate-limit rows', kept: 'Not deleted when the window ends. After the window ends, the next request resets the count. An unused row stays.' },
 ] as const
 
 export const TERMS_RATINGS_PARAGRAPH =

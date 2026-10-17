@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { OG_RATE_WINDOW_MS } from './og'
-import { GPC_PRIVACY_PARAGRAPH, rateLimitPrivacyParagraphs, windowPhrase } from './privacy-copy'
+import { CLICK_LOG_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, rateLimitPrivacyParagraphs, SHARING_PARAGRAPH, windowPhrase } from './privacy-copy'
 import {
   CHECKOUT_RATE_WINDOW_MS,
   GO_RATE_WINDOW_MS,
@@ -25,17 +25,20 @@ describe('privacy policy facts', () => {
     expect(windowPhrase(GO_RATE_WINDOW_MS)).toBe('one minute')
 
     const paragraphs = rateLimitPrivacyParagraphs()
-    const text = paragraphs.join('\n')
-    expect(text).toContain('HMAC-SHA256')
-    expect(text).toContain('SHA-256')
+    const text = [CLICK_LOG_PARAGRAPH, ...paragraphs, GPC_PRIVACY_PARAGRAPH, SHARING_PARAGRAPH].join('\n')
+    expect(text).toContain('secret key')
+    expect(text).toContain('pseudonymous personal data')
     expect(text).toContain('one hour')
     expect(text).toContain('one minute')
     expect(text).toContain('word unknown')
     expect(text).toContain('do not delete those rows when the window ends')
+    expect(text).toContain('After the window ends, the next request for the same code resets the count')
     expect(text).toContain('stays in the database')
     expect(text).toContain('If cleanup does not run, the expired row remains')
+    expect(text).toContain('no fixed deletion date today')
     expect(text).not.toMatch(/24 hour/i)
-    expect(text).not.toContain('raw IP')
+    expect(text).not.toMatch(/HMAC|Sec-GPC|SHA-256/i)
+    expect(text).not.toMatch(/do not store your IP|never store the raw IP|do not store your IP address/i)
 
     const limiter = readFileSync(path.join(process.cwd(), 'src/lib/rate-limit.ts'), 'utf8')
     expect(limiter).not.toContain('DELETE FROM rate_limits')
@@ -49,13 +52,34 @@ describe('privacy policy facts', () => {
   })
 
   it('describes Global Privacy Control as an analytics opt-out', () => {
-    expect(GPC_PRIVACY_PARAGRAPH).toContain('Sec-GPC')
-    expect(GPC_PRIVACY_PARAGRAPH).toContain('navigator.globalPrivacyControl')
+    expect(GPC_PRIVACY_PARAGRAPH).toContain('Global Privacy Control header when its value is 1')
+    expect(GPC_PRIVACY_PARAGRAPH).toContain('browser says Global Privacy Control is on')
+    expect(GPC_PRIVACY_PARAGRAPH).not.toContain('Sec-GPC')
+    expect(GPC_PRIVACY_PARAGRAPH).not.toContain('navigator.globalPrivacyControl')
     expect(GPC_PRIVACY_PARAGRAPH).toContain('opt-out of analytics')
     expect(GPC_PRIVACY_PARAGRAPH).toContain('do not load Google Analytics')
     expect(GPC_PRIVACY_PARAGRAPH).toContain('store the bbf_consent cookie as denied')
     expect(GPC_PRIVACY_PARAGRAPH).toContain('does not override the signal')
     expect(GPC_PRIVACY_PARAGRAPH).toContain('do not load Vercel Analytics')
     expect(GPC_PRIVACY_PARAGRAPH).toContain('do not send Vercel Analytics events')
+  })
+
+  it('names the processors the site code actually calls, including Turso', () => {
+    for (const name of ['Clerk', 'Stripe', 'Beehiiv', 'Google Analytics', 'Vercel', 'Turso']) {
+      expect(SHARING_PARAGRAPH).toContain(name)
+    }
+    expect(SHARING_PARAGRAPH).toContain('when it is connected')
+    expect(SHARING_PARAGRAPH).toContain('when it is configured and analytics is allowed')
+    const page = readFileSync(path.join(process.cwd(), 'src/app/privacy/page.tsx'), 'utf8')
+    expect(page).toContain('CLICK_LOG_PARAGRAPH')
+    expect(page).toContain('SHARING_PARAGRAPH')
+    expect(page).toContain('PRIVACY_UPDATED')
+    const dates = readFileSync(path.join(process.cwd(), 'src/lib/ratings-policy-copy.ts'), 'utf8')
+    expect(dates).toContain("export const PRIVACY_UPDATED = 'October 17, 2026'")
+    const clicks = readFileSync(path.join(process.cwd(), 'src/app/go/[slug]/route.ts'), 'utf8')
+    expect(clicks).toContain('db.insert(clicks)')
+    expect(clicks).not.toContain('delete(clicks)')
+    const schema = readFileSync(path.join(process.cwd(), 'src/lib/db/schema.ts'), 'utf8')
+    expect(schema).toContain("ipHash: text('ip_hash')")
   })
 })

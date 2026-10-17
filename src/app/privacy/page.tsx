@@ -4,14 +4,14 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { LawyerReviewNotice } from '@/components/lawyer-review-notice'
 import { userRatingsEnabled } from '@/lib/flags'
 import { pageMetadata } from '@/lib/metadata'
-import { GPC_PRIVACY_PARAGRAPH, rateLimitPrivacyParagraphs } from '@/lib/privacy-copy'
+import { CLICK_LOG_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, rateLimitPrivacyParagraphs, SHARING_PARAGRAPH } from '@/lib/privacy-copy'
 import { PRIVACY_RATINGS_PARAGRAPHS, PRIVACY_UPDATED, PRIVACY_UPDATED_WITH_RATINGS, RETENTION_ROWS } from '@/lib/ratings-policy-copy'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Privacy policy',
-  description: 'How BestBotFor handles analytics, cookies, Clerk, Stripe, Beehiiv, and the data we store.',
+  description: 'How BestBotFor handles analytics, cookies, Clerk, Stripe, Beehiiv, Google Analytics, Vercel, Turso, and the data we store.',
   path: '/privacy',
 })
 
@@ -41,11 +41,7 @@ export default function PrivacyPage() {
         customer id, subscription id, price id, and status so we know whether membership is active. Use Stripe test
         cards only while this site is in test mode.
       </p>
-      <p>
-        When you use a “Visit” button, we log the tool, the time, the page path on our site if the referrer is ours,
-        and a country code when the host provides one. We store a keyed hash of the IP address. We never store the raw
-        IP address.
-      </p>
+      <p>{CLICK_LOG_PARAGRAPH}</p>
       <h2 className="font-semibold text-3xl">Rate limits</h2>
       {rateLimitPrivacyParagraphs().map((paragraph) => (
         <p key={paragraph}>{paragraph}</p>
@@ -65,10 +61,7 @@ export default function PrivacyPage() {
       <p>Vercel Analytics is cookieless and does not receive your email or name.</p>
       <p>Clerk and Stripe may set cookies that are required for sign-in and checkout. Those are not advertising cookies.</p>
       <h2 className="font-semibold text-3xl">Sharing</h2>
-      <p>
-        We use Clerk for accounts, Stripe for payments, Beehiiv for the digest when it is connected, and Vercel to host
-        the site. We do not sell personal information.
-      </p>
+      <p>{SHARING_PARAGRAPH}</p>
       <h2 className="font-semibold text-3xl">Your choices</h2>
       <p>
         You can reject analytics on the banner. Global Privacy Control, described above, also opts you out of analytics.
