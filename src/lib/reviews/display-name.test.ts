@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { checkDisplayName, DISPLAY_NAME_MAX_LENGTH, DISPLAY_NAME_TOO_LONG_MESSAGE } from './display-name'
+import {
+  checkDisplayName,
+  codePointLength,
+  DISPLAY_NAME_MAX_LENGTH,
+  DISPLAY_NAME_TOO_LONG_MESSAGE,
+  reviewDisplayName,
+} from './display-name'
 
 const chatgpt = { toolNames: ['ChatGPT'], vendorNames: ['OpenAI'] }
 
@@ -43,7 +49,7 @@ describe('checkDisplayName', () => {
 
   it('rejects a name over 64 characters before normalization, and checks a worst-case 64-character name quickly', () => {
     const worst = 'a '.repeat(DISPLAY_NAME_MAX_LENGTH / 2)
-    expect(worst).toHaveLength(DISPLAY_NAME_MAX_LENGTH)
+    expect(codePointLength(worst)).toBe(DISPLAY_NAME_MAX_LENGTH)
     checkDisplayName('Maria L.')
     const started = performance.now()
     const decision = checkDisplayName(worst)
@@ -52,7 +58,7 @@ describe('checkDisplayName', () => {
     expect(elapsed).toBeLessThan(5)
 
     const tooLong = 'a '.repeat(1000)
-    expect(tooLong.length).toBeGreaterThan(DISPLAY_NAME_MAX_LENGTH)
+    expect(codePointLength(tooLong)).toBeGreaterThan(DISPLAY_NAME_MAX_LENGTH)
     const rejectStarted = performance.now()
     const rejected = checkDisplayName(tooLong)
     const rejectElapsed = performance.now() - rejectStarted
@@ -65,5 +71,37 @@ describe('checkDisplayName', () => {
       reason: 'too_long',
       message: DISPLAY_NAME_TOO_LONG_MESSAGE,
     })
+  })
+
+  it('counts code points, caps NFKC expansion, and leaves the raw name unchanged', () => {
+    const emoji = '👍'.repeat(40)
+    expect(emoji.length).toBe(80)
+    expect(codePointLength(emoji)).toBe(40)
+    const emojiDecision = checkDisplayName(emoji)
+    expect(emojiDecision.ok).toBe(false)
+    if (!emojiDecision.ok) expect(emojiDecision.reason).not.toBe('too_long')
+
+    const sixtyFourEmoji = '👍'.repeat(DISPLAY_NAME_MAX_LENGTH)
+    expect(sixtyFourEmoji.length).toBe(DISPLAY_NAME_MAX_LENGTH * 2)
+    const within = checkDisplayName(sixtyFourEmoji)
+    expect(within.ok).toBe(false)
+    if (!within.ok) expect(within.reason).not.toBe('too_long')
+    expect(checkDisplayName('👍'.repeat(DISPLAY_NAME_MAX_LENGTH + 1))).toEqual({
+      ok: false,
+      reason: 'too_long',
+      message: DISPLAY_NAME_TOO_LONG_MESSAGE,
+    })
+
+    const expanded = 'ﷺ'.repeat(4)
+    expect(codePointLength(expanded)).toBe(4)
+    expect(codePointLength(expanded.normalize('NFKC'))).toBe(72)
+    expect(checkDisplayName(expanded)).toEqual({
+      ok: false,
+      reason: 'too_long',
+      message: DISPLAY_NAME_TOO_LONG_MESSAGE,
+    })
+
+    expect(reviewDisplayName('José L.')).toBe('José L.')
+    expect(reviewDisplayName(expanded)).toBe(expanded)
   })
 })
