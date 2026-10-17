@@ -9,6 +9,7 @@ import {
   rateLimitCutoff,
   resultWindowCutoff,
   retentionLogLine,
+  retentionTargetOk,
   type RetentionEnv,
   type RetentionReport,
 } from '@/lib/data-retention'
@@ -26,6 +27,38 @@ type RetentionClient = Pick<Database, '$client'>
 function countOf(value: unknown): number {
   const count = Number(value ?? 0)
   return Number.isFinite(count) && count > 0 ? count : 0
+}
+
+const RETENTION_TABLES = {
+  rate_limits: ['key', 'count', 'reset_at'],
+  result_rate_windows: ['bucket', 'count', 'expires_at'],
+  clicks: ['id', 'tool_id', 'page', 'ts', 'country', 'ip_hash'],
+} as const
+
+/** Missing table or column means the later DELETE and UPDATE must not run. */
+async function retentionSchemaReady(client: Client): Promise<boolean> {
+  for (const [table, columns] of Object.entries(RETENTION_TABLES)) {
+    const result = await client.execute(`PRAGMA table_info(${table})`)
+    const present = new Set(result.rows.map((row) => String(row.name)))
+    if (!columns.every((column) => present.has(column))) return false
+  }
+  return true
+}
+
+function countsOnly(dryRun: boolean, counts?: Partial<RetentionReport>): RetentionReport {
+  return {
+    event: 'data_retention',
+    enabled: true,
+    dryRun,
+    wrote: false,
+    rateLimitsEligible: counts?.rateLimitsEligible ?? 0,
+    rateLimitsDeleted: 0,
+    resultWindowsEligible: counts?.resultWindowsEligible ?? 0,
+    resultWindowsDeleted: 0,
+    clickHashesEligible: counts?.clickHashesEligible ?? 0,
+    clickHashesCleared: 0,
+    truncated: false,
+  }
 }
 
 async function countRows(client: Client, sql: string, cutoff: number): Promise<number> {
@@ -107,11 +140,15 @@ async function clearOldClickHashes(
 
 export async function runDataRetention(
   db: RetentionClient,
-  options: { dryRun: boolean; now: number; batchSize?: number; maxBatches?: number },
+  options: { dryRun: boolean; now: number; batchSize?: number; maxBatches?: number; url?: string; vercelEnv?: string },
 ): Promise<RetentionReport> {
   const batchSize = options.batchSize ?? RETENTION_BATCH_SIZE
   const maxBatches = options.maxBatches ?? RETENTION_MAX_BATCHES
   const client = db.$client
+  if (!(await retentionSchemaReady(client))) {
+    console.error('data retention guard refused', 'schema')
+    return countsOnly(options.dryRun)
+  }
   const rateCutoff = rateLimitCutoff(options.now)
   const windowCutoff = resultWindowCutoff(options.now)
   const clickCutoff = clickHashCutoff(options.now)
@@ -130,42 +167,15 @@ export async function runDataRetention(
     'SELECT COUNT(*) AS n FROM clicks WHERE ts < ? AND ip_hash IS NOT NULL',
     clickCutoff,
   )
-  if (options.dryRun) {
-    return {
-      event: 'data_retention',
-      enabled: true,
-      dryRun: true,
-      wrote: false,
-      rateLimitsEligible,
-      rateLimitsDeleted: 0,
-      resultWindowsEligible,
-      resultWindowsDeleted: 0,
-      clickHashesEligible,
-      clickHashesCleared: 0,
-      truncated: false,
-    }
+  const counted = { rateLimitsEligible, resultWindowsEligible, clickHashesEligible }
+  if (options.dryRun) return countsOnly(true, counted)
+  if (!retentionTargetOk({ url: options.url, protocol: client.protocol, vercelEnv: options.vercelEnv })) {
+    console.error('data retention guard refused', 'target')
+    return countsOnly(false, counted)
   }
-  await deleteExpiredRateLimits(client, rateCutoff, batchSize, maxBatches)
-  await deleteExpiredResultWindows(client, windowCutoff, batchSize, maxBatches)
-  await clearOldClickHashes(client, clickCutoff, batchSize, maxBatches)
-  const rateLimitsLeft = await countRows(
-    client,
-    'SELECT COUNT(*) AS n FROM rate_limits WHERE reset_at < ?',
-    rateCutoff,
-  )
-  const resultWindowsLeft = await countRows(
-    client,
-    'SELECT COUNT(*) AS n FROM result_rate_windows WHERE expires_at < ?',
-    windowCutoff,
-  )
-  const clickHashesLeft = await countRows(
-    client,
-    'SELECT COUNT(*) AS n FROM clicks WHERE ts < ? AND ip_hash IS NOT NULL',
-    clickCutoff,
-  )
-  const rateLimitsDeleted = Math.max(0, rateLimitsEligible - rateLimitsLeft)
-  const resultWindowsDeleted = Math.max(0, resultWindowsEligible - resultWindowsLeft)
-  const clickHashesCleared = Math.max(0, clickHashesEligible - clickHashesLeft)
+  const rateLimitsDeleted = await deleteExpiredRateLimits(client, rateCutoff, batchSize, maxBatches)
+  const resultWindowsDeleted = await deleteExpiredResultWindows(client, windowCutoff, batchSize, maxBatches)
+  const clickHashesCleared = await clearOldClickHashes(client, clickCutoff, batchSize, maxBatches)
   return {
     event: 'data_retention',
     enabled: true,
@@ -177,8 +187,10 @@ export async function runDataRetention(
     resultWindowsDeleted,
     clickHashesEligible,
     clickHashesCleared,
-    // Rows still eligible after the batches. rowsAffected is not the flag.
-    truncated: rateLimitsLeft > 0 || resultWindowsLeft > 0 || clickHashesLeft > 0,
+    truncated:
+      rateLimitsDeleted < rateLimitsEligible ||
+      resultWindowsDeleted < resultWindowsEligible ||
+      clickHashesCleared < clickHashesEligible,
   }
 }
 
@@ -196,13 +208,16 @@ function methodNotAllowed(): Response {
 
 export async function handleRetentionCron(
   request: Request,
-  deps: { db: () => RetentionClient; env?: RetentionEnv; now?: number; cronSecret?: string } = { db: getDb },
+  deps: { db: () => RetentionClient; env?: RetentionEnv; now?: number; cronSecret?: string; url?: string } = {
+    db: getDb,
+  },
 ): Promise<Response> {
   if (request.method !== 'GET') return methodNotAllowed()
+  const env = deps.env ?? retentionEnv()
   const decision = decideRetentionRequest({
     authorization: request.headers.get('authorization'),
     cronSecret: deps.cronSecret ?? process.env.CRON_SECRET,
-    env: deps.env ?? retentionEnv(),
+    env,
   })
   if (!decision.ok) {
     console.error('data retention unauthorized')
@@ -213,7 +228,12 @@ export async function handleRetentionCron(
     return NextResponse.json(decision.report, { status: 200, headers: NO_STORE })
   }
   try {
-    const report = await runDataRetention(deps.db(), { dryRun: decision.dryRun, now: deps.now ?? Date.now() })
+    const report = await runDataRetention(deps.db(), {
+      dryRun: decision.dryRun,
+      now: deps.now ?? Date.now(),
+      url: deps.url ?? process.env.TURSO_DATABASE_URL,
+      vercelEnv: env.vercelEnv,
+    })
     console.log(retentionLogLine(report))
     return NextResponse.json(report, { status: 200, headers: NO_STORE })
   } catch (error) {
