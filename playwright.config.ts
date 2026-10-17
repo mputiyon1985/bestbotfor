@@ -13,6 +13,14 @@ const sharedEnv = {
   VERCEL_ENV: 'preview',
   RESULT_FAULTS: '1',
   NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID || 'G-TESTCONSENT',
+  // Boot runs the review-secret validator. These are test keys, distinct from each other.
+  // The flag-on server sets USER_RATINGS=on, so the review secret and key id are required.
+  RATE_LIMIT_HMAC_SECRET: 'playwright-rate-limit-hmac-secret-37b',
+  REVIEW_IP_HMAC_SECRET: 'playwright-review-ip-hmac-secret-37b!',
+  REVIEW_IP_HMAC_KEY_ID: 'k1',
+  REVIEW_IP_HMAC_SECRET_PREVIOUS: '',
+  REVIEW_IP_HMAC_KEY_ID_PREVIOUS: '',
+  BBF_E2E_HOOKS: '',
 }
 
 export default defineConfig({

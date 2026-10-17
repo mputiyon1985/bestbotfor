@@ -46,6 +46,30 @@ test('rating routes 404 while the flag is off', async ({ request }) => {
   }
 })
 
+test('privacy, terms, and disclosure omit the ratings draft while the flag is off', async ({ request }) => {
+  const hidden = [
+    'Pending lawyer review',
+    'Ratings and reviews',
+    'network range',
+    'How user ratings work',
+    'Review guidelines',
+  ]
+  for (const path of ['/privacy', '/terms', '/disclosure']) {
+    const response = await request.get(path)
+    expect(response.status(), path).toBe(200)
+    const body = await response.text()
+    for (const phrase of hidden) {
+      expect(body, `${path} ${phrase}`).not.toContain(phrase)
+    }
+  }
+  const privacy = await (await request.get('/privacy')).text()
+  expect(privacy).toContain('It was last updated on October 17, 2026.')
+  expect(privacy).not.toContain('ratings and reviews section')
+  const terms = await (await request.get('/terms')).text()
+  expect(terms).toContain('Last updated October 15, 2026.')
+  expect(terms).not.toContain('October 17, 2026')
+})
+
 test('the tool page keeps the editorial score and hides user ratings', async ({ page }) => {
   await page.goto('/tools/chatgpt')
   await expect(page.getByRole('heading', { level: 1, name: 'ChatGPT' })).toBeVisible()
