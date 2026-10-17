@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useReverification } from '@clerk/nextjs'
-import { markSponsorRefundedAction, reviewSponsorCardAction } from '@/app/admin/sponsor-cards/actions'
+import { markSponsorRefundedAction, reviewSponsorCardAction } from '@/app/admin/sponsors/actions'
 import type { PendingSponsorCard, RefundPendingSponsorCard } from '@/lib/sponsor-card'
 import { SPONSOR_INVISIBLE_WARNING, SPONSOR_MARK_REFUNDED_NOTE, SPONSOR_REFUND_NOTE } from '@/lib/sponsor-offerings'
 

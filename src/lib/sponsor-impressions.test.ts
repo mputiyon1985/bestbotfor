@@ -277,7 +277,7 @@ describe('sponsor daily counts', () => {
     const ranked = readFileSync(path.join(process.cwd(), 'src/app/go/[slug]/route.ts'), 'utf8')
     const cardRoute = readFileSync(path.join(process.cwd(), 'src/app/go/s/[placementId]/route.ts'), 'utf8')
     const card = readFileSync(path.join(process.cwd(), 'src/components/sponsored-placement.tsx'), 'utf8')
-    const admin = readFileSync(path.join(process.cwd(), 'src/app/admin/sponsor-cards/page.tsx'), 'utf8')
+    const admin = readFileSync(path.join(process.cwd(), 'src/app/admin/sponsors/page.tsx'), 'utf8')
     const allowlist = readFileSync(path.join(process.cwd(), 'scripts/check-db-writes.ts'), 'utf8')
     expect(page).toContain('sponsoredCardIsVisible(placement)')
     expect(page).toContain('scheduleSponsorImpression(')

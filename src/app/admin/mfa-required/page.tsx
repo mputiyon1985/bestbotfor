@@ -1,8 +1,11 @@
+import { notFound } from 'next/navigation'
 import { requireMfaSetupPage } from '@/lib/admin'
+import { adminSponsorsEnabled, userRatingsEnabled } from '@/lib/flags'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminMfaRequiredPage() {
+  if (!userRatingsEnabled() && !adminSponsorsEnabled()) notFound()
   await requireMfaSetupPage()
   return (
     <article className="max-w-2xl space-y-4">

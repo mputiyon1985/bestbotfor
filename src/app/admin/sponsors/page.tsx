@@ -1,13 +1,16 @@
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 import { SponsorCardQueue, SponsorRefundQueue } from '@/components/sponsor-card-queue'
-import { requireAdmin } from '@/lib/admin'
+import { adminHomePath, requireAdmin } from '@/lib/admin'
 import { getDb } from '@/lib/db'
+import { adminSponsorsEnabled } from '@/lib/flags'
 import { listPendingSponsorCards, listRefundPendingSponsorCards } from '@/lib/sponsor-card'
 import { listSponsorPlacementCounts, type SponsorPlacementCount } from '@/lib/sponsor-impressions'
 
 export const dynamic = 'force-dynamic'
 
 export default async function SponsorCardsPage() {
+  if (!adminSponsorsEnabled()) notFound()
   await requireAdmin()
   const db = getDb()
   const cards = await listPendingSponsorCards(db)
@@ -22,11 +25,13 @@ export default async function SponsorCardsPage() {
   }
   return (
     <article className="max-w-2xl space-y-6">
-      <p>
-        <Link href="/admin" className="underline">
-          Admin
-        </Link>
-      </p>
+      {adminHomePath() === '/admin' ? (
+        <p>
+          <Link href="/admin" className="underline">
+            Admin
+          </Link>
+        </p>
+      ) : null}
       <h1 className="font-bold text-5xl">Sponsor tool cards</h1>
       <p>Nothing is public until you approve the name, logo, text, and URL of the version you are looking at.</p>
       {cards.length === 0 ? <p>No tool cards are waiting for review.</p> : <SponsorCardQueue cards={cards} />}
