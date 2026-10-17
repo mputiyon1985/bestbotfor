@@ -80,6 +80,16 @@ test('encoded dot segments do not render the home page', async () => {
   }
 })
 
+test('a real 404 from next start has exactly one noindex meta', async () => {
+  // rawStatus buffers the whole response, including anything Next streams after the head.
+  for (const path of ['/no-such-page', '/this-page-does-not-exist', '/tools/not-a-real-tool', '/compare/not-a-tool-vs-also-missing']) {
+    const response = await rawStatus(path)
+    expect(response.status, path).toBe(404)
+    expect(response.body, path).toContain('</html>')
+    expect(robotsDirectives(response.body), path).toEqual(['noindex'])
+  }
+})
+
 test('a missing page is the not-found screen, not the home page', async () => {
   const home = await rawStatus('/')
   expect(home.status).toBe(200)
