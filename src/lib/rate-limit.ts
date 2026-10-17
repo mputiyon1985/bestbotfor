@@ -215,7 +215,7 @@ export function scheduleResultWindowPurge(db: Database, now = Date.now()): Promi
 /**
  * The shared fixed window decides when it answers inside the short budget.
  * Over the in-process limit, return immediately and skip that write.
- * A slow or failed store uses the in-memory window so a valid quiz still renders.
+ * A slow or failed store logs and uses the in-memory window so a valid quiz still renders.
  */
 export async function consumeResultRateLimit(
   db: Database,
@@ -228,7 +228,10 @@ export async function consumeResultRateLimit(
   const local = consumeLocalRateLimit(key, limit, windowMs, now)
   if (!local.ok) return local
   const shared = await consumeSharedResultWindow(db, key, limit, windowMs, now, sharedBudgetMs)
-  if (!shared) return local
+  if (!shared) {
+    console.error('result rate limit fell back to memory')
+    return local
+  }
   return shared
 }
 

@@ -1,7 +1,7 @@
 import type { Client } from '@libsql/client'
 import { createClient } from '@libsql/client'
 import { drizzle } from 'drizzle-orm/libsql'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import * as schema from './db/schema'
 import {
   consumeLocalRateLimit,
@@ -44,13 +44,19 @@ describe('consumeRateLimit', () => {
       await gate
       return execute(...args)
     }) as Client['execute']
+    const errors: unknown[][] = []
+    const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+      errors.push(args)
+    })
     try {
       const started = Date.now()
       const decision = await consumeResultRateLimit(db, 'slow-shared', 5, 60_000, 1_000, 40)
       expect(decision.ok).toBe(true)
       expect(Date.now() - started).toBeLessThan(300)
+      expect(errors.some((args) => args[0] === 'result rate limit fell back to memory')).toBe(true)
       release()
     } finally {
+      spy.mockRestore()
       resetLocalRateLimits()
       await close()
     }
@@ -106,10 +112,16 @@ describe('consumeRateLimit', () => {
     db.$client.execute = (async () => {
       throw new Error('down')
     }) as Client['execute']
+    const errors: unknown[][] = []
+    const spy = vi.spyOn(console, 'error').mockImplementation((...args: unknown[]) => {
+      errors.push(args)
+    })
     try {
       const decision = await consumeResultRateLimit(db, 'store-down', 5, 60_000, 1_000)
       expect(decision.ok).toBe(true)
+      expect(errors.some((args) => args[0] === 'result rate limit fell back to memory')).toBe(true)
     } finally {
+      spy.mockRestore()
       resetLocalRateLimits()
       await close()
     }

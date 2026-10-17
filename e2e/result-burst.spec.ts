@@ -42,6 +42,17 @@ function startPeerServer(): { child: ChildProcess; baseURL: string; output: () =
   }
 }
 
+/**
+ * A burst that starts in the last seconds of the minute lands in two windows.
+ * Each window has a fresh counter, so the shared limit can miss every 429.
+ * Wait for the next window when this one cannot hold the whole burst.
+ */
+async function alignBurstToWindow(windowMs = ACTION_LIMITS.result.windowMs, marginMs = 20_000): Promise<void> {
+  const remaining = windowMs - (Date.now() % windowMs)
+  if (remaining >= marginMs) return
+  await new Promise((resolve) => setTimeout(resolve, remaining + 50))
+}
+
 async function waitForPeer(baseURL: string, child: ChildProcess, output: () => string): Promise<void> {
   const deadline = Date.now() + 90_000
   while (Date.now() < deadline) {
@@ -92,6 +103,7 @@ test('40 valid quizzes at 4 concurrent return no 503s and some 429s', async () =
   }
 
   try {
+    await alignBurstToWindow()
     await Promise.all(Array.from({ length: concurrency }, () => worker()))
     const histogram = {
       '200': counts[200] ?? 0,
@@ -145,6 +157,7 @@ test('two server processes sharing one database file return some 429s and no 503
     }
 
     try {
+      await alignBurstToWindow()
       await Promise.all(Array.from({ length: concurrency }, () => worker()))
       const histogram = {
         '200': counts[200] ?? 0,

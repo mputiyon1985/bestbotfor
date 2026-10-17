@@ -51,11 +51,11 @@ const dedicatedFileClients = new WeakMap<Client, Client>()
  * WAL lets the other process read while one writes. busy_timeout is shorter
  * than the limiter budget, so a lock returns and can be retried instead of
  * holding a write that the deadline already gave up on.
- * Hosted Turso has no local journal, so remote clients skip these pragmas.
+ * Turso and sqld reject PRAGMA with SQL_PARSE_ERROR. A page request can create
+ * the client before this module records its URL, so the protocol is the check.
  */
 export function configureFileDatabase(client: Client): Promise<void> {
-  const url = clientUrls.get(client) ?? globalForDb.bestbotforFileUrl
-  if (url && !url.startsWith('file:')) return Promise.resolve()
+  if (client.protocol !== 'file') return Promise.resolve()
   const existing = fileSharing.get(client)
   if (existing) return existing
   const pending = (async () => {
@@ -79,6 +79,7 @@ export function configureFileDatabase(client: Client): Promise<void> {
  * same connection. Hosted Turso uses the request connection.
  */
 export function limiterClientFor(client: Client): Client {
+  if (client.protocol !== 'file') return client
   const url = clientUrls.get(client) ?? globalForDb.bestbotforFileUrl
   if (!url?.startsWith('file:')) return client
   const existing = dedicatedFileClients.get(client) ?? globalForDb.bestbotforLimiterClient
