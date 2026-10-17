@@ -16,6 +16,9 @@ describe('client bundle scan', () => {
     expect(clientBundleHits(CLERK_MESSAGE, CLIENT_BUNDLE_FORBIDDEN)).not.toContain(LIVE_PUBLISHABLE)
     const key = `${LIVE_PUBLISHABLE}51abc`
     expect(clientBundleHits(`${CLERK_MESSAGE}\n${key}`, CLIENT_BUNDLE_FORBIDDEN)).toContain(LIVE_PUBLISHABLE)
+    const prefixCheck = `C="${LIVE_PUBLISHABLE}",w="pk_test_"` + `e.startsWith("${LIVE_PUBLISHABLE}")`
+    expect(clientBundleHits(prefixCheck, CLIENT_BUNDLE_FORBIDDEN)).not.toContain(LIVE_PUBLISHABLE)
+    expect(clientBundleHits(`${prefixCheck}\n${key}`, CLIENT_BUNDLE_FORBIDDEN)).toContain(LIVE_PUBLISHABLE)
   })
 
   it('still flags secret and live secret prefixes', () => {

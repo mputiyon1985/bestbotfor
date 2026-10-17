@@ -60,6 +60,15 @@ test('sponsor page creates a hosted checkout session from the server price', asy
   expect(JSON.stringify(session)).not.toContain('unit_amount')
 })
 
+test('disclosure names paid placements and a guide without one is unlabeled', async ({ page }) => {
+  await page.goto('/disclosure')
+  await expect(page.getByText(/paid featured placements/)).toBeVisible()
+  await expect(page.getByText(/newsletter sponsorships/)).toBeVisible()
+  await expect(page.getByText(/labeled Sponsored/)).toBeVisible()
+  await page.goto('/best/coding')
+  await expect(page.getByRole('complementary', { name: 'Sponsored' })).toHaveCount(0)
+})
+
 test('sponsor success and cancel pages do not record the payment', async ({ page }) => {
   await page.goto('/sponsor/success')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Checkout received')
