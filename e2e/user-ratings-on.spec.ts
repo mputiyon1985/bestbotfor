@@ -57,6 +57,13 @@ test('the rest of the site still loads while the flag is on', async ({ request }
 })
 
 test('the lawyer-review pages explain ratings without banned claims', async ({ page }) => {
+  for (const path of ['/review-guidelines', '/how-user-ratings-work']) {
+    await page.goto(path, { waitUntil: 'load' })
+    const metas = page.locator('meta[name="robots"]')
+    await expect(metas, path).toHaveCount(1)
+    await expect(metas, path).toHaveAttribute('content', 'noindex, nofollow')
+  }
+
   await page.goto('/review-guidelines')
   await expect(page.getByRole('heading', { level: 1, name: 'Review guidelines' })).toBeVisible()
   await expect(page.getByRole('note')).toContainText(LAWYER_REVIEW_NOTICE)
