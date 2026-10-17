@@ -77,6 +77,11 @@ const nextConfig: NextConfig = {
         source,
         headers: [{ key: 'Cache-Control', value: HASHED_ASSET_CACHE_CONTROL }],
       })),
+      // Slug URLs, not content hashes. A replaced tile waits out the year.
+      {
+        source: '/logos/:path*',
+        headers: [{ key: 'Cache-Control', value: HASHED_ASSET_CACHE_CONTROL }],
+      },
     ]
   },
 }
