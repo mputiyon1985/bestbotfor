@@ -37,10 +37,16 @@ export function isUnsafeCatalogPath(rawUrl: string): boolean {
   const root = match[1]
   const rest = match[2] ?? ''
   // The tools directory is a real page. Job and redirect routes still require one slug.
+  // /tools/<slug>/rate is the ratings route. A safe slug is not an extra catalog segment.
   if (root === 'tools' && (rest === '' || rest === '/')) return false
-  const segment = /^\/([^/]+)\/?$/.exec(rest)
+  const rate = root === 'tools' ? /^\/([^/]+)\/rate\/?$/.exec(rest) : null
+  const segment = rate ?? /^\/([^/]+)\/?$/.exec(rest)
   if (!segment?.[1]) return true
-  let decoded = segment[1]
+  return unsafeSlug(segment[1])
+}
+
+function unsafeSlug(encoded: string): boolean {
+  let decoded = encoded
   for (let pass = 0; pass < 3; pass += 1) {
     try {
       const next = decodeURIComponent(decoded)

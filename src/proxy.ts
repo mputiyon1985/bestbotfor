@@ -5,7 +5,7 @@ import { CATALOG_REJECT_MESSAGE, CATALOG_REJECT_PATH, isUnsafeCatalogPath } from
 import { hasDotSegment } from '@/lib/dot-segment'
 import { buildContentSecurityPolicy, securityHeaders } from '@/lib/csp'
 import { getDb, peekCachedTaskSlugs } from '@/lib/db/client'
-import { isClerkConfigured } from '@/lib/flags'
+import { isClerkConfigured, isRatingsPath, userRatingsEnabled } from '@/lib/flags'
 import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from '@/lib/indexing'
 import { clientIp, rateLimitKey } from '@/lib/ip'
 import { consumeLocalRateLimit, persistResultRateLimit } from '@/lib/rate-limit'
@@ -36,6 +36,29 @@ function nextWithNonce(request: NextRequest): NextResponse {
 
 function isMembersPath(pathname: string): boolean {
   return pathname === '/members' || pathname.startsWith('/members/')
+}
+
+const RATINGS_HIDDEN_MESSAGE = 'Not found.'
+
+/**
+ * Ratings routes 404 here while the flag is off, before the members sign-in
+ * redirect. The body is plain text so it is distinct from the app not-found page.
+ */
+function rejectHiddenRatings(request: NextRequest): NextResponse | null {
+  if (!isRatingsPath(request.nextUrl.pathname)) return null
+  if (userRatingsEnabled()) return null
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+  return applySecurity(
+    new NextResponse(RATINGS_HIDDEN_MESSAGE, {
+      status: 404,
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+        'cache-control': 'no-store',
+        'x-robots-tag': 'noindex, nofollow',
+      },
+    }),
+    nonce,
+  )
 }
 
 function rawPaths(request: NextRequest): string[] {
@@ -142,6 +165,8 @@ async function gateResult(request: NextRequest, event: NextFetchEvent): Promise<
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
   const rejected = rejectCatalogPath(request)
   if (rejected) return rejected
+  const hiddenRatings = rejectHiddenRatings(request)
+  if (hiddenRatings) return hiddenRatings
   const gated = await gateResult(request, event)
   if (gated) return gated
   if (!isClerkConfigured()) {

@@ -2,8 +2,8 @@ import { expect, test } from '@playwright/test'
 
 /**
  * Playwright starts with VERCEL_ENV=preview and USER_RATINGS blank, so the
- * ratings flag is off. Spec 9.4: no rating UI, and the review routes 404.
- * /members/reviews is covered by the existing members redirect, not here.
+ * ratings flag is off. The proxy answers these paths with a plain-text 404
+ * before the members sign-in redirect.
  */
 const HIDDEN_ROUTES = [
   '/tools/chatgpt/rate',
@@ -16,6 +16,7 @@ const HIDDEN_ROUTES = [
   '/api/tools/chatgpt/reviews',
   '/review-guidelines',
   '/how-user-ratings-work',
+  '/members/reviews',
 ]
 
 const HIDDEN_COPY = [
@@ -30,9 +31,12 @@ const HIDDEN_COPY = [
 
 test('rating routes 404 while the flag is off', async ({ request }) => {
   for (const path of HIDDEN_ROUTES) {
-    const response = await request.get(path)
+    const response = await request.get(path, { maxRedirects: 0 })
     expect(response.status(), path).toBe(404)
+    expect(response.headers()['content-type'] ?? '', path).toContain('text/plain')
     const body = await response.text()
+    expect(body, path).toBe('Not found.')
+    expect(body, path).not.toContain('That page is not in the catalog.')
     for (const phrase of ['Rate this tool', 'What users say', 'Your rating']) {
       expect(body, `${path} ${phrase}`).not.toContain(phrase)
     }
