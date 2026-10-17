@@ -10,12 +10,15 @@ export const ACTION_LIMITS = {
 
 export type RateLimitOnError = 'open' | 'closed'
 
+/** `unavailable` is a limiter throw or timeout. `limit` is a full window. */
+export type RateLimitDecision = 'allow' | 'limit' | 'unavailable'
+
 /**
  * A slow limiter must not hang the caller. Over-limit still blocks.
  * `onError` is chosen at each call. Write and abuse-sensitive actions
- * (checkout, the billing portal, signup forms) pass `closed` so a limiter
- * error denies the write. Read-only /result and catalog pages stay `open`:
- * a valid quiz must never 503 because the limiter failed.
+ * (checkout, the billing portal, signup forms) pass `closed`, which returns
+ * `unavailable` so the caller can deny the write. Read-only /result and
+ * catalog pages stay `open`: a valid quiz must never 503 because the limiter failed.
  */
 export async function allowRate(
   db: Database,
@@ -23,12 +26,12 @@ export async function allowRate(
   limit: number,
   windowMs: number,
   options: { onError: RateLimitOnError; now?: number },
-): Promise<boolean> {
+): Promise<RateLimitDecision> {
   try {
     const result = await withDeadline(consumeRateLimit(db, key, limit, windowMs, options.now), 800)
-    return result.ok
+    return result.ok ? 'allow' : 'limit'
   } catch (error) {
     console.error('rate limit failed', error instanceof Error ? error.name : 'error')
-    return options.onError === 'closed' ? false : true
+    return options.onError === 'closed' ? 'unavailable' : 'allow'
   }
 }

@@ -98,7 +98,7 @@ describe('subscribeToNewsletter', () => {
       now: 1_000,
     })
     expect(result).toMatchObject({ status: 'error', tracked: false })
-    expect(result.message).toContain('Too many')
+    expect(result.message).toBe('Signup is temporarily unavailable. Try again.')
   })
 
   it('stops after the hourly signup limit', async () => {

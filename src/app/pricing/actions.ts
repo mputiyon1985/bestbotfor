@@ -24,7 +24,7 @@ export async function checkoutAction(): Promise<void> {
     ACTION_LIMITS.checkout.windowMs,
     { onError: 'closed' },
   )
-  if (!allowed) redirect('/pricing?notice=rate')
+  if (allowed !== 'allow') redirect('/pricing?notice=rate')
 
   const customer = await stripeCustomerIdForUser(userId)
   const session = await stripe.checkout.sessions.create({

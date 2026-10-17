@@ -38,7 +38,10 @@ export async function subscribeToNewsletter(input: {
     onError: 'closed',
     now: input.now,
   })
-  if (!allowed) {
+  if (allowed === 'unavailable') {
+    return { status: 'error', message: 'Signup is temporarily unavailable. Try again.', tracked: false }
+  }
+  if (allowed === 'limit') {
     return { status: 'error', message: 'Too many signup attempts. Try again in an hour.', tracked: false }
   }
 
