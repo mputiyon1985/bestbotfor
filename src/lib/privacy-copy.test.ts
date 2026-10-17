@@ -3,7 +3,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { CLICK_HASH_RETENTION_MS, RATE_LIMIT_RETENTION_MS } from './data-retention'
 import { OG_RATE_WINDOW_MS } from './og'
-import { CLICK_LOG_PARAGRAPH, clickLogParagraph, GPC_PRIVACY_PARAGRAPH, rateLimitPrivacyParagraphs, rateLimitRetentionKept, RETENTION_JOB_PARAGRAPH, retentionJobParagraph, SHARING_PARAGRAPH, TURSO_BACKUP_PARAGRAPH, windowPhrase } from './privacy-copy'
+import { CLICK_LOG_PARAGRAPH, clickLogParagraph, GPC_PRIVACY_PARAGRAPH, rateLimitPrivacyParagraphs, rateLimitRetentionKept, RETENTION_JOB_PARAGRAPH, retentionCopyOn, retentionJobParagraph, SHARING_PARAGRAPH, TURSO_BACKUP_PARAGRAPH, windowPhrase } from './privacy-copy'
 import {
   CHECKOUT_RATE_WINDOW_MS,
   GO_RATE_WINDOW_MS,
@@ -90,8 +90,9 @@ describe('privacy policy facts', () => {
     expect(page).toContain('TURSO_BACKUP_PARAGRAPH')
     expect(page).toContain('SHARING_PARAGRAPH')
     expect(TURSO_BACKUP_PARAGRAPH).toBe(
-      "Deleted data may remain in our database provider's backups for a limited period before it is overwritten.",
+      "Deleted data may remain in our database provider's backups for a limited period before the backups expire.",
     )
+    expect(TURSO_BACKUP_PARAGRAPH).not.toContain('overwritten')
     expect(TURSO_BACKUP_PARAGRAPH).not.toMatch(/Lawyer note|Developer|Scaler|\[/)
     expect(page).not.toContain('Lawyer note')
     expect(page).toContain('PRIVACY_UPDATED')
@@ -99,7 +100,9 @@ describe('privacy policy facts', () => {
     expect(dates).toContain("export const PRIVACY_UPDATED = 'October 17, 2026'")
     expect(dates.match(/export const PRIVACY_UPDATED =/g)).toEqual(['export const PRIVACY_UPDATED ='])
     expect(PRIVACY_UPDATED_WITH_RATINGS.startsWith(`${PRIVACY_UPDATED}.`)).toBe(true)
-    expect(dates).not.toContain("'October 17, 2026. Lawyer review of the ratings")
+    expect(PRIVACY_UPDATED_WITH_RATINGS).toContain('recorded on October 17, 2026')
+    expect(PRIVACY_UPDATED_WITH_RATINGS).not.toContain('that day')
+    expect(dates).toContain('recorded on October 17, 2026')
     const clicks = readFileSync(path.join(process.cwd(), 'src/app/go/[slug]/route.ts'), 'utf8')
     expect(clicks).toContain('db.insert(clicks)')
     expect(clicks).not.toContain('delete(clicks)')
@@ -124,9 +127,18 @@ describe('privacy policy facts', () => {
     for (const phrase of offPhrases) expect(off).toContain(phrase)
     for (const phrase of offPhrases) expect(on).not.toContain(phrase)
     expect(on).toContain('The retention job is on in production.')
+    expect(on).toContain('The retention job deletes the row about 24 to 48 hours after the window ends.')
+    expect(on).not.toContain('never requested again')
     expect(on).toContain('longer than 48 hours')
-    expect(CLICK_LOG_PARAGRAPH).toBe(clickLogParagraph(DATA_RETENTION_PRODUCTION_LAUNCH))
-    expect(RETENTION_JOB_PARAGRAPH).toBe(retentionJobParagraph(DATA_RETENTION_PRODUCTION_LAUNCH))
+    const armed = { launch: true, purge: 'on', dryRun: 'off' }
+    expect(retentionCopyOn(armed)).toBe(true)
+    expect(clickLogParagraph(armed)).toBe(clickLogParagraph(true))
+    expect(retentionCopyOn({ launch: true, purge: 'on', dryRun: 'on' })).toBe(false)
+    expect(retentionCopyOn({ launch: true, purge: 'off', dryRun: 'off' })).toBe(false)
+    expect(retentionCopyOn({ launch: false, purge: 'on', dryRun: 'off' })).toBe(false)
+    expect(clickLogParagraph({ launch: true, purge: 'on', dryRun: '' })).toContain('job is off')
+    expect(CLICK_LOG_PARAGRAPH).toBe(clickLogParagraph())
+    expect(RETENTION_JOB_PARAGRAPH).toBe(retentionJobParagraph())
     expect(RETENTION_ROWS.find((row) => row.data === 'Rate-limit rows')?.kept).toBe(rateLimitRetentionKept())
     expect(PRIVACY_UPDATED).toBe('October 17, 2026')
 

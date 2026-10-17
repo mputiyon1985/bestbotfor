@@ -11,7 +11,7 @@ export const LAWYER_REVIEW_NOTICE =
 export const PRIVACY_UPDATED = 'October 17, 2026'
 
 export const PRIVACY_UPDATED_WITH_RATINGS =
-  `${PRIVACY_UPDATED}. Lawyer review of the ratings and reviews section was recorded that day. The section is not in effect until user ratings launch.`
+  `${PRIVACY_UPDATED}. Lawyer review of the ratings and reviews section was recorded on October 17, 2026. The section is not in effect until user ratings launch.`
 
 export const TERMS_UPDATED = 'October 15, 2026'
 
