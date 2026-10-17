@@ -157,7 +157,10 @@ export const rateLimits = sqliteTable('rate_limits', {
  * One rating per user per tool. latest_version_id and published_version_id
  * reference review_versions. That cycle is DEFERRABLE in the SQL migration.
  * Drizzle builds references immediately, so those two columns stay plain
- * integers here. ip_hmac is a keyed HMAC, never a raw IP. No email is stored.
+ * integers here. ip_hmac is a keyed HMAC of the submit IP, never a raw IP.
+ * network_range_hmac is a keyed HMAC of the IPv4 /24 or IPv6 /48 range,
+ * using the same secret. hmac_key_version records which key produced them.
+ * No email is stored.
  */
 export const reviews = sqliteTable(
   'reviews',
@@ -174,6 +177,8 @@ export const reviews = sqliteTable(
     countsTowardScore: integer('counts_toward_score').notNull().default(1),
     displayName: text('display_name').notNull(),
     ipHmac: text('ip_hmac'),
+    networkRangeHmac: text('network_range_hmac'),
+    hmacKeyVersion: integer('hmac_key_version'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
     publishedAt: integer('published_at'),
@@ -183,6 +188,7 @@ export const reviews = sqliteTable(
     index('reviews_tool_status_published_idx').on(table.toolId, table.status, desc(table.publishedAt)),
     index('reviews_status_created_idx').on(table.status, table.createdAt),
     index('reviews_ip_created_idx').on(table.ipHmac, table.createdAt),
+    index('reviews_network_range_created_idx').on(table.networkRangeHmac, table.createdAt),
     check(
       'reviews_status_check',
       sql`${table.status} in ('pending', 'held', 'published', 'rejected', 'removed', 'withdrawn')`,

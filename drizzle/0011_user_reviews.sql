@@ -7,7 +7,10 @@
 -- those foreign keys are DEFERRABLE. Insert both rows in one transaction.
 -- tool_sponsor_links.sponsorship_id has no REFERENCES: sponsorships arrives
 -- in PR #10, and a foreign key to a missing table rejects every insert.
--- ip_hmac is a keyed HMAC, never a raw IP. No email column.
+-- ip_hmac is a keyed HMAC of the submit IP, never a raw IP.
+-- network_range_hmac is a keyed HMAC of that address's network range
+-- (IPv4 /24, IPv6 /48), using the same secret. hmac_key_version records
+-- which key produced those hashes. No email column.
 
 CREATE TABLE IF NOT EXISTS reviews (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -20,6 +23,8 @@ CREATE TABLE IF NOT EXISTS reviews (
   counts_toward_score INTEGER NOT NULL DEFAULT 1 CHECK (counts_toward_score IN (0, 1)),
   display_name TEXT NOT NULL CHECK (length(display_name) BETWEEN 1 AND 60),
   ip_hmac TEXT,
+  network_range_hmac TEXT,
+  hmac_key_version INTEGER,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   published_at INTEGER
@@ -29,6 +34,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS reviews_user_tool_unique ON reviews (clerk_use
 CREATE INDEX IF NOT EXISTS reviews_tool_status_published_idx ON reviews (tool_id, status, published_at DESC);
 CREATE INDEX IF NOT EXISTS reviews_status_created_idx ON reviews (status, created_at);
 CREATE INDEX IF NOT EXISTS reviews_ip_created_idx ON reviews (ip_hmac, created_at);
+CREATE INDEX IF NOT EXISTS reviews_network_range_created_idx ON reviews (network_range_hmac, created_at);
 
 CREATE TABLE IF NOT EXISTS review_versions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
