@@ -1,4 +1,5 @@
-import { createHash } from 'node:crypto'
+import 'server-only'
+import { createHash, createHmac, randomBytes } from 'node:crypto'
 
 function isIp(value: string): boolean {
   if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(value)) return true
@@ -28,9 +29,58 @@ export function hashIp(ip: string | null): string | null {
   return createHash('sha256').update(`${salt}|${ip}`).digest('hex')
 }
 
-/** Rate-limit bucket key. This is not the click-log hash and is not reversible to a person by itself. */
+/**
+ * Server-only secrets already present on the host. Used only when
+ * RATE_LIMIT_HMAC_SECRET is unset. Never a NEXT_PUBLIC_ value.
+ */
+const RATE_LIMIT_FALLBACK_SECRETS = [
+  'CLERK_SECRET_KEY',
+  'STRIPE_WEBHOOK_SECRET',
+  'STRIPE_SECRET_KEY',
+  'TURSO_AUTH_TOKEN',
+  'IP_HASH_SALT',
+  'BEEHIIV_API_KEY',
+] as const
+
+let rateLimitWarning: string | null = null
+let ephemeralRateLimitSecret: string | null = null
+
+function warnRateLimitSecret(message: string): void {
+  if (rateLimitWarning === message) return
+  rateLimitWarning = message
+  console.warn(message)
+}
+
+function serverSecret(name: string): string {
+  return process.env[name]?.trim() ?? ''
+}
+
+/**
+ * Dedicated HMAC secret, else another server secret, else one process-local key.
+ * Missing configuration logs a warning and never throws. The value is not logged.
+ * A new key starts new windows; counters already in flight are left behind.
+ */
+function rateLimitHmacSecret(): string {
+  const dedicated = serverSecret('RATE_LIMIT_HMAC_SECRET')
+  if (dedicated) return dedicated
+  for (const name of RATE_LIMIT_FALLBACK_SECRETS) {
+    const value = serverSecret(name)
+    if (!value) continue
+    warnRateLimitSecret(`RATE_LIMIT_HMAC_SECRET is unset; deriving the rate-limit HMAC key from ${name}`)
+    return value
+  }
+  if (!ephemeralRateLimitSecret) ephemeralRateLimitSecret = randomBytes(32).toString('hex')
+  warnRateLimitSecret(
+    'RATE_LIMIT_HMAC_SECRET is unset and no server secret is available; using a process-local rate-limit key',
+  )
+  return ephemeralRateLimitSecret
+}
+
+/** Rate-limit bucket key. HMAC-SHA256, not a plain hash, so the address cannot be brute-forced offline. */
 export function rateLimitKey(ip: string | null, action: string): string {
-  return createHash('sha256').update(`bestbotfor-rate|${action}|${ip ?? 'unknown'}`).digest('hex')
+  return createHmac('sha256', rateLimitHmacSecret())
+    .update(`bestbotfor-rate|${action}|${ip ?? 'unknown'}`)
+    .digest('hex')
 }
 
 export function countryCode(headerStore: Headers): string | null {

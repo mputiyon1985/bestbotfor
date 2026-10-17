@@ -31,6 +31,7 @@ npm run dev
 | `TURSO_AUTH_TOKEN` | Single Turso token. Unused for `file:` databases |
 | `NEXT_PUBLIC_SITE_URL` | Canonical origin. Defaults to `https://bestbotfor.com` |
 | `IP_HASH_SALT` | Optional salt for click-log hashes. Unset means no IP is stored |
+| `RATE_LIMIT_HMAC_SECRET` | HMAC key for rate-limit bucket ids. When unset, another server secret is used and a warning is logged. Changing it starts new windows |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | Clerk. Both must be set or accounts stay off |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID` | Stripe test mode. All three are required before billing turns on |
 | `BEEHIIV_API_KEY`, `BEEHIIV_PUBLICATION_ID` | Optional. Unset stores newsletter emails locally |
