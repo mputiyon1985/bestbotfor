@@ -6,6 +6,12 @@ const LIVE_PUBLISHABLE = ['pk_', 'live_'].join('')
  */
 const CLERK_KEY_FORMAT_EXAMPLE = ['pk_', 'test_', '... or ', 'pk_', 'live_', '...'].join('')
 
+/** Clerk stores the live prefix as a string and checks it with startsWith. Not a key. */
+const CLERK_LIVE_PREFIX_LITERALS = [
+  ['startsWith("', 'pk_', 'live_', '")'].join(''),
+  ['="', 'pk_', 'live_', '"'].join(''),
+]
+
 export const CLIENT_BUNDLE_FORBIDDEN = [
   'libsql://',
   'TURSO_AUTH_TOKEN',
@@ -22,7 +28,9 @@ export const CLIENT_BUNDLE_FORBIDDEN = [
 ] as const
 
 export function scrubClientBundleText(text: string): string {
-  return text.split(CLERK_KEY_FORMAT_EXAMPLE).join('')
+  let scrubbed = text.split(CLERK_KEY_FORMAT_EXAMPLE).join('')
+  for (const literal of CLERK_LIVE_PREFIX_LITERALS) scrubbed = scrubbed.split(literal).join('')
+  return scrubbed
 }
 
 export function clientBundleHits(text: string, needles: readonly string[]): string[] {
