@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { SPONSOR_INTEGRATION_IDENTIFIER } from '../src/lib/sponsor-offerings'
+import { SPONSOR_INTEGRATION_IDENTIFIER, SPONSOR_REVIEW_NOTICE } from '../src/lib/sponsor-offerings'
 
 test('sponsor page creates a hosted checkout session from the server price', async ({ page }) => {
   await page.route('https://checkout.stripe.com/**', async (route) => {
@@ -25,11 +25,7 @@ test('sponsor page creates a hosted checkout session from the server price', asy
   )
   await expect(page.getByRole('radio', { name: /One-time payment, no auto-renewal/ })).toHaveCount(3)
   await expect(page.getByText('Your company name is published with a Sponsored label.')).toBeVisible()
-  await expect(
-    page.getByText(
-      'Your tool card is reviewed before it goes live. Rejected orders are refunded from the Stripe dashboard. An approved card is published with a Sponsored label.',
-    ),
-  ).toBeVisible()
+  await expect(page.getByText(SPONSOR_REVIEW_NOTICE)).toBeVisible()
 
   await page.getByRole('radio', { name: /one month/ }).check()
   await page.getByLabel('Work email').fill('sponsor@example.com')
