@@ -4,8 +4,10 @@
  * 404 here. This listener is only our server. It does not patch `URL` or
  * `http.Server`, so Clerk, Stripe, and libsql keep the platform parsers.
  *
- * Vercel does not run this file. The `vercel.json` route returns 404 there,
- * because the platform normalizes the path before the app starts.
+ * Vercel does not run this file. The `vercel.json` routes return 404 or 400
+ * there, because the platform normalizes the path before the app starts.
+ * A truncated percent-escape is answered here as well: Next decodes `/:path*`
+ * header params before the proxy runs, and that throw becomes a 500.
  * `npm start` sets NODE_ENV=production before this file loads.
  */
 import { createServer } from 'node:http'
@@ -13,6 +15,7 @@ import next from 'next'
 import { CATALOG_REJECT_MESSAGE } from '../src/lib/catalog-path'
 import { configureFileDatabase, getDb } from '../src/lib/db/client'
 import { hasDotSegment } from '../src/lib/dot-segment'
+import { hasMalformedPercentEncoding, MALFORMED_PERCENT_MESSAGE } from '../src/lib/percent-encoding'
 
 const port = Number(process.env.PORT || 3000)
 const hostname = process.env.HOSTNAME || '0.0.0.0'
@@ -31,6 +34,14 @@ async function main(): Promise<void> {
       res.setHeader('cache-control', 'no-store')
       res.setHeader('x-robots-tag', 'noindex, nofollow')
       res.end(CATALOG_REJECT_MESSAGE)
+      return
+    }
+    if (hasMalformedPercentEncoding(req.url ?? '')) {
+      res.statusCode = 400
+      res.setHeader('content-type', 'text/plain; charset=utf-8')
+      res.setHeader('cache-control', 'no-store')
+      res.setHeader('x-robots-tag', 'noindex, nofollow')
+      res.end(MALFORMED_PERCENT_MESSAGE)
       return
     }
     handle(req, res).catch((error: unknown) => {

@@ -9,6 +9,7 @@ import { isAdminPath } from '@/lib/admin-path'
 import { isClerkConfigured, isRatingsPath, userRatingsEnabled } from '@/lib/flags'
 import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from '@/lib/indexing'
 import { clientIp, rateLimitKey } from '@/lib/ip'
+import { hasMalformedPercentEncoding, MALFORMED_PERCENT_MESSAGE } from '@/lib/percent-encoding'
 import { consumeResultRateLimit, scheduleResultWindowPurge } from '@/lib/rate-limit'
 import { acceptResultFault, faultedResultWork } from '@/lib/result-fault'
 import { decideResultGate } from '@/lib/result-gate'
@@ -48,6 +49,29 @@ function isMembersPath(pathname: string): boolean {
 }
 
 const RATINGS_HIDDEN_MESSAGE = 'Not found.'
+
+/**
+ * Next decodes `/:path*` header params before this function runs. A truncated
+ * escape throws there and the failed 400 render becomes a 500. Reject the raw
+ * path here when the proxy does run. `scripts/serve.ts` and the `vercel.json`
+ * route see the path before that decode.
+ */
+function rejectMalformedEncoding(request: NextRequest): NextResponse | null {
+  const paths = [request.nextUrl.pathname, ...rawPaths(request)]
+  if (!paths.some((value) => hasMalformedPercentEncoding(value))) return null
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+  return applySecurity(
+    new NextResponse(MALFORMED_PERCENT_MESSAGE, {
+      status: 400,
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+        'cache-control': 'no-store',
+        'x-robots-tag': 'noindex, nofollow',
+      },
+    }),
+    nonce,
+  )
+}
 
 /**
  * Ratings routes 404 here while the flag is off, before the catalog reject and
@@ -180,6 +204,8 @@ async function gateResult(request: NextRequest, event: NextFetchEvent): Promise<
 }
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  const malformed = rejectMalformedEncoding(request)
+  if (malformed) return malformed
   const hiddenRatings = rejectHiddenRatings(request)
   if (hiddenRatings) return hiddenRatings
   const rejected = rejectCatalogPath(request)
