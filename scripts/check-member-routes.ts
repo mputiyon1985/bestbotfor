@@ -1,6 +1,19 @@
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 
+const ADMIN_GUARDS = ['requireAdmin(', 'requireAdminStepUp(', 'assertAdminArea(', 'requireMfaSetupPage(']
+
+/** Files under src/app/admin that do not call an admin guard. */
+export function adminGuardGaps(files: { path: string; text: string }[]): string[] {
+  const gaps: string[] = []
+  for (const file of files) {
+    if (!file.path.endsWith('.ts') && !file.path.endsWith('.tsx')) continue
+    if (ADMIN_GUARDS.some((guard) => file.text.includes(guard))) continue
+    gaps.push(`${file.path} must call requireAdmin(), requireAdminStepUp(), assertAdminArea(), or requireMfaSetupPage().`)
+  }
+  return gaps
+}
+
 const failures: string[] = []
 
 function fail(message: string): void {
@@ -40,6 +53,16 @@ async function main(): Promise<void> {
     }
   }
 
+  if (!proxy.includes('isAdminPath(')) fail('src/proxy.ts must match /admin routes')
+
+  const adminDir = path.join(process.cwd(), 'src/app/admin')
+  const adminFiles: { path: string; text: string }[] = []
+  for (const full of await walk(adminDir)) {
+    const relative = path.relative(process.cwd(), full)
+    adminFiles.push({ path: relative, text: await readFile(full, 'utf8') })
+  }
+  for (const gap of adminGuardGaps(adminFiles)) fail(gap)
+
   const actions = ['src/app/members/actions.ts', 'src/app/pricing/actions.ts', 'src/app/result/actions.ts']
   for (const relative of actions) {
     const text = await read(relative)
@@ -56,7 +79,7 @@ async function main(): Promise<void> {
     for (const failure of failures) console.error(failure)
     process.exit(1)
   }
-  console.log('Member routes call auth.protect() or memberAccess().')
+  console.log('Member routes call auth.protect() or memberAccess(). Admin files call an admin guard.')
 }
 
 main().catch((error: unknown) => {
