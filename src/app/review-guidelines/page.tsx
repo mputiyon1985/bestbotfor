@@ -13,7 +13,7 @@ export async function generateMetadata(): Promise<Metadata> {
   if (!userRatingsEnabled()) notFound()
   return policyPageMetadata({
     title: 'Review guidelines',
-    description: 'Draft rules for user ratings on BestBotFor. Pending lawyer review.',
+    description: 'Rules for user ratings on BestBotFor. Lawyer review was recorded on October 17, 2026. User ratings are not launched.',
     path: '/review-guidelines',
   })
 }
