@@ -492,6 +492,7 @@ export const toolSeeds: ToolSeed[] = [
       commissionNote: '35% for 12 months, as stated in Make’s affiliate program help page.',
     },
   }),
+  // pricing verified 2026-10-17 at https://n8n.io/pricing/ | free is self-hosted Community Edition only | cloud from €20/mo yearly
   tool({
     slug: 'n8n',
     name: 'n8n',
@@ -500,13 +501,14 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['n8n.io'],
     category: 'Automation',
     shortDesc: 'An automation tool you can self-host, with room for custom code.',
-    longDesc: 'n8n is for people who want the workflow in their own stack. You can add code when a connector falls short. That power is the reason it is a poor first tool for a complete beginner.',
+    longDesc:
+      'n8n is for people who want the workflow in their own stack. You can add code when a connector falls short. That power is the reason it is a poor first tool for a complete beginner. The free option is the self-hosted Community Edition. There is no free cloud plan. Cloud plans start at €20 a month billed yearly.',
     pricingModel: 'freemium',
     priceFromUsd: null,
     hasFreeTier: true,
     skillLevel: 'pro',
     platforms: ['Web', 'Self-hosted'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: '2026-10-17',
     fits: [
       { task: 'automation', score: 90, notes: 'Self-hosting and custom code when the happy path is not enough.' },
       { task: 'agents', score: 74, notes: 'You can build agent-like flows, with more assembly than a dedicated agent builder.' },
@@ -609,6 +611,7 @@ export const toolSeeds: ToolSeed[] = [
       commissionNote: '20% for up to 24 months, as stated in Murf’s help center.',
     },
   }),
+  // pricing verified 2026-10-17 at https://www.synthesia.io/pricing | free Basic plan, 10 min/mo, watermark
   tool({
     slug: 'synthesia',
     name: 'Synthesia',
@@ -617,13 +620,14 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['www.synthesia.io'],
     category: 'AI video',
     shortDesc: 'Turns a script into a presenter-style video.',
-    longDesc: 'Synthesia is for training and explainer videos where a presenter reads a script. You do not film anyone. It is a poor fit for cinematic shots or podcast editing.',
-    pricingModel: 'paid',
+    longDesc:
+      'Synthesia is for training and explainer videos where a presenter reads a script. You do not film anyone. It is a poor fit for cinematic shots or podcast editing. The free Basic plan includes 10 minutes of video a month and a watermark.',
+    pricingModel: 'freemium',
     priceFromUsd: null,
-    hasFreeTier: false,
+    hasFreeTier: true,
     skillLevel: 'beginner',
     platforms: ['Web'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: '2026-10-17',
     fits: [
       { task: 'video', score: 90, notes: 'Script to a talking-head video, which is the product.' },
     ],
@@ -2321,7 +2325,7 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
-  // pricing verified 2026-10-15 at https://deepgram.com/pricing | budget fit: low | best for: speech-to-text, api
+  // pricing verified 2026-10-17 at https://deepgram.com/pricing | Nova-3 $0.0043/min pre-recorded, $0.0048/min streaming (promo)
   tool({
     slug: 'deepgram',
     name: 'Deepgram',
@@ -2330,13 +2334,14 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['deepgram.com'],
     category: 'Voice',
     shortDesc: 'Speech-to-text and voice AI APIs for developers.',
-    longDesc: 'Fast, affordable transcription in your product. Pay as you go after a $200 free credit.',
+    longDesc:
+      'Fast transcription API for developers. Nova-3 is $0.0043 a minute pre-recorded and $0.0048 a minute streaming (promotional), after a $200 free credit.',
     pricingModel: 'paid',
     priceFromUsd: null,
     hasFreeTier: false,
     skillLevel: 'pro',
     platforms: ['API'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: '2026-10-17',
     fits: [
       { task: 'voice', score: 72, notes: 'Fast, affordable transcription in your product.' },
       { task: 'meetings', score: 45, notes: 'The API can transcribe a recording. It does not join the call.' },
@@ -3369,4 +3374,8 @@ export const comparePairSeeds: ReadonlyArray<readonly [string, string]> = [
   ['framer', 'webflow'],
   ['jasper', 'writesonic'],
   ['descript', 'runway'],
+  ['granola', 'fathom'],
+  ['fathom', 'fireflies'],
+  ['lovable', 'v0'],
+  ['assemblyai', 'deepgram'],
 ]
