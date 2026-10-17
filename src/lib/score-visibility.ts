@@ -87,7 +87,7 @@ function stripScores(value: unknown, showScores: boolean): unknown {
   return out
 }
 
-function formatScore(value: number): string {
+export function formatScore(value: number): string {
   const tenths = Math.round(value * 10)
   return tenths % 10 === 0 ? String(tenths / 10) : (tenths / 10).toFixed(1)
 }
