@@ -62,9 +62,16 @@ describe('admin access', () => {
     expect(adminGuardGaps([{ path: 'src/app/admin/page.tsx', text: 'await requireAdmin()' }])).toEqual([])
   })
 
-  it('treats only /admin as an admin path', () => {
+  it('treats only /admin as an admin path, after decode and lowercase', () => {
     expect(isAdminPath('/admin')).toBe(true)
     expect(isAdminPath('/admin/mfa-required')).toBe(true)
+    expect(isAdminPath('/Admin')).toBe(true)
+    expect(isAdminPath('/ADMIN/mfa-required')).toBe(true)
+    expect(isAdminPath('/ADMIN/')).toBe(true)
+    expect(isAdminPath('/%41dmin')).toBe(true)
+    expect(isAdminPath('/admin/%6Dfa-required')).toBe(true)
+    expect(() => isAdminPath('/%')).not.toThrow()
+    expect(isAdminPath('/%')).toBe(false)
     expect(isAdminPath('/administrator')).toBe(false)
     expect(isAdminPath('/tools/chatgpt')).toBe(false)
   })

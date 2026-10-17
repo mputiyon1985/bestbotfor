@@ -1,5 +1,6 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
+import { isAdminPath } from '../src/lib/admin-path'
 import { ATTESTATION, DISCLOSURE_ADVERTISER_PARAGRAPH, LAWYER_REVIEW_NOTICE, TRANSPARENCY_PLACEHOLDER } from '../src/lib/ratings-policy-copy'
 
 /**
@@ -50,10 +51,10 @@ test('member reviews fall through the ratings gate while the flag is on', async 
 })
 
 test('admin responses stay uncached and out of search while the flag is on', async ({ request }) => {
-  for (const path of ['/admin', '/admin/mfa-required', '/sitemap.xml', '/llms.txt', '/llms-full.txt', '/robots.txt']) {
+  for (const path of ['/admin', '/Admin', '/ADMIN/mfa-required', '/%41dmin', '/sitemap.xml', '/llms.txt', '/llms-full.txt', '/robots.txt']) {
     const response = await request.get(path)
     const body = await response.text()
-    if (path.startsWith('/admin')) {
+    if (isAdminPath(path)) {
       expect(response.status(), path).toBe(404)
       expect(response.headers()['cache-control'] ?? '', path).toContain('no-store')
       expect(response.headers()['x-robots-tag'] ?? '', path).toContain('noindex')
