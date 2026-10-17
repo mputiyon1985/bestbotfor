@@ -29,6 +29,8 @@ export type RetentionReport = {
   wrote: boolean
   rateLimitsEligible: number
   rateLimitsDeleted: number
+  resultWindowsEligible: number
+  resultWindowsDeleted: number
   clickHashesEligible: number
   clickHashesCleared: number
   truncated: boolean
@@ -64,6 +66,11 @@ export function rateLimitCutoff(now: number): number {
   return now - RATE_LIMIT_RETENTION_MS
 }
 
+/** Quiz /result rows in result_rate_windows use the same 24-hour wait after expires_at. */
+export function resultWindowCutoff(now: number): number {
+  return now - RATE_LIMIT_RETENTION_MS
+}
+
 export function clickHashCutoff(now: number): number {
   return now - CLICK_HASH_RETENTION_MS
 }
@@ -92,6 +99,8 @@ export function emptyRetentionReport(enabled: boolean): RetentionReport {
     wrote: false,
     rateLimitsEligible: 0,
     rateLimitsDeleted: 0,
+    resultWindowsEligible: 0,
+    resultWindowsDeleted: 0,
     clickHashesEligible: 0,
     clickHashesCleared: 0,
     truncated: false,

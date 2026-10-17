@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -13,20 +14,29 @@ import {
   dataRetentionEnabled,
   decideRetentionRequest,
   rateLimitCutoff,
+  resultWindowCutoff,
   retentionLogLine,
   type RetentionReport,
 } from './data-retention'
+import { consumeRateLimit, consumeResultRateLimit, resetLocalRateLimits } from './rate-limit'
 import { handleRetentionCron, runDataRetention } from '@/app/api/cron/data-retention/route'
 
 const now = Date.parse('2026-10-17T20:00:00Z')
 const day = 24 * 60 * 60 * 1000
+const windowMs = 60_000
+const sharedBudgetMs = 2_000
+const cutoff = now - day
 const secret = 'cron-secret-for-tests-only'
-const quizKey = 'a'.repeat(64)
-const oldKey = 'b'.repeat(64)
-const activeKey = 'c'.repeat(64)
-const recentKey = 'd'.repeat(64)
+const quizExpired = 'quiz-expired-a'
+const quizExpiredOther = 'quiz-expired-b'
+const quizBoundary = 'quiz-boundary'
+const quizOpen = 'quiz-open'
+const oldKey = 'rate-old-key'
+const boundaryKey = 'rate-boundary-key'
+const activeKey = 'rate-active-key'
 const oldHash = 'e'.repeat(64)
 const youngHash = 'f'.repeat(64)
+const quizWriteNow = cutoff - 2 * windowMs
 
 function request(authorization: string | null): Request {
   const headers = new Headers()
@@ -89,25 +99,41 @@ describe('data retention decisions', () => {
 
   it('counts a window that ended more than 24 hours ago, and a click older than 90 days', () => {
     expect(rateLimitCutoff(now)).toBe(now - RATE_LIMIT_RETENTION_MS)
+    expect(resultWindowCutoff(now)).toBe(now - RATE_LIMIT_RETENTION_MS)
     expect(clickHashCutoff(now)).toBe(now - CLICK_HASH_RETENTION_MS)
     expect(now - day).not.toBeLessThan(rateLimitCutoff(now))
     expect(now - day - 1).toBeLessThan(rateLimitCutoff(now))
+    expect(cutoff - windowMs).toBeLessThan(resultWindowCutoff(now))
+    expect(cutoff).not.toBeLessThan(resultWindowCutoff(now))
   })
 })
 
 describe('data retention job', () => {
   afterEach(() => {
     vi.restoreAllMocks()
+    resetLocalRateLimits()
   })
+
+  async function writeQuiz(db: Awaited<ReturnType<typeof createTestDatabase>>['db'], key: string, writeNow: number) {
+    resetLocalRateLimits()
+    const decision = await consumeResultRateLimit(db, key, 5, windowMs, writeNow, sharedBudgetMs)
+    expect(decision.ok).toBe(true)
+    const start = Math.floor(writeNow / windowMs) * windowMs
+    expect(decision.resetAt).toBe(start + windowMs)
+  }
 
   async function seed() {
     const { db, close } = await createTestDatabase()
-    await db.insert(rateLimits).values([
-      { key: quizKey, count: 3, resetAt: now - day - 1 },
-      { key: oldKey, count: 1, resetAt: now - 2 * day },
-      { key: activeKey, count: 2, resetAt: now + day },
-      { key: recentKey, count: 4, resetAt: now - day },
-    ])
+    await writeQuiz(db, quizExpired, quizWriteNow)
+    await writeQuiz(db, quizExpiredOther, quizWriteNow)
+    await writeQuiz(db, quizBoundary, cutoff - windowMs)
+    await writeQuiz(db, quizOpen, now)
+    const old = await consumeRateLimit(db, oldKey, 5, windowMs, cutoff - windowMs - 1)
+    const boundary = await consumeRateLimit(db, boundaryKey, 5, windowMs, cutoff - windowMs)
+    const active = await consumeRateLimit(db, activeKey, 5, windowMs, now)
+    expect(old.resetAt).toBe(cutoff - 1)
+    expect(boundary.resetAt).toBe(cutoff)
+    expect(active.resetAt).toBe(now + windowMs)
     await db.insert(clicks).values([
       { toolId: 1, page: '/tools/chatgpt', ts: now - CLICK_HASH_RETENTION_MS - 1, country: 'US', ipHash: oldHash },
       { toolId: 1, page: '/tools/claude', ts: now - day, country: 'US', ipHash: youngHash },
@@ -116,36 +142,58 @@ describe('data retention job', () => {
     return { db, close }
   }
 
-  it('dry-run counts quiz rows and old keys, and writes nothing', async () => {
+  async function countResultWindows(db: Awaited<ReturnType<typeof createTestDatabase>>['db']): Promise<number> {
+    const result = await db.$client.execute('SELECT COUNT(*) AS n FROM result_rate_windows')
+    return Number(result.rows[0]?.n ?? 0)
+  }
+
+  async function resultWindowExpiries(db: Awaited<ReturnType<typeof createTestDatabase>>['db']): Promise<number[]> {
+    const result = await db.$client.execute('SELECT expires_at FROM result_rate_windows')
+    return result.rows.map((row) => Number(row.expires_at)).sort((left, right) => left - right)
+  }
+
+  function expiredBucket(): string {
+    const start = Math.floor(quizWriteNow / windowMs) * windowMs
+    return createHash('sha256').update(`bestbotfor-result-window|${quizExpired}|${start}`).digest('hex')
+  }
+
+  it('dry-run counts quiz windows and old keys, and writes nothing', async () => {
     const { db, close } = await seed()
     try {
       const report = await runDataRetention(db, { dryRun: true, now })
-      expect(report.rateLimitsEligible).toBe(2)
+      expect(report.rateLimitsEligible).toBe(1)
+      expect(report.resultWindowsEligible).toBe(2)
       expect(report.clickHashesEligible).toBe(1)
       expect(report.rateLimitsDeleted).toBe(0)
+      expect(report.resultWindowsDeleted).toBe(0)
       expect(report.clickHashesCleared).toBe(0)
       expect(report.wrote).toBe(false)
-      const limits = await db.select().from(rateLimits)
-      expect(limits).toHaveLength(4)
+      expect(await db.select().from(rateLimits)).toHaveLength(3)
+      expect(await countResultWindows(db)).toBe(4)
       const logged = await db.select().from(clicks)
       expect(logged.find((row) => row.page === '/tools/chatgpt')?.ipHash).toBe(oldHash)
-      expect(retentionLogLine(report)).not.toContain(quizKey)
-      expect(retentionLogLine(report)).not.toContain(oldHash)
+      const line = retentionLogLine(report)
+      expect(line).not.toContain(quizExpired)
+      expect(line).not.toContain(oldKey)
+      expect(line).not.toContain(oldHash)
+      expect(line).not.toContain(expiredBucket())
     } finally {
       await close()
     }
   })
 
-  it('deletes expired windows, clears old click hashes, and leaves the click rows', async () => {
+  it('deletes expired quiz windows and old keys, clears old click hashes, and leaves the click rows', async () => {
     const { db, close } = await seed()
     try {
       const report = await runDataRetention(db, { dryRun: false, now, batchSize: 1, maxBatches: 10 })
-      expect(report.rateLimitsDeleted).toBe(2)
+      expect(report.rateLimitsDeleted).toBe(1)
+      expect(report.resultWindowsDeleted).toBe(2)
       expect(report.clickHashesCleared).toBe(1)
       expect(report.wrote).toBe(true)
       expect(report.truncated).toBe(false)
-      const limits = await db.select().from(rateLimits)
-      expect(limits.map((row) => row.key).sort()).toEqual([activeKey, recentKey].sort())
+      const limits = await db.select({ resetAt: rateLimits.resetAt }).from(rateLimits)
+      expect(limits.map((row) => row.resetAt).sort()).toEqual([cutoff, now + windowMs].sort())
+      expect(await resultWindowExpiries(db)).toEqual([cutoff, now + windowMs].sort((left, right) => left - right))
       const logged = await db.select().from(clicks)
       expect(logged).toHaveLength(3)
       const aged = logged.find((row) => row.page === '/tools/chatgpt')
@@ -154,6 +202,7 @@ describe('data retention job', () => {
       expect(logged.find((row) => row.page === '/tools/claude')?.ipHash).toBe(youngHash)
       const again = await runDataRetention(db, { dryRun: false, now })
       expect(again.rateLimitsDeleted).toBe(0)
+      expect(again.resultWindowsDeleted).toBe(0)
       expect(again.clickHashesCleared).toBe(0)
       expect(again.wrote).toBe(false)
     } finally {
@@ -165,10 +214,10 @@ describe('data retention job', () => {
     const { db, close } = await seed()
     try {
       const partial = await runDataRetention(db, { dryRun: false, now, batchSize: 1, maxBatches: 1 })
-      expect(partial.rateLimitsDeleted).toBe(1)
+      expect(partial.resultWindowsDeleted).toBe(1)
       expect(partial.truncated).toBe(true)
       const rest = await runDataRetention(db, { dryRun: false, now, batchSize: 1, maxBatches: 10 })
-      expect(rest.rateLimitsDeleted + rest.clickHashesCleared).toBeGreaterThan(0)
+      expect(rest.resultWindowsDeleted).toBe(1)
       expect(rest.truncated).toBe(false)
     } finally {
       await close()
@@ -208,10 +257,12 @@ describe('data retention job', () => {
       expect(opened).toBe(0)
       const logged = log.mock.calls.map((call) => String(call[0])).join('\n')
       expect(logged).not.toContain(oldHash)
-      expect(logged).not.toContain(quizKey)
+      expect(logged).not.toContain(quizExpired)
+      expect(logged).not.toContain(expiredBucket())
       expect(error.mock.calls.join('\n')).not.toContain('Bearer')
       const limits = await db.select().from(rateLimits)
-      expect(limits).toHaveLength(4)
+      expect(limits).toHaveLength(3)
+      expect(await countResultWindows(db)).toBe(4)
     } finally {
       await close()
     }
@@ -231,13 +282,18 @@ describe('data retention job', () => {
       const body = (await response.json()) as RetentionReport
       expect(body.dryRun).toBe(true)
       expect(body.wrote).toBe(false)
-      expect(body.rateLimitsEligible).toBe(2)
+      expect(body.rateLimitsEligible).toBe(1)
+      expect(body.resultWindowsEligible).toBe(2)
+      expect(body.resultWindowsDeleted).toBe(0)
       expect(body.clickHashesEligible).toBe(1)
       expect(response.headers.get('cache-control')).toBe('no-store')
       const line = String(log.mock.calls[0]?.[0])
       expect(line).toContain('"event":"data_retention"')
       expect(line).not.toContain(oldHash)
       expect(line).not.toContain(oldKey)
+      expect(line).not.toContain(quizExpired)
+      expect(line).not.toContain(expiredBucket())
+      expect(await countResultWindows(db)).toBe(4)
       const logged = await db.select().from(clicks)
       expect(logged.find((row) => row.page === '/tools/chatgpt')?.ipHash).toBe(oldHash)
     } finally {

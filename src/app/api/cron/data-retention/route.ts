@@ -7,6 +7,7 @@ import {
   clickHashCutoff,
   decideRetentionRequest,
   rateLimitCutoff,
+  resultWindowCutoff,
   retentionLogLine,
   type RetentionEnv,
   type RetentionReport,
@@ -33,8 +34,8 @@ async function countRows(client: Client, sql: string, cutoff: number): Promise<n
 }
 
 /**
- * Deletes by window end only. Quiz /result rows and rows left under a previous
- * HMAC key live in this same table, so they are included. The key is never selected.
+ * Deletes by window end only. Rows left under a previous HMAC key are included.
+ * Quiz /result rows are not in this table. The key is never selected.
  */
 async function deleteExpiredRateLimits(
   client: Client,
@@ -47,6 +48,31 @@ async function deleteExpiredRateLimits(
     const result = await client.execute({
       sql: `DELETE FROM rate_limits WHERE "key" IN (
         SELECT "key" FROM rate_limits WHERE reset_at < ? LIMIT ?
+      )`,
+      args: [cutoff, batchSize],
+    })
+    const affected = countOf(result.rowsAffected)
+    deleted += affected
+    if (affected < batchSize) break
+  }
+  return deleted
+}
+
+/**
+ * Quiz /result rows written by consumeResultRateLimit. Eligible once expires_at
+ * is more than 24 hours ago. The bucket is never selected.
+ */
+async function deleteExpiredResultWindows(
+  client: Client,
+  cutoff: number,
+  batchSize: number,
+  maxBatches: number,
+): Promise<number> {
+  let deleted = 0
+  for (let batch = 0; batch < maxBatches; batch += 1) {
+    const result = await client.execute({
+      sql: `DELETE FROM result_rate_windows WHERE bucket IN (
+        SELECT bucket FROM result_rate_windows WHERE expires_at < ? LIMIT ?
       )`,
       args: [cutoff, batchSize],
     })
@@ -87,11 +113,17 @@ export async function runDataRetention(
   const maxBatches = options.maxBatches ?? RETENTION_MAX_BATCHES
   const client = db.$client
   const rateCutoff = rateLimitCutoff(options.now)
+  const windowCutoff = resultWindowCutoff(options.now)
   const clickCutoff = clickHashCutoff(options.now)
   const rateLimitsEligible = await countRows(
     client,
     'SELECT COUNT(*) AS n FROM rate_limits WHERE reset_at < ?',
     rateCutoff,
+  )
+  const resultWindowsEligible = await countRows(
+    client,
+    'SELECT COUNT(*) AS n FROM result_rate_windows WHERE expires_at < ?',
+    windowCutoff,
   )
   const clickHashesEligible = await countRows(
     client,
@@ -106,23 +138,31 @@ export async function runDataRetention(
       wrote: false,
       rateLimitsEligible,
       rateLimitsDeleted: 0,
+      resultWindowsEligible,
+      resultWindowsDeleted: 0,
       clickHashesEligible,
       clickHashesCleared: 0,
       truncated: false,
     }
   }
   const rateLimitsDeleted = await deleteExpiredRateLimits(client, rateCutoff, batchSize, maxBatches)
+  const resultWindowsDeleted = await deleteExpiredResultWindows(client, windowCutoff, batchSize, maxBatches)
   const clickHashesCleared = await clearOldClickHashes(client, clickCutoff, batchSize, maxBatches)
   return {
     event: 'data_retention',
     enabled: true,
     dryRun: false,
-    wrote: rateLimitsDeleted + clickHashesCleared > 0,
+    wrote: rateLimitsDeleted + resultWindowsDeleted + clickHashesCleared > 0,
     rateLimitsEligible,
     rateLimitsDeleted,
+    resultWindowsEligible,
+    resultWindowsDeleted,
     clickHashesEligible,
     clickHashesCleared,
-    truncated: rateLimitsDeleted < rateLimitsEligible || clickHashesCleared < clickHashesEligible,
+    truncated:
+      rateLimitsDeleted < rateLimitsEligible ||
+      resultWindowsDeleted < resultWindowsEligible ||
+      clickHashesCleared < clickHashesEligible,
   }
 }
 

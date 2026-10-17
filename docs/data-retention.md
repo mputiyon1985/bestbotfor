@@ -4,14 +4,15 @@ The job is `GET /api/cron/data-retention`. Vercel Cron calls it every day at 08:
 
 ## What it changes
 
-- `rate_limits`: delete a row when `reset_at` is more than 24 hours in the past. The delete does not look at the key, so it covers quiz `/result` rows and rows left behind when the rate-limit HMAC key changed.
+- `rate_limits`: delete a row when `reset_at` is more than 24 hours in the past. The delete does not look at the key, so rows left behind when the rate-limit HMAC key changed are included. Quiz `/result` rows are not in this table.
+- `result_rate_windows`: delete a row when `expires_at` is more than 24 hours in the past. `consumeResultRateLimit` writes these rows. The in-request purge can remove a window as soon as it closes. This job is the later pass for any window still present a day after `expires_at`. The bucket is not read into the log.
 - `clicks`: keep the row. Set `ip_hash` to null when `ts` is more than 90 days in the past and the hash is still set. `tool_id`, `page`, `ts`, and `country` stay.
 
 Each statement is limited to 500 rows, and one invocation runs at most 40 batches per table. A response with `truncated: true` means the next run continues. Running it again after the tables are caught up changes nothing.
 
 ## What it does not change
 
-It does not edit the privacy policy. It does not delete click rows. It does not read or write review `ip_hmac` or `net_hmac`. It does not log rate-limit keys, IP hashes, or addresses.
+It does not edit the privacy policy. It does not delete click rows. It does not read or write review `ip_hmac` or `net_hmac`. It does not log rate-limit keys, result-window buckets, IP hashes, or addresses.
 
 ## Locks
 
@@ -24,7 +25,7 @@ All three have to be open before a write:
 A disabled or dry-run response is HTTP 200 with `Cache-Control: no-store`. The log is one JSON line:
 
 ```json
-{"event":"data_retention","enabled":false,"dryRun":true,"wrote":false,"rateLimitsEligible":0,"rateLimitsDeleted":0,"clickHashesEligible":0,"clickHashesCleared":0,"truncated":false}
+{"event":"data_retention","enabled":false,"dryRun":true,"wrote":false,"rateLimitsEligible":0,"rateLimitsDeleted":0,"resultWindowsEligible":0,"resultWindowsDeleted":0,"clickHashesEligible":0,"clickHashesCleared":0,"truncated":false}
 ```
 
 ## How to try it
