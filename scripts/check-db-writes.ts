@@ -23,6 +23,9 @@ function isWrite(line: string): boolean {
   if (/\bINSERT\s+INTO\b/i.test(line)) return true
   if (/\bDELETE\s+FROM\b/i.test(line)) return true
   if (/\bDO\s+UPDATE\s+SET\b/i.test(line)) return true
+  // A template-string argument can still be a SQL UPDATE statement.
+  // The HMAC line `.update(`bestbotfor-rate|...`)` has no UPDATE keyword.
+  if (/\bUPDATE\s+\w+\s+SET\b/i.test(line)) return true
   // Drizzle chains `.update(table)` or a bare `.update(`. HMAC `.update(\`...\`)` is not SQL.
   if (/^\s*\.(?:insert|update|delete)\s*\(\s*(?:[A-Za-z_]|$)/.test(line)) return true
   return false

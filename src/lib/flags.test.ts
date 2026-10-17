@@ -29,7 +29,7 @@ describe('user ratings flag', () => {
     expect(userRatingsEnabled({ userRatings: 'on', vercelEnv: 'preview' })).toBe(true)
   })
 
-  it('is false for on, off, and missing across production, preview, development, and an unset env', () => {
+  it('is on outside production when USER_RATINGS is on, and off when it is off or missing', () => {
     for (const vercelEnv of environments) {
       expect(userRatingsEnabled({ userRatings: 'on', vercelEnv }), `on / ${String(vercelEnv)}`).toBe(vercelEnv !== 'production')
       expect(userRatingsEnabled({ userRatings: 'off', vercelEnv }), `off / ${String(vercelEnv)}`).toBe(false)
