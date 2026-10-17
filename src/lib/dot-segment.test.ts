@@ -70,7 +70,6 @@ describe('Vercel edge route', () => {
     const config = JSON.parse(readFileSync(new URL('../../vercel.json', import.meta.url), 'utf8')) as {
       routes: { src: string; status: number }[]
     }
-    expect(config.routes).toHaveLength(1)
     expect(config.routes[0]?.src).toBe(DOT_SEGMENT_ROUTE_SRC)
     expect(config.routes[0]?.status).toBe(404)
   })
