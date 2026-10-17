@@ -40,10 +40,10 @@ npm run dev
 | `SEED_PRUNE` | Set to `1` to delete score rows whose tools are not in `src/data/scores-v2.3.csv`. Unset, the seed only upserts |
 | `USER_RATINGS` | Server-only. The exact value `on` enables user ratings outside production. Production stays off until `USER_RATINGS_PRODUCTION_LAUNCH` in `src/lib/review-flags.ts` is true |
 | `REVIEW_IP_HMAC_SECRET` | Review IP HMAC key. Required in production and whenever `USER_RATINGS=on`. At least 32 bytes. No fallback. Must differ from `RATE_LIMIT_HMAC_SECRET` and from `REVIEW_IP_HMAC_SECRET_PREVIOUS` |
-| `REVIEW_IP_HMAC_KEY_ID` | Required with the review secret. Matches `^k[1-9][0-9]{0,3}$` (`k1` through `k9999`) |
+| `REVIEW_IP_HMAC_KEY_ID` | Required with the review secret. Matches `^k[1-9][0-9]{0,3}$` (`k1` through `k9999`). The value is not trimmed, so leading or trailing whitespace is refused |
 | `REVIEW_IP_HMAC_SECRET_PREVIOUS` | Optional previous review key. If set, at least 32 bytes, and `REVIEW_IP_HMAC_KEY_ID_PREVIOUS` is required |
 | `REVIEW_IP_HMAC_KEY_ID_PREVIOUS` | Previous key id, same format as `REVIEW_IP_HMAC_KEY_ID`, and different from it. Refused when the previous secret is unset |
-| `BBF_E2E_HOOKS` | E2E only. `1` fails the build when `VERCEL=1`, `VERCEL_ENV=production`, or `NODE_ENV=production` |
+| `BBF_E2E_HOOKS` | E2E only. `1` fails the build when `VERCEL=1` or `VERCEL_ENV=production`. A local build may set it; `next build` sets `NODE_ENV=production` and that does not refuse the hooks |
 
 Stripe billing accepts a test secret key only. CI fails if a live-mode Stripe key prefix appears anywhere in the tree. The webhook rejects live-mode events. Point Stripe’s test webhook at `/api/stripe/webhook`.
 

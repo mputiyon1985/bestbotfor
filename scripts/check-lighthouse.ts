@@ -18,8 +18,8 @@ function startServer(): ChildProcess {
       // Score the production indexing policy. Preview noindex is covered by e2e.
       VERCEL_ENV: 'production',
       // Production boot requires these. They are test keys for the local server, not the host secrets.
-      RATE_LIMIT_HMAC_SECRET: 'lighthouse-rate-limit-hmac-secret-48b-ok',
-      REVIEW_IP_HMAC_SECRET: 'lighthouse-review-ip-hmac-secret-48b-ok!',
+      RATE_LIMIT_HMAC_SECRET: 'lighthouse-rate-limit-hmac-secret-40b-ok',
+      REVIEW_IP_HMAC_SECRET: 'lighthouse-review-ip-hmac-secret-40b-ok!',
       REVIEW_IP_HMAC_KEY_ID: 'k1',
       REVIEW_IP_HMAC_SECRET_PREVIOUS: '',
       REVIEW_IP_HMAC_KEY_ID_PREVIOUS: '',

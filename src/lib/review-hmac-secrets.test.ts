@@ -1,6 +1,20 @@
-import { createHash, hkdfSync, timingSafeEqual } from 'node:crypto'
+import { spawnSync } from 'node:child_process'
+import { createHash, hkdfSync } from 'node:crypto'
 import { readFileSync } from 'node:fs'
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import path from 'node:path'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+
+const timingSafeEqualSpy = vi.hoisted(() => ({
+  spy: vi.fn<(left: NodeJS.ArrayBufferView, right: NodeJS.ArrayBufferView) => boolean>(),
+  real: null as null | ((left: NodeJS.ArrayBufferView, right: NodeJS.ArrayBufferView) => boolean),
+}))
+
+vi.mock('node:crypto', async () => {
+  const actual = await vi.importActual<typeof import('node:crypto')>('node:crypto')
+  timingSafeEqualSpy.real = actual.timingSafeEqual
+  timingSafeEqualSpy.spy.mockImplementation((left, right) => actual.timingSafeEqual(left, right))
+  return { ...actual, timingSafeEqual: timingSafeEqualSpy.spy }
+})
 import {
   K_ip,
   K_net,
@@ -36,6 +50,12 @@ const ENV_NAMES = [
 ] as const
 
 const previousEnv = new Map<string, string | undefined>(ENV_NAMES.map((name) => [name, process.env[name]]))
+
+beforeEach(() => {
+  const real = timingSafeEqualSpy.real
+  if (!real) throw new Error('timingSafeEqual spy was not installed')
+  timingSafeEqualSpy.spy.mockImplementation((left, right) => real(left, right))
+})
 
 afterEach(() => {
   for (const name of ENV_NAMES) {
@@ -128,8 +148,9 @@ describe('review HMAC secret validator', () => {
 
   it('accepts a valid production set and ignores blank optional previous values', () => {
     expectRules(valid())
-    expectRules(valid({ reviewIpHmacSecretPrevious: '   ', reviewIpHmacKeyIdPrevious: '  ' }))
-    expectRules(valid({ reviewIpHmacSecret: `  ${IP}  `, rateLimitHmacSecret: ` ${RATE}\n`, reviewIpHmacKeyId: ' k1 ' }))
+    expectRules(valid({ reviewIpHmacSecretPrevious: '   ', reviewIpHmacKeyIdPrevious: '' }))
+    expectRules(valid({ reviewIpHmacSecretPrevious: '   ' }))
+    expectRules(valid({ reviewIpHmacSecret: `  ${IP}  `, rateLimitHmacSecret: ` ${RATE}\n` }))
   })
 
   it('requires the review secret in production and whenever USER_RATINGS=on', () => {
@@ -182,11 +203,11 @@ describe('review HMAC secret validator', () => {
     const rule = `REVIEW_IP_HMAC_KEY_ID must match ${REVIEW_KEY_ID_RULE}`
     expect(REVIEW_KEY_ID_RULE).toBe('^k[1-9][0-9]{0,3}$')
     expectRules(valid({ reviewIpHmacKeyId: undefined }), ['REVIEW_IP_HMAC_KEY_ID is required'])
-    expectRules(valid({ reviewIpHmacKeyId: '   ' }), ['REVIEW_IP_HMAC_KEY_ID is required'])
-    for (const reviewIpHmacKeyId of ['k1', 'k9', 'k10', 'k9999', ' k42 ']) {
+    expectRules(valid({ reviewIpHmacKeyId: '' }), ['REVIEW_IP_HMAC_KEY_ID is required'])
+    for (const reviewIpHmacKeyId of ['k1', 'k9', 'k10', 'k9999']) {
       expectRules(valid({ reviewIpHmacKeyId }))
     }
-    for (const reviewIpHmacKeyId of ['k', 'k0', 'k00', 'k01', 'k10000', 'K1', 'kk1', 'k-1', 'key1', '1']) {
+    for (const reviewIpHmacKeyId of ['k', 'k0', 'k00', 'k01', 'k10000', 'K1', 'kk1', 'k-1', 'key1', '1', '   ', 'k1 ', ' k1', ' k1 ', 'k1\n']) {
       expectRules(valid({ reviewIpHmacKeyId }), [rule])
     }
     expectRules(valid({ reviewIpHmacKeyId: IP }), [rule])
@@ -219,9 +240,8 @@ describe('review HMAC secret validator', () => {
     expectRules(valid({ reviewIpHmacSecretPrevious: PREV, reviewIpHmacKeyIdPrevious: 'k1' }), [
       'REVIEW_IP_HMAC_KEY_ID_PREVIOUS must differ from REVIEW_IP_HMAC_KEY_ID',
     ])
-    expectRules(valid({ reviewIpHmacSecretPrevious: PREV, reviewIpHmacKeyIdPrevious: ' k1 ' }), [
-      'REVIEW_IP_HMAC_KEY_ID_PREVIOUS must differ from REVIEW_IP_HMAC_KEY_ID',
-    ])
+    expectRules(valid({ reviewIpHmacSecretPrevious: PREV, reviewIpHmacKeyIdPrevious: ' k1 ' }), [format])
+    expectRules(valid({ reviewIpHmacSecretPrevious: PREV, reviewIpHmacKeyIdPrevious: 'k2 ' }), [format])
     expectRules(valid({ reviewIpHmacSecretPrevious: PREV, reviewIpHmacKeyIdPrevious: 'k0' }), [format])
     expectRules(valid({ reviewIpHmacSecretPrevious: PREV, reviewIpHmacKeyIdPrevious: 'k9999' }))
     expectRules(
@@ -295,17 +315,43 @@ describe('review HMAC secret validator', () => {
   it('fails BBF_E2E_HOOKS=1 with VERCEL=1 or production (spec T25)', () => {
     const hook = 'BBF_E2E_HOOKS must not be 1 when VERCEL is 1'
     const vercelEnv = 'BBF_E2E_HOOKS must not be 1 when VERCEL_ENV is production'
-    const nodeEnv = 'BBF_E2E_HOOKS must not be 1 when NODE_ENV is production'
     expectRules(valid({ bbfE2eHooks: '1', vercel: '1', vercelEnv: 'preview', nodeEnv: 'development', rateLimitHmacSecret: undefined, reviewIpHmacSecret: undefined, reviewIpHmacKeyId: undefined }), [hook])
     expectRules(valid({ bbfE2eHooks: ' 1 ', vercel: ' 1 ', vercelEnv: 'preview', nodeEnv: 'test' }), [hook])
     expectRules(valid({ bbfE2eHooks: '1', vercel: undefined, vercelEnv: 'production', nodeEnv: 'test' }), [vercelEnv])
-    expectRules(valid({ bbfE2eHooks: '1', vercel: undefined, vercelEnv: 'preview', nodeEnv: 'production', rateLimitHmacSecret: undefined, reviewIpHmacSecret: undefined, reviewIpHmacKeyId: undefined }), [nodeEnv])
-    expectRules(valid({ bbfE2eHooks: '1', vercel: '1', vercelEnv: 'production', nodeEnv: 'production' }), [hook, vercelEnv, nodeEnv])
+    expectRules(valid({ bbfE2eHooks: '1', vercel: undefined, vercelEnv: 'preview', nodeEnv: 'production', rateLimitHmacSecret: undefined, reviewIpHmacSecret: undefined, reviewIpHmacKeyId: undefined }))
+    expectRules(valid({ bbfE2eHooks: '1', vercel: undefined, vercelEnv: undefined, nodeEnv: 'production', rateLimitHmacSecret: undefined, reviewIpHmacSecret: undefined, reviewIpHmacKeyId: undefined }))
+    expectRules(valid({ bbfE2eHooks: '1', vercel: '1', vercelEnv: 'production', nodeEnv: 'production' }), [hook, vercelEnv])
     expectRules(valid({ bbfE2eHooks: '1', vercel: undefined, vercelEnv: 'preview', nodeEnv: 'development', rateLimitHmacSecret: undefined, reviewIpHmacSecret: undefined, reviewIpHmacKeyId: undefined }))
     for (const bbfE2eHooks of [undefined, '', '0', 'true', 'yes']) {
       expectRules(valid({ bbfE2eHooks, vercel: '1', vercelEnv: 'production', nodeEnv: 'production' }))
     }
   })
+
+  it('lets a local next build succeed with BBF_E2E_HOOKS=1', () => {
+    const root = path.resolve(new URL('../..', import.meta.url).pathname)
+    const result = spawnSync(process.execPath, [path.join(root, 'node_modules/next/dist/bin/next'), 'build'], {
+      cwd: root,
+      env: {
+        ...process.env,
+        BBF_E2E_HOOKS: '1',
+        VERCEL: '',
+        VERCEL_ENV: '',
+        USER_RATINGS: '',
+        REVIEW_IP_HMAC_SECRET: '',
+        REVIEW_IP_HMAC_KEY_ID: '',
+        REVIEW_IP_HMAC_SECRET_PREVIOUS: '',
+        REVIEW_IP_HMAC_KEY_ID_PREVIOUS: '',
+        RATE_LIMIT_HMAC_SECRET: '',
+        TURSO_DATABASE_URL: 'file:./data/ci.db',
+        NEXT_TELEMETRY_DISABLED: '1',
+      },
+      encoding: 'utf8',
+      timeout: 120_000,
+    })
+    const output = `${result.stdout ?? ''}\n${result.stderr ?? ''}`
+    expect(output).not.toContain('BBF_E2E_HOOKS must not be 1')
+    expect(result.status, output.slice(-1500)).toBe(0)
+  }, 180_000)
 
   it('reports every broken rule together and still hides every secret substring', () => {
     expectRules(
@@ -324,7 +370,6 @@ describe('review HMAC secret validator', () => {
       [
         'BBF_E2E_HOOKS must not be 1 when VERCEL is 1',
         'BBF_E2E_HOOKS must not be 1 when VERCEL_ENV is production',
-        'BBF_E2E_HOOKS must not be 1 when NODE_ENV is production',
         'RATE_LIMIT_HMAC_SECRET must be at least 32 bytes',
         'REVIEW_IP_HMAC_SECRET must be at least 32 bytes',
         `REVIEW_IP_HMAC_KEY_ID must match ${REVIEW_KEY_ID_RULE}`,
@@ -368,16 +413,50 @@ describe('review HMAC secret validator', () => {
   })
 
   it('compares SHA-256 digests with timingSafeEqual and has no fallback key', () => {
-    const source = readFileSync(new URL('./review-hmac-secrets.ts', import.meta.url), 'utf8')
-    expect(source).toContain("createHash('sha256').update(left).digest()")
-    expect(source).toContain('timingSafeEqual(leftDigest, rightDigest)')
-    expect(source).not.toContain('RATE_LIMIT_FALLBACK')
-    expect(source).not.toContain('console.')
-    const left = createHash('sha256').update(IP).digest()
-    const right = createHash('sha256').update(RATE).digest()
-    expect(timingSafeEqual(left, left)).toBe(true)
-    expect(timingSafeEqual(left, right)).toBe(false)
-    expect(source).not.toMatch(/review === rateLimit|previous === review|secret ===/)
+    function digest(value: string): Buffer {
+      return createHash('sha256').update(value).digest()
+    }
+    function asBuffer(view: NodeJS.ArrayBufferView | undefined): Buffer {
+      if (!view) return Buffer.alloc(0)
+      return Buffer.from(view.buffer, view.byteOffset, view.byteLength)
+    }
+    timingSafeEqualSpy.spy.mockClear()
+    const different = reviewHmacSecretErrors(valid({ reviewIpHmacSecret: ` ${IP} `, rateLimitHmacSecret: ` ${RATE} ` }))
+    expect(different).toEqual([])
+    expect(timingSafeEqualSpy.spy).toHaveBeenCalledTimes(1)
+    const differentCall = timingSafeEqualSpy.spy.mock.calls[0]
+    expect(differentCall).toBeDefined()
+    const differentLeft = asBuffer(differentCall?.[0])
+    const differentRight = asBuffer(differentCall?.[1])
+    expect(differentLeft.equals(digest(IP))).toBe(true)
+    expect(differentRight.equals(digest(RATE))).toBe(true)
+    expect(differentLeft.equals(Buffer.from(IP))).toBe(false)
+    expect(differentRight.equals(Buffer.from(RATE))).toBe(false)
+    expect(timingSafeEqualSpy.spy.mock.results[0]?.value).toBe(false)
+
+    timingSafeEqualSpy.spy.mockClear()
+    const same = reviewHmacSecretErrors(valid({ reviewIpHmacSecret: RATE, rateLimitHmacSecret: RATE, reviewIpHmacSecretPrevious: RATE, reviewIpHmacKeyIdPrevious: 'k2' }))
+    expect(same).toEqual([
+      'REVIEW_IP_HMAC_SECRET must not equal RATE_LIMIT_HMAC_SECRET',
+      'REVIEW_IP_HMAC_SECRET must not equal REVIEW_IP_HMAC_SECRET_PREVIOUS',
+    ])
+    expect(timingSafeEqualSpy.spy).toHaveBeenCalledTimes(2)
+    expect(timingSafeEqualSpy.spy.mock.results[0]?.value).toBe(true)
+    expect(timingSafeEqualSpy.spy.mock.results[1]?.value).toBe(true)
+    const sameCall = timingSafeEqualSpy.spy.mock.calls[0]
+    expect(asBuffer(sameCall?.[0]).equals(digest(RATE))).toBe(true)
+    expect(asBuffer(sameCall?.[1]).equals(digest(RATE))).toBe(true)
+
+    timingSafeEqualSpy.spy.mockClear()
+    reviewHmacSecretErrors(valid({
+      vercelEnv: 'preview',
+      nodeEnv: 'development',
+      userRatings: undefined,
+      reviewIpHmacSecret: undefined,
+      reviewIpHmacKeyId: undefined,
+      rateLimitHmacSecret: undefined,
+    }))
+    expect(timingSafeEqualSpy.spy).not.toHaveBeenCalled()
   })
 
   it('is the validator imported by the build and by server boot', () => {

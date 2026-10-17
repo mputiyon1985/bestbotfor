@@ -58,19 +58,20 @@ function processReviewHmacEnv(env: NodeJS.ProcessEnv = process.env): ReviewHmacE
 
 /**
  * Rules, in stable order:
- * 1. BBF_E2E_HOOKS=1 with VERCEL=1, VERCEL_ENV=production, or NODE_ENV=production
+ * 1. BBF_E2E_HOOKS=1 with VERCEL=1 or VERCEL_ENV=production.
+ *    NODE_ENV is not a signal: next build always sets NODE_ENV=production.
  * 2. RATE_LIMIT_HMAC_SECRET length in production only (HKDF fallback stays elsewhere)
  * 3. REVIEW_IP_HMAC_SECRET required in production and when USER_RATINGS=on, else when set
- * 4. REVIEW_IP_HMAC_KEY_ID required with that secret
+ * 4. REVIEW_IP_HMAC_KEY_ID required with that secret. Key ids are not trimmed.
  * 5. Optional previous secret, and a previous id with no previous secret
  * 6. Review secret distinct from the rate-limit secret and the previous review secret
  */
 export function reviewHmacSecretErrors(env: ReviewHmacEnv): string[] {
   const errors: string[] = []
   const review = clean(env.reviewIpHmacSecret)
-  const keyId = clean(env.reviewIpHmacKeyId)
+  const keyId = env.reviewIpHmacKeyId ?? ''
   const previous = clean(env.reviewIpHmacSecretPrevious)
-  const previousId = clean(env.reviewIpHmacKeyIdPrevious)
+  const previousId = env.reviewIpHmacKeyIdPrevious ?? ''
   const rateLimit = clean(env.rateLimitHmacSecret)
   const production = clean(env.vercelEnv) === 'production'
   const ratingsOn = clean(env.userRatings) === 'on'
@@ -79,7 +80,6 @@ export function reviewHmacSecretErrors(env: ReviewHmacEnv): string[] {
   if (clean(env.bbfE2eHooks) === '1') {
     if (clean(env.vercel) === '1') errors.push('BBF_E2E_HOOKS must not be 1 when VERCEL is 1')
     if (production) errors.push('BBF_E2E_HOOKS must not be 1 when VERCEL_ENV is production')
-    if (clean(env.nodeEnv) === 'production') errors.push('BBF_E2E_HOOKS must not be 1 when NODE_ENV is production')
   }
 
   if (production) {
