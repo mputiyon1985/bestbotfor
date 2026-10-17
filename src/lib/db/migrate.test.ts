@@ -450,8 +450,9 @@ describe('drizzle journal', () => {
     for (let index = 1; index < idxs.length; index += 1) {
       expect(idxs[index]).toBeGreaterThan(idxs[index - 1] ?? -1)
     }
-    const present = tags.filter((tag) => tagsFromFiles.includes(tag))
-    expect(present).toEqual(tagsFromFiles)
+    // 0009_sponsorships.sql is on disk, so that journal row is not a placeholder.
+    // Tags equal the SQL files, in idx order. Dropping 0018_retention_indexes fails here.
+    expect(tags).toEqual(tagsFromFiles)
     expect(sqlFiles).not.toContain('0010_result_rate_windows.sql')
     const idxOf = (tag: string) => journal.entries.find((entry) => entry.tag === tag)?.idx
     expect(idxOf('0009_sponsorships')).toBe(8)
