@@ -4,14 +4,14 @@ import { notFound } from 'next/navigation'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { LawyerReviewNotice } from '@/components/lawyer-review-notice'
 import { userRatingsEnabled } from '@/lib/flags'
-import { pageMetadata } from '@/lib/metadata'
+import { policyPageMetadata } from '@/lib/metadata'
 import { GUIDELINES_PARAGRAPHS, MODERATION_REASONS } from '@/lib/ratings-policy-copy'
 
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
   if (!userRatingsEnabled()) notFound()
-  return pageMetadata({
+  return policyPageMetadata({
     title: 'Review guidelines',
     description: 'Draft rules for user ratings on BestBotFor. Pending lawyer review.',
     path: '/review-guidelines',

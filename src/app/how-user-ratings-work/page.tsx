@@ -4,14 +4,14 @@ import { notFound } from 'next/navigation'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { LawyerReviewNotice } from '@/components/lawyer-review-notice'
 import { userRatingsEnabled } from '@/lib/flags'
-import { pageMetadata } from '@/lib/metadata'
+import { policyPageMetadata } from '@/lib/metadata'
 import { FORMULA_LINES, FORMULA_NOTES, MODERATION_REASONS, TRANSPARENCY_PLACEHOLDER, TRUST_TIERS } from '@/lib/ratings-policy-copy'
 
 export const dynamic = 'force-dynamic'
 
 export async function generateMetadata(): Promise<Metadata> {
   if (!userRatingsEnabled()) notFound()
-  return pageMetadata({
+  return policyPageMetadata({
     title: 'How user ratings work',
     description: 'Draft explanation of the user-rating formula, tiers, and moderation reasons. Pending lawyer review.',
     path: '/how-user-ratings-work',
