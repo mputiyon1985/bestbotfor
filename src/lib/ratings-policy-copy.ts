@@ -4,7 +4,7 @@
  */
 
 export const LAWYER_REVIEW_NOTICE =
-  'Lawyer review was recorded on October 17, 2026. User ratings are not launched, so this copy is not in effect yet.'
+  'Lawyer review of the ratings drafts and the base policy pages was recorded on October 17, 2026. The written sign-off is a pending link. User ratings are not launched, so this copy is not in effect yet.'
 
 export const PRIVACY_UPDATED = 'October 17, 2026'
 

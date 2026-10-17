@@ -21,6 +21,9 @@ describe('ratings policy copy', () => {
     }
     expect(corpus).toContain(LAWYER_REVIEW_NOTICE)
     expect(LAWYER_REVIEW_NOTICE).toContain('October 17, 2026')
+    expect(LAWYER_REVIEW_NOTICE).toContain('ratings drafts')
+    expect(LAWYER_REVIEW_NOTICE).toContain('base policy pages')
+    expect(LAWYER_REVIEW_NOTICE).toContain('pending link')
     expect(LAWYER_REVIEW_NOTICE).toContain('not launched')
     expect(LAWYER_REVIEW_NOTICE).not.toMatch(/pending lawyer review/i)
     expect(PRIVACY_UPDATED_WITH_RATINGS).not.toMatch(/pending lawyer review/i)
