@@ -45,6 +45,7 @@ const RATE_LIMIT_FALLBACK_SECRETS = [
 
 const RATE_LIMIT_FALLBACK_MIN_LENGTH = 16
 const RATE_LIMIT_HKDF_SALT = 'bestbotfor/rate-limit-hkdf-salt/v1'
+const RATE_LIMIT_HKDF_INFO = 'bestbotfor/rate-limit/v1'
 const CLICK_IP_HKDF_INFO = 'bestbotfor/click-ip/v1'
 
 let rateLimitWarning: string | null = null
@@ -70,11 +71,12 @@ function fallbackHmacKey(secret: string, source: string): Buffer {
 type HmacMaterial = { secret: string; fallbackName: string | null }
 
 /**
- * RATE_LIMIT_HMAC_SECRET is the HMAC key itself when it is at least 16 characters.
+ * RATE_LIMIT_HMAC_SECRET is the HKDF input when it is at least 16 characters.
+ * The HMAC key is the bestbotfor/rate-limit/v1 subkey, not the raw secret.
  * A shorter value is ignored. Any other server secret is stretched with HKDF-SHA256 first.
  * A missing or too-short candidate logs a warning and never throws.
  * The secret and the derived key are not logged.
- * A new key starts new windows; counters already in flight are left behind.
+ * A new subkey starts new windows. Counters already in flight are left behind once.
  */
 function hmacMaterial(): HmacMaterial {
   const dedicated = serverSecret('RATE_LIMIT_HMAC_SECRET')
@@ -99,9 +101,16 @@ function hmacMaterial(): HmacMaterial {
   return { secret: ephemeralRateLimitSecret, fallbackName: null }
 }
 
+/** Same salt as the click subkey, different label, so the two keys differ. */
+function rateLimitSubkey(secret: string): Buffer {
+  return Buffer.from(hkdfSync('sha256', secret, RATE_LIMIT_HKDF_SALT, RATE_LIMIT_HKDF_INFO, 32))
+}
+
 function rateLimitHmacSecret(): string | Buffer {
   const material = hmacMaterial()
   if (material.fallbackName) return fallbackHmacKey(material.secret, material.fallbackName)
+  const dedicated = serverSecret('RATE_LIMIT_HMAC_SECRET')
+  if (dedicated.length >= RATE_LIMIT_FALLBACK_MIN_LENGTH) return rateLimitSubkey(dedicated)
   return material.secret
 }
 
