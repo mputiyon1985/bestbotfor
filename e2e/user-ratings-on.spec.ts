@@ -1,7 +1,7 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 import { isAdminPath } from '../src/lib/admin-path'
-import { ATTESTATION, DISCLOSURE_ADVERTISER_PARAGRAPH, LAWYER_REVIEW_NOTICE, TRANSPARENCY_PLACEHOLDER } from '../src/lib/ratings-policy-copy'
+import { ATTESTATION, DISCLOSURE_ADVERTISER_PARAGRAPH, LAWYER_REVIEW_NOTICE, PRIVACY_UPDATED_WITH_RATINGS, TERMS_UPDATED_WITH_RATINGS, TRANSPARENCY_PLACEHOLDER } from '../src/lib/ratings-policy-copy'
 
 /**
  * This project starts with USER_RATINGS=on and VERCEL_ENV=test.
@@ -113,12 +113,12 @@ test('privacy, terms, and disclosure include the ratings draft while the flag is
   await expect(page.getByRole('heading', { name: 'Ratings and reviews' })).toBeVisible()
   await expect(page.getByRole('note')).toContainText(LAWYER_REVIEW_NOTICE)
   await expect(page.locator('p', { hasText: 'keyed hash of its network range, the IPv4 /24 or the IPv6 /48' })).toBeVisible()
-  await expect(page.locator('p', { hasText: 'It was last updated on October 17, 2026. The ratings and reviews section below is draft copy pending lawyer review.' })).toBeVisible()
+  await expect(page.locator('p', { hasText: `It was last updated on ${PRIVACY_UPDATED_WITH_RATINGS}` })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Review guidelines' })).toHaveAttribute('href', '/review-guidelines')
 
   await page.goto('/terms')
   await expect(page.getByRole('note')).toContainText(LAWYER_REVIEW_NOTICE)
-  await expect(page.locator('p', { hasText: 'Last updated October 17, 2026. The link to the review guidelines is draft copy pending lawyer review.' })).toBeVisible()
+  await expect(page.locator('p', { hasText: `Last updated ${TERMS_UPDATED_WITH_RATINGS}` })).toBeVisible()
   await expect(page.getByRole('link', { name: 'Review guidelines' })).toHaveAttribute('href', '/review-guidelines')
 
   await page.goto('/disclosure')
