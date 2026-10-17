@@ -1,6 +1,12 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { LawyerReviewNotice } from '@/components/lawyer-review-notice'
+import { userRatingsEnabled } from '@/lib/flags'
 import { pageMetadata } from '@/lib/metadata'
+import { TERMS_RATINGS_PARAGRAPH, TERMS_UPDATED, TERMS_UPDATED_WITH_RATINGS } from '@/lib/ratings-policy-copy'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Terms of use',
@@ -9,11 +15,16 @@ export const metadata: Metadata = pageMetadata({
 })
 
 export default function TermsPage() {
+  const ratings = userRatingsEnabled()
   return (
     <article className="max-w-2xl space-y-4">
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Terms', path: '/terms' }]} />
       <h1 className="font-bold text-5xl">Terms of use</h1>
-      <p>These terms are a plain-language agreement for bestbotfor.com. They are not a substitute for legal advice. Last updated October 15, 2026.</p>
+      <p>
+        {ratings
+          ? `These terms are a plain-language agreement for bestbotfor.com. They are not a substitute for legal advice. Last updated ${TERMS_UPDATED_WITH_RATINGS}`
+          : `These terms are a plain-language agreement for bestbotfor.com. They are not a substitute for legal advice. Last updated ${TERMS_UPDATED}.`}
+      </p>
       <p>
         The site is aimed at readers in the United States. Recommendations are opinions. They are not a warranty that a
         tool will fit your work, stay at a given price, or stay available.
@@ -33,6 +44,15 @@ export default function TermsPage() {
         those limits apply only as far as they are allowed where you live.
       </p>
       <p>Questions: privacy@bestbotfor.com.</p>
+      {ratings ? (
+        <>
+          <LawyerReviewNotice />
+          <p>{TERMS_RATINGS_PARAGRAPH}</p>
+          <p>
+            <Link href="/review-guidelines" className="underline">Review guidelines</Link>
+          </p>
+        </>
+      ) : null}
     </article>
   )
 }

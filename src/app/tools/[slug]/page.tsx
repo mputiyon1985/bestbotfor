@@ -17,11 +17,11 @@ import { slugSchema } from '@/lib/validation'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
-  if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) {
-    return pageMetadata({ title: 'Tool', description: 'That tool is not in the catalog.', path: '/tools', noIndex: true })
-  }
+  // notFound() keeps this page's robots metadata out of the client payload.
+  // Returning noindex here hydrated a second robots meta beside Next's tag.
+  if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) notFound()
   const tool = await getTool(slug)
-  if (!tool) return pageMetadata({ title: 'Tool', description: 'That tool is not in the catalog.', path: `/tools/${slug}`, noIndex: true })
+  if (!tool) notFound()
   return pageMetadata({
     title: tool.name,
     description: `${tool.name} by ${tool.vendor}: ${tool.shortDesc}`,
