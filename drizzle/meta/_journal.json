@@ -92,6 +92,13 @@
       "when": 1792185000000,
       "tag": "0014_sponsorship_creatives",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1792186000000,
+      "tag": "0015_sponsorship_daily_counts",
+      "breakpoints": true
     }
   ]
 }

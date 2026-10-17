@@ -31,6 +31,7 @@ function nextWithNonce(request: NextRequest): NextResponse {
   const csp = buildContentSecurityPolicy(nonce, process.env.NODE_ENV !== 'production')
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-nonce', nonce)
+  requestHeaders.set('x-bbf-method', request.method)
   requestHeaders.set('Content-Security-Policy', csp)
   const response = NextResponse.next({ request: { headers: requestHeaders } })
   return adminHeaders(applySecurity(response, nonce), request.nextUrl.pathname)

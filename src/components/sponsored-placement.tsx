@@ -5,9 +5,18 @@ import { sanitizeSponsorCompany } from '@/lib/sponsor-company'
 
 const LOGO_SRC = /^data:image\/(?:png|jpeg|webp);base64,[A-Za-z0-9+/]+=*$/
 
+/** True when the Sponsored box will include the approved card. */
+export function sponsoredCardIsVisible(placement: ActiveBestPlacement | null): placement is ActiveBestPlacement {
+  if (!placement) return false
+  if (!parseSponsorHttpsUrl(placement.card.url)) return false
+  const name = sanitizeSponsorCompany(placement.card.name)
+  const description = sanitizeSponsorCompany(placement.card.description)
+  return name.length > 0 && description.length > 0
+}
+
 /** Renders nothing unless an admin-approved card is still inside its paid window. */
 export function SponsoredPlacement({ placement }: { placement: ActiveBestPlacement | null }) {
-  if (!placement) return null
+  if (!sponsoredCardIsVisible(placement)) return null
   const url = parseSponsorHttpsUrl(placement.card.url)
   if (!url) return null
   const name = sanitizeSponsorCompany(placement.card.name)

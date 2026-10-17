@@ -184,6 +184,24 @@ export const sponsorshipCreatives = sqliteTable(
   ],
 )
 
+/**
+ * Daily totals for one sponsorship. impressions is an approved card render.
+ * go_clicks is a /go Visit from that /best page. No visitor identifier.
+ */
+export const sponsorshipDailyCounts = sqliteTable(
+  'sponsorship_daily_counts',
+  {
+    sponsorshipId: integer('sponsorship_id').notNull(),
+    day: text('day').notNull(),
+    impressions: integer('impressions').notNull().default(0),
+    goClicks: integer('go_clicks').notNull().default(0),
+  },
+  (table) => [
+    primaryKey({ columns: [table.sponsorshipId, table.day] }),
+    index('sponsorship_daily_counts_day_idx').on(table.day),
+  ],
+)
+
 /** Append-only admin decisions for a sponsor tool card. */
 export const sponsorshipReviewEvents = sqliteTable(
   'sponsorship_review_events',

@@ -10,6 +10,7 @@ import { consumeRateLimit } from '@/lib/rate-limit'
 import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
 import { getSiteUrl } from '@/lib/site'
 import { slugSchema } from '@/lib/validation'
+import { scheduleSponsorGoClick } from '@/lib/sponsor-impressions'
 
 const GO_ROBOTS_TAG = 'noindex, nofollow'
 
@@ -48,6 +49,19 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   if (outcome.status !== 302) return text(outcome.body, outcome.status)
 
   const click = outcome.click
+  if (click?.page.startsWith('/best/')) {
+    scheduleSponsorGoClick({
+      db,
+      page: click.page,
+      now: Date.now(),
+      method: request.method,
+      userAgent: request.headers.get('user-agent'),
+      purpose: request.headers.get('purpose'),
+      secPurpose: request.headers.get('sec-purpose'),
+      routerPrefetch: request.headers.get('next-router-prefetch') ?? request.headers.get('next-router-segment-prefetch'),
+      middlewarePrefetch: request.headers.get('x-middleware-prefetch'),
+    })
+  }
   if (click) {
     after(async () => {
       try {

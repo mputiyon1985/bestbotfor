@@ -33,6 +33,7 @@ const CARD: PublicSponsorCard = {
 
 function row(overrides: Partial<SponsorshipPlacementRow> = {}): SponsorshipPlacementRow {
   return {
+    id: 1,
     offering: 'placement_weekly',
     status: 'paid',
     taskSlug: 'coding',
@@ -62,11 +63,11 @@ describe('activeBestPlacement', () => {
   it('returns a Sponsored placement only while a paid guide sponsorship is active', () => {
     const rows = [
       row(),
-      row({ offering: 'placement_monthly', company: 'Older Co', paidAt: START - 1 }),
+      row({ id: 2, offering: 'placement_monthly', company: 'Older Co', paidAt: START - 1 }),
       row({ status: 'pending', company: 'Pending Co' }),
       row({ status: 'failed', company: 'Failed Co' }),
       row({ offering: 'newsletter_slot', company: 'Issue Co' }),
-      row({ taskSlug: 'writing', company: 'Other Task' }),
+      row({ id: 3, taskSlug: 'writing', company: 'Other Task' }),
       row({ taskSlug: null, company: 'No Task' }),
       row({ paidAt: null, company: 'Unstamped' }),
       row({ refundedAt: START, company: 'Refunded Co' }),
@@ -75,6 +76,7 @@ describe('activeBestPlacement', () => {
       label: 'Sponsored',
       company: 'Example Tools',
       offering: 'placement_weekly',
+      sponsorshipId: 1,
       card: CARD,
     })
     expect(activeBestPlacement(rows, 'coding', START + WEEK - 1)?.company).toBe('Example Tools')
@@ -82,6 +84,7 @@ describe('activeBestPlacement', () => {
       label: 'Sponsored',
       company: 'Older Co',
       offering: 'placement_monthly',
+      sponsorshipId: 2,
       card: CARD,
     })
     expect(activeBestPlacement(rows, 'coding', START - 1 + MONTH)).toBeNull()
@@ -89,9 +92,11 @@ describe('activeBestPlacement', () => {
       label: 'Sponsored',
       company: 'Other Task',
       offering: 'placement_weekly',
+      sponsorshipId: 3,
       card: CARD,
     })
     expect(activeBestPlacement([], 'coding', START)).toBeNull()
+    expect(activeBestPlacement([row({ id: undefined })], 'coding', START)).toBeNull()
   })
 
   it('counts the window from paidAt and hides a refund even when that time is inside the window', () => {
@@ -106,6 +111,7 @@ describe('activeBestPlacement', () => {
       label: SPONSORED_LABEL,
       company: null,
       offering: 'placement_weekly',
+      sponsorshipId: 1,
       card: CARD,
     })
   })
@@ -130,7 +136,7 @@ describe('SponsoredPlacement', () => {
   it('renders the Sponsored label for an active placement and nothing otherwise', () => {
     const shown = renderToStaticMarkup(
       createElement(SponsoredPlacement, {
-        placement: { label: SPONSORED_LABEL, company: 'Example Tools', offering: 'placement_weekly', card: CARD },
+        placement: { label: SPONSORED_LABEL, company: 'Example Tools', offering: 'placement_weekly', sponsorshipId: 1, card: CARD },
       }),
     )
     expect(shown).toContain('<h2 id="sponsored-placement-heading"')
@@ -151,7 +157,7 @@ describe('SponsoredPlacement', () => {
   it('renders the label when the sponsorship has no company name', () => {
     const shown = renderToStaticMarkup(
       createElement(SponsoredPlacement, {
-        placement: { label: SPONSORED_LABEL, company: null, offering: 'placement_monthly', card: CARD },
+        placement: { label: SPONSORED_LABEL, company: null, offering: 'placement_monthly', sponsorshipId: 1, card: CARD },
       }),
     )
     expect(shown).toContain('Sponsored')
@@ -165,6 +171,7 @@ describe('SponsoredPlacement', () => {
           label: SPONSORED_LABEL,
           company: 'Acme\u202E Tools',
           offering: 'placement_weekly',
+          sponsorshipId: 1,
           card: CARD,
         },
       }),
@@ -180,6 +187,7 @@ describe('SponsoredPlacement', () => {
           label: SPONSORED_LABEL,
           company: 'Example Tools',
           offering: 'placement_weekly',
+          sponsorshipId: 1,
           card: { ...CARD, name: '<script>alert(1)</script>', description: 'A useful coding tool.' },
         },
       }),
@@ -193,6 +201,7 @@ describe('SponsoredPlacement', () => {
           label: SPONSORED_LABEL,
           company: 'Example Tools',
           offering: 'placement_weekly',
+          sponsorshipId: 1,
           card: { ...CARD, url: 'javascript:alert(1)' },
         },
       }),
