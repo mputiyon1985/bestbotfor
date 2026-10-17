@@ -1,5 +1,6 @@
 import 'server-only'
 import { createHash, timingSafeEqual } from 'node:crypto'
+import { checkDbTarget } from './db/guard'
 import { DATA_RETENTION_PRODUCTION_LAUNCH } from './retention-flags'
 
 /** A rate-limit row is eligible once its window has been over for this long. */
@@ -130,6 +131,20 @@ export function decideRetentionRequest(input: {
     return { ok: true, run: false, report: emptyRetentionReport(false) }
   }
   return { ok: true, run: true, dryRun: dataRetentionDryRun(input.env) }
+}
+
+/**
+ * True when this client is the database named by the URL, and that URL is
+ * allowed for VERCEL_ENV. A file client with no URL is a local database.
+ * A remote client with no URL fails closed. The URL is not returned.
+ */
+export function retentionTargetOk(input: { url?: string; protocol: string; vercelEnv?: string }): boolean {
+  const fileClient = input.protocol === 'file'
+  const url = input.url?.trim() ?? ''
+  if (!url) return fileClient
+  const fileUrl = url === ':memory:' || url.startsWith('file:')
+  if (fileClient !== fileUrl) return false
+  return checkDbTarget(url, input.vercelEnv).ok
 }
 
 /** One JSON line. Counts only. Callers must not append keys, hashes, or addresses. */
