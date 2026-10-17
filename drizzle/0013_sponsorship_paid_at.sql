@@ -1,0 +1,22 @@
+-- Placement clock and refund marker for sponsorships.
+-- Numbered 0013 so it sorts after 0012_result_rate_windows. Journal idx 11.
+-- 0010 is unused.
+--
+-- paid_at is the first time the row became paid. The /best window starts
+-- there and does not move when a later webhook refreshes updated_at.
+-- refunded_at is set once when charge.refunded, or a refund event whose
+-- status is succeeded, matches the stored payment intent. The row stops
+-- showing. status stays inside the existing CHECK
+-- ('pending', 'paid', 'failed'): changing that CHECK would rebuild the
+-- table. A refunded row remains status paid and is hidden by refunded_at.
+--
+-- This SQLite build rejects `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`
+-- (near "EXISTS": syntax error). adoptSponsorshipSchema checks
+-- PRAGMA table_info and runs ADD COLUMN only for a missing name, then
+-- backfills paid_at from updated_at where status is paid and paid_at is
+-- null. Columns are nullable. Nothing is dropped or deleted.
+--
+-- The index statement is valid when the index already exists, so applying
+-- this file twice is a no-op.
+
+CREATE INDEX IF NOT EXISTS sponsorships_status_idx ON sponsorships (status);

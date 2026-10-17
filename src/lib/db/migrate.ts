@@ -46,12 +46,18 @@ const SPONSORSHIP_ADOPT_COLUMNS: ReadonlyArray<{ name: string; ddl: string }> = 
   { name: 'currency', ddl: 'TEXT' },
   { name: 'created_at', ddl: 'INTEGER NOT NULL DEFAULT 0' },
   { name: 'updated_at', ddl: 'INTEGER NOT NULL DEFAULT 0' },
+  { name: 'paid_at', ddl: 'INTEGER' },
+  { name: 'refunded_at', ddl: 'INTEGER' },
 ]
 
 /**
  * Adopt an existing sponsorships table. Adds columns and the status index
  * that the application schema expects, and does not drop or delete anything.
- * No-op when the table is absent or already complete.
+ * `paid_at` and `refunded_at` are added here because this SQLite build rejects
+ * `ADD COLUMN IF NOT EXISTS`. A missing name is added once. A name that is
+ * already present is left alone. Paid rows with a null `paid_at` copy
+ * `updated_at` once so an existing placement keeps a start time.
+ * No-op when the table is absent.
  */
 export async function adoptSponsorshipSchema(client: Client): Promise<void> {
   const tables = await client.execute(
@@ -72,6 +78,9 @@ export async function adoptSponsorshipSchema(client: Client): Promise<void> {
       'CREATE UNIQUE INDEX IF NOT EXISTS sponsorships_stripe_checkout_session_id_unique ON sponsorships (stripe_checkout_session_id)',
     )
   }
+  await client.execute(
+    "UPDATE sponsorships SET paid_at = updated_at WHERE status = 'paid' AND paid_at IS NULL",
+  )
 }
 
 /** Create the parent directory for a file: database. Remote libsql URLs are unchanged. */

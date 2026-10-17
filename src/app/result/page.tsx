@@ -307,7 +307,7 @@ export default async function ResultPage({
       </p>
       <p className="text-sm text-muted">
         The button goes to the tool’s own site. We are not adding an affiliate code. See the{' '}
-        <Link href="/disclosure" className="underline">affiliate disclosure</Link>.
+        <Link href="/disclosure" className="underline">Disclosures</Link>.
       </p>
     </article>
   )

@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
+import { SponsorForm } from '@/components/sponsor-form'
 import {
   SPONSOR_BUSINESS_NAME,
+  SPONSOR_COMPANY_PUBLISHED,
   SPONSOR_INTEGRATION_IDENTIFIER,
   SPONSOR_OFFERINGS,
   SPONSOR_ONE_TIME_NOTICE,
@@ -97,6 +101,63 @@ describe('parseSponsorCheckout', () => {
     if (!parsed.ok) return
     expect(parsed.value.priceId).toBe('price_server_issue')
     expect(parsed.value.issueDate).toBe(futureIssue(21))
+  })
+
+  it('strips bidi and control characters from the company name', () => {
+    const parsed = parseSponsorCheckout(
+      form({
+        offering: 'placement_weekly',
+        email: 'sponsor@example.com',
+        company: '\u202EExample\u0007 Tools\u2069',
+        task_slug: 'coding',
+        request_id: REQUEST_ID,
+      }),
+      env,
+    )
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.value.company).toBe('Example Tools')
+    const session = sponsorCheckoutParams({
+      ...parsed.value,
+      successUrl: 'https://bestbotfor.com/sponsor/success?session_id={CHECKOUT_SESSION_ID}',
+      cancelUrl: 'https://bestbotfor.com/sponsor/cancel',
+    })
+    expect(session.params.metadata).toMatchObject({ company: 'Example Tools' })
+    expect(JSON.stringify(session.params.metadata)).not.toContain('\u202E')
+
+    const strippedBare = parseSponsorCheckout(
+      form({
+        offering: 'placement_weekly',
+        email: 'sponsor@example.com',
+        company: '\u202EA',
+        task_slug: 'coding',
+        request_id: REQUEST_ID,
+      }),
+      env,
+    )
+    expect(strippedBare).toEqual({ ok: false, message: 'Enter the company name.' })
+
+    const accented = parseSponsorCheckout(
+      form({
+        offering: 'placement_weekly',
+        email: 'sponsor@example.com',
+        company: 'Café Tools',
+        task_slug: 'coding',
+        request_id: REQUEST_ID,
+      }),
+      env,
+    )
+    expect(accented.ok).toBe(true)
+    if (!accented.ok) return
+    expect(accented.value.company).toBe('Café Tools')
+  })
+})
+
+describe('sponsor company publication copy', () => {
+  it('tells the buyer their company name is published with a Sponsored label', () => {
+    expect(SPONSOR_COMPANY_PUBLISHED).toBe('Your company name is published with a Sponsored label.')
+    const html = renderToStaticMarkup(createElement(SponsorForm, { offerings: [], tasks: [] }))
+    expect(html).toContain(SPONSOR_COMPANY_PUBLISHED)
   })
 })
 

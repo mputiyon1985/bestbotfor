@@ -24,6 +24,7 @@ test('sponsor page creates a hosted checkout session from the server price', asy
     'One-time payment, no auto-renewal.',
   )
   await expect(page.getByRole('radio', { name: /One-time payment, no auto-renewal/ })).toHaveCount(3)
+  await expect(page.getByText('Your company name is published with a Sponsored label.')).toBeVisible()
 
   await page.getByRole('radio', { name: /one month/ }).check()
   await page.getByLabel('Work email').fill('sponsor@example.com')
@@ -62,6 +63,7 @@ test('sponsor page creates a hosted checkout session from the server price', asy
 
 test('disclosure names paid placements and a guide without one is unlabeled', async ({ page }) => {
   await page.goto('/disclosure')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Disclosures')
   await expect(page.getByText(/paid featured placements/)).toBeVisible()
   await expect(page.getByText(/newsletter sponsorships/)).toBeVisible()
   await expect(page.getByText(/labeled Sponsored/)).toBeVisible()

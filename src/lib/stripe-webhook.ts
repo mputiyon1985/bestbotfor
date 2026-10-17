@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 import type Stripe from 'stripe'
 import { z } from 'zod'
 import type { Database } from './db'
@@ -8,6 +8,7 @@ import { isDeadline, withDeadline } from './deadline'
 import { sponsorOffering, sponsorPriceId } from './sponsor-offerings'
 import { getStripe, stripeWebhookSecret } from './stripe'
 import { liveModeAllowed } from './stripe-key'
+import { sanitizeSponsorCompany } from './sponsor-company'
 
 const WEBHOOK_DB_BUDGET_MS = 2_000
 
@@ -56,6 +57,8 @@ export async function handleStripeWebhook(input: {
   secret?: string | null
   deadlineMs?: number
   allowLive?: boolean
+  /** Clock for sponsorship paid_at, refunded_at, and updated_at. Defaults to Date.now(). */
+  now?: number
 }): Promise<WebhookResult> {
   const stripe = input.stripe === undefined ? getStripe() : input.stripe
   const secret = input.secret === undefined ? stripeWebhookSecret() : input.secret
@@ -82,7 +85,7 @@ export async function handleStripeWebhook(input: {
   const deadlineMs = input.deadlineMs ?? WEBHOOK_DB_BUDGET_MS
 
   try {
-    const outcome = await withDeadline(applyWebhook(db, stripe, event), deadlineMs)
+    const outcome = await withDeadline(applyWebhook(db, stripe, event, input.now), deadlineMs)
     if (outcome === 'duplicate') return { status: 200, body: { received: true, duplicate: true } }
     return { status: 200, body: { received: true } }
   } catch (error) {
@@ -105,7 +108,12 @@ function deleteUnfinishedClaim(db: Database, eventId: string) {
     .where(and(eq(stripeEvents.id, eventId), eq(stripeEvents.processedAt, 0)))
 }
 
-async function applyWebhook(db: Database, stripe: Stripe, event: Stripe.Event): Promise<'ok' | 'duplicate'> {
+async function applyWebhook(
+  db: Database,
+  stripe: Stripe,
+  event: Stripe.Event,
+  now?: number,
+): Promise<'ok' | 'duplicate'> {
   const inserted = await db
     .insert(stripeEvents)
     .values({ id: event.id, type: event.type, processedAt: 0 })
@@ -118,7 +126,7 @@ async function applyWebhook(db: Database, stripe: Stripe, event: Stripe.Event): 
   }
 
   try {
-    await applyEvent(db, stripe, event)
+    await applyEvent(db, stripe, event, now)
     await db.update(stripeEvents).set({ processedAt: Date.now() }).where(eq(stripeEvents.id, event.id))
   } catch (error) {
     await deleteUnfinishedClaim(db, event.id)
@@ -187,7 +195,7 @@ function sponsorshipLine(session: Stripe.Checkout.Session): { priceId: string | 
   return { priceId, quantity }
 }
 
-async function applySponsorship(db: Database, stripe: Stripe, event: Stripe.Event): Promise<void> {
+async function applySponsorship(db: Database, stripe: Stripe, event: Stripe.Event, clock?: number): Promise<void> {
   const parsed = sponsorshipCheckoutSchema.safeParse(event.data.object)
   if (!parsed.success || parsed.data.metadata?.kind !== 'sponsorship') {
     throw new Error('sponsorship payload failed validation')
@@ -202,8 +210,9 @@ async function applySponsorship(db: Database, stripe: Stripe, event: Stripe.Even
     throw new Error('sponsorship price mismatch')
   }
   if (line.quantity !== 1) throw new Error('sponsorship quantity mismatch')
-  const now = Date.now()
+  const now = clock ?? Date.now()
   const status = sponsorshipStatus(event.type, parsed.data.payment_status)
+  const company = sanitizeSponsorCompany(parsed.data.metadata.company ?? '')
   await db
     .insert(sponsorships)
     .values({
@@ -214,13 +223,14 @@ async function applySponsorship(db: Database, stripe: Stripe, event: Stripe.Even
       offering: offering.id,
       status,
       email: parsed.data.customer_email ?? parsed.data.metadata.email ?? null,
-      company: parsed.data.metadata.company || null,
+      company: company.length > 0 ? company : null,
       taskSlug: parsed.data.metadata.task_slug || null,
       issueDate: parsed.data.metadata.issue_date || null,
       amountTotal: parsed.data.amount_total ?? null,
       currency: parsed.data.currency ?? null,
       createdAt: now,
       updatedAt: now,
+      paidAt: status === 'paid' ? now : null,
     })
     .onConflictDoUpdate({
       target: sponsorships.stripeCheckoutSessionId,
@@ -239,14 +249,53 @@ async function applySponsorship(db: Database, stripe: Stripe, event: Stripe.Even
         issueDate: sql`coalesce(excluded.issue_date, ${sponsorships.issueDate})`,
         amountTotal: sql`coalesce(excluded.amount_total, ${sponsorships.amountTotal})`,
         currency: sql`coalesce(excluded.currency, ${sponsorships.currency})`,
+        paidAt: sql`CASE
+          WHEN ${sponsorships.paidAt} IS NOT NULL THEN ${sponsorships.paidAt}
+          WHEN ${sponsorships.status} = 'paid' OR excluded.status = 'paid' THEN ${now}
+          ELSE NULL
+        END`,
         updatedAt: now,
       },
     })
 }
 
-async function applyEvent(db: Database, stripe: Stripe, event: Stripe.Event): Promise<void> {
+function paymentIntentId(value: unknown): string | null {
+  if (typeof value === 'string') return value.startsWith('pi_') ? value : null
+  if (!value || typeof value !== 'object' || !('id' in value)) return null
+  const id = (value as { id?: unknown }).id
+  return typeof id === 'string' && id.startsWith('pi_') ? id : null
+}
+
+function refundHidesPlacement(type: string, record: Record<string, unknown>): boolean {
+  if (type === 'charge.refunded') {
+    const amount = record.amount_refunded
+    return record.refunded === true || (typeof amount === 'number' && amount > 0)
+  }
+  return type.startsWith('refund.') && record.status === 'succeeded'
+}
+
+/** A succeeded refund or charge.refunded stops the placement. refunded_at is set once. */
+async function applySponsorshipRefund(db: Database, event: Stripe.Event, now: number): Promise<void> {
+  const object = event.data?.object
+  if (!object || typeof object !== 'object') throw new Error('refund payload failed validation')
+  const record = object as unknown as Record<string, unknown>
+  if (!refundHidesPlacement(event.type, record)) return
+  const intent = paymentIntentId(record.payment_intent)
+  if (!intent) return
+  await db
+    .update(sponsorships)
+    .set({ refundedAt: now, updatedAt: now })
+    .where(and(eq(sponsorships.stripePaymentIntentId, intent), isNull(sponsorships.refundedAt)))
+}
+
+async function applyEvent(db: Database, stripe: Stripe, event: Stripe.Event, now?: number): Promise<void> {
   if (isSponsorshipEvent(event)) {
-    await applySponsorship(db, stripe, event)
+    await applySponsorship(db, stripe, event, now)
+    return
+  }
+
+  if (event.type === 'charge.refunded' || event.type.startsWith('refund.')) {
+    await applySponsorshipRefund(db, event, now ?? Date.now())
     return
   }
 
