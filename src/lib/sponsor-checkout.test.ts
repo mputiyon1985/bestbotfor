@@ -8,6 +8,7 @@ import {
   SPONSOR_INTEGRATION_IDENTIFIER,
   SPONSOR_OFFERINGS,
   SPONSOR_ONE_TIME_NOTICE,
+  SPONSOR_REVIEW_NOTICE,
   sponsorPriceId,
   sponsorPriceLabel,
 } from './sponsor-offerings'
@@ -158,6 +159,27 @@ describe('sponsor company publication copy', () => {
     expect(SPONSOR_COMPANY_PUBLISHED).toBe('Your company name is published with a Sponsored label.')
     const html = renderToStaticMarkup(createElement(SponsorForm, { offerings: [], tasks: [] }))
     expect(html).toContain(SPONSOR_COMPANY_PUBLISHED)
+    expect(html).toContain(SPONSOR_REVIEW_NOTICE)
+    const withCard = renderToStaticMarkup(
+      createElement(SponsorForm, {
+        offerings: [
+          {
+            id: 'placement_weekly',
+            title: 'Week',
+            summary: 'A week',
+            priceLabel: '$99',
+            target: 'task',
+            available: true,
+          },
+        ],
+        tasks: [{ slug: 'coding', name: 'Coding' }],
+      }),
+    )
+    expect(withCard).toContain('name="tool_name"')
+    expect(withCard).toContain('name="tool_description"')
+    expect(withCard).toContain('name="tool_url"')
+    expect(withCard).toContain('name="logo"')
+    expect(withCard.match(/Your tool card is reviewed/g)).toHaveLength(1)
   })
 })
 
@@ -207,7 +229,16 @@ describe('sponsorCheckoutParams', () => {
     })
     expect(first.params.managed_payments).toEqual({ enabled: false })
     expect(first.params).not.toHaveProperty('automatic_tax')
+    expect(first.params.metadata).toMatchObject({ creative_id: '' })
     expect(first).toEqual(second)
+    const withCard = sponsorCheckoutParams({
+      ...parsed.value,
+      creativeId: '4',
+      successUrl: 'https://bestbotfor.com/sponsor/success?session_id={CHECKOUT_SESSION_ID}',
+      cancelUrl: 'https://bestbotfor.com/sponsor/cancel',
+    })
+    expect(withCard.params.metadata).toMatchObject({ creative_id: '4' })
+    expect(withCard.idempotencyKey).not.toBe(first.idempotencyKey)
 
     const otherOrigin = sponsorCheckoutParams({
       ...parsed.value,

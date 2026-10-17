@@ -85,6 +85,13 @@
       "when": 1792184000000,
       "tag": "0013_sponsorship_paid_at",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1792185000000,
+      "tag": "0014_sponsorship_creatives",
+      "breakpoints": true
     }
   ]
 }

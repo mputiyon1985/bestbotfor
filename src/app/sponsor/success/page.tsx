@@ -1,7 +1,10 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { SponsorCardFollowup } from '@/components/sponsor-card-followup'
 import { pageMetadata } from '@/lib/metadata'
+
+const CHECKOUT_SESSION = /^cs_[A-Za-z0-9_]{8,200}$/
 
 export const metadata: Metadata = pageMetadata({
   title: 'Sponsor checkout',
@@ -10,7 +13,14 @@ export const metadata: Metadata = pageMetadata({
   noIndex: true,
 })
 
-export default function SponsorSuccessPage() {
+export default async function SponsorSuccessPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ session_id?: string | string[] }>
+}) {
+  const query = await searchParams
+  const raw = Array.isArray(query.session_id) ? query.session_id[0] : query.session_id
+  const sessionId = raw && CHECKOUT_SESSION.test(raw) ? raw : null
   return (
     <article className="max-w-2xl space-y-6">
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Sponsor', path: '/sponsor' }, { name: 'Success', path: '/sponsor/success' }]} />
@@ -19,6 +29,7 @@ export default function SponsorSuccessPage() {
         Thanks. If the payment completes, Stripe notifies this site and the sponsorship is recorded from that webhook.
         You can close this page. No card details are stored here.
       </p>
+      {sessionId ? <SponsorCardFollowup sessionId={sessionId} /> : null}
       <p>
         <Link href="/sponsor" className="font-semibold underline-offset-4 hover:underline">
           Back to sponsor slots

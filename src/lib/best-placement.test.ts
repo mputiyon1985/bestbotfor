@@ -5,7 +5,8 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import { SponsoredPlacement } from '@/components/sponsored-placement'
 import type { Database } from './db/client'
-import { sponsorships } from './db/schema'
+import { sponsorshipCreatives, sponsorships } from './db/schema'
+import type { PublicSponsorCard } from './sponsor-card'
 import { createTestDatabase } from '@/test/db'
 import { SPONSORSHIP_DISCLOSURE } from './sponsorship-disclosure'
 import {
@@ -19,6 +20,16 @@ import {
 const START = 1_700_000_000_000
 const WEEK = 7 * 24 * 60 * 60 * 1000
 const MONTH = 30 * 24 * 60 * 60 * 1000
+const PNG = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+  'base64',
+)
+const CARD: PublicSponsorCard = {
+  name: 'Widget',
+  description: 'A useful coding tool.',
+  url: 'https://example.com/widget',
+  logoSrc: `data:image/png;base64,${PNG.toString('base64')}`,
+}
 
 function row(overrides: Partial<SponsorshipPlacementRow> = {}): SponsorshipPlacementRow {
   return {
@@ -28,8 +39,23 @@ function row(overrides: Partial<SponsorshipPlacementRow> = {}): SponsorshipPlace
     company: 'Example Tools',
     paidAt: START,
     refundedAt: null,
+    card: CARD,
     ...overrides,
   }
+}
+
+async function storeCard(db: Database, sponsorshipId: number, status: string) {
+  await db.insert(sponsorshipCreatives).values({
+    sponsorshipId,
+    toolName: 'Widget',
+    description: 'A useful coding tool.',
+    url: 'https://example.com/widget',
+    logoMime: 'image/png',
+    logoBytes: PNG,
+    status,
+    createdAt: START,
+    updatedAt: START,
+  })
 }
 
 describe('activeBestPlacement', () => {
@@ -49,18 +75,21 @@ describe('activeBestPlacement', () => {
       label: 'Sponsored',
       company: 'Example Tools',
       offering: 'placement_weekly',
+      card: CARD,
     })
     expect(activeBestPlacement(rows, 'coding', START + WEEK - 1)?.company).toBe('Example Tools')
     expect(activeBestPlacement(rows, 'coding', START + WEEK)).toEqual({
       label: 'Sponsored',
       company: 'Older Co',
       offering: 'placement_monthly',
+      card: CARD,
     })
     expect(activeBestPlacement(rows, 'coding', START - 1 + MONTH)).toBeNull()
     expect(activeBestPlacement(rows, 'writing', START)).toEqual({
       label: 'Sponsored',
       company: 'Other Task',
       offering: 'placement_weekly',
+      card: CARD,
     })
     expect(activeBestPlacement([], 'coding', START)).toBeNull()
   })
@@ -77,7 +106,13 @@ describe('activeBestPlacement', () => {
       label: SPONSORED_LABEL,
       company: null,
       offering: 'placement_weekly',
+      card: CARD,
     })
+  })
+
+  it('hides a paid placement until the tool card is attached', () => {
+    expect(activeBestPlacement([row({ card: null })], 'coding', START)).toBeNull()
+    expect(activeBestPlacement([row({ card: undefined })], 'coding', START)).toBeNull()
   })
 
   it('strips bidi and control characters from the published company name', () => {
@@ -95,23 +130,28 @@ describe('SponsoredPlacement', () => {
   it('renders the Sponsored label for an active placement and nothing otherwise', () => {
     const shown = renderToStaticMarkup(
       createElement(SponsoredPlacement, {
-        placement: { label: SPONSORED_LABEL, company: 'Example Tools', offering: 'placement_weekly' },
+        placement: { label: SPONSORED_LABEL, company: 'Example Tools', offering: 'placement_weekly', card: CARD },
       }),
     )
     expect(shown).toContain('<h2 id="sponsored-placement-heading"')
     expect(shown).toContain('border-t')
     expect(shown).toContain('Sponsored')
     expect(shown).toContain('Example Tools paid for a featured placement')
+    expect(shown).toContain('href="https://example.com/widget"')
+    expect(shown).toContain('rel="sponsored nofollow"')
+    expect(shown).toContain('Widget')
+    expect(shown).toContain('A useful coding tool.')
     expect(shown).toContain('href="/disclosure"')
     expect(shown).toContain('Disclosures')
     expect(shown).not.toContain('Affiliate disclosure')
+    expect(shown).not.toContain('aria-label="Tools ranked')
     expect(renderToStaticMarkup(createElement(SponsoredPlacement, { placement: null }))).toBe('')
   })
 
   it('renders the label when the sponsorship has no company name', () => {
     const shown = renderToStaticMarkup(
       createElement(SponsoredPlacement, {
-        placement: { label: SPONSORED_LABEL, company: null, offering: 'placement_monthly' },
+        placement: { label: SPONSORED_LABEL, company: null, offering: 'placement_monthly', card: CARD },
       }),
     )
     expect(shown).toContain('Sponsored')
@@ -125,38 +165,87 @@ describe('SponsoredPlacement', () => {
           label: SPONSORED_LABEL,
           company: 'Acme\u202E Tools',
           offering: 'placement_weekly',
+          card: CARD,
         },
       }),
     )
     expect(shown).toContain('Acme Tools paid for a featured placement')
     expect(shown).not.toContain('\u202E')
   })
+
+  it('escapes the card text and drops a non-https URL', () => {
+    const shown = renderToStaticMarkup(
+      createElement(SponsoredPlacement, {
+        placement: {
+          label: SPONSORED_LABEL,
+          company: 'Example Tools',
+          offering: 'placement_weekly',
+          card: { ...CARD, name: '<script>alert(1)</script>', description: 'A useful coding tool.' },
+        },
+      }),
+    )
+    expect(shown).toContain('&lt;script&gt;alert(1)&lt;/script&gt;')
+    expect(shown).not.toContain('<script>')
+    expect(shown).toContain('rel="sponsored nofollow"')
+    const dropped = renderToStaticMarkup(
+      createElement(SponsoredPlacement, {
+        placement: {
+          label: SPONSORED_LABEL,
+          company: 'Example Tools',
+          offering: 'placement_weekly',
+          card: { ...CARD, url: 'javascript:alert(1)' },
+        },
+      }),
+    )
+    expect(dropped).toBe('')
+  })
+
+  it('is rendered above the editorial ranking and is not part of the ItemList', () => {
+    const page = readFileSync(path.join(process.cwd(), 'src/app/best/[task]/page.tsx'), 'utf8')
+    const box = page.indexOf('<SponsoredPlacement')
+    const list = page.indexOf('<ul aria-label={listLabel}')
+    expect(box).toBeGreaterThan(-1)
+    expect(list).toBeGreaterThan(box)
+    expect(page).toContain('itemListJsonLd(bestGuideListName(task.name), `/best/${task.slug}`, shown)')
+    expect(page).not.toContain('placement.card')
+  })
 })
 
 describe('activeBestPlacementForTask', () => {
   it('reads a paid row and ignores one that is not active', async () => {
     const { db, close } = await createTestDatabase()
-    await db.insert(sponsorships).values([
-      {
-        stripeCheckoutSessionId: 'cs_paid',
-        offering: 'placement_weekly',
-        status: 'paid',
-        company: 'Example Tools',
-        taskSlug: 'coding',
-        createdAt: START,
-        updatedAt: START + WEEK,
-        paidAt: START,
-      },
-      {
-        stripeCheckoutSessionId: 'cs_pending',
-        offering: 'placement_weekly',
-        status: 'pending',
-        company: 'Pending Co',
-        taskSlug: 'coding',
-        createdAt: START,
-        updatedAt: START,
-      },
-    ])
+    const inserted = await db
+      .insert(sponsorships)
+      .values([
+        {
+          stripeCheckoutSessionId: 'cs_paid',
+          offering: 'placement_weekly',
+          status: 'paid',
+          company: 'Example Tools',
+          taskSlug: 'coding',
+          createdAt: START,
+          updatedAt: START + WEEK,
+          paidAt: START,
+        },
+        {
+          stripeCheckoutSessionId: 'cs_pending',
+          offering: 'placement_weekly',
+          status: 'pending',
+          company: 'Pending Co',
+          taskSlug: 'coding',
+          createdAt: START,
+          updatedAt: START,
+        },
+      ])
+      .returning({ id: sponsorships.id, session: sponsorships.stripeCheckoutSessionId })
+    const paid = inserted.find((item) => item.session === 'cs_paid')
+    if (!paid) throw new Error('missing paid row')
+    await expect(activeBestPlacementForTask(db, 'coding', START)).resolves.toBeNull()
+    await storeCard(db, paid.id, 'pending')
+    await expect(activeBestPlacementForTask(db, 'coding', START)).resolves.toBeNull()
+    await storeCard(db, paid.id, 'rejected')
+    await expect(activeBestPlacementForTask(db, 'coding', START)).resolves.toBeNull()
+    await storeCard(db, paid.id, 'approved')
     await expect(activeBestPlacementForTask(db, 'coding', START)).resolves.toMatchObject({
       label: 'Sponsored',
       company: 'Example Tools',
@@ -168,17 +257,23 @@ describe('activeBestPlacementForTask', () => {
 
   it('does not show a refunded row', async () => {
     const { db, close } = await createTestDatabase()
-    await db.insert(sponsorships).values({
-      stripeCheckoutSessionId: 'cs_refunded',
-      offering: 'placement_monthly',
-      status: 'paid',
-      company: 'Refunded Co',
-      taskSlug: 'coding',
-      createdAt: START,
-      updatedAt: START,
-      paidAt: START,
-      refundedAt: START + 1,
-    })
+    const inserted = await db
+      .insert(sponsorships)
+      .values({
+        stripeCheckoutSessionId: 'cs_refunded',
+        offering: 'placement_monthly',
+        status: 'paid',
+        company: 'Refunded Co',
+        taskSlug: 'coding',
+        createdAt: START,
+        updatedAt: START,
+        paidAt: START,
+        refundedAt: START + 1,
+      })
+      .returning({ id: sponsorships.id })
+    const refunded = inserted[0]
+    if (!refunded) throw new Error('missing refunded row')
+    await storeCard(db, refunded.id, 'approved')
     await expect(activeBestPlacementForTask(db, 'coding', START + 2)).resolves.toBeNull()
     await close()
   })

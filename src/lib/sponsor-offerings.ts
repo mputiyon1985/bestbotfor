@@ -24,6 +24,14 @@ export const SPONSOR_ONE_TIME_NOTICE = 'One-time payment, no auto-renewal.'
 /** Shown on /sponsor next to the company field. The name is published on the guide. */
 export const SPONSOR_COMPANY_PUBLISHED = 'Your company name is published with a Sponsored label.'
 
+/** Shown on /sponsor. The tool card is not public until an admin approves it. */
+export const SPONSOR_REVIEW_NOTICE =
+  'Your tool card is reviewed before it goes live. Rejected orders are refunded from the Stripe dashboard. An approved card is published with a Sponsored label.'
+
+/** Shown on the admin reject control. Rejecting a card does not call Stripe. */
+export const SPONSOR_REFUND_NOTE =
+  'Refunds are done in the Stripe dashboard. Rejecting a card does not refund the payment.'
+
 /**
  * Stable label for this Checkout flow. A retried sponsor form must send the
  * same value, or Stripe rejects the reused idempotency key.

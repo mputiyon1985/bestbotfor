@@ -1,5 +1,5 @@
 import { desc, sql } from 'drizzle-orm'
-import { check, index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { blob, check, index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 export const tools = sqliteTable('tools', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -158,6 +158,45 @@ export const sponsorships = sqliteTable(
     refundedAt: integer('refunded_at'),
   },
   (table) => [index('sponsorships_status_idx').on(table.status)],
+)
+
+/** Buyer-submitted tool card. Hidden until status is approved. */
+export const sponsorshipCreatives = sqliteTable(
+  'sponsorship_creatives',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    sponsorshipId: integer('sponsorship_id'),
+    stripeCheckoutSessionId: text('stripe_checkout_session_id'),
+    requestKey: text('request_key').unique(),
+    toolName: text('tool_name').notNull(),
+    description: text('description').notNull(),
+    url: text('url').notNull(),
+    logoMime: text('logo_mime').notNull(),
+    logoBytes: blob('logo_bytes', { mode: 'buffer' }).notNull(),
+    status: text('status').notNull(),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [
+    index('sponsorship_creatives_status_idx').on(table.status),
+    index('sponsorship_creatives_sponsorship_idx').on(table.sponsorshipId),
+    index('sponsorship_creatives_session_idx').on(table.stripeCheckoutSessionId),
+  ],
+)
+
+/** Append-only admin decisions for a sponsor tool card. */
+export const sponsorshipReviewEvents = sqliteTable(
+  'sponsorship_review_events',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    creativeId: integer('creative_id').notNull(),
+    sponsorshipId: integer('sponsorship_id'),
+    actor: text('actor').notNull(),
+    decision: text('decision').notNull(),
+    reason: text('reason').notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [index('sponsorship_review_events_creative_idx').on(table.creativeId)],
 )
 
 export const savedPicks = sqliteTable(

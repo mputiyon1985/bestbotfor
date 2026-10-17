@@ -6,6 +6,8 @@ const ALLOWED = new Set([
   'src/lib/db/client.ts',
   'src/lib/newsletter.ts',
   'src/lib/stripe-webhook.ts',
+  // Sponsor tool cards and their review audit log.
+  'src/lib/sponsor-card.ts',
   'src/lib/members.ts',
   'src/app/go/[slug]/route.ts',
   'src/lib/db/migrate.ts',

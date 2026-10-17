@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { sponsorCheckoutAction, type SponsorFormState } from '@/app/sponsor/actions'
-import { SPONSOR_COMPANY_PUBLISHED, SPONSOR_ONE_TIME_NOTICE } from '@/lib/sponsor-offerings'
+import { SPONSOR_COMPANY_PUBLISHED, SPONSOR_ONE_TIME_NOTICE, SPONSOR_REVIEW_NOTICE } from '@/lib/sponsor-offerings'
 
 export type SponsorFormOffering = {
   id: string
@@ -29,7 +29,7 @@ export function SponsorForm({ offerings, tasks }: { offerings: SponsorFormOfferi
   const checkoutReady = offerings.some((offering) => offering.available)
 
   return (
-    <form action={action} className="space-y-5">
+    <form action={action} encType="multipart/form-data" className="space-y-5">
       <fieldset className="space-y-3">
         <legend className="font-semibold">Offering</legend>
         {offerings.map((offering) => (
@@ -128,6 +128,69 @@ export function SponsorForm({ offerings, tasks }: { offerings: SponsorFormOfferi
         />
         <p className="mt-1 text-sm text-muted">Required for a newsletter slot.</p>
       </div>
+
+      {selected?.target === 'task' ? (
+        <fieldset className="space-y-4">
+          <legend className="font-semibold">Tool card</legend>
+          <div>
+            <label htmlFor="sponsor-tool-name" className="font-semibold">
+              Tool name
+            </label>
+            <input
+              id="sponsor-tool-name"
+              name="tool_name"
+              type="text"
+              required
+              maxLength={60}
+              className="mt-2 min-h-12 w-full rounded-xl border border-line bg-card px-3"
+            />
+          </div>
+          <div>
+            <label htmlFor="sponsor-tool-description" className="font-semibold">
+              One-line description
+            </label>
+            <input
+              id="sponsor-tool-description"
+              name="tool_description"
+              type="text"
+              required
+              minLength={12}
+              maxLength={140}
+              className="mt-2 min-h-12 w-full rounded-xl border border-line bg-card px-3"
+            />
+          </div>
+          <div>
+            <label htmlFor="sponsor-tool-url" className="font-semibold">
+              Tool URL
+            </label>
+            <input
+              id="sponsor-tool-url"
+              name="tool_url"
+              type="url"
+              required
+              maxLength={300}
+              placeholder="https://"
+              className="mt-2 min-h-12 w-full rounded-xl border border-line bg-card px-3"
+            />
+          </div>
+          <div>
+            <label htmlFor="sponsor-logo" className="font-semibold">
+              Logo
+            </label>
+            <input
+              id="sponsor-logo"
+              name="logo"
+              type="file"
+              accept="image/png,image/jpeg,image/webp"
+              required
+              className="mt-2 block w-full text-sm"
+            />
+            <p className="mt-1 text-sm text-muted">PNG, JPEG, or WebP. 200 KB maximum.</p>
+          </div>
+        </fieldset>
+      ) : null}
+
+      <p className="text-sm text-muted">{SPONSOR_REVIEW_NOTICE}</p>
 
       <input type="hidden" name="request_id" value={requestId} />
 
