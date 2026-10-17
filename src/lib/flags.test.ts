@@ -2,7 +2,7 @@ import { readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import { isRatingsPath, userRatingsEnabled, type UserRatingsEnv } from './flags'
-import { AFFILIATE_LINKS_LIVE, SHOW_USER_AGGREGATE_JSONLD, USER_RATINGS_PRODUCTION_LAUNCH } from './review-flags'
+import { AFFILIATE_LINKS_LIVE, POLICY_PAGES_LAWYER_APPROVED, SHOW_USER_AGGREGATE_JSONLD, USER_RATINGS_PRODUCTION_LAUNCH } from './review-flags'
 
 const originalRatings = process.env.USER_RATINGS
 const originalVercel = process.env.VERCEL_ENV
@@ -30,6 +30,7 @@ describe('user ratings flag', () => {
     expect(USER_RATINGS_PRODUCTION_LAUNCH).toBe(false)
     expect(AFFILIATE_LINKS_LIVE).toBe(false)
     expect(SHOW_USER_AGGREGATE_JSONLD).toBe(false)
+    expect(POLICY_PAGES_LAWYER_APPROVED).toBe(false)
   })
 
   it('is on only for preview, development, and test when USER_RATINGS is on', () => {
@@ -198,6 +199,7 @@ describe('user ratings flag', () => {
     expect(constants).toContain('export const USER_RATINGS_PRODUCTION_LAUNCH: boolean = false')
     expect(constants).toContain('export const AFFILIATE_LINKS_LIVE: boolean = false')
     expect(constants).toContain('export const SHOW_USER_AGGREGATE_JSONLD: boolean = false')
+    expect(constants).toContain('export const POLICY_PAGES_LAWYER_APPROVED: boolean = false')
     expect(constants).not.toContain('process.env')
     expect(proxy).toContain("from '@/lib/flags'")
     expect(proxy).toContain('userRatingsEnabled()')

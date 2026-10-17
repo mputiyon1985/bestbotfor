@@ -18,3 +18,11 @@ export const AFFILIATE_LINKS_LIVE: boolean = false
  * A code constant, same as SHOW_SCORES.
  */
 export const SHOW_USER_AGGREGATE_JSONLD: boolean = false
+
+/**
+ * Review guidelines and "How user ratings work" stay out of search until a
+ * lawyer signs off on the draft. While this is false, those pages hard-set
+ * robots to noindex, nofollow in every environment, including production.
+ * A later PR sets this to true after that review is recorded.
+ */
+export const POLICY_PAGES_LAWYER_APPROVED: boolean = false
