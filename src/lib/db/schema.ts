@@ -193,7 +193,7 @@ export const reviews = sqliteTable(
     index('reviews_tool_status_published_idx').on(table.toolId, table.status, desc(table.publishedAt)),
     index('reviews_status_created_idx').on(table.status, table.createdAt),
     index('reviews_ip_created_idx').on(table.ipHmac, table.createdAt),
-    index('reviews_net_created_idx').on(table.netHmac, table.createdAt),
+    index('reviews_tool_net_created_idx').on(table.toolId, table.netHmac, table.createdAt),
     check(
       'reviews_status_check',
       sql`${table.status} in ('pending', 'held', 'published', 'rejected', 'removed', 'withdrawn')`,

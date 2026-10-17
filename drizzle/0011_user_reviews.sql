@@ -39,7 +39,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS reviews_user_tool_unique ON reviews (clerk_use
 CREATE INDEX IF NOT EXISTS reviews_tool_status_published_idx ON reviews (tool_id, status, published_at DESC);
 CREATE INDEX IF NOT EXISTS reviews_status_created_idx ON reviews (status, created_at);
 CREATE INDEX IF NOT EXISTS reviews_ip_created_idx ON reviews (ip_hmac, created_at);
-CREATE INDEX IF NOT EXISTS reviews_net_created_idx ON reviews (net_hmac, created_at);
+CREATE INDEX IF NOT EXISTS reviews_tool_net_created_idx ON reviews (tool_id, net_hmac, created_at);
 
 CREATE TABLE IF NOT EXISTS review_versions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

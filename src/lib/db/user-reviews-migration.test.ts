@@ -112,7 +112,9 @@ describe('0011_user_reviews.sql', () => {
     expect(sql).toMatch(/ip_key_id TEXT/)
     expect(sql).not.toMatch(/network_range_hmac|hmac_key_version/)
     expect(sql).toMatch(/CREATE INDEX IF NOT EXISTS reviews_ip_created_idx ON reviews \(ip_hmac, created_at\)/)
-    expect(sql).toMatch(/CREATE INDEX IF NOT EXISTS reviews_net_created_idx ON reviews \(net_hmac, created_at\)/)
+    expect(sql).toMatch(
+      /CREATE INDEX IF NOT EXISTS reviews_tool_net_created_idx ON reviews \(tool_id, net_hmac, created_at\)/,
+    )
     expect(sql).not.toMatch(/competitor/i)
     const raw = await migrationSql()
     expect(raw).toMatch(/keyed HMAC of the full submit IP/)
@@ -144,6 +146,12 @@ describe('0011_user_reviews.sql', () => {
       expect(names).toContain('ip_key_id')
       const keyId = columns.rows.find((row) => row.name === 'ip_key_id')
       expect(String(keyId?.type).toUpperCase()).toBe('TEXT')
+      const indexes = await client.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'index' AND name = 'reviews_tool_net_created_idx'",
+      )
+      expect(String(indexes.rows[0]?.sql)).toBe(
+        'CREATE INDEX reviews_tool_net_created_idx ON reviews (tool_id, net_hmac, created_at)',
+      )
       const before = await client.execute('SELECT COUNT(*) AS n FROM schema_migrations')
       await client.executeMultiple(await migrationSql())
       const after = await client.execute('SELECT COUNT(*) AS n FROM schema_migrations')
