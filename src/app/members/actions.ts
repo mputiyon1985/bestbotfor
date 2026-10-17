@@ -21,8 +21,9 @@ export async function portalAction(): Promise<void> {
     rateLimitKey(userId, 'portal'),
     ACTION_LIMITS.portal.limit,
     ACTION_LIMITS.portal.windowMs,
+    { onError: 'closed' },
   )
-  if (!allowed) redirect('/members?notice=rate')
+  if (allowed !== 'allow') redirect('/members?notice=rate')
   const customer = await stripeCustomerIdForUser(userId)
   if (!customer) redirect('/pricing')
   const session = await stripe.billingPortal.sessions.create({
