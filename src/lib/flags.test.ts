@@ -200,6 +200,7 @@ describe('user ratings flag', () => {
     expect(constants).toContain('export const AFFILIATE_LINKS_LIVE: boolean = false')
     expect(constants).toContain('export const SHOW_USER_AGGREGATE_JSONLD: boolean = false')
     expect(constants).toContain('export const POLICY_PAGES_LAWYER_APPROVED: boolean = false')
+    expect(constants).toContain('ratings-not-launched gate')
     expect(constants).not.toContain('process.env')
     expect(proxy).toContain("from '@/lib/flags'")
     expect(proxy).toContain('userRatingsEnabled()')
