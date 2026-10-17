@@ -43,6 +43,8 @@ test('sponsor page creates a hosted checkout session from the server price', asy
   expect(session?.payment_method_types).toBeUndefined()
   expect(session?.['payment_method_types[0]']).toBeUndefined()
   expect(session?.integration_identifier).toBe(SPONSOR_INTEGRATION_IDENTIFIER)
+  expect(session?.['payment_intent_data[statement_descriptor_suffix]']).toBe('BestBotFor')
+  expect(session?.['payment_intent_data[statement_descriptor]']).toBeUndefined()
   expect(session?.['managed_payments[enabled]']).toBe('false')
   expect(session?.['automatic_tax[enabled]']).toBeUndefined()
   expect(JSON.stringify(session)).not.toContain('automatic_tax')

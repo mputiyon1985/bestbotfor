@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto'
 import type Stripe from 'stripe'
 import { taskSeeds } from '@/data/catalog'
 import {
+  SPONSOR_BUSINESS_NAME,
   SPONSOR_INTEGRATION_IDENTIFIER,
   sponsorOffering,
   sponsorPriceId,
@@ -110,6 +111,7 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
     input.priceId,
     input.successUrl,
     input.cancelUrl,
+    SPONSOR_BUSINESS_NAME,
   ].join('\n')
   const fingerprint = createHash('sha256').update(fingerprintSource).digest('hex').slice(0, 16)
   return {
@@ -121,7 +123,10 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
       success_url: input.successUrl,
       cancel_url: input.cancelUrl,
       metadata,
-      payment_intent_data: { metadata },
+      payment_intent_data: {
+        metadata,
+        statement_descriptor_suffix: SPONSOR_BUSINESS_NAME,
+      },
       integration_identifier: SPONSOR_INTEGRATION_IDENTIFIER,
       // Advertising placements are not eligible for Managed Payments.
       // automatic_tax stays unset; this business remains the merchant of record.

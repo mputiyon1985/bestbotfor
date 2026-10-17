@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type Stripe from 'stripe'
-import { SPONSOR_OFFERINGS } from './sponsor-offerings'
+import { SPONSOR_BUSINESS_NAME, SPONSOR_OFFERINGS } from './sponsor-offerings'
 import { ensureSponsorPrice, setupSponsorPrices } from './sponsor-setup'
 
 const testKey = ['sk', 'test', 'example'].join('_')
@@ -49,15 +49,52 @@ describe('sponsor price setup', () => {
     const offering = SPONSOR_OFFERINGS[2]
     const { stripe, created, products } = fakeStripe([])
     await expect(ensureSponsorPrice(stripe, offering)).resolves.toBe('price_created')
-    expect(products[0]).toMatchObject({ name: offering.productName })
+    expect(products[0]).toMatchObject({
+      name: SPONSOR_BUSINESS_NAME,
+      statement_descriptor: SPONSOR_BUSINESS_NAME,
+    })
     expect(products[0]).not.toHaveProperty('tax_code')
     expect(created[0]).not.toHaveProperty('tax_behavior')
+    expect(created[0]).not.toHaveProperty('recurring')
     expect(created[0]).toMatchObject({
       unit_amount: 4_900,
       currency: 'usd',
       lookup_key: 'sponsor_newsletter_issue',
       transfer_lookup_key: true,
+      nickname: 'Newsletter sponsor slot',
     })
+  })
+
+  it('creates one-time week and month prices with no recurring interval', async () => {
+    const weekly = SPONSOR_OFFERINGS[0]
+    const monthly = SPONSOR_OFFERINGS[1]
+    const week = fakeStripe([])
+    const month = fakeStripe([])
+    await ensureSponsorPrice(week.stripe, weekly)
+    await ensureSponsorPrice(month.stripe, monthly)
+    expect(week.created[0]).toMatchObject({ unit_amount: 9_900, nickname: 'Featured placement, one week' })
+    expect(week.created[0]).not.toHaveProperty('recurring')
+    expect(month.created[0]).toMatchObject({ unit_amount: 29_900, nickname: 'Featured placement, one month' })
+    expect(month.created[0]).not.toHaveProperty('recurring')
+    expect(week.products[0]).toMatchObject({ name: 'BestBotFor', statement_descriptor: 'BestBotFor' })
+  })
+
+  it('does not reuse a recurring price with the same amount', async () => {
+    const offering = SPONSOR_OFFERINGS[0]
+    const { stripe, created } = fakeStripe([
+      {
+        id: 'price_recurring',
+        lookup_key: offering.lookupKey,
+        unit_amount: offering.unitAmount,
+        currency: 'usd',
+        active: true,
+        recurring: { interval: 'week' },
+        product: 'prod_existing',
+      },
+    ])
+    await expect(ensureSponsorPrice(stripe, offering)).resolves.toBe('price_created')
+    expect(created[0]).toMatchObject({ unit_amount: 9_900, product: 'prod_existing' })
+    expect(created[0]).not.toHaveProperty('recurring')
   })
 
   it('moves the lookup key when the configured amount changed', async () => {

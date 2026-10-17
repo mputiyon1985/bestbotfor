@@ -1,11 +1,22 @@
 /**
- * Default one-time sponsor prices. Mark can change the amounts here.
- * Checkout never reads these numbers from the browser. It charges the Stripe
- * Price id in the matching env var. scripts/stripe-setup-test.ts creates those
- * Prices in test mode from this list.
+ * Approved sponsor list prices. Checkout never reads these numbers from the
+ * browser. It charges the Stripe Price id in the matching env var.
+ * scripts/stripe-setup-test.ts creates those Prices in test mode from this list.
+ *
+ * All three are one-time Prices. Checkout uses mode payment, which cannot
+ * charge a recurring Price, so the setup script does not send a recurring
+ * interval. A week and a month are a single charge for that placement. The
+ * newsletter slot is a single charge for one issue.
  */
 
 export const SPONSOR_CURRENCY = 'usd'
+
+/**
+ * Stripe product name and the card statement suffix. Card charges reject
+ * statement_descriptor on this API version, so Checkout sends this as
+ * statement_descriptor_suffix. 22 characters is the Stripe maximum.
+ */
+export const SPONSOR_BUSINESS_NAME = 'BestBotFor'
 
 /**
  * Stable label for this Checkout flow. A retried sponsor form must send the

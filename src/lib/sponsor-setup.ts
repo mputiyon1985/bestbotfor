@@ -1,5 +1,5 @@
 import type Stripe from 'stripe'
-import { SPONSOR_CURRENCY, SPONSOR_OFFERINGS, type SponsorOffering } from './sponsor-offerings'
+import { SPONSOR_BUSINESS_NAME, SPONSOR_CURRENCY, SPONSOR_OFFERINGS, type SponsorOffering } from './sponsor-offerings'
 import { assertTestSetupKey, STRIPE_API_VERSION } from './stripe-key'
 
 export { STRIPE_API_VERSION }
@@ -10,6 +10,7 @@ type PriceRecord = {
   unit_amount?: number | null
   currency?: string | null
   active?: boolean
+  recurring?: { interval?: string | null } | null
   product?: string | { id: string } | null
 }
 
@@ -25,7 +26,8 @@ export async function ensureSponsorPrice(stripe: Stripe, offering: SponsorOfferi
     current &&
     current.active !== false &&
     current.currency === SPONSOR_CURRENCY &&
-    current.unit_amount === offering.unitAmount
+    current.unit_amount === offering.unitAmount &&
+    !current.recurring
   ) {
     return current.id
   }
@@ -36,10 +38,11 @@ export async function ensureSponsorPrice(stripe: Stripe, offering: SponsorOfferi
     (
       await stripe.products.create(
         {
-          name: offering.productName,
+          name: SPONSOR_BUSINESS_NAME,
+          statement_descriptor: SPONSOR_BUSINESS_NAME,
           metadata: { offering: offering.id, lookup_key: offering.lookupKey },
         },
-        { idempotencyKey: `sponsor-product-${offering.lookupKey}` },
+        { idempotencyKey: `sponsor-product-${offering.lookupKey}-${SPONSOR_BUSINESS_NAME}` },
       )
     ).id
 

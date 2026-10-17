@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { SPONSOR_INTEGRATION_IDENTIFIER, SPONSOR_OFFERINGS, sponsorPriceId, sponsorPriceLabel } from './sponsor-offerings'
+import {
+  SPONSOR_BUSINESS_NAME,
+  SPONSOR_INTEGRATION_IDENTIFIER,
+  SPONSOR_OFFERINGS,
+  sponsorPriceId,
+  sponsorPriceLabel,
+} from './sponsor-offerings'
 import { parseSponsorCheckout, sponsorCheckoutParams } from './sponsor-checkout'
 
 const REQUEST_ID = '123e4567-e89b-42d3-a456-426614174000'
@@ -28,6 +34,9 @@ describe('sponsor offerings', () => {
       ['STRIPE_PRICE_NEWSLETTER_SLOT', 4_900, 'sponsor_newsletter_issue'],
     ])
     expect(SPONSOR_OFFERINGS.map((offering) => sponsorPriceLabel(offering.unitAmount))).toEqual(['$99', '$299', '$49'])
+    expect(SPONSOR_BUSINESS_NAME).toBe('BestBotFor')
+    expect(SPONSOR_BUSINESS_NAME.length).toBeLessThanOrEqual(22)
+    expect(SPONSOR_BUSINESS_NAME).toMatch(/^[A-Za-z0-9 ]+$/)
   })
 })
 
@@ -119,6 +128,10 @@ describe('sponsorCheckoutParams', () => {
     })
     expect(SPONSOR_INTEGRATION_IDENTIFIER).toMatch(/^sponsor_checkout_[a-z]{8}$/)
     expect(first.params.integration_identifier).toBe(SPONSOR_INTEGRATION_IDENTIFIER)
+    expect(first.params.payment_intent_data).toMatchObject({
+      statement_descriptor_suffix: 'BestBotFor',
+    })
+    expect(first.params.payment_intent_data).not.toHaveProperty('statement_descriptor')
     expect(first.params.managed_payments).toEqual({ enabled: false })
     expect(first.params).not.toHaveProperty('automatic_tax')
     expect(first).toEqual(second)
