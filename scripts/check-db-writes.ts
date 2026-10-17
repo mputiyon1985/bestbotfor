@@ -7,6 +7,7 @@ const ALLOWED = new Set([
   'src/lib/newsletter.ts',
   'src/lib/stripe-webhook.ts',
   'src/lib/members.ts',
+  'src/lib/pick-save.ts',
   'src/app/go/[slug]/route.ts',
   'src/lib/db/migrate.ts',
   'scripts/seed.ts',
