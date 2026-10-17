@@ -106,6 +106,13 @@
       "when": 1792187000000,
       "tag": "0016_sponsorship_card_review",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1792188000000,
+      "tag": "0018_retention_indexes",
+      "breakpoints": true
     }
   ]
 }

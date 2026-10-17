@@ -142,7 +142,7 @@ export async function ensureSqliteDirectory(url: string): Promise<void> {
   await mkdir(directory, { recursive: true })
 }
 
-export async function applyMigrations(url: string, authToken?: string): Promise<void> {
+export async function applyMigrations(url: string, authToken?: string, migrationsDirectory?: string): Promise<void> {
   requireSafeDbTarget(url)
   const fileDatabase = url.startsWith('file:')
   if (fileDatabase) await ensureSqliteDirectory(url)
@@ -150,7 +150,11 @@ export async function applyMigrations(url: string, authToken?: string): Promise<
     url,
     authToken: fileDatabase ? undefined : authToken,
   })
-  const directory = path.join(process.cwd(), 'drizzle')
+  const directory = migrationsDirectory ?? path.join(process.cwd(), 'drizzle')
+  // Each file is applied on its own ledger row, in filename order. A higher
+  // number that is already on disk runs even when an earlier number is absent.
+  // When that earlier file arrives later, it still runs, because its name is
+  // not in schema_migrations. 0011 and 0012 landed before 0009 this way.
   const files = (await readdir(directory))
     .filter((name) => name.endsWith('.sql'))
     .sort()

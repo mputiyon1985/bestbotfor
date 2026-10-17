@@ -1,4 +1,5 @@
 import { comparisonRows, comparisonSummary } from './compare'
+import { compareView } from './compare-copy'
 import type { Catalog } from './catalog-types'
 import { budgetPhrase, skillPhrase } from './format'
 import { omitScoreText } from './score-visibility'
@@ -61,9 +62,10 @@ function ogCopyFromCatalog(
     const b = catalog.tools.find((tool) => tool.slug === parsed.b)
     if (!a || !b) return { title: 'Comparison', subtitle: FALLBACK.subtitle }
     const rows = comparisonRows(a, b)
+    const curated = compareView(a, b)
     return {
-      title: `${a.name} vs ${b.name}`,
-      subtitle: rows.length > 0 ? comparisonSummary(a, b, rows) : `${a.shortDesc} ${b.shortDesc}`,
+      title: curated?.heading ?? `${a.name} vs ${b.name}`,
+      subtitle: curated?.verdictPlain ?? (rows.length > 0 ? comparisonSummary(a, b, rows) : `${a.shortDesc} ${b.shortDesc}`),
     }
   }
 

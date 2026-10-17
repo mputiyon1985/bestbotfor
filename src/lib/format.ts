@@ -1,4 +1,9 @@
+import { N8N_PRICE_LABEL } from '@/data/catalog-corrections'
 import type { Budget, Skill } from './validation'
+
+const PRICE_LABEL_OVERRIDES: Readonly<Record<string, string>> = {
+  n8n: N8N_PRICE_LABEL,
+}
 
 export const budgetLabel: Record<Budget, string> = {
   free: 'Free only',
@@ -47,12 +52,17 @@ export function formatUsDate(isoDate: string): string {
 }
 
 type Priced = {
+  slug?: string
   pricingModel: string
   hasFreeTier: boolean
   priceFromUsd: number | null
 }
 
 export function priceLabel(tool: Priced): string {
+  if (tool.slug) {
+    const override = PRICE_LABEL_OVERRIDES[tool.slug]
+    if (override) return override
+  }
   if (tool.pricingModel === 'free') return 'Free'
   if (tool.priceFromUsd != null) {
     const wholeDollars = Number.isInteger(tool.priceFromUsd)
