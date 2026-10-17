@@ -96,14 +96,18 @@ export const affiliatePrograms = sqliteTable('affiliate_programs', {
   verifiedAt: text('verified_at'),
 })
 
-export const clicks = sqliteTable('clicks', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  toolId: integer('tool_id').notNull(),
-  page: text('page').notNull(),
-  ts: integer('ts').notNull(),
-  country: text('country'),
-  ipHash: text('ip_hash'),
-})
+export const clicks = sqliteTable(
+  'clicks',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    toolId: integer('tool_id').notNull(),
+    page: text('page').notNull(),
+    ts: integer('ts').notNull(),
+    country: text('country'),
+    ipHash: text('ip_hash'),
+  },
+  (table) => [index('clicks_ts_idx').on(table.ts)],
+)
 
 export const subscribers = sqliteTable('subscribers', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -173,11 +177,15 @@ export const savedPicks = sqliteTable(
   (table) => [index('saved_picks_user_idx').on(table.clerkUserId)],
 )
 
-export const rateLimits = sqliteTable('rate_limits', {
-  key: text('key').primaryKey(),
-  count: integer('count').notNull(),
-  resetAt: integer('reset_at').notNull(),
-})
+export const rateLimits = sqliteTable(
+  'rate_limits',
+  {
+    key: text('key').primaryKey(),
+    count: integer('count').notNull(),
+    resetAt: integer('reset_at').notNull(),
+  },
+  (table) => [index('rate_limits_reset_at_idx').on(table.resetAt)],
+)
 
 /** One row per hashed client and fixed window. Expired rows are deleted after the response. */
 export const resultRateWindows = sqliteTable(

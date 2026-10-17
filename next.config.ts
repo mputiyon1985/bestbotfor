@@ -17,6 +17,7 @@ import {
   ORGANIZATION_LOGO_PATH,
   SVG_CONTENT_SECURITY_POLICY,
 } from './src/lib/brand'
+import { curatedCompareRedirects } from './src/data/compare-copy'
 import { assertReviewHmacSecrets } from './src/lib/review-hmac-secrets'
 
 // Fail the build (and any later config load) before Next compiles pages.
@@ -68,6 +69,7 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       ...legacyAssetRedirects.map((redirect) => ({ ...redirect, permanent: true as const })),
+      ...curatedCompareRedirects(),
       { source: '/tools/devin-desktop', destination: '/tools/windsurf', statusCode: 301 as const },
     ]
   },
