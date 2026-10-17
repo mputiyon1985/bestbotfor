@@ -1,14 +1,15 @@
 import type { ReactNode } from 'react'
 import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
-import { Analytics } from '@vercel/analytics/next'
 import { headers } from 'next/headers'
 import { ClerkShell } from '@/components/clerk-shell'
 import { ConsentBanner } from '@/components/consent-banner'
 import { JsonLd } from '@/components/json-ld'
+import { SiteAnalytics } from '@/components/site-analytics'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
 import { APPLE_TOUCH_ICON_PATH, BRAND, OG_IMAGE_PATH } from '@/lib/brand'
+import { secGpcOptOut } from '@/lib/gpc'
 import { isProductionDeployment } from '@/lib/indexing'
 import { organizationJsonLd, websiteJsonLd } from '@/lib/jsonld'
 import { homeDescription, homeTitle } from '@/lib/metadata'
@@ -73,7 +74,9 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic'
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const nonce = (await headers()).get('x-nonce')
+  const headerStore = await headers()
+  const nonce = headerStore.get('x-nonce')
+  const secGpc = secGpcOptOut(headerStore.get('sec-gpc'))
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ''
 
   const content = (
@@ -83,10 +86,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
         {children}
       </main>
       <SiteFooter />
-      <ConsentBanner gaId={gaId.success ? gaId.data : null} />
+      <ConsentBanner gaId={gaId.success ? gaId.data : null} secGpc={secGpc} />
       <JsonLd data={websiteJsonLd()} nonce={nonce} />
       <JsonLd data={organizationJsonLd()} nonce={nonce} />
-      <Analytics />
+      <SiteAnalytics secGpc={secGpc} />
     </>
   )
 

@@ -1,11 +1,25 @@
 import type { Database } from './db/client'
 import { withDeadline } from './deadline'
 import { consumeRateLimit } from './rate-limit'
+import {
+  CHECKOUT_RATE_LIMIT,
+  CHECKOUT_RATE_WINDOW_MS,
+  GO_RATE_LIMIT,
+  GO_RATE_WINDOW_MS,
+  NEWSLETTER_RATE_LIMIT,
+  NEWSLETTER_RATE_WINDOW_MS,
+  PORTAL_RATE_LIMIT,
+  PORTAL_RATE_WINDOW_MS,
+  RESULT_RATE_LIMIT,
+  RESULT_RATE_WINDOW_MS,
+} from './rate-windows'
 
 export const ACTION_LIMITS = {
-  result: { limit: 30, windowMs: 60_000 },
-  checkout: { limit: 8, windowMs: 60 * 60_000 },
-  portal: { limit: 12, windowMs: 60 * 60_000 },
+  result: { limit: RESULT_RATE_LIMIT, windowMs: RESULT_RATE_WINDOW_MS },
+  checkout: { limit: CHECKOUT_RATE_LIMIT, windowMs: CHECKOUT_RATE_WINDOW_MS },
+  portal: { limit: PORTAL_RATE_LIMIT, windowMs: PORTAL_RATE_WINDOW_MS },
+  newsletter: { limit: NEWSLETTER_RATE_LIMIT, windowMs: NEWSLETTER_RATE_WINDOW_MS },
+  go: { limit: GO_RATE_LIMIT, windowMs: GO_RATE_WINDOW_MS },
 } as const
 
 export type RateLimitOnError = 'open' | 'closed'

@@ -3,7 +3,7 @@ import { createBeehiivSubscription, isBeehiivConfigured } from './beehiiv'
 import type { Database } from './db'
 import { subscribers } from './db/schema'
 import { absoluteUrl } from './site'
-import { allowRate } from './action-limit'
+import { ACTION_LIMITS, allowRate } from './action-limit'
 import { emailSchema, newsletterFieldsSchema } from './validation'
 
 export type NewsletterResult = {
@@ -34,7 +34,7 @@ export async function subscribeToNewsletter(input: {
     return { status: 'error', message: 'Check the email address and try again.', tracked: false }
   }
 
-  const allowed = await allowRate(input.db, input.rateKey, 5, 60 * 60 * 1000, {
+  const allowed = await allowRate(input.db, input.rateKey, ACTION_LIMITS.newsletter.limit, ACTION_LIMITS.newsletter.windowMs, {
     onError: 'closed',
     now: input.now,
   })

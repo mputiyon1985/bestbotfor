@@ -6,6 +6,7 @@ import { getDb } from '@/lib/db'
 import { clicks } from '@/lib/db/schema'
 import { GO_DB_BUDGET_MS, resolveGoRedirect } from '@/lib/go-redirect'
 import { clientIp, rateLimitKey } from '@/lib/ip'
+import { ACTION_LIMITS } from '@/lib/action-limit'
 import { consumeRateLimit } from '@/lib/rate-limit'
 import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
 import { getSiteUrl } from '@/lib/site'
@@ -37,7 +38,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     siteUrl: getSiteUrl(),
     seedUrl: reviewed.url,
     allowedHosts: reviewed.allowedHosts,
-    limit: () => consumeRateLimit(db, rateLimitKey(ip, 'go'), 60, 60_000),
+    limit: () => consumeRateLimit(db, rateLimitKey(ip, 'go'), ACTION_LIMITS.go.limit, ACTION_LIMITS.go.windowMs),
     loadTool: async () => {
       const tool = await getTool(slug)
       if (!tool) return null
