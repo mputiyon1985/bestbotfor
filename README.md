@@ -38,7 +38,7 @@ npm run dev
 | `NEXT_PUBLIC_GA_ID` | Optional GA4 measurement ID. gtag.js loads only after the visitor accepts |
 | `GOOGLE_SITE_VERIFICATION` | Optional Search Console token |
 | `SEED_PRUNE` | Set to `1` to delete score rows whose tools are not in `src/data/scores-v2.3.csv`. Unset, the seed only upserts |
-| `USER_RATINGS` | Server-only. The exact value `on` enables user ratings when `VERCEL_ENV` is `preview`, `development`, or `test`, or when `VERCEL_ENV` is unset and `NODE_ENV` is not `production`. Any other `VERCEL_ENV` is off. Production stays off until `USER_RATINGS_PRODUCTION_LAUNCH` in `src/lib/review-flags.ts` is true |
+| `USER_RATINGS` | Server-only. The exact value `on` enables user ratings only when `VERCEL_ENV` is exactly `preview`, `development`, or `test`. An unset or unknown `VERCEL_ENV` is off. `NODE_ENV` is not consulted. Production stays off until `USER_RATINGS_PRODUCTION_LAUNCH` in `src/lib/review-flags.ts` is true |
 
 Stripe billing accepts a test secret key only. CI fails if a live-mode Stripe key prefix appears anywhere in the tree. The webhook rejects live-mode events. Point Stripe’s test webhook at `/api/stripe/webhook`.
 

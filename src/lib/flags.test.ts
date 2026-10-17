@@ -32,63 +32,54 @@ describe('user ratings flag', () => {
     expect(SHOW_USER_AGGREGATE_JSONLD).toBe(false)
   })
 
-  it('is on only for the allowlist when USER_RATINGS is on', () => {
-    const nodeEnvs = [undefined, '', 'development', 'test', 'production', ' production ', 'Production'] as const
-    const allowedVercel = ['preview', 'development', 'test', ' preview ', 'development\n', ' test '] as const
-    for (const vercelEnv of allowedVercel) {
-      for (const nodeEnv of nodeEnvs) {
-        expect(enabled({ userRatings: 'on', vercelEnv, nodeEnv }), `${vercelEnv} / ${String(nodeEnv)}`).toBe(true)
-      }
+  it('is on only for preview, development, and test when USER_RATINGS is on', () => {
+    for (const vercelEnv of ['preview', 'development', 'test', ' preview ', 'development\n', ' test '] as const) {
+      expect(enabled({ userRatings: 'on', vercelEnv }), vercelEnv).toBe(true)
+    }
+    for (const vercelEnv of ['staging', 'Production', 'prod', 'Preview', 'PREVIEW'] as const) {
+      expect(enabled({ userRatings: 'on', vercelEnv }), vercelEnv).toBe(false)
+      expect(enabled({ userRatings: 'on', vercelEnv }, true), `launch ${vercelEnv}`).toBe(false)
+    }
+    expect(enabled({ userRatings: 'on', vercelEnv: 'production' })).toBe(false)
+    expect(enabled({ userRatings: 'on', vercelEnv: ' production ' })).toBe(false)
+  })
+
+  it('is off when VERCEL_ENV is unset, even if NODE_ENV is not production', () => {
+    for (const vercelEnv of [undefined, '', '   '] as const) {
+      expect(enabled({ userRatings: 'on', vercelEnv }), `unset ${JSON.stringify(vercelEnv)}`).toBe(false)
+      expect(enabled({ userRatings: 'on', vercelEnv }, true), `launch unset ${JSON.stringify(vercelEnv)}`).toBe(false)
     }
 
-    const unsetVercel = [undefined, '', '   '] as const
-    for (const vercelEnv of unsetVercel) {
-      for (const nodeEnv of nodeEnvs) {
-        const on = (nodeEnv?.trim() ?? '') !== 'production'
-        expect(enabled({ userRatings: 'on', vercelEnv, nodeEnv }), `unset ${String(vercelEnv)} / ${String(nodeEnv)}`).toBe(on)
-      }
-    }
-
-    const unknownVercel = ['staging', 'Production', 'prod', 'Preview', 'PREVIEW'] as const
-    for (const vercelEnv of unknownVercel) {
-      for (const nodeEnv of nodeEnvs) {
-        expect(enabled({ userRatings: 'on', vercelEnv, nodeEnv }), `${vercelEnv} / ${String(nodeEnv)}`).toBe(false)
-        expect(enabled({ userRatings: 'on', vercelEnv, nodeEnv }, true), `launch ${vercelEnv}`).toBe(false)
-      }
-    }
-
-    for (const nodeEnv of nodeEnvs) {
-      expect(enabled({ userRatings: 'on', vercelEnv: 'production', nodeEnv })).toBe(false)
-      expect(enabled({ userRatings: 'on', vercelEnv: ' production ', nodeEnv })).toBe(false)
+    process.env.USER_RATINGS = 'on'
+    delete process.env.VERCEL_ENV
+    for (const nodeEnv of [undefined, 'development', 'test', 'production'] as const) {
+      setNodeEnv(nodeEnv)
+      expect(userRatingsEnabled(), `NODE_ENV ${String(nodeEnv)}`).toBe(false)
     }
   })
 
   it('treats a missing or empty USER_RATINGS as off everywhere', () => {
     const vercelValues = [...environments, '', ' production ', 'staging', 'Production', 'preview', 'test'] as const
-    const nodeEnvs = [undefined, 'production', 'development', 'test'] as const
     for (const vercelEnv of vercelValues) {
-      for (const nodeEnv of nodeEnvs) {
-        for (const userRatings of offValues) {
-          expect(enabled({ userRatings, vercelEnv, nodeEnv }), `${String(vercelEnv)} / ${String(nodeEnv)} / ${JSON.stringify(userRatings)}`).toBe(false)
-          expect(enabled({ userRatings, vercelEnv, nodeEnv }, true), `launch ${String(vercelEnv)}`).toBe(false)
-        }
+      for (const userRatings of offValues) {
+        expect(enabled({ userRatings, vercelEnv }), `${String(vercelEnv)} / ${JSON.stringify(userRatings)}`).toBe(false)
+        expect(enabled({ userRatings, vercelEnv }, true), `launch ${String(vercelEnv)}`).toBe(false)
       }
     }
   })
 
   it('accepts a trimmed "on" on the allowlist and keeps a padded production value off', () => {
-    expect(enabled({ userRatings: ' on ', vercelEnv: 'preview', nodeEnv: 'production' })).toBe(true)
+    expect(enabled({ userRatings: ' on ', vercelEnv: 'preview' })).toBe(true)
     expect(enabled({ userRatings: 'on\n', vercelEnv: 'development' })).toBe(true)
-    expect(enabled({ userRatings: 'on', vercelEnv: 'test', nodeEnv: 'production' })).toBe(true)
+    expect(enabled({ userRatings: 'on', vercelEnv: 'test' })).toBe(true)
     expect(enabled({ userRatings: ' on ', vercelEnv: 'production' })).toBe(false)
-    expect(enabled({ userRatings: 'on', vercelEnv: ' production ', nodeEnv: 'development' })).toBe(false)
-    expect(enabled({ userRatings: 'on', vercelEnv: '', nodeEnv: 'development' })).toBe(true)
-    expect(enabled({ userRatings: 'on', vercelEnv: '', nodeEnv: 'production' })).toBe(false)
-    expect(enabled({ userRatings: 'on', nodeEnv: 'test' })).toBe(true)
+    expect(enabled({ userRatings: 'on', vercelEnv: ' production ' })).toBe(false)
+    expect(enabled({ userRatings: 'on', vercelEnv: '' })).toBe(false)
+    expect(enabled({ userRatings: 'on' })).toBe(false)
   })
 
   it('allows production only when the launch constant is true and USER_RATINGS is on', () => {
-    expect(enabled({ userRatings: 'on', vercelEnv: 'production', nodeEnv: 'production' }, true)).toBe(true)
+    expect(enabled({ userRatings: 'on', vercelEnv: 'production' }, true)).toBe(true)
     expect(enabled({ userRatings: 'off', vercelEnv: 'production' }, true)).toBe(false)
     expect(enabled({ userRatings: undefined, vercelEnv: 'production' }, true)).toBe(false)
     expect(enabled({ userRatings: '', vercelEnv: 'preview' }, true)).toBe(false)
@@ -96,8 +87,8 @@ describe('user ratings flag', () => {
     expect(enabled({ userRatings: 'on', vercelEnv: 'production' }, false)).toBe(false)
     expect(enabled({ userRatings: 'on', vercelEnv: 'production' }, USER_RATINGS_PRODUCTION_LAUNCH)).toBe(false)
     expect(enabled({ userRatings: 'on', vercelEnv: 'staging' }, true)).toBe(false)
-    expect(enabled({ userRatings: 'on', vercelEnv: '', nodeEnv: 'production' }, true)).toBe(false)
-    expect(enabled({ userRatings: 'on', vercelEnv: '', nodeEnv: 'development' }, true)).toBe(true)
+    expect(enabled({ userRatings: 'on', vercelEnv: '' }, true)).toBe(false)
+    expect(enabled({ userRatings: 'on' }, true)).toBe(false)
   })
 
   it('reads process.env when called with no arguments', () => {
@@ -131,10 +122,7 @@ describe('user ratings flag', () => {
     expect(userRatingsEnabled()).toBe(false)
 
     delete process.env.VERCEL_ENV
-    setNodeEnv('development')
-    expect(userRatingsEnabled()).toBe(true)
-
-    setNodeEnv('production')
+    setNodeEnv('test')
     expect(userRatingsEnabled()).toBe(false)
 
     process.env.USER_RATINGS = 'on'
@@ -190,6 +178,7 @@ describe('user ratings flag', () => {
       expect(source).not.toMatch(/from ['"]@\/lib\/db|from ['"]\.\/db/)
     }
     expect(flags).not.toContain('NEXT_PUBLIC_USER_RATINGS')
+    expect(flags).not.toContain('NODE_ENV')
     expect(flags).toContain("from './review-flags'")
     expect(constants).toContain('export const USER_RATINGS_PRODUCTION_LAUNCH: boolean = false')
     expect(constants).toContain('export const AFFILIATE_LINKS_LIVE: boolean = false')

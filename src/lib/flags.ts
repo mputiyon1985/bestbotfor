@@ -10,21 +10,18 @@ export function isClerkConfigured(): boolean {
 export type UserRatingsEnv = {
   /** USER_RATINGS. Only the exact value "on" enables the feature. */
   userRatings?: string
-  /** VERCEL_ENV. Unknown values are off. Production stays off unless the launch constant is true. */
+  /** VERCEL_ENV. Only preview, development, and test are on. Unset and unknown are off. */
   vercelEnv?: string
-  /** NODE_ENV. Used only when VERCEL_ENV is unset. The value "production" is off. */
-  nodeEnv?: string
 }
 
 const RATINGS_VERCEL_ENVS = new Set(['preview', 'development', 'test'])
 
 /**
  * Spec 9.4. Fail closed.
- * True only when USER_RATINGS is exactly "on" and one of these holds:
- * VERCEL_ENV is preview, development, or test;
- * VERCEL_ENV is unset and NODE_ENV is not production;
- * VERCEL_ENV is production and USER_RATINGS_PRODUCTION_LAUNCH is true.
- * Any other VERCEL_ENV is off, including when the launch constant is true.
+ * True only when USER_RATINGS is exactly "on" and VERCEL_ENV is preview,
+ * development, or test. An unset or unknown VERCEL_ENV is off. The Node
+ * environment is not consulted. Production stays off unless USER_RATINGS_PRODUCTION_LAUNCH
+ * is true.
  * App code calls this with no arguments. Tests pass the env explicitly.
  * While this is false, the proxy 404s the ratings paths.
  * The Clerk deletion webhook is separate and stays active in every environment.
@@ -33,16 +30,13 @@ export function userRatingsEnabled(
   env: UserRatingsEnv = {
     userRatings: process.env.USER_RATINGS,
     vercelEnv: process.env.VERCEL_ENV,
-    nodeEnv: process.env.NODE_ENV,
   },
   productionLaunch: boolean = USER_RATINGS_PRODUCTION_LAUNCH,
 ): boolean {
   if (env.userRatings?.trim() !== 'on') return false
   const vercelEnv = env.vercelEnv?.trim() ?? ''
   if (vercelEnv === 'production') return productionLaunch
-  if (RATINGS_VERCEL_ENVS.has(vercelEnv)) return true
-  if (vercelEnv === '') return (env.nodeEnv?.trim() ?? '') !== 'production'
-  return false
+  return RATINGS_VERCEL_ENVS.has(vercelEnv)
 }
 
 const RATINGS_EXACT_PATHS = new Set([

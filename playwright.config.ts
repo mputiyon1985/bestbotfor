@@ -9,7 +9,7 @@ const sharedEnv = {
   ...process.env,
   TURSO_AUTH_TOKEN: process.env.TURSO_AUTH_TOKEN || 'local',
   // Faults are denied unless the runtime is explicitly preview or NODE_ENV=test.
-  // npm start sets NODE_ENV=production. Preview still allows the ratings flag.
+  // npm start sets NODE_ENV=production. This server stays on preview for faults.
   VERCEL_ENV: 'preview',
   RESULT_FAULTS: '1',
   NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID || 'G-TESTCONSENT',
@@ -60,7 +60,8 @@ export default defineConfig({
         PORT: '3001',
         TURSO_DATABASE_URL: 'file:./data/e2e-ratings-on.db',
         USER_RATINGS: 'on',
-        VERCEL_ENV: 'preview',
+        // npm start sets NODE_ENV=production. Ratings follow VERCEL_ENV, so this must be test.
+        VERCEL_ENV: 'test',
         NEXT_PUBLIC_SITE_URL: ratingsOnUrl,
       },
     },

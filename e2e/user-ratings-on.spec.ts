@@ -1,7 +1,8 @@
 import { expect, test } from '@playwright/test'
 
 /**
- * This project starts with USER_RATINGS=on and VERCEL_ENV=preview.
+ * This project starts with USER_RATINGS=on and VERCEL_ENV=test.
+ * npm start sets NODE_ENV=production, and an unset VERCEL_ENV would leave the flag off.
  * The proxy lets ratings paths through. The pages are not built yet, so a
  * 404 from the app not-found screen is the pass. /members/reviews falls
  * through to the sign-in redirect while Clerk is unset.
