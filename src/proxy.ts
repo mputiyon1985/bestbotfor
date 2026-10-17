@@ -5,6 +5,7 @@ import { CATALOG_REJECT_MESSAGE, CATALOG_REJECT_PATH, isUnsafeCatalogPath, reque
 import { hasDotSegment } from '@/lib/dot-segment'
 import { buildContentSecurityPolicy, securityHeaders } from '@/lib/csp'
 import { getDb, peekCachedTaskSlugs } from '@/lib/db/client'
+import { isAdminPath } from '@/lib/admin-path'
 import { isClerkConfigured, isRatingsPath, userRatingsEnabled } from '@/lib/flags'
 import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from '@/lib/indexing'
 import { clientIp, rateLimitKey } from '@/lib/ip'
@@ -32,7 +33,15 @@ function nextWithNonce(request: NextRequest): NextResponse {
   requestHeaders.set('x-nonce', nonce)
   requestHeaders.set('Content-Security-Policy', csp)
   const response = NextResponse.next({ request: { headers: requestHeaders } })
-  return applySecurity(response, nonce)
+  return adminHeaders(applySecurity(response, nonce), request.nextUrl.pathname)
+}
+
+/** Admin responses stay out of caches and search, including production. */
+function adminHeaders(response: NextResponse, pathname: string): NextResponse {
+  if (!isAdminPath(pathname)) return response
+  response.headers.set('cache-control', 'no-store')
+  response.headers.set('x-robots-tag', 'noindex, nofollow')
+  return response
 }
 
 function isMembersPath(pathname: string): boolean {
@@ -124,8 +133,14 @@ function rejectCatalogPath(request: NextRequest): NextResponse | null {
 }
 
 const withClerk = clerkMiddleware(async (auth, request) => {
-  if (isMembersPath(request.nextUrl.pathname)) {
+  const pathname = request.nextUrl.pathname
+  if (isMembersPath(pathname)) {
     await auth.protect()
+  }
+  if (isAdminPath(pathname)) {
+    const { userId } = await auth()
+    // Signed-out visitors 404 in the admin layout. protect() in middleware would send them to sign-in.
+    if (userId) await auth.protect()
   }
   return nextWithNonce(request)
 })
