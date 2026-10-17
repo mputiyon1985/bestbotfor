@@ -1,15 +1,16 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { notFound, permanentRedirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { CompareNewsletter, Inline } from '@/components/compare-newsletter'
 import { JsonLd } from '@/components/json-ld'
 import { ToolLogo } from '@/components/tool-logo'
+import { reversedCuratedComparePath } from '@/data/compare-copy'
 import { getToolsBySlugs } from '@/lib/catalog'
 import type { CatalogTool } from '@/lib/catalog-types'
 import { comparisonRows, comparisonSummary } from '@/lib/compare'
-import { compareView, type CompareView } from '@/lib/compare-copy'
+import { compareCostAnswer, compareFaqs, compareView, type CompareView } from '@/lib/compare-copy'
 import { deepDive } from '@/lib/deep-dive'
 import { priceLabel, skillLabel } from '@/lib/format'
 import { breadcrumbJsonLd, faqJsonLd } from '@/lib/jsonld'
@@ -24,6 +25,7 @@ export async function generateMetadata({ params }: { params: Promise<{ pair: str
   const parsed = parseComparePair(pair)
   // Missing pairs call notFound() so their noindex metadata is not hydrated as a second robots meta.
   if (!parsed) notFound()
+  redirectReversedCuratedPair(parsed)
   const [a, b] = await orderedPair(parsed.a, parsed.b)
   if (!a || !b) notFound()
   const view = compareView(a, b, { showScores: scoresPublished() })
@@ -39,6 +41,7 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
   const { pair } = await params
   const parsed = parseComparePair(pair)
   if (!parsed) notFound()
+  redirectReversedCuratedPair(parsed)
   const [a, b] = await orderedPair(parsed.a, parsed.b)
   if (!a || !b) notFound()
   const rows = comparisonRows(a, b)
@@ -52,13 +55,17 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
     { name: 'Home', path: '/' },
     { name: heading, path },
   ]
-  const faqs = [
-    { question: `Which is better, ${view?.nameA ?? a.name} or ${view?.nameB ?? b.name}?`, answer: summary },
-    {
-      question: 'What do they cost?',
-      answer: costAnswer(view, a, b),
-    },
-  ]
+  const faqs = compareFaqs({
+    nameA: view?.nameA ?? a.name,
+    nameB: view?.nameB ?? b.name,
+    verdict: summary,
+    cost: compareCostAnswer(view, {
+      nameA: a.name,
+      priceA: priceLabel(a),
+      nameB: b.name,
+      priceB: priceLabel(b),
+    }),
+  })
   const notes = access.allowed ? deepDive(a, b) : null
 
   return (
@@ -267,12 +274,9 @@ function AutoTable({
   )
 }
 
-function costAnswer(view: CompareView | null, a: CatalogTool, b: CatalogTool): string {
-  const paid = view?.rows.find((row) => row.label === 'Paid from')
-  if (view && paid) {
-    return `${view.nameA}: ${paid.a}. ${view.nameB}: ${paid.b}. Confirm the current price on each site.`
-  }
-  return `${a.name}: ${priceLabel(a)}. ${b.name}: ${priceLabel(b)}. Confirm the current price on each site.`
+function redirectReversedCuratedPair(parsed: { a: string; b: string }): void {
+  const target = reversedCuratedComparePath(`${parsed.a}-vs-${parsed.b}`)
+  if (target) permanentRedirect(target)
 }
 
 async function orderedPair(left: string, right: string): Promise<[CatalogTool | undefined, CatalogTool | undefined]> {

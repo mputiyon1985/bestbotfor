@@ -147,3 +147,37 @@ export function compareView(
     ranking: copy.ranking,
   }
 }
+
+const SECONDARY_MARKER = ' [S]'
+
+/** Table cells keep the marker. FAQ JSON-LD does not, because that payload has no legend. */
+export function withoutSecondaryMarker(text: string): string {
+  return text.replaceAll(SECONDARY_MARKER, '')
+}
+
+export function compareCostAnswer(
+  view: CompareView | null,
+  fallback: { nameA: string; priceA: string; nameB: string; priceB: string },
+): string {
+  const paid = view?.rows.find((row) => row.label === 'Paid from')
+  const raw =
+    view && paid
+      ? `${view.nameA}: ${paid.a}. ${view.nameB}: ${paid.b}. Confirm the current price on each site.`
+      : `${fallback.nameA}: ${fallback.priceA}. ${fallback.nameB}: ${fallback.priceB}. Confirm the current price on each site.`
+  return withoutSecondaryMarker(raw)
+}
+
+export function compareFaqs(input: {
+  nameA: string
+  nameB: string
+  verdict: string
+  cost: string
+}): { question: string; answer: string }[] {
+  return [
+    {
+      question: `Which is better, ${input.nameA} or ${input.nameB}?`,
+      answer: withoutSecondaryMarker(input.verdict),
+    },
+    { question: 'What do they cost?', answer: withoutSecondaryMarker(input.cost) },
+  ]
+}

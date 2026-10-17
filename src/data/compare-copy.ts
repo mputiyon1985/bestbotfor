@@ -66,7 +66,7 @@ export const COMPARE_SECONDARY_NOTE =
 
 export const COMPARE_DIGEST_FINE_PRINT = 'Free. One email each weekday. Unsubscribe anytime.'
 
-const catalogSource = 'BestBotFor catalog: catalog/scores-v2/scores-v2.3.csv (Our rating, category rank) and live /best pages (fit %), read Oct 17, 2026'
+const catalogSource = 'BestBotFor catalog: src/data/scores-v2.3.csv (Our rating, category rank) and live /best pages (fit %), read Oct 17, 2026'
 
 export const compareCopy: readonly CompareCopy[] = [
   {
@@ -584,4 +584,27 @@ const bySlug = new Map(compareCopy.map((entry) => [entry.slug, entry]))
 
 export function compareCopyFor(slug: string): CompareCopy | undefined {
   return bySlug.get(slug)
+}
+
+/**
+ * Curated copy exists for one order only. The reverse URL permanently
+ * redirects there so it does not publish a generated verdict and its own canonical.
+ */
+export function reversedCuratedComparePath(pair: string): string | null {
+  const [left, right, extra] = pair.split('-vs-')
+  if (!left || !right || extra !== undefined || left === right) return null
+  if (bySlug.has(pair)) return null
+  const canonical = bySlug.get(`${right}-vs-${left}`)
+  return canonical ? `/compare/${canonical.slug}` : null
+}
+
+export function curatedCompareRedirects(): { source: string; destination: string; permanent: true }[] {
+  return compareCopy.map((entry) => {
+    const [left, right] = entry.slug.split('-vs-')
+    return {
+      source: `/compare/${right}-vs-${left}`,
+      destination: `/compare/${entry.slug}`,
+      permanent: true,
+    }
+  })
 }

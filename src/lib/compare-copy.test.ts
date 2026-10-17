@@ -7,12 +7,14 @@ import {
   DEEPGRAM_PRICE_PRO_STALE,
   N8N_PRICE_LABEL,
 } from '@/data/catalog-corrections'
-import { COMPARE_SECONDARY_NOTE, compareCopy } from '@/data/compare-copy'
+import { COMPARE_SECONDARY_NOTE, compareCopy, curatedCompareRedirects, reversedCuratedComparePath } from '@/data/compare-copy'
 import { editorialSeeds } from '@/data/scores-pros-cons.seed'
 import { a2CorrectionPlan } from '../../scripts/a2-catalog-corrections'
 import { catalogFromSeeds } from '@/test/catalog-from-seeds'
 import { comparisonRows, comparisonSummary } from './compare'
-import { compareView } from './compare-copy'
+import { compareCostAnswer, compareFaqs, compareView } from './compare-copy'
+import { faqJsonLd } from './jsonld'
+import ComparePage, { generateMetadata as compareMetadata } from '@/app/compare/[pair]/page'
 import { priceLabel } from './format'
 import { QUIZ_RESULT_COUNT } from './scoring'
 
@@ -39,6 +41,14 @@ function viewFor(slug: string, today = '2026-10-17', showScores = true) {
   expect(view, slug).toBeTruthy()
   if (!view) throw new Error(slug)
   return { left, right, view }
+}
+
+function redirectTarget(error: unknown): { url: string; status: number } | null {
+  if (typeof error !== 'object' || error === null || !('digest' in error)) return null
+  const digest = String((error as { digest: unknown }).digest)
+  const parts = digest.split(';')
+  if (parts[0] !== 'NEXT_REDIRECT') return null
+  return { url: parts.slice(2, -2).join(';'), status: Number(parts.at(-2)) }
 }
 
 function cell(view: ReturnType<typeof viewFor>['view'], label: string) {
@@ -142,6 +152,25 @@ describe('curated compare copy', () => {
     expect(COMPARE_SECONDARY_NOTE).not.toContain('Confirm before publishing')
     for (const entry of compareCopy) {
       expect(entry.secondaryNote, entry.slug).toBe(COMPARE_SECONDARY_NOTE)
+      expect(entry.sources.join('\n'), entry.slug).toContain('src/data/scores-v2.3.csv')
+      expect(entry.sources.join('\n'), entry.slug).not.toContain('catalog/scores-v2/scores-v2.3.csv')
+    }
+
+    expect(cell(voice.view, 'Paid from').b).toContain('[S]')
+    expect(cell(automation.view, 'Paid from').b).toContain('[S]')
+    for (const rendered of [voice, automation]) {
+      const faqs = compareFaqs({
+        nameA: rendered.view.nameA,
+        nameB: rendered.view.nameB,
+        verdict: rendered.view.verdictPlain,
+        cost: compareCostAnswer(rendered.view, {
+          nameA: rendered.view.nameA,
+          priceA: 'unused',
+          nameB: rendered.view.nameB,
+          priceB: 'unused',
+        }),
+      })
+      expect(JSON.stringify(faqJsonLd(faqs)), rendered.view.slug).not.toContain('[S]')
     }
 
     for (const slug of Object.keys(LENGTHS)) {
@@ -154,6 +183,33 @@ describe('curated compare copy', () => {
     const hidden = viewFor('elevenlabs-vs-murf', '2026-10-17', false)
     expect(hidden.view.rows.some((row) => row.label === 'Our rating')).toBe(false)
     expect(cell(hidden.view, 'Fit: create a voiceover').a).toBe('96')
+  })
+
+  it('sends a reversed curated pair to the hand-checked order', async () => {
+    const redirects = curatedCompareRedirects()
+    expect(redirects).toHaveLength(compareCopy.length)
+    for (const redirect of redirects) {
+      expect(redirect.permanent).toBe(true)
+      const pair = redirect.source.slice('/compare/'.length)
+      expect(reversedCuratedComparePath(pair)).toBe(redirect.destination)
+      expect(reversedCuratedComparePath(redirect.destination.slice('/compare/'.length))).toBeNull()
+    }
+    expect(reversedCuratedComparePath('runway-vs-descript')).toBe('/compare/descript-vs-runway')
+    expect(reversedCuratedComparePath('make-vs-n8n')).toBe('/compare/n8n-vs-make')
+    expect(reversedCuratedComparePath('deepgram-vs-assemblyai')).toBe('/compare/assemblyai-vs-deepgram')
+    expect(reversedCuratedComparePath('claude-vs-chatgpt')).toBeNull()
+    expect(reversedCuratedComparePath('make-vs-zapier')).toBeNull()
+
+    for (const pair of ['runway-vs-descript', 'make-vs-n8n', 'deepgram-vs-assemblyai']) {
+      const target = reversedCuratedComparePath(pair)
+      for (const load of [compareMetadata, ComparePage]) {
+        const error = await load({ params: Promise.resolve({ pair }) }).then(
+          () => null,
+          (caught: unknown) => caught,
+        )
+        expect(redirectTarget(error), pair).toEqual({ url: target, status: 308 })
+      }
+    }
   })
 
   it('drops the ElevenLabs first-month promo after Oct 18, 2026', () => {
