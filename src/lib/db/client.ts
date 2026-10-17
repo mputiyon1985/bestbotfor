@@ -9,6 +9,10 @@ const globalForDb = globalThis as unknown as {
   bestbotforClient?: Client
   bestbotforFileUrl?: string
   bestbotforLimiterClient?: Client
+  /** One libsql client per URL. A warm instance keeps it across requests. */
+  bestbotforClients?: Map<string, Client>
+  /** Second connection per file URL, so catalog reads do not queue the limiter. */
+  bestbotforFileLimiters?: Map<string, Client>
 }
 
 /**
@@ -33,12 +37,32 @@ export function databaseUrl(): string {
 
 const clientUrls = new WeakMap<Client, string>()
 
+/** Module map, also stored on globalThis so a reload of this file keeps the open client. */
+function clientCache(): Map<string, Client> {
+  const existing = globalForDb.bestbotforClients
+  if (existing) return existing
+  const created = new Map<string, Client>()
+  globalForDb.bestbotforClients = created
+  return created
+}
+
+/**
+ * One client per URL for the life of the process. Later requests, including a
+ * warm invocation, reuse it. A closed client is replaced. Callers must not
+ * open a new Turso connection on each request.
+ */
 export function createLibsqlClient(url = databaseUrl()): Client {
   const fileDatabase = url.startsWith('file:')
+  const cached = clientCache().get(url)
+  if (cached && !cached.closed) {
+    if (fileDatabase) globalForDb.bestbotforFileUrl = url
+    return cached
+  }
   const authToken = process.env.TURSO_AUTH_TOKEN?.trim()
   if (!fileDatabase && !authToken) throw new Error('TURSO_AUTH_TOKEN is not set')
   const client = createClient({ url, authToken: fileDatabase ? undefined : authToken })
   clientUrls.set(client, url)
+  clientCache().set(url, client)
   if (fileDatabase) globalForDb.bestbotforFileUrl = url
   return client
 }
@@ -76,19 +100,45 @@ export function configureFileDatabase(client: Client): Promise<void> {
 /**
  * A second connection for file databases. The request connection also serves
  * catalog reads, and those statements would queue the limiter write on the
- * same connection. Hosted Turso uses the request connection.
+ * same connection.
+ * A remote client is the process client for that URL. This does not call
+ * createClient. The first open client stays warm for later requests.
  */
+function fileLimiterCache(): Map<string, Client> {
+  const existing = globalForDb.bestbotforFileLimiters
+  if (existing) return existing
+  const created = new Map<string, Client>()
+  globalForDb.bestbotforFileLimiters = created
+  return created
+}
+
 export function limiterClientFor(client: Client): Client {
-  if (client.protocol !== 'file') return client
+  if (client.protocol !== 'file') return warmRemoteClient(client)
   const url = clientUrls.get(client) ?? globalForDb.bestbotforFileUrl
   if (!url?.startsWith('file:')) return client
-  const existing = dedicatedFileClients.get(client) ?? globalForDb.bestbotforLimiterClient
-  if (existing) return existing
+  const existing = dedicatedFileClients.get(client)
+  if (existing && !existing.closed) return existing
+  const cached = fileLimiterCache().get(url) ?? globalForDb.bestbotforLimiterClient
+  if (cached && !cached.closed && clientUrls.get(cached) === url) {
+    dedicatedFileClients.set(client, cached)
+    return cached
+  }
   const dedicated = createClient({ url })
   clientUrls.set(dedicated, url)
   dedicatedFileClients.set(client, dedicated)
+  fileLimiterCache().set(url, dedicated)
   globalForDb.bestbotforLimiterClient = dedicated
   return dedicated
+}
+
+function warmRemoteClient(client: Client): Client {
+  if (client.closed) return client
+  const url = clientUrls.get(client)
+  if (!url) return client
+  const cached = clientCache().get(url)
+  if (cached && !cached.closed) return cached
+  clientCache().set(url, client)
+  return client
 }
 
 export function getDb(): Database {
@@ -148,4 +198,7 @@ export function resetDbCache(): void {
   cachedDb = undefined
   globalForDb.bestbotforDb = undefined
   globalForDb.bestbotforClient = undefined
+  globalForDb.bestbotforClients = undefined
+  globalForDb.bestbotforFileLimiters = undefined
+  globalForDb.bestbotforLimiterClient = undefined
 }

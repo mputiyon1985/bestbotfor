@@ -160,9 +160,10 @@ function resultFault(request: NextRequest) {
  * Quiz views that pass the catalog check are rate limited with 429 and Retry-After.
  * When the catalog lookup fails or times out, the page's catalog read runs here.
  * A cached task list skips that retry. A miss is this same 404. A thrown read is 503.
- * A read that only runs long renders the page. The shared fixed window is
- * consulted with a short timeout. If it does not answer, the in-memory counter
- * decides. Expired windows are deleted after the response.
+ * A read that only runs long renders the page. The shared fixed window waits
+ * RESULT_SHARED_LIMIT_MS (default 1000). If it does not answer, the in-memory
+ * counter decides and one JSON fallback line is logged. Expired windows are
+ * deleted after the response.
  */
 async function gateResult(request: NextRequest, event: NextFetchEvent): Promise<NextResponse | null> {
   if (request.nextUrl.pathname !== '/result') return null
