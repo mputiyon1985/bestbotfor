@@ -5,16 +5,19 @@ import { ensureSponsorPrice, setupSponsorPrices } from './sponsor-setup'
 
 const testKey = ['sk', 'test', 'example'].join('_')
 
-function fakeStripe(prices: Array<Record<string, unknown>>) {
+function fakeStripe(prices: Array<Record<string, unknown>>, productRecords: Array<Record<string, unknown>> = []) {
   const created: Array<Record<string, unknown>> = []
+  const priceKeys: string[] = []
   const products: Array<Record<string, unknown>> = []
+  const updates: Array<Record<string, unknown>> = []
   const stripe = {
     prices: {
       list: async (params: { lookup_keys?: string[] }) => ({
         data: prices.filter((price) => !params.lookup_keys || params.lookup_keys.includes(String(price.lookup_key))),
       }),
-      create: async (params: Record<string, unknown>) => {
+      create: async (params: Record<string, unknown>, options?: { idempotencyKey?: string }) => {
         created.push(params)
+        priceKeys.push(options?.idempotencyKey ?? '')
         return { id: 'price_created' }
       },
     },
@@ -23,15 +26,24 @@ function fakeStripe(prices: Array<Record<string, unknown>>) {
         products.push(params)
         return { id: 'prod_created' }
       },
+      retrieve: async (id: string) => {
+        const found = productRecords.find((product) => product.id === id)
+        if (!found) throw new Error(`missing product ${id}`)
+        return found
+      },
+      update: async (id: string, params: Record<string, unknown>) => {
+        updates.push({ id, ...params })
+        return { id, ...params }
+      },
     },
   }
-  return { stripe: stripe as unknown as Stripe, created, products }
+  return { stripe: stripe as unknown as Stripe, created, products, updates, priceKeys }
 }
 
 describe('sponsor price setup', () => {
   it('reuses a price with the same lookup key and amount', async () => {
     const offering = SPONSOR_OFFERINGS[0]
-    const { stripe, created, products } = fakeStripe([
+    const { stripe, created, products, updates } = fakeStripe([
       {
         id: 'price_existing',
         lookup_key: offering.lookupKey,
@@ -43,11 +55,72 @@ describe('sponsor price setup', () => {
     await expect(ensureSponsorPrice(stripe, offering)).resolves.toBe('price_existing')
     expect(created).toEqual([])
     expect(products).toEqual([])
+    expect(updates).toEqual([])
+  })
+
+  it('renames the product on a matching one-time price', async () => {
+    const offering = SPONSOR_OFFERINGS[0]
+    const { stripe, created, updates } = fakeStripe(
+      [
+        {
+          id: 'price_existing',
+          lookup_key: offering.lookupKey,
+          unit_amount: offering.unitAmount,
+          currency: 'usd',
+          active: true,
+          product: 'prod_old',
+        },
+      ],
+      [{ id: 'prod_old', name: 'Featured placement, one week', statement_descriptor: 'Featured placement' }],
+    )
+    await expect(ensureSponsorPrice(stripe, offering)).resolves.toBe('price_existing')
+    expect(created).toEqual([])
+    expect(updates).toEqual([{ id: 'prod_old', name: 'BestBotFor', statement_descriptor: 'BestBotFor' }])
+  })
+
+  it('leaves a product that is already named BestBotFor', async () => {
+    const offering = SPONSOR_OFFERINGS[1]
+    const { stripe, created, updates } = fakeStripe(
+      [
+        {
+          id: 'price_existing',
+          lookup_key: offering.lookupKey,
+          unit_amount: offering.unitAmount,
+          currency: 'usd',
+          active: true,
+          product: { id: 'prod_ready' },
+        },
+      ],
+      [{ id: 'prod_ready', name: 'BestBotFor', statement_descriptor: 'BestBotFor' }],
+    )
+    await expect(ensureSponsorPrice(stripe, offering)).resolves.toBe('price_existing')
+    expect(created).toEqual([])
+    expect(updates).toEqual([])
+  })
+
+  it('keeps a matching price when its product was deleted', async () => {
+    const offering = SPONSOR_OFFERINGS[2]
+    const { stripe, created, updates } = fakeStripe(
+      [
+        {
+          id: 'price_existing',
+          lookup_key: offering.lookupKey,
+          unit_amount: offering.unitAmount,
+          currency: 'usd',
+          active: true,
+          product: 'prod_gone',
+        },
+      ],
+      [{ id: 'prod_gone', deleted: true }],
+    )
+    await expect(ensureSponsorPrice(stripe, offering)).resolves.toBe('price_existing')
+    expect(created).toEqual([])
+    expect(updates).toEqual([])
   })
 
   it('creates a product and price when the lookup key is missing', async () => {
     const offering = SPONSOR_OFFERINGS[2]
-    const { stripe, created, products } = fakeStripe([])
+    const { stripe, created, products, priceKeys } = fakeStripe([])
     await expect(ensureSponsorPrice(stripe, offering)).resolves.toBe('price_created')
     expect(products[0]).toMatchObject({
       name: SPONSOR_BUSINESS_NAME,
@@ -64,6 +137,7 @@ describe('sponsor price setup', () => {
       transfer_lookup_key: true,
       nickname: 'Newsletter sponsor slot',
     })
+    expect(priceKeys[0]).toBe('sponsor-price-sponsor_newsletter_issue-4900-one_time')
   })
 
   it('creates one-time week and month prices with no recurring interval', async () => {
@@ -75,6 +149,8 @@ describe('sponsor price setup', () => {
     await ensureSponsorPrice(month.stripe, monthly)
     expect(week.created[0]).toMatchObject({ unit_amount: 9_900, nickname: 'Featured placement, one week' })
     expect(week.created[0]).not.toHaveProperty('recurring')
+    expect(week.priceKeys[0]).toBe('sponsor-price-sponsor_best_placement_weekly-9900-one_time')
+    expect(month.priceKeys[0]).toBe('sponsor-price-sponsor_best_placement_monthly-29900-one_time')
     expect(month.created[0]).toMatchObject({ unit_amount: 29_900, nickname: 'Featured placement, one month' })
     expect(month.created[0]).not.toHaveProperty('recurring')
     expect(week.products[0]).toMatchObject({

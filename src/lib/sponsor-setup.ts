@@ -20,6 +20,29 @@ type PriceRecord = {
   product?: string | { id: string } | null
 }
 
+function productIdFrom(product: PriceRecord['product']): string | null {
+  if (typeof product === 'string' && product.length > 0) return product
+  if (product && typeof product === 'object' && product.id) return product.id
+  return null
+}
+
+/**
+ * A reused one-time Price keeps its id. Its Product is renamed when the name
+ * or statement descriptor is not BestBotFor. Callers must already have passed
+ * assertTestSetupKey. This does not run against live mode.
+ */
+async function ensureSponsorProductName(stripe: Stripe, product: PriceRecord['product']): Promise<void> {
+  const productId = productIdFrom(product)
+  if (!productId) return
+  const current = await stripe.products.retrieve(productId)
+  if ('deleted' in current && current.deleted) return
+  if (current.name === SPONSOR_BUSINESS_NAME && current.statement_descriptor === SPONSOR_BUSINESS_NAME) return
+  await stripe.products.update(productId, {
+    name: SPONSOR_BUSINESS_NAME,
+    statement_descriptor: SPONSOR_BUSINESS_NAME,
+  })
+}
+
 /**
  * Advertising placements are not eligible for Managed Payments, so products
  * are created without a Managed Payments tax code and prices omit tax_behavior.
@@ -35,6 +58,7 @@ export async function ensureSponsorPrice(stripe: Stripe, offering: SponsorOfferi
     current.unit_amount === offering.unitAmount &&
     !current.recurring
   ) {
+    await ensureSponsorProductName(stripe, current.product)
     return current.id
   }
 
@@ -63,7 +87,7 @@ export async function ensureSponsorPrice(stripe: Stripe, offering: SponsorOfferi
       nickname: offering.productName,
       metadata: { offering: offering.id },
     },
-    { idempotencyKey: `sponsor-price-${offering.lookupKey}-${offering.unitAmount}` },
+    { idempotencyKey: `sponsor-price-${offering.lookupKey}-${offering.unitAmount}-one_time` },
   )
   return created.id
 }
@@ -75,8 +99,10 @@ export function formatSponsorPriceLine(envName: string, priceId: string): string
 }
 
 /**
- * Creates test-mode Products and Prices. Refuses live keys even when
- * STRIPE_ALLOW_LIVE is true. Returns env assignment lines and nothing else.
+ * Creates or reuses test-mode Products and Prices. A matching one-time Price
+ * is kept, and its Product name and statement descriptor are updated to
+ * BestBotFor. Refuses live keys even when STRIPE_ALLOW_LIVE is true. Returns
+ * env assignment lines and nothing else.
  */
 export async function setupSponsorPrices(input: {
   key: string
