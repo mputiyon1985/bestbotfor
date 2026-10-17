@@ -37,12 +37,20 @@ const SCRIPT_PATTERNS: { name: string; pattern: RegExp }[] = [
 const LETTER = /\p{L}/u
 const MARKS = /\p{M}/gu
 
+/** Raw length, counted before NFKC. Longer names are rejected and not normalized. */
+export const DISPLAY_NAME_MAX_LENGTH = 64
+
+export const DISPLAY_NAME_TOO_LONG_MESSAGE = 'Display name must be 64 characters or fewer.'
+
 export type DisplayNameContext = {
   toolNames?: readonly string[]
   vendorNames?: readonly string[]
 }
 
-export type DisplayNameDecision = { ok: true } | { ok: false; reason: 'empty' | 'mixed_script' | 'reserved' }
+export type DisplayNameDecision =
+  | { ok: true }
+  | { ok: false; reason: 'empty' | 'mixed_script' | 'reserved' }
+  | { ok: false; reason: 'too_long'; message: string }
 
 function scriptOf(char: string): string | null {
   if (!LETTER.test(char)) return null
@@ -77,30 +85,37 @@ function compactSkeleton(value: string): string {
   return skeleton(stripCombiningMarks(value).replace(/[^\p{L}\p{N}]+/gu, ''))
 }
 
-function reservedTerms(extra: readonly string[]): { phrases: string[][]; compact: Set<string> } {
+function reservedTerms(extra: readonly string[]): { phrases: string[][]; compact: Set<string>; longest: number } {
   const phrases: string[][] = []
   const compact = new Set<string>()
+  let longest = 0
   for (const term of [...RESERVED, ...extra]) {
     const normalized = normalizeDisplayName(term)
     const tokens = wordTokens(normalized)
     if (tokens.length > 0) phrases.push(tokens)
     const folded = compactSkeleton(normalized)
-    if (folded.length > 0) compact.add(folded)
+    if (folded.length === 0) continue
+    compact.add(folded)
+    if (folded.length > longest) longest = folded.length
   }
-  return { phrases, compact }
+  return { phrases, compact, longest }
 }
 
-/** Every join of two or more neighboring tokens, so "ad" + "min" is "admin". */
-function joinedAdjacentTokens(tokens: string[]): string[] {
-  const joined: string[] = []
+/**
+ * True when two or more neighboring tokens join to a reserved term.
+ * A join stops as soon as it is longer than the longest reserved term.
+ */
+function joinsReserved(tokens: string[], compact: Set<string>, longest: number): boolean {
   for (let start = 0; start < tokens.length; start += 1) {
-    let acc = ''
-    for (let end = start; end < tokens.length; end += 1) {
+    let acc = tokens[start] ?? ''
+    if (acc.length >= longest) continue
+    for (let end = start + 1; end < tokens.length; end += 1) {
       acc += tokens[end] ?? ''
-      if (end > start) joined.push(acc)
+      if (acc.length > longest) break
+      if (compact.has(acc)) return true
     }
   }
-  return joined
+  return false
 }
 
 function hasReservedPhrase(tokens: string[], phrases: string[][]): boolean {
@@ -115,6 +130,9 @@ function hasReservedPhrase(tokens: string[], phrases: string[][]): boolean {
 
 /** Refuse a public name that impersonates staff, BestBotFor, or the tool's brand. Does not rewrite it. */
 export function checkDisplayName(name: string, context: DisplayNameContext = {}): DisplayNameDecision {
+  if (name.length > DISPLAY_NAME_MAX_LENGTH) {
+    return { ok: false, reason: 'too_long', message: DISPLAY_NAME_TOO_LONG_MESSAGE }
+  }
   const normalized = normalizeDisplayName(name)
   if (normalized.length === 0) return { ok: false, reason: 'empty' }
   const words = normalized.split(' ').map((word) => word.replace(/[^\p{L}\p{N}]+/gu, '')).filter((word) => word.length > 0)
@@ -123,7 +141,7 @@ export function checkDisplayName(name: string, context: DisplayNameContext = {})
   if (tokens.length === 0) return { ok: false, reason: 'empty' }
   const banned = reservedTerms([...(context.toolNames ?? []), ...(context.vendorNames ?? [])])
   const compact = compactSkeleton(normalized)
-  const split = joinedAdjacentTokens(tokens).some((joined) => banned.compact.has(joined))
+  const split = joinsReserved(tokens, banned.compact, banned.longest)
   if (hasReservedPhrase(tokens, banned.phrases) || banned.compact.has(compact) || split) {
     return { ok: false, reason: 'reserved' }
   }
