@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The editorial score heading is “Our rating”. Hiding scores removes that label from the page, meta copy, and JSON-LD. A form label “Your rating” stays. No score rows change, and no flag changes.
 - User ratings stay off until `USER_RATINGS` is exactly `on` and the deployment is outside production. `USER_RATINGS_PRODUCTION_LAUNCH`, `AFFILIATE_LINKS_LIVE`, and `SHOW_USER_AGGREGATE_JSONLD` ship false, so a production env var alone leaves the feature off. No ratings pages are served.
 - `/how-we-rate` no longer says every score links to its sources. It says we keep the evidence and sources for each score on file and review them quarterly.
 - `SHOW_SCORES` is true, so the v2.3 ratings render through that flag. Rated tool pages lead with the category rank from `category_rank_display`, for example `#3 of 12 in Coding`. A shared tie group prefixes that line with `Tied · ` and keeps each tool’s own rank. The rank is hidden for the single-tool categories backend, design, games, and productivity. Four bars follow (Quality, Features, Value, Ease), the overall score is secondary and links to `/how-we-rate`, and a filled note is shown. Quiz and all-matches cards show the same rank line and overall score without the bars. Turning the flag off hides the heading, rank, stars, bars, note, and maintenance notice together. Pros and cons stay. Pages still do not emit AggregateRating.
