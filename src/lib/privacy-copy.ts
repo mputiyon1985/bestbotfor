@@ -116,4 +116,4 @@ export const SHARING_PARAGRAPH =
   'We use Clerk for accounts, Stripe for payments, Beehiiv for the digest when it is connected, Google Analytics for site measurement when it is configured and analytics is allowed, Vercel to host the site and for cookieless analytics, and Turso to store the database. We do not sell personal information.'
 
 export const TURSO_BACKUP_PARAGRAPH =
-  "Deleted data may remain in our database provider's backups for a limited period before the backups expire."
+  "Deleted data may remain in our database provider's backups for up to 30 days before they expire."

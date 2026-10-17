@@ -90,7 +90,7 @@ describe('privacy policy facts', () => {
     expect(page).toContain('TURSO_BACKUP_PARAGRAPH')
     expect(page).toContain('SHARING_PARAGRAPH')
     expect(TURSO_BACKUP_PARAGRAPH).toBe(
-      "Deleted data may remain in our database provider's backups for a limited period before the backups expire.",
+      "Deleted data may remain in our database provider's backups for up to 30 days before they expire.",
     )
     expect(TURSO_BACKUP_PARAGRAPH).not.toContain('overwritten')
     expect(TURSO_BACKUP_PARAGRAPH).not.toMatch(/Lawyer note|Developer|Scaler|\[/)
