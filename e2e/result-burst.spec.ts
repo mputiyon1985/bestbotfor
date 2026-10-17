@@ -19,6 +19,11 @@ function startPeerServer(): { child: ChildProcess; baseURL: string; output: () =
       VERCEL_ENV: 'test',
       RESULT_SHARED_LIMIT_MS: '800',
       RESULT_FAULTS: '1',
+      // Same key as playwright.config.ts. A different secret makes a different
+      // bucket, so the two processes would each allow their own half.
+      RATE_LIMIT_HMAC_SECRET: 'playwright-rate-limit-hmac-secret-37b',
+      REVIEW_IP_HMAC_SECRET: 'playwright-review-ip-hmac-secret-37b!',
+      REVIEW_IP_HMAC_KEY_ID: 'k1',
       NEXT_PUBLIC_SITE_URL: baseURL,
       NEXT_PUBLIC_GA_ID: process.env.NEXT_PUBLIC_GA_ID || 'G-TESTCONSENT',
     },
