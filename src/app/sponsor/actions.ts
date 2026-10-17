@@ -7,7 +7,7 @@ import { ACTION_LIMITS, allowRate } from '@/lib/action-limit'
 import { getDb } from '@/lib/db'
 import { clientIp, rateLimitKey } from '@/lib/ip'
 import { isStripeHostedUrl } from '@/lib/redirect'
-import { parseSponsorCheckout, sponsorCheckoutParams } from '@/lib/sponsor-checkout'
+import { parseSponsorCheckout, sponsorCheckoutParams, sponsorRateLimitMessage } from '@/lib/sponsor-checkout'
 import {
   requestHostFromHeaders,
   requestOriginFromHeaders,
@@ -26,14 +26,14 @@ export async function sponsorCheckoutAction(_previous: SponsorFormState, formDat
   if (!stripe) return { status: 'error', message: 'That offering is not available yet.' }
 
   const headerStore = await headers()
-  const allowed = await allowRate(
+  const decision = await allowRate(
     getDb(),
     rateLimitKey(clientIp(headerStore), 'sponsor'),
     ACTION_LIMITS.sponsor.limit,
     ACTION_LIMITS.sponsor.windowMs,
-    { failClosed: true },
+    { onError: 'closed' },
   )
-  if (!allowed) return { status: 'error', message: 'Too many checkout attempts. Try again in an hour.' }
+  if (decision !== 'allow') return { status: 'error', message: sponsorRateLimitMessage(decision) }
 
   const returnUrls = sponsorReturnUrls(
     sponsorReturnOrigin({

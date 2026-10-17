@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Sponsor checkout uses the shared rate-limit decision. A full window says “Too many checkout attempts. Try again in an hour.” A limiter failure says “Checkout is temporarily unavailable. Try again.” Both are refused.
 - Each sponsor option on `/sponsor` says “One-time payment, no auto-renewal.” Checkout repeats that line under the pay button. Week, month, and newsletter stay one-time payments. The test-mode setup script keeps a matching one-time Price and updates its Product name and statement descriptor to BestBotFor. New Prices use an idempotency key that includes `one_time`.
 
 - Sponsor Checkout sends Stripe back to the request’s own origin when that host is bestbotfor.com, www.bestbotfor.com, or this project’s Vercel deployment. Production always returns to https://bestbotfor.com, including when that environment name has surrounding spaces. On a preview, the deployment URL is used ahead of an apex or www Origin. Loopback http is accepted only when the request host is itself loopback and the environment is not production. The return URLs are part of the Checkout idempotency key. Other hosts are ignored. Fulfillment stores a sponsorship only when the Checkout line quantity is 1. The client bundle scan flags a live publishable key and skips Clerk’s invalid-key message.

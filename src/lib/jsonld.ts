@@ -2,6 +2,19 @@ import { ORGANIZATION_LOGO_PATH } from './brand'
 import { absoluteUrl, getSiteUrl, SITE_NAME, TAGLINE } from './site'
 import type { CatalogTool } from './catalog-types'
 
+/**
+ * JSON.stringify leaves `<` intact, so a field can close the surrounding script.
+ * These escapes stay valid JSON and round-trip through JSON.parse.
+ */
+export function jsonLdScript(data: unknown): string {
+  return JSON.stringify(data)
+    .replaceAll('<', '\\u003c')
+    .replaceAll('>', '\\u003e')
+    .replaceAll('&', '\\u0026')
+    .replaceAll('\u2028', '\\u2028')
+    .replaceAll('\u2029', '\\u2029')
+}
+
 export function websiteJsonLd() {
   const site = getSiteUrl()
   return {

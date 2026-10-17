@@ -11,11 +11,18 @@ import {
   sponsorPriceId,
   type SponsorOfferingId,
 } from './sponsor-offerings'
+import type { RateLimitDecision } from './action-limit'
 import { emailSchema } from './validation'
 
 const COMPANY = /^[^\r\n<>]{2,120}$/
 const ISO_DATE = /^(\d{4})-(\d{2})-(\d{2})$/
 const TASKS = new Set(taskSeeds.map((task) => task.slug))
+
+/** Copy shown when sponsor checkout is denied. `limit` and `unavailable` each have their own sentence. */
+export function sponsorRateLimitMessage(decision: Exclude<RateLimitDecision, 'allow'>): string {
+  if (decision === 'unavailable') return 'Checkout is temporarily unavailable. Try again.'
+  return 'Too many checkout attempts. Try again in an hour.'
+}
 
 export type SponsorCheckoutInput = {
   offering: SponsorOfferingId

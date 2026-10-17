@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { cache } from 'react'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { JsonLd } from '@/components/json-ld'
@@ -32,7 +33,8 @@ type ResultLoad =
   | { kind: 'matches'; loaded: LoadedMatches }
   | { kind: 'quiz'; answers: QuizAnswers; result: QuizResult }
 
-async function loadResult(params: Record<string, string | string[] | undefined>): Promise<ResultLoad> {
+const loadResult = cache(async function loadResult(key: string): Promise<ResultLoad> {
+  const params = Object.fromEntries(new URLSearchParams(key))
   const view = firstString(params.view)
   const query = searchParamsToUrl(params)
   if (view === 'all') {
@@ -41,24 +43,26 @@ async function loadResult(params: Record<string, string | string[] | undefined>)
     return { kind: 'matches', loaded }
   }
   if (view !== '') return { kind: 'miss' }
-  if ((await resultRequestStatus(getDb(), query)) === 'not-found') return { kind: 'miss' }
   const parsed = quizSchema.safeParse({
     task: firstString(params.task),
     budget: firstString(params.budget),
     skill: firstString(params.skill),
   })
-  if (!parsed.success) return { kind: 'form' }
-  const result = await recommendQuiz(parsed.data)
-  if (!result) return { kind: 'miss' }
+  if (!parsed.success) {
+    if ((await resultRequestStatus(getDb(), query)) === 'not-found') return { kind: 'miss' }
+    return { kind: 'form' }
+  }
+  const [status, result] = await Promise.all([resultRequestStatus(getDb(), query), recommendQuiz(parsed.data)])
+  if (status === 'not-found' || !result) return { kind: 'miss' }
   return { kind: 'quiz', answers: parsed.data, result }
-}
+})
 
 export async function generateMetadata({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }): Promise<Metadata> {
-  const loaded = await loadResult(await searchParams)
+  const loaded = await loadResult(searchParamsToUrl(await searchParams).toString())
   if (loaded.kind === 'miss') return resultMissMetadata()
   if (loaded.kind === 'form') {
     return pageMetadata({
@@ -109,7 +113,7 @@ export default async function ResultPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>
 }) {
   const params = await searchParams
-  const loaded = await loadResult(params)
+  const loaded = await loadResult(searchParamsToUrl(params).toString())
   const headerStore = await headers()
   const nonce = headerStore.get('x-nonce')
   if (loaded.kind === 'miss') return <NotFoundPage />

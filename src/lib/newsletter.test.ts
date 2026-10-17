@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { subscribers } from './db/schema'
+import type { Database } from './db/client'
 import { subscribeToNewsletter } from './newsletter'
 import { createTestDatabase } from '@/test/db'
 
@@ -8,6 +9,7 @@ const originalKey = process.env.BEEHIIV_API_KEY
 const originalPublication = process.env.BEEHIIV_PUBLICATION_ID
 
 afterEach(() => {
+  vi.restoreAllMocks()
   if (originalKey === undefined) delete process.env.BEEHIIV_API_KEY
   else process.env.BEEHIIV_API_KEY = originalKey
   if (originalPublication === undefined) delete process.env.BEEHIIV_PUBLICATION_ID
@@ -83,6 +85,20 @@ describe('subscribeToNewsletter', () => {
     expect(rows[0]?.destination).toBe('beehiiv')
     expect(rows[0]?.beehiivId).toBe('sub_remote')
     await close()
+  })
+
+  it('does not store a signup when the limiter errors', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const db = { $client: { execute: () => Promise.reject(new Error('store down')) } } as unknown as Database
+    const result = await subscribeToNewsletter({
+      email: 'person@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-down',
+      now: 1_000,
+    })
+    expect(result).toMatchObject({ status: 'error', tracked: false })
+    expect(result.message).toBe('Signup is temporarily unavailable. Try again.')
   })
 
   it('stops after the hourly signup limit', async () => {

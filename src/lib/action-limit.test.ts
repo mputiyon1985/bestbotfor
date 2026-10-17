@@ -1,28 +1,41 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { allowRate } from './action-limit'
 import type { Database } from './db/client'
+import { createTestDatabase } from '@/test/db'
 
-function brokenLimiter(): Database {
-  return {
-    $client: {
-      execute: async () => {
-        throw new Error('limiter down')
-      },
-    },
-  } as unknown as Database
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+function dbThat(execute: () => Promise<unknown>): Database {
+  return { $client: { execute } } as unknown as Database
 }
 
 describe('allowRate', () => {
-  it('fails closed when sponsor checkout asks it to', async () => {
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-    await expect(allowRate(brokenLimiter(), 'sponsor', 8, 60_000, { failClosed: true })).resolves.toBe(false)
-    expect(error).toHaveBeenCalledWith('rate limit failed', 'Error')
-    error.mockRestore()
+  it('returns the limiter decision when the write succeeds', async () => {
+    const { db, close } = await createTestDatabase()
+    const allowed = await allowRate(db, 'checkout-ok', 1, 60_000, { onError: 'closed', now: 1_000 })
+    const blocked = await allowRate(db, 'checkout-ok', 1, 60_000, { onError: 'closed', now: 1_000 })
+    expect(allowed).toBe('allow')
+    expect(blocked).toBe('limit')
+    const stillBlocked = await allowRate(db, 'checkout-ok', 1, 60_000, { onError: 'open', now: 1_000 })
+    expect(stillBlocked).toBe('limit')
+    await close()
   })
 
-  it('stays open for other actions when the limiter throws', async () => {
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
-    await expect(allowRate(brokenLimiter(), 'result', 30, 60_000)).resolves.toBe(true)
-    error.mockRestore()
+  it('fails closed for a write when the limiter throws or never returns', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const thrown = dbThat(() => Promise.reject(new Error('store down')))
+    const hung = dbThat(() => new Promise(() => undefined))
+    await expect(allowRate(thrown, 'checkout-throw', 8, 60_000, { onError: 'closed' })).resolves.toBe('unavailable')
+    await expect(allowRate(hung, 'checkout-hang', 8, 60_000, { onError: 'closed' })).resolves.toBe('unavailable')
+  })
+
+  it('fails open for a read when the limiter throws or never returns', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const thrown = dbThat(() => Promise.reject(new Error('store down')))
+    const hung = dbThat(() => new Promise(() => undefined))
+    await expect(allowRate(thrown, 'result-throw', 30, 60_000, { onError: 'open' })).resolves.toBe('allow')
+    await expect(allowRate(hung, 'result-hang', 30, 60_000, { onError: 'open' })).resolves.toBe('allow')
   })
 })

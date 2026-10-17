@@ -32,15 +32,19 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 export default async function ToolPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) notFound()
-  const tool = await getTool(slug)
+  const partnerSlugs = comparePairSeeds.flatMap(([left, right]) => {
+    if (left === slug) return [right]
+    if (right === slug) return [left]
+    return []
+  })
+  const [tool, partners, headerStore] = await Promise.all([getTool(slug), getToolsBySlugs(partnerSlugs), headers()])
   if (!tool) notFound()
-  const nonce = (await headers()).get('x-nonce')
+  const nonce = headerStore.get('x-nonce')
+  const comparisons = comparePairSeeds.filter(([left, right]) => left === tool.slug || right === tool.slug)
   const crumbs = [
     { name: 'Home', path: '/' },
     { name: tool.name, path: `/tools/${tool.slug}` },
   ]
-  const comparisons = comparePairSeeds.filter(([a, b]) => a === tool.slug || b === tool.slug)
-  const partners = await getToolsBySlugs(comparisons.map(([left, right]) => (left === tool.slug ? right : left)))
   const partnerName = new Map(partners.map((item) => [item.slug, item.name]))
 
   return (

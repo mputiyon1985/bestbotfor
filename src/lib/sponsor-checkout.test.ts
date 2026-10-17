@@ -7,7 +7,7 @@ import {
   sponsorPriceId,
   sponsorPriceLabel,
 } from './sponsor-offerings'
-import { parseSponsorCheckout, sponsorCheckoutParams } from './sponsor-checkout'
+import { parseSponsorCheckout, sponsorCheckoutParams, sponsorRateLimitMessage } from './sponsor-checkout'
 
 const REQUEST_ID = '123e4567-e89b-42d3-a456-426614174000'
 const env = {
@@ -39,6 +39,13 @@ describe('sponsor offerings', () => {
     expect(SPONSOR_BUSINESS_NAME).toBe('BestBotFor')
     expect(SPONSOR_BUSINESS_NAME.length).toBeLessThanOrEqual(22)
     expect(SPONSOR_BUSINESS_NAME).toMatch(/^[A-Za-z0-9 ]+$/)
+  })
+})
+
+describe('sponsorRateLimitMessage', () => {
+  it('names a full window and a limiter failure separately', () => {
+    expect(sponsorRateLimitMessage('limit')).toBe('Too many checkout attempts. Try again in an hour.')
+    expect(sponsorRateLimitMessage('unavailable')).toBe('Checkout is temporarily unavailable. Try again.')
   })
 })
 

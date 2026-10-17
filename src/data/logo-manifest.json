@@ -30,6 +30,11 @@
     "fetchedAt": "2026-10-16"
   },
   {
+    "slug": "assemblyai",
+    "sourceUrl": "https://github.com/AssemblyAI.png",
+    "fetchedAt": "2026-10-17"
+  },
+  {
     "slug": "augment-code",
     "sourceUrl": "https://www.augmentcode.com/favicon.svg",
     "fetchedAt": "2026-10-16"
@@ -75,6 +80,11 @@
     "fetchedAt": "2026-10-16"
   },
   {
+    "slug": "chatgpt",
+    "sourceUrl": "https://chatgpt.com/cdn/assets/favicon-l4nq08hd.svg",
+    "fetchedAt": "2026-10-17"
+  },
+  {
     "slug": "claude",
     "sourceUrl": "https://claude.ai/apple-touch-icon.png",
     "fetchedAt": "2026-10-16"
@@ -110,9 +120,19 @@
     "fetchedAt": "2026-10-16"
   },
   {
+    "slug": "crewai",
+    "sourceUrl": "https://docs.crewai.com/favicon.svg",
+    "fetchedAt": "2026-10-17"
+  },
+  {
     "slug": "cursor",
     "sourceUrl": "https://cursor.com/marketing-static/favicon-light.svg",
     "fetchedAt": "2026-10-16"
+  },
+  {
+    "slug": "deepgram",
+    "sourceUrl": "https://dbai04gkae79n.cloudfront.net/prod/0405bb6/safari-pinned-tab.svg",
+    "fetchedAt": "2026-10-17"
   },
   {
     "slug": "descript",
@@ -135,6 +155,11 @@
     "fetchedAt": "2026-10-16"
   },
   {
+    "slug": "exa",
+    "sourceUrl": "https://docs.exa.ai/docs/_mintlify/favicons/exa-52/IXdJPX9fh2ANJEqv/_generated/favicon/android-chrome-192x192.png",
+    "fetchedAt": "2026-10-17"
+  },
+  {
     "slug": "fathom",
     "sourceUrl": "https://cdn.prod.website-files.com/6899da9beccbdbe92be49b5d/6a4282cf896cae98018bfa8c_fathom_favicon.png",
     "fetchedAt": "2026-10-16"
@@ -153,6 +178,11 @@
     "slug": "fliki",
     "sourceUrl": "https://cdn.fliki.ai/public/favicon/apple-touch-icon.png?v=0.1",
     "fetchedAt": "2026-10-16"
+  },
+  {
+    "slug": "flowise",
+    "sourceUrl": "https://github.com/FlowiseAI.png",
+    "fetchedAt": "2026-10-17"
   },
   {
     "slug": "flux",
@@ -175,6 +205,11 @@
     "fetchedAt": "2026-10-16"
   },
   {
+    "slug": "gemini-code-assist",
+    "sourceUrl": "https://www.gstatic.com/images/branding/productlogos/gemini_2025/v1/web-96dp/logo_gemini_2025_color_2x_web_96dp.png",
+    "fetchedAt": "2026-10-17"
+  },
+  {
     "slug": "github-copilot",
     "sourceUrl": "https://github.githubassets.com/assets/pinned-octocat-093da3e6fa40.svg",
     "fetchedAt": "2026-10-16"
@@ -190,6 +225,11 @@
     "fetchedAt": "2026-10-16"
   },
   {
+    "slug": "grammarly",
+    "sourceUrl": "https://github.com/grammarly.png",
+    "fetchedAt": "2026-10-17"
+  },
+  {
     "slug": "granola",
     "sourceUrl": "https://www.granola.ai/favicon/favicon.svg",
     "fetchedAt": "2026-10-16"
@@ -198,6 +238,31 @@
     "slug": "grok",
     "sourceUrl": "https://grok.com/images/favicon.svg",
     "fetchedAt": "2026-10-16"
+  },
+  {
+    "slug": "gumloop",
+    "sourceUrl": "https://docs.gumloop.com/mintlify-assets/_mintlify/favicons/agenthub/36k4CbJtDFi9W79X/_generated/favicon/android-chrome-192x192.png",
+    "fetchedAt": "2026-10-17"
+  },
+  {
+    "slug": "hedra",
+    "sourceUrl": "https://imagedelivery.net/yn_JX_LzJpQI9TTynGwR_Q/www-static/website/android-chrome-512x512.png/public",
+    "fetchedAt": "2026-10-17"
+  },
+  {
+    "slug": "heygen",
+    "sourceUrl": "https://app.heygen.com/android-chrome-512x512.png",
+    "fetchedAt": "2026-10-17"
+  },
+  {
+    "slug": "hyperwrite",
+    "sourceUrl": "https://cdn.prod.website-files.com/63fcd79d410b22ddf397e1b8/654272554402410a71c84ab9_6405c1cabdf9c69f05b1080e_otherside_logo_symbol.webp",
+    "fetchedAt": "2026-10-17"
+  },
+  {
+    "slug": "ideogram",
+    "sourceUrl": "https://ideogram.ai/favicon.svg",
+    "fetchedAt": "2026-10-17"
   },
   {
     "slug": "ifttt",
@@ -235,6 +300,11 @@
     "fetchedAt": "2026-10-16"
   },
   {
+    "slug": "kapwing",
+    "sourceUrl": "https://www.kapwing.com/favicon.svg",
+    "fetchedAt": "2026-10-17"
+  },
+  {
     "slug": "keenious",
     "sourceUrl": "https://keenious.com/images/icons/apple-icon-180.png",
     "fetchedAt": "2026-10-16"
@@ -270,6 +340,11 @@
     "fetchedAt": "2026-10-16"
   },
   {
+    "slug": "leonardo-ai",
+    "sourceUrl": "https://files.readme.io/e6fd24fe6d94d90d5c885217bfc7e206f382cccef4e950586465ac1a3750f90d-Leonardo_Icon_ElectricPurple_1.png",
+    "fetchedAt": "2026-10-17"
+  },
+  {
     "slug": "lex",
     "sourceUrl": "https://lex.page/safari-pinned-tab.svg?v=20221112",
     "fetchedAt": "2026-10-16"
@@ -293,6 +368,11 @@
     "slug": "lovable",
     "sourceUrl": "https://lovable.dev/apple-touch-icon.png",
     "fetchedAt": "2026-10-16"
+  },
+  {
+    "slug": "luma-dream-machine",
+    "sourceUrl": "https://cdn-luma.com/public/captures.lumalabs.ai/images/logo.svg",
+    "fetchedAt": "2026-10-17"
   },
   {
     "slug": "make",
@@ -348,6 +428,11 @@
     "slug": "notta",
     "sourceUrl": "https://www.notta.ai/apple-touch-icon.png",
     "fetchedAt": "2026-10-16"
+  },
+  {
+    "slug": "openai-codex",
+    "sourceUrl": "https://developers.openai.com/favicon.svg",
+    "fetchedAt": "2026-10-17"
   },
   {
     "slug": "openart",
@@ -440,6 +525,11 @@
     "fetchedAt": "2026-10-16"
   },
   {
+    "slug": "replit",
+    "sourceUrl": "https://docs.replit.com/favicon.svg",
+    "fetchedAt": "2026-10-17"
+  },
+  {
     "slug": "researchrabbit",
     "sourceUrl": "https://cdn.prod.website-files.com/68367775ca3b1655a71e1698/68f169d618fea3828326bbe2_RR_icon_256.png",
     "fetchedAt": "2026-10-16"
@@ -458,6 +548,11 @@
     "slug": "runway",
     "sourceUrl": "https://runway.com/icon.png?icon.35ps9bmugbe1e.png",
     "fetchedAt": "2026-10-16"
+  },
+  {
+    "slug": "rytr",
+    "sourceUrl": "https://app.rytr.me/apple-icon.png?apple-icon.43msxn-g6bu4u.png",
+    "fetchedAt": "2026-10-17"
   },
   {
     "slug": "scenario",
@@ -520,6 +615,11 @@
     "fetchedAt": "2026-10-16"
   },
   {
+    "slug": "sunsama",
+    "sourceUrl": "https://s3-us-west-2.amazonaws.com/assets.siftnet.com/logos/logo-icon-whitespace-1024.png",
+    "fetchedAt": "2026-10-17"
+  },
+  {
     "slug": "supabase",
     "sourceUrl": "https://supabase.com/favicon/apple-icon-180x180.png",
     "fetchedAt": "2026-10-16"
@@ -560,6 +660,11 @@
     "fetchedAt": "2026-10-16"
   },
   {
+    "slug": "trae",
+    "sourceUrl": "https://p-vcloud.byteimg.com/tos-cn-i-em5hxbkur4/a50912f2dcc14cb7aa119e1e85311c58~tplv-em5hxbkur4-noop.image",
+    "fetchedAt": "2026-10-17"
+  },
+  {
     "slug": "typecast",
     "sourceUrl": "https://typecast.ai/favicon.svg",
     "fetchedAt": "2026-10-16"
@@ -578,6 +683,11 @@
     "slug": "v0",
     "sourceUrl": "https://v0.app/assets/apple-icon.png",
     "fetchedAt": "2026-10-16"
+  },
+  {
+    "slug": "veed",
+    "sourceUrl": "https://github.com/veedstudio.png",
+    "fetchedAt": "2026-10-17"
   },
   {
     "slug": "vidnoz",
@@ -605,6 +715,11 @@
     "fetchedAt": "2026-10-16"
   },
   {
+    "slug": "windsurf",
+    "sourceUrl": "https://devin.ai/favicon.svg",
+    "fetchedAt": "2026-10-17"
+  },
+  {
     "slug": "wondercraft",
     "sourceUrl": "https://cdn.prod.website-files.com/65b3cc40daa94fa5529af14b/65b3cc40daa94fa5529af1d8_webclip.png",
     "fetchedAt": "2026-10-16"
@@ -625,8 +740,18 @@
     "fetchedAt": "2026-10-16"
   },
   {
+    "slug": "you-com",
+    "sourceUrl": "https://you.com/favicon_ydc/favicon-196x196.png",
+    "fetchedAt": "2026-10-17"
+  },
+  {
     "slug": "zapier",
     "sourceUrl": "https://zapier.com/favicon.ico",
     "fetchedAt": "2026-10-16"
+  },
+  {
+    "slug": "zed",
+    "sourceUrl": "https://github.com/zed-industries.png",
+    "fetchedAt": "2026-10-17"
   }
 ]

@@ -1,6 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
+  "regions": ["iad1"],
   "routes": [
     {
       "src": "^(?:.*?)(?:^|/)(?:\\.|%2[eE]|%252[eE]|%25252[eE]){1,2}(?:/|%2[fF]|%5[cC]|$).*$",

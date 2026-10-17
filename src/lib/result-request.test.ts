@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { tasks, toolScores, toolTasks, tools } from './db/schema'
-import { allMatchesRequest, resultOfflineStatus, resultRequestStatus } from './result-request'
+import { allMatchesRequest, cachedQuizStatus, resultOfflineStatus, resultRequestStatus } from './result-request'
 import { createTestDatabase } from '@/test/db'
 
 async function seed(db: Awaited<ReturnType<typeof createTestDatabase>>['db']) {
@@ -75,5 +75,15 @@ describe('result request status', () => {
     expect(page?.tools.map((tool) => tool.slug)).toEqual(['alpha'])
 
     await close()
+  })
+
+  it('uses a cached task list for a quiz and only as a miss for all-matches', () => {
+    const slugs = new Set(['chat'])
+    expect(cachedQuizStatus(null, new URLSearchParams('task=chat&budget=any&skill=beginner'))).toBeNull()
+    expect(cachedQuizStatus(slugs, new URLSearchParams('task=chat&budget=any&skill=beginner'))).toBe('ok')
+    expect(cachedQuizStatus(slugs, new URLSearchParams('task=marketing&budget=any&skill=beginner'))).toBe('not-found')
+    expect(cachedQuizStatus(slugs, new URLSearchParams('task=chat&view=all'))).toBeNull()
+    expect(cachedQuizStatus(slugs, new URLSearchParams('task=marketing&view=all'))).toBe('not-found')
+    expect(cachedQuizStatus(slugs, new URLSearchParams('task=Not_A_Task'))).toBeNull()
   })
 })
