@@ -54,8 +54,10 @@ function socialTitle(title: string): string {
 }
 
 /**
- * Draft policy pages. Until POLICY_PAGES_LAWYER_APPROVED, robots are
- * noindex, nofollow even when a production deployment would otherwise index.
+ * /review-guidelines and /how-user-ratings-work only.
+ * /privacy, /terms, and /disclosure use pageMetadata and index in production.
+ * Until ratings launch, these two pages are noindex, nofollow in every
+ * environment, including production.
  */
 export function policyPageMetadata(input: { title: string; description: string; path: string }): Metadata {
   const metadata = pageMetadata(input)
