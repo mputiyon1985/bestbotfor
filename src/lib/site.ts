@@ -6,7 +6,7 @@ export const TAGLINE = 'The right AI in 30 seconds.'
 export const SITE_NAME = 'BestBotFor'
 
 /**
- * Sitewide switch for the BestBotFor score: the heading, category rank,
+ * Sitewide switch for Our rating: the heading, category rank,
  * stars, numeric score, criteria bars, note, and maintenance notice.
  * Pros and cons stay visible either way. True publishes the v2.3 ratings.
  * A code constant on purpose, so no environment variable is required.
