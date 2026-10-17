@@ -46,6 +46,7 @@ const RATINGS_EXACT_PATHS = new Set([
   '/admin/audit',
   '/admin/vendor-domains',
   '/admin/sponsor-links',
+  '/admin/mfa-required',
   '/review-guidelines',
   '/how-user-ratings-work',
   '/members/reviews',

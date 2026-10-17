@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { isAdminPath } from '@/lib/admin-path'
 import { analyticsPageView } from '@/lib/analytics-page'
 import { OPEN_CONSENT_EVENT } from './cookie-settings-button'
 
@@ -82,17 +83,17 @@ export function ConsentBanner({ gaId }: { gaId: string | null }) {
   useEffect(() => {
     const choice = readConsent()
     setVisible(choice === null)
-    if (choice === 'granted' && gaId) {
+    if (choice === 'granted' && gaId && !isAdminPath(pathname)) {
       loadGoogleAnalytics(gaId)
       setTracking(true)
     }
     const open = () => setVisible(true)
     window.addEventListener(OPEN_CONSENT_EVENT, open)
     return () => window.removeEventListener(OPEN_CONSENT_EVENT, open)
-  }, [gaId])
+  }, [gaId, pathname])
 
   useEffect(() => {
-    if (!tracking) return
+    if (!tracking || isAdminPath(pathname)) return
     const gtag = (window as AnalyticsWindow).gtag
     if (typeof gtag !== 'function') return
     gtag('event', 'page_view', analyticsPageView({ href: window.location.href, referrer: document.referrer || undefined }))

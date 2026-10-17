@@ -5,9 +5,11 @@ import { CATALOG_REJECT_MESSAGE, CATALOG_REJECT_PATH, isUnsafeCatalogPath, reque
 import { hasDotSegment } from '@/lib/dot-segment'
 import { buildContentSecurityPolicy, securityHeaders } from '@/lib/csp'
 import { getDb, peekCachedTaskSlugs } from '@/lib/db/client'
+import { isAdminPath } from '@/lib/admin-path'
 import { isClerkConfigured, isRatingsPath, userRatingsEnabled } from '@/lib/flags'
 import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from '@/lib/indexing'
 import { clientIp, rateLimitKey } from '@/lib/ip'
+import { hasMalformedPercentEncoding, MALFORMED_PERCENT_MESSAGE } from '@/lib/percent-encoding'
 import { consumeLocalRateLimit, persistResultRateLimit } from '@/lib/rate-limit'
 import { acceptResultFault, faultedResultWork } from '@/lib/result-fault'
 import { decideResultGate } from '@/lib/result-gate'
@@ -31,7 +33,15 @@ function nextWithNonce(request: NextRequest): NextResponse {
   requestHeaders.set('x-nonce', nonce)
   requestHeaders.set('Content-Security-Policy', csp)
   const response = NextResponse.next({ request: { headers: requestHeaders } })
-  return applySecurity(response, nonce)
+  return adminHeaders(applySecurity(response, nonce), request.nextUrl.pathname)
+}
+
+/** Admin responses stay out of caches and search, including production. */
+function adminHeaders(response: NextResponse, pathname: string): NextResponse {
+  if (!isAdminPath(pathname)) return response
+  response.headers.set('cache-control', 'no-store')
+  response.headers.set('x-robots-tag', 'noindex, nofollow')
+  return response
 }
 
 function isMembersPath(pathname: string): boolean {
@@ -39,6 +49,29 @@ function isMembersPath(pathname: string): boolean {
 }
 
 const RATINGS_HIDDEN_MESSAGE = 'Not found.'
+
+/**
+ * Next decodes `/:path*` header params before this function runs. A truncated
+ * escape throws there and the failed 400 render becomes a 500. Reject the raw
+ * path here when the proxy does run. `scripts/serve.ts` and the `vercel.json`
+ * route see the path before that decode.
+ */
+function rejectMalformedEncoding(request: NextRequest): NextResponse | null {
+  const paths = [request.nextUrl.pathname, ...rawPaths(request)]
+  if (!paths.some((value) => hasMalformedPercentEncoding(value))) return null
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+  return applySecurity(
+    new NextResponse(MALFORMED_PERCENT_MESSAGE, {
+      status: 400,
+      headers: {
+        'content-type': 'text/plain; charset=utf-8',
+        'cache-control': 'no-store',
+        'x-robots-tag': 'noindex, nofollow',
+      },
+    }),
+    nonce,
+  )
+}
 
 /**
  * Ratings routes 404 here while the flag is off, before the catalog reject and
@@ -100,8 +133,14 @@ function rejectCatalogPath(request: NextRequest): NextResponse | null {
 }
 
 const withClerk = clerkMiddleware(async (auth, request) => {
-  if (isMembersPath(request.nextUrl.pathname)) {
+  const pathname = request.nextUrl.pathname
+  if (isMembersPath(pathname)) {
     await auth.protect()
+  }
+  if (isAdminPath(pathname)) {
+    const { userId } = await auth()
+    // Signed-out visitors 404 in the admin layout. protect() in middleware would send them to sign-in.
+    if (userId) await auth.protect()
   }
   return nextWithNonce(request)
 })
@@ -165,6 +204,8 @@ async function gateResult(request: NextRequest, event: NextFetchEvent): Promise<
 }
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  const malformed = rejectMalformedEncoding(request)
+  if (malformed) return malformed
   const hiddenRatings = rejectHiddenRatings(request)
   if (hiddenRatings) return hiddenRatings
   const rejected = rejectCatalogPath(request)

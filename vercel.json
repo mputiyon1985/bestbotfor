@@ -11,6 +11,15 @@
         "content-type": "text/plain; charset=utf-8",
         "x-robots-tag": "noindex, nofollow"
       }
+    },
+    {
+      "src": "^.*%(?:$|[^0-9A-Fa-f]|[0-9A-Fa-f](?:$|[^0-9A-Fa-f])).*$",
+      "status": 400,
+      "headers": {
+        "cache-control": "no-store",
+        "content-type": "text/plain; charset=utf-8",
+        "x-robots-tag": "noindex, nofollow"
+      }
     }
   ]
 }
