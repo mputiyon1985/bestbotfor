@@ -63,10 +63,18 @@ describe('ratings launch plan', () => {
     expect(plan).toContain('**GitHub Actions billing lock.** This is its own gate.')
     expect(plan).toContain('**Required status checks on ruleset `25190130`.** Once CI runs, add the required status checks to ruleset `25190130`.')
     expect(plan).toContain('**Beehiiv production keys (Sentinel P2 on #52).**')
-    expect(plan).toContain('No production Beehiiv keys go in until Beehiiv double opt-in is enabled and disclosed in the privacy policy, or we add our own confirm step')
-    expect(plan).toContain('concurrent duplicate signups are deduped to a single Beehiiv call')
-    expect(plan).toContain('a per-email signup limit exists')
-    expect(plan).toContain('Turnstile is considered')
+    expect(plan).toContain('James decided on October 17, 2026, at 7:53 PM ET that BestBotFor uses Beehiiv double opt-in.')
+    expect(plan).toContain('No production Beehiiv keys go in until that double opt-in is enabled, concurrent duplicate signups are deduped to a single Beehiiv call, a per-email signup limit exists, and Turnstile is considered.')
+    expect(plan).not.toContain('our own confirm step')
+    for (const question of [
+      'placement and UTM values sent to Beehiiv',
+      'the retention period for newsletter emails',
+      'a privacy link at the signup forms',
+      'EU/UK opt-in',
+      'the Clerk id kept in sessionStorage',
+    ]) {
+      expect(plan).toContain(question)
+    }
     expect(plan).toContain("Do not adopt drizzle-kit's migrator until #10 lands.")
     expect(plan).toContain('orphan journal row')
   })
