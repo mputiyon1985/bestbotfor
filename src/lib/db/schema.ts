@@ -157,10 +157,13 @@ export const rateLimits = sqliteTable('rate_limits', {
  * One rating per user per tool. latest_version_id and published_version_id
  * reference review_versions. That cycle is DEFERRABLE in the SQL migration.
  * Drizzle builds references immediately, so those two columns stay plain
- * integers here. ip_hmac is a keyed HMAC of the submit IP, never a raw IP.
- * network_range_hmac is a keyed HMAC of the IPv4 /24 or IPv6 /48 range.
- * Both hashes use REVIEW_IP_HMAC_SECRET. hmac_key_version is that
- * secret's key id. A competitor-domain match is a moderator hint only
+ * integers here. ip_hmac is a keyed HMAC of the full submit IP.
+ * net_hmac is a keyed HMAC of the IPv4 /24 or IPv6 /48 bucket.
+ * ip_key_id is the key version, such as "k1". Both hashes use
+ * REVIEW_IP_HMAC_SECRET, with HKDF labels bestbotfor/review-ip/v1 and
+ * bestbotfor/review-net/v1. ip_hmac is HMAC-SHA256 of
+ * "bestbotfor-review-ip|v1|" plus the IP, under K_ip. Computing the
+ * hashes is A5. A competitor-domain match is a moderator hint only
  * and has no column here, so it cannot block a review.
  * No email is stored.
  */
@@ -179,8 +182,8 @@ export const reviews = sqliteTable(
     countsTowardScore: integer('counts_toward_score').notNull().default(1),
     displayName: text('display_name').notNull(),
     ipHmac: text('ip_hmac'),
-    networkRangeHmac: text('network_range_hmac'),
-    hmacKeyVersion: integer('hmac_key_version'),
+    netHmac: text('net_hmac'),
+    ipKeyId: text('ip_key_id'),
     createdAt: integer('created_at').notNull(),
     updatedAt: integer('updated_at').notNull(),
     publishedAt: integer('published_at'),
@@ -190,7 +193,7 @@ export const reviews = sqliteTable(
     index('reviews_tool_status_published_idx').on(table.toolId, table.status, desc(table.publishedAt)),
     index('reviews_status_created_idx').on(table.status, table.createdAt),
     index('reviews_ip_created_idx').on(table.ipHmac, table.createdAt),
-    index('reviews_network_range_created_idx').on(table.networkRangeHmac, table.createdAt),
+    index('reviews_net_created_idx').on(table.netHmac, table.createdAt),
     check(
       'reviews_status_check',
       sql`${table.status} in ('pending', 'held', 'published', 'rejected', 'removed', 'withdrawn')`,

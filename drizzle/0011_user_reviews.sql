@@ -7,13 +7,15 @@
 -- those foreign keys are DEFERRABLE. Insert both rows in one transaction.
 -- tool_sponsor_links.sponsorship_id has no REFERENCES: sponsorships arrives
 -- in PR #10, and a foreign key to a missing table rejects every insert.
--- ip_hmac is a keyed HMAC of the submit IP, never a raw IP.
--- network_range_hmac is a keyed HMAC of that address's network range
--- (IPv4 /24, IPv6 /48). Both hashes use REVIEW_IP_HMAC_SECRET.
--- hmac_key_version is that secret's key id.
--- A competitor-domain match is a moderator hint only. This file stores
--- no column for it, so the match cannot block a review.
--- No email column.
+-- ip_hmac TEXT NULL: keyed HMAC of the full submit IP.
+-- net_hmac TEXT NULL: keyed HMAC of the IPv4 /24 or IPv6 /48 bucket.
+-- ip_key_id TEXT NULL: key version such as 'k1'.
+-- Both hashes use REVIEW_IP_HMAC_SECRET, with HKDF labels
+-- bestbotfor/review-ip/v1 and bestbotfor/review-net/v1.
+-- ip_hmac = HMAC-SHA256(K_ip, 'bestbotfor-review-ip|v1|' + ip).
+-- Computing the hashes is A5. A competitor-domain match is a moderator hint only.
+-- This file stores no column for it, so the match cannot block a review.
+-- No raw IP. No email column.
 
 CREATE TABLE IF NOT EXISTS reviews (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -26,8 +28,8 @@ CREATE TABLE IF NOT EXISTS reviews (
   counts_toward_score INTEGER NOT NULL DEFAULT 1 CHECK (counts_toward_score IN (0, 1)),
   display_name TEXT NOT NULL CHECK (length(display_name) BETWEEN 1 AND 60),
   ip_hmac TEXT,
-  network_range_hmac TEXT,
-  hmac_key_version INTEGER,
+  net_hmac TEXT,
+  ip_key_id TEXT,
   created_at INTEGER NOT NULL,
   updated_at INTEGER NOT NULL,
   published_at INTEGER
@@ -37,7 +39,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS reviews_user_tool_unique ON reviews (clerk_use
 CREATE INDEX IF NOT EXISTS reviews_tool_status_published_idx ON reviews (tool_id, status, published_at DESC);
 CREATE INDEX IF NOT EXISTS reviews_status_created_idx ON reviews (status, created_at);
 CREATE INDEX IF NOT EXISTS reviews_ip_created_idx ON reviews (ip_hmac, created_at);
-CREATE INDEX IF NOT EXISTS reviews_network_range_created_idx ON reviews (network_range_hmac, created_at);
+CREATE INDEX IF NOT EXISTS reviews_net_created_idx ON reviews (net_hmac, created_at);
 
 CREATE TABLE IF NOT EXISTS review_versions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
