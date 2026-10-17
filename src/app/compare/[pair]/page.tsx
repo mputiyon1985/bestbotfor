@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { DailyBotCapture } from '@/components/daily-bot-capture'
 import { JsonLd } from '@/components/json-ld'
 import { ToolLogo } from '@/components/tool-logo'
 import { getToolsBySlugs } from '@/lib/catalog'
@@ -120,6 +121,7 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
           </Link>
         </section>
       )}
+      <DailyBotCapture source="compare" />
     </article>
   )
 }
