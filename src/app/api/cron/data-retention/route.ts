@@ -145,9 +145,27 @@ export async function runDataRetention(
       truncated: false,
     }
   }
-  const rateLimitsDeleted = await deleteExpiredRateLimits(client, rateCutoff, batchSize, maxBatches)
-  const resultWindowsDeleted = await deleteExpiredResultWindows(client, windowCutoff, batchSize, maxBatches)
-  const clickHashesCleared = await clearOldClickHashes(client, clickCutoff, batchSize, maxBatches)
+  await deleteExpiredRateLimits(client, rateCutoff, batchSize, maxBatches)
+  await deleteExpiredResultWindows(client, windowCutoff, batchSize, maxBatches)
+  await clearOldClickHashes(client, clickCutoff, batchSize, maxBatches)
+  const rateLimitsLeft = await countRows(
+    client,
+    'SELECT COUNT(*) AS n FROM rate_limits WHERE reset_at < ?',
+    rateCutoff,
+  )
+  const resultWindowsLeft = await countRows(
+    client,
+    'SELECT COUNT(*) AS n FROM result_rate_windows WHERE expires_at < ?',
+    windowCutoff,
+  )
+  const clickHashesLeft = await countRows(
+    client,
+    'SELECT COUNT(*) AS n FROM clicks WHERE ts < ? AND ip_hash IS NOT NULL',
+    clickCutoff,
+  )
+  const rateLimitsDeleted = Math.max(0, rateLimitsEligible - rateLimitsLeft)
+  const resultWindowsDeleted = Math.max(0, resultWindowsEligible - resultWindowsLeft)
+  const clickHashesCleared = Math.max(0, clickHashesEligible - clickHashesLeft)
   return {
     event: 'data_retention',
     enabled: true,
@@ -159,10 +177,8 @@ export async function runDataRetention(
     resultWindowsDeleted,
     clickHashesEligible,
     clickHashesCleared,
-    truncated:
-      rateLimitsDeleted < rateLimitsEligible ||
-      resultWindowsDeleted < resultWindowsEligible ||
-      clickHashesCleared < clickHashesEligible,
+    // Rows still eligible after the batches. rowsAffected is not the flag.
+    truncated: rateLimitsLeft > 0 || resultWindowsLeft > 0 || clickHashesLeft > 0,
   }
 }
 
@@ -174,10 +190,15 @@ function retentionEnv(): RetentionEnv {
   }
 }
 
+function methodNotAllowed(): Response {
+  return new NextResponse(null, { status: 405, headers: { ...NO_STORE, allow: 'GET' } })
+}
+
 export async function handleRetentionCron(
   request: Request,
   deps: { db: () => RetentionClient; env?: RetentionEnv; now?: number; cronSecret?: string } = { db: getDb },
 ): Promise<Response> {
+  if (request.method !== 'GET') return methodNotAllowed()
   const decision = decideRetentionRequest({
     authorization: request.headers.get('authorization'),
     cronSecret: deps.cronSecret ?? process.env.CRON_SECRET,
@@ -203,4 +224,9 @@ export async function handleRetentionCron(
 
 export function GET(request: Request): Promise<Response> {
   return handleRetentionCron(request)
+}
+
+/** Next would call GET for a missing HEAD export. This must not run the job. */
+export function HEAD(): Response {
+  return methodNotAllowed()
 }

@@ -11,6 +11,9 @@ export const CLICK_HASH_RETENTION_MS = 90 * 24 * 60 * 60 * 1000
 export const RETENTION_BATCH_SIZE = 500
 export const RETENTION_MAX_BATCHES = 40
 
+/** Shorter than this fails closed. The value is not trimmed. */
+export const CRON_SECRET_MIN_LENGTH = 32
+
 const OPEN_ENVS = new Set(['preview', 'development', 'test'])
 
 export type RetentionEnv = {
@@ -79,10 +82,13 @@ function digest(value: string): Buffer {
   return createHash('sha256').update(value).digest()
 }
 
-/** Bearer token compared by SHA-256 so a length mismatch cannot throw or leak. */
+/**
+ * Bearer token compared by SHA-256 so a length mismatch cannot throw or leak.
+ * A missing secret, or one shorter than 32 characters, fails closed.
+ */
 export function cronAuthorized(authorization: string | null | undefined, secret: string | undefined): boolean {
   const expected = secret ?? ''
-  if (expected.length === 0) return false
+  if (expected.length < CRON_SECRET_MIN_LENGTH) return false
   const header = authorization ?? ''
   const prefix = 'Bearer '
   if (!header.startsWith(prefix)) return false

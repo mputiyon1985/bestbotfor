@@ -9,6 +9,7 @@ import {
   CLICK_HASH_RETENTION_MS,
   RATE_LIMIT_RETENTION_MS,
   clickHashCutoff,
+  CRON_SECRET_MIN_LENGTH,
   cronAuthorized,
   dataRetentionDryRun,
   dataRetentionEnabled,
@@ -19,14 +20,14 @@ import {
   type RetentionReport,
 } from './data-retention'
 import { consumeRateLimit, consumeResultRateLimit, resetLocalRateLimits } from './rate-limit'
-import { handleRetentionCron, runDataRetention } from '@/app/api/cron/data-retention/route'
+import { HEAD, handleRetentionCron, runDataRetention } from '@/app/api/cron/data-retention/route'
 
 const now = Date.parse('2026-10-17T20:00:00Z')
 const day = 24 * 60 * 60 * 1000
 const windowMs = 60_000
 const sharedBudgetMs = 2_000
 const cutoff = now - day
-const secret = 'cron-secret-for-tests-only'
+const secret = 'cron-secret-for-tests-only-32b-x'
 const quizExpired = 'quiz-expired-a'
 const quizExpiredOther = 'quiz-expired-b'
 const quizBoundary = 'quiz-boundary'
@@ -38,10 +39,10 @@ const oldHash = 'e'.repeat(64)
 const youngHash = 'f'.repeat(64)
 const quizWriteNow = cutoff - 2 * windowMs
 
-function request(authorization: string | null): Request {
+function request(authorization: string | null, method = 'GET'): Request {
   const headers = new Headers()
   if (authorization !== null) headers.set('authorization', authorization)
-  return new Request('http://localhost/api/cron/data-retention', { headers })
+  return new Request('http://localhost/api/cron/data-retention', { headers, method })
 }
 
 describe('data retention decisions', () => {
@@ -69,12 +70,16 @@ describe('data retention decisions', () => {
     expect(constants).not.toContain('process.env')
   })
 
-  it('rejects a missing, empty, or wrong cron secret without accepting a shorter prefix', () => {
+  it('rejects a missing, empty, short, or wrong cron secret without accepting a shorter prefix', () => {
+    expect(secret.length).toBeGreaterThanOrEqual(CRON_SECRET_MIN_LENGTH)
+    expect(CRON_SECRET_MIN_LENGTH).toBe(32)
     expect(cronAuthorized(null, undefined)).toBe(false)
     expect(cronAuthorized(`Bearer ${secret}`, '')).toBe(false)
     expect(cronAuthorized(null, secret)).toBe(false)
     expect(cronAuthorized('Bearer', secret)).toBe(false)
     expect(cronAuthorized(`Bearer ${secret.slice(0, 4)}`, secret)).toBe(false)
+    const short = 'a'.repeat(CRON_SECRET_MIN_LENGTH - 1)
+    expect(cronAuthorized(`Bearer ${short}`, short)).toBe(false)
     expect(cronAuthorized(`Bearer ${secret}`, secret)).toBe(true)
     const decision = decideRetentionRequest({
       authorization: 'Bearer wrong',
@@ -191,6 +196,9 @@ describe('data retention job', () => {
       expect(report.clickHashesCleared).toBe(1)
       expect(report.wrote).toBe(true)
       expect(report.truncated).toBe(false)
+      expect(report.rateLimitsDeleted).toBe(report.rateLimitsEligible)
+      expect(report.resultWindowsDeleted).toBe(report.resultWindowsEligible)
+      expect(report.clickHashesCleared).toBe(report.clickHashesEligible)
       const limits = await db.select({ resetAt: rateLimits.resetAt }).from(rateLimits)
       expect(limits.map((row) => row.resetAt).sort()).toEqual([cutoff, now + windowMs].sort())
       expect(await resultWindowExpiries(db)).toEqual([cutoff, now + windowMs].sort((left, right) => left - right))
@@ -215,6 +223,7 @@ describe('data retention job', () => {
     try {
       const partial = await runDataRetention(db, { dryRun: false, now, batchSize: 1, maxBatches: 1 })
       expect(partial.resultWindowsDeleted).toBe(1)
+      expect(partial.resultWindowsDeleted).toBeLessThan(partial.resultWindowsEligible)
       expect(partial.truncated).toBe(true)
       const rest = await runDataRetention(db, { dryRun: false, now, batchSize: 1, maxBatches: 10 })
       expect(rest.resultWindowsDeleted).toBe(1)
@@ -262,6 +271,36 @@ describe('data retention job', () => {
       expect(error.mock.calls.join('\n')).not.toContain('Bearer')
       const limits = await db.select().from(rateLimits)
       expect(limits).toHaveLength(3)
+      expect(await countResultWindows(db)).toBe(4)
+    } finally {
+      await close()
+    }
+  })
+
+  it('HEAD does not run the job', async () => {
+    const { db, close } = await seed()
+    const log = vi.spyOn(console, 'log').mockImplementation(() => undefined)
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    try {
+      let opened = 0
+      const head = HEAD()
+      expect(head.status).toBe(405)
+      expect(head.headers.get('allow')).toBe('GET')
+      expect(head.headers.get('cache-control')).toBe('no-store')
+      const refused = await handleRetentionCron(request(`Bearer ${secret}`, 'HEAD'), {
+        db: () => {
+          opened += 1
+          return db
+        },
+        cronSecret: secret,
+        env: { purge: 'on', vercelEnv: 'test', dryRun: 'off' },
+        now,
+      })
+      expect(refused.status).toBe(405)
+      expect(opened).toBe(0)
+      expect(log).not.toHaveBeenCalled()
+      expect(error).not.toHaveBeenCalled()
+      expect(await db.select().from(rateLimits)).toHaveLength(3)
       expect(await countResultWindows(db)).toBe(4)
     } finally {
       await close()
