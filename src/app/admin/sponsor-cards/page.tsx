@@ -34,7 +34,7 @@ export default async function SponsorCardsPage() {
       <p>Refund the payment in the Stripe dashboard, then mark the card refunded. A partial refund still hides the placement.</p>
       {refunds.length === 0 ? <p>No cards are waiting for a refund.</p> : <SponsorRefundQueue cards={refunds} />}
       <h2 className="font-semibold text-3xl">Placement counts</h2>
-      <p>Daily impressions are approved card renders. /go clicks are Visit redirects from that /best page. Both are totals for the UTC day.</p>
+      <p>Daily impressions are approved card renders. Card clicks are visits through the Sponsored card. Both are totals for the UTC day.</p>
       {countsUnavailable ? <p>Counts are unavailable.</p> : null}
       {!countsUnavailable && counts.length === 0 ? <p>No approved placements yet.</p> : null}
       {counts.map((placement) => (
@@ -46,12 +46,12 @@ export default async function SponsorCardsPage() {
           </h3>
           <div className="overflow-x-auto">
             <table className="w-full border-collapse text-left text-sm">
-              <caption className="sr-only">Daily impressions and /go clicks for {placement.toolName}</caption>
+              <caption className="sr-only">Daily impressions and card clicks for {placement.toolName}</caption>
               <thead>
                 <tr className="border-b border-line">
                   <th scope="col" className="py-2 pr-3">Day</th>
                   <th scope="col" className="py-2 pr-3">Impressions</th>
-                  <th scope="col" className="py-2">/go clicks</th>
+                  <th scope="col" className="py-2">Card clicks</th>
                 </tr>
               </thead>
               <tbody>

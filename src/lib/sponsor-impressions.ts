@@ -3,14 +3,14 @@ import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import type { Database } from './db/client'
 import { sponsorshipCreatives, sponsorshipDailyCounts, sponsorships } from './db/schema'
 import { withDeadline } from './deadline'
-import { activeBestPlacementForTask } from './best-placement'
+import { placementWindowMs } from './best-placement'
+import { parseSponsorHttpsUrl } from './sponsor-card'
 import { sanitizeSponsorCompany } from './sponsor-company'
 
 /** A count write that is still running after this long is abandoned. The page does not wait. */
 export const SPONSOR_COUNT_BUDGET_MS = 800
 
 const DAY = /^[0-9]{4}-[0-9]{2}-[0-9]{2}$/
-const BEST_PAGE = /^\/best\/([a-z0-9]+(?:-[a-z0-9]+)*)$/
 
 /**
  * Crawler and preview clients. Matching is a case-insensitive substring of the
@@ -101,10 +101,6 @@ export function countsAsSponsorTraffic(input: SponsorTrafficSignal): boolean {
   return true
 }
 
-export function bestTaskFromGoPage(page: string): string | null {
-  return BEST_PAGE.exec(page)?.[1] ?? null
-}
-
 export async function incrementSponsorDaily(
   db: Database,
   sponsorshipId: number,
@@ -162,24 +158,47 @@ export function scheduleSponsorImpression(
 }
 
 /**
- * Schedules a /go click total for the approved placement on that /best page.
- * The click log itself is unchanged. This write is only the daily total.
+ * The https URL of one approved, paid, in-window, unrefunded card.
+ * The caller redirects only to this value. A missing or invalid card is null.
  */
-export function scheduleSponsorGoClick(
-  input: SponsorTrafficSignal & { db: Database; page: string; now: number },
+export async function approvedSponsorRedirectUrl(db: Database, placementId: number, now: number): Promise<string | null> {
+  if (!Number.isInteger(placementId) || placementId < 1 || !Number.isFinite(now)) return null
+  const rows = await db
+    .select({
+      offering: sponsorships.offering,
+      status: sponsorships.status,
+      paidAt: sponsorships.paidAt,
+      refundedAt: sponsorships.refundedAt,
+      approvedUrl: sponsorshipCreatives.approvedUrl,
+      creativeStatus: sponsorshipCreatives.status,
+    })
+    .from(sponsorships)
+    .innerJoin(
+      sponsorshipCreatives,
+      and(eq(sponsorshipCreatives.sponsorshipId, sponsorships.id), eq(sponsorshipCreatives.status, 'approved')),
+    )
+    .where(eq(sponsorships.id, placementId))
+    .orderBy(desc(sponsorshipCreatives.updatedAt))
+  const row = rows[0]
+  if (!row || row.status !== 'paid' || row.refundedAt != null || row.creativeStatus !== 'approved') return null
+  const windowMs = placementWindowMs(row.offering)
+  const start = row.paidAt
+  if (windowMs == null || start == null || now < start || now >= start + windowMs) return null
+  if (!row.approvedUrl) return null
+  return parseSponsorHttpsUrl(row.approvedUrl)
+}
+
+/** Schedules the daily click total for one Sponsored card. The caller does not await it. */
+export function scheduleSponsorCardClick(
+  input: SponsorTrafficSignal & { db: Database; sponsorshipId: number; now: number },
   schedule: Schedule = safeAfter,
   budgetMs = SPONSOR_COUNT_BUDGET_MS,
 ): void {
   if (!countsAsSponsorTraffic(input)) return
-  const taskSlug = bestTaskFromGoPage(input.page)
-  if (!taskSlug) return
   const db = input.db
-  const now = input.now
-  runCount(async () => {
-    const placement = await activeBestPlacementForTask(db, taskSlug, now)
-    if (!placement) return
-    await incrementSponsorDaily(db, placement.sponsorshipId, utcDay(now), 'go_clicks')
-  }, schedule, budgetMs)
+  const sponsorshipId = input.sponsorshipId
+  const day = utcDay(input.now)
+  runCount(() => incrementSponsorDaily(db, sponsorshipId, day, 'go_clicks'), schedule, budgetMs)
 }
 
 export type SponsorPlacementDay = {

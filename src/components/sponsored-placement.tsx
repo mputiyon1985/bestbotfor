@@ -34,7 +34,7 @@ export function SponsoredPlacement({ placement }: { placement: ActiveBestPlaceme
         <div className="mt-3 flex items-start gap-3">
           {logoSrc ? <img src={logoSrc} alt="" width={40} height={40} className="h-10 w-10 rounded-lg" /> : null}
           <div>
-            <a href={url} rel="sponsored nofollow" className="font-semibold underline">
+            <a href={`/go/s/${placement.sponsorshipId}`} rel="sponsored nofollow" className="font-semibold underline">
               {name}
             </a>
             <p className="mt-1 text-sm">{description}</p>
