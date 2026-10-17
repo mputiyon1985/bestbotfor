@@ -158,8 +158,10 @@ export const rateLimits = sqliteTable('rate_limits', {
  * reference review_versions. That cycle is DEFERRABLE in the SQL migration.
  * Drizzle builds references immediately, so those two columns stay plain
  * integers here. ip_hmac is a keyed HMAC of the submit IP, never a raw IP.
- * network_range_hmac is a keyed HMAC of the IPv4 /24 or IPv6 /48 range,
- * using the same secret. hmac_key_version records which key produced them.
+ * network_range_hmac is a keyed HMAC of the IPv4 /24 or IPv6 /48 range.
+ * Both hashes use REVIEW_IP_HMAC_SECRET. hmac_key_version is that
+ * secret's key id. A competitor-domain match is a moderator hint only
+ * and has no column here, so it cannot block a review.
  * No email is stored.
  */
 export const reviews = sqliteTable(

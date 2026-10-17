@@ -9,8 +9,11 @@
 -- in PR #10, and a foreign key to a missing table rejects every insert.
 -- ip_hmac is a keyed HMAC of the submit IP, never a raw IP.
 -- network_range_hmac is a keyed HMAC of that address's network range
--- (IPv4 /24, IPv6 /48), using the same secret. hmac_key_version records
--- which key produced those hashes. No email column.
+-- (IPv4 /24, IPv6 /48). Both hashes use REVIEW_IP_HMAC_SECRET.
+-- hmac_key_version is that secret's key id.
+-- A competitor-domain match is a moderator hint only. This file stores
+-- no column for it, so the match cannot block a review.
+-- No email column.
 
 CREATE TABLE IF NOT EXISTS reviews (
   id INTEGER PRIMARY KEY AUTOINCREMENT,

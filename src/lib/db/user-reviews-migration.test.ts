@@ -110,7 +110,12 @@ describe('0011_user_reviews.sql', () => {
     expect(reviews.hmacKeyVersion.name).toBe('hmac_key_version')
     expect(sql).toMatch(/network_range_hmac TEXT/)
     expect(sql).toMatch(/hmac_key_version INTEGER/)
-    expect(await migrationSql()).toMatch(/IPv4 \/24, IPv6 \/48/)
+    expect(sql).not.toMatch(/competitor/i)
+    const raw = await migrationSql()
+    expect(raw).toMatch(/IPv4 \/24, IPv6 \/48/)
+    expect(raw).toMatch(/REVIEW_IP_HMAC_SECRET/)
+    expect(raw).toMatch(/hmac_key_version is that secret's key id/)
+    expect(raw).toMatch(/competitor-domain match is a moderator hint only/)
     expect(reviewVersions.stars.name).toBe('stars')
   })
 
