@@ -42,6 +42,7 @@ function derivedKey(secret: string, source: string): Buffer {
 }
 
 const CLICK_IP_HKDF_INFO = 'bestbotfor/click-ip/v1'
+const RATE_LIMIT_HKDF_INFO = 'bestbotfor/rate-limit/v1'
 
 function hmac(key: string | Buffer, payload: string): string {
   return createHmac('sha256', key).update(payload).digest('hex')
@@ -51,20 +52,29 @@ function clickKey(secret: string): Buffer {
   return Buffer.from(hkdfSync('sha256', secret, HKDF_SALT, CLICK_IP_HKDF_INFO, 32))
 }
 
+function rateLimitSubkey(secret: string): Buffer {
+  return Buffer.from(hkdfSync('sha256', secret, HKDF_SALT, RATE_LIMIT_HKDF_INFO, 32))
+}
+
 describe('rateLimitKey', () => {
-  it('uses HMAC-SHA256 keyed directly by RATE_LIMIT_HMAC_SECRET, not a plain hash or HKDF', () => {
+  it('uses HMAC-SHA256 under an HKDF subkey of RATE_LIMIT_HMAC_SECRET', () => {
     process.env.RATE_LIMIT_HMAC_SECRET = 'dedicated-secret'
     const payload = 'bestbotfor-rate|result|203.0.113.7'
+    const subkey = rateLimitSubkey('dedicated-secret')
     const key = rateLimitKey('203.0.113.7', 'result')
-    expect(key).toBe(hmac('dedicated-secret', payload))
+    expect(subkey).toHaveLength(32)
+    expect(subkey.equals(clickKey('dedicated-secret'))).toBe(false)
+    expect(key).toBe(hmac(subkey, payload))
+    expect(key).not.toBe(hmac('dedicated-secret', payload))
+    expect(key).not.toBe(hmac(clickKey('dedicated-secret'), payload))
     expect(key).not.toBe(createHash('sha256').update(payload).digest('hex'))
     expect(key).not.toBe(hmac(derivedKey('dedicated-secret', 'RATE_LIMIT_HMAC_SECRET'), payload))
     process.env.RATE_LIMIT_HMAC_SECRET = 'rotated-secret-key'
     const rotated = rateLimitKey('203.0.113.7', 'result')
-    expect(rotated).toBe(hmac('rotated-secret-key', payload))
+    expect(rotated).toBe(hmac(rateLimitSubkey('rotated-secret-key'), payload))
     expect(rotated).not.toBe(key)
-    expect(rotated).not.toBe(hmac(derivedKey('rotated-secret-key', 'RATE_LIMIT_HMAC_SECRET'), payload))
-    expect(rateLimitKey(null, 'result')).toBe(hmac('rotated-secret-key', 'bestbotfor-rate|result|unknown'))
+    expect(rotated).not.toBe(hmac('rotated-secret-key', payload))
+    expect(rateLimitKey(null, 'result')).toBe(hmac(rateLimitSubkey('rotated-secret-key'), 'bestbotfor-rate|result|unknown'))
   })
 
   it('ignores a RATE_LIMIT_HMAC_SECRET shorter than 16 characters and derives with HKDF', () => {
