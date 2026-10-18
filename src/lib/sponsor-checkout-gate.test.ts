@@ -128,6 +128,8 @@ describe('sponsor checkout surface', () => {
     expect(
       sponsorCheckoutSurface(env({ VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: testKey, SPONSOR_PUBLIC_CHECKOUT: '1' })),
     ).toBe('closed')
+    expect(sponsorLiveBilling(env({ VERCEL_ENV: 'preview-branch', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }))).toBe(false)
+    expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'preview-branch', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }))).toBe('closed')
   })
 })
 
