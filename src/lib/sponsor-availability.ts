@@ -99,15 +99,42 @@ export async function claimSponsorSlot(
 }
 
 /**
- * Founding spots in use: every paid, unrefunded founding sponsorship (a
- * canceled one still counts, so there are only ever 5 founding sponsors), plus
- * founding checkout holds younger than the Checkout expiry whose task has no
- * paid founding row yet (a paid row and its own hold count once). The hold on
- * excludeTask is left out, because a new claim on that task replaces it.
+ * Key prefix for the manual rows written from live founding Payment Link
+ * sales (docs/runbooks/sponsor-reject-refund.md). Those rows are
+ * placement_weekly/placement_monthly, so the prefix on
+ * stripe_checkout_session_id is what marks them as founding sales:
+ * `founding_link:<cs_…>` for the first period and
+ * `founding_link:<cs_…>:<in_…>` for each later one. No schema change.
  */
+export const FOUNDING_LINK_KEY_PREFIX = 'founding_link:'
+
+/**
+ * Founding spots in use. There is one shared cap of 5 across the app offer and
+ * the founding Payment Link:
+ * - every paid, unrefunded founding_sponsor row (a canceled one still counts);
+ * - every founding Payment Link sale with at least one paid, unrefunded manual
+ *   row, counted once per Checkout session however many periods it has;
+ * - founding checkout holds younger than the Checkout expiry, unless the
+ *   task's paid founding row came from that hold (paid_at at or after the
+ *   hold's claimed_at), so a paid row and its own hold count once. A paid row
+ *   from an older sale (for example a canceled, ended founder on that page)
+ *   does not cancel out a new hold. The hold on excludeTask is left out,
+ *   because a new claim on that task replaces it.
+ */
+const FOUNDING_LINK_SALE_SQL = `CASE
+  WHEN instr(substr(stripe_checkout_session_id, ${FOUNDING_LINK_KEY_PREFIX.length + 1}), ':') > 0
+  THEN substr(stripe_checkout_session_id, ${FOUNDING_LINK_KEY_PREFIX.length + 1},
+    instr(substr(stripe_checkout_session_id, ${FOUNDING_LINK_KEY_PREFIX.length + 1}), ':') - 1)
+  ELSE substr(stripe_checkout_session_id, ${FOUNDING_LINK_KEY_PREFIX.length + 1})
+END`
+
 const FOUNDING_TAKEN_SQL = `
   (SELECT count(*) FROM sponsorships
     WHERE offering = 'founding_sponsor' AND status = 'paid' AND refunded_at IS NULL)
+  + (SELECT count(DISTINCT ${FOUNDING_LINK_SALE_SQL}) FROM sponsorships
+    WHERE substr(stripe_checkout_session_id, 1, ${FOUNDING_LINK_KEY_PREFIX.length}) = '${FOUNDING_LINK_KEY_PREFIX}'
+      AND offering IN ('placement_weekly', 'placement_monthly')
+      AND status = 'paid' AND refunded_at IS NULL)
   + (SELECT count(*) FROM sponsorship_slot_claims AS hold
     WHERE hold.offering = 'founding_sponsor'
       AND hold.claimed_at > ?
@@ -118,6 +145,7 @@ const FOUNDING_TAKEN_SQL = `
           AND paid.offering = 'founding_sponsor'
           AND paid.status = 'paid'
           AND paid.refunded_at IS NULL
+          AND paid.paid_at >= hold.claimed_at
       ))`
 
 export async function foundingSpotsTaken(db: Database, now: number, excludeTask = ''): Promise<number> {

@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type Stripe from 'stripe'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -15,8 +15,10 @@ import {
 import {
   SPONSOR_CHECKOUT_EXPIRY_MS,
   SPONSOR_SLOT_TAKEN,
+  FOUNDING_LINK_KEY_PREFIX,
   claimSponsorSlot,
   foundingSpotsLeft,
+  foundingSpotsTaken,
   releaseSponsorSlot,
 } from './sponsor-availability'
 import { approvedSponsorRedirectUrl } from './sponsor-impressions'
@@ -459,6 +461,86 @@ describe('founding sponsor cap', () => {
       })
     }
     expect(await foundingSpotsLeft(db, NOW + 2 * DAY)).toBe(1)
+    await close()
+  })
+
+  it('Sentinel QA81 BYPASS: a new founding hold on a canceled, ended founder\'s page still counts, so a sixth is refused', async () => {
+    const { db, close } = await createTestDatabase()
+    const T = NOW + 60 * DAY
+    for (const [index, task] of TASKS.slice(0, 4).entries()) {
+      await db.insert(sponsorships).values({
+        stripeCheckoutSessionId: `cs_bypass_${index}`,
+        offering: 'founding_sponsor',
+        status: 'paid',
+        taskSlug: task,
+        createdAt: NOW,
+        updatedAt: NOW,
+        paidAt: NOW,
+        stripeSubscriptionId: `sub_bypass_${index}`,
+        subscriptionStatus: index === 0 ? 'canceled' : 'active',
+        canceledAt: index === 0 ? T - 20 * DAY : null,
+        paidThrough: index === 0 ? T - 10 * DAY : T + 10 * DAY,
+      })
+    }
+    expect(await foundingSpotsTaken(db, T)).toBe(4)
+    // Buyer A holds the freed coding page: the 5th spot.
+    expect(await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: 'req-A', now: T })).toEqual({ ok: true })
+    expect(await foundingSpotsTaken(db, T + 1)).toBe(5)
+    // Buyer B on another page is refused.
+    expect(await claimSponsorSlot(db, { taskSlug: 'voice', offering: 'founding_sponsor', requestKey: 'req-B', now: T + 2 })).toEqual({
+      ok: false,
+      message: FOUNDING_SOLD_OUT,
+    })
+    await close()
+  })
+
+  it('shares one cap of 5 with founding Payment Link sales recorded as manual rows', async () => {
+    const { db, close } = await createTestDatabase()
+    const manual = (key: string, task: string, offering: 'placement_weekly' | 'placement_monthly', extra: Record<string, unknown> = {}) =>
+      db.insert(sponsorships).values({
+        stripeCheckoutSessionId: key,
+        stripePaymentIntentId: `pi_${key.replace(/[^a-z0-9]/gi, '_')}`,
+        offering,
+        status: 'paid',
+        taskSlug: task,
+        createdAt: NOW,
+        updatedAt: NOW,
+        paidAt: NOW,
+        ...extra,
+      })
+    // Founding link sale 1: two periods (first period plus one renewal) count once.
+    await manual(`${FOUNDING_LINK_KEY_PREFIX}cs_link_1`, 'coding', 'placement_monthly')
+    await manual(`${FOUNDING_LINK_KEY_PREFIX}cs_link_1:in_2`, 'coding', 'placement_monthly', { paidAt: NOW + 30 * DAY })
+    // Founding link sale 2: first period refunded, renewal still paid, so it counts.
+    await manual(`${FOUNDING_LINK_KEY_PREFIX}cs_link_2`, 'writing', 'placement_weekly', { refundedAt: NOW + DAY })
+    await manual(`${FOUNDING_LINK_KEY_PREFIX}cs_link_2:in_3`, 'writing', 'placement_monthly', { paidAt: NOW + 14 * DAY })
+    // Founding link sale 3: fully refunded, so its spot is free.
+    await manual(`${FOUNDING_LINK_KEY_PREFIX}cs_link_3`, 'image', 'placement_monthly', { refundedAt: NOW + DAY })
+    // Monthly Payment Link and one-time /sponsor rows are not founding.
+    await manual('cs_monthly_link', 'video', 'placement_monthly')
+    await manual('cs_one_time', 'music', 'placement_weekly')
+    // One app founding sponsor.
+    await db.insert(sponsorships).values({
+      stripeCheckoutSessionId: 'cs_app_founding',
+      offering: 'founding_sponsor',
+      status: 'paid',
+      taskSlug: 'research',
+      createdAt: NOW,
+      updatedAt: NOW,
+      paidAt: NOW,
+      stripeSubscriptionId: 'sub_app_founding',
+      subscriptionStatus: 'active',
+      paidThrough: NOW + 40 * DAY,
+    })
+    const T = NOW + 40 * DAY
+    expect(await foundingSpotsTaken(db, T)).toBe(3)
+    expect(await foundingSpotsLeft(db, T)).toBe(2)
+    expect(await claimSponsorSlot(db, { taskSlug: 'voice', offering: 'founding_sponsor', requestKey: 'req-1', now: T })).toEqual({ ok: true })
+    expect(await claimSponsorSlot(db, { taskSlug: 'meetings', offering: 'founding_sponsor', requestKey: 'req-2', now: T })).toEqual({ ok: true })
+    expect(await claimSponsorSlot(db, { taskSlug: 'chat', offering: 'founding_sponsor', requestKey: 'req-3', now: T })).toEqual({
+      ok: false,
+      message: FOUNDING_SOLD_OUT,
+    })
     await close()
   })
 })
@@ -968,7 +1050,7 @@ describe('sponsor subscription webhook', () => {
     await close()
   })
 
-  it('matches a refund.updated on the refund charge customer when no invoice is found, and only for one sponsor subscription', async () => {
+  it('never matches an invoice-less refund on the customer: it changes nothing and logs it for manual handling', async () => {
     const { db, close } = await createTestDatabase()
     const completed = checkoutCompleted('evt_refund_checkout_2')
     const refund = refundEvent('evt_refund_updated', 'refund.updated', {
@@ -978,14 +1060,51 @@ describe('sponsor subscription webhook', () => {
       charge: 'ch_no_invoice',
       payment_intent: 'pi_no_invoice',
     })
+    const calls: string[] = []
     const stripe = webhookStripe([completed, refund], {
       lineItems: foundingLines,
       subscription: foundingSubscription(),
       chargeCustomer: { ch_no_invoice: 'cus_sponsor' },
+      calls,
     })
     await send(db, stripe, completed, T0)
-    expect(await send(db, stripe, refund, T0 + DAY)).toEqual({ status: 200, body: { received: true } })
-    expect((await db.select().from(sponsorships))[0]?.refundedAt).toBe(T0 + DAY)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      expect(await send(db, stripe, refund, T0 + DAY)).toEqual({ status: 200, body: { received: true } })
+      expect(warn).toHaveBeenCalledWith('stripe-webhook: unmatched sponsor refund, manual handling needed', {
+        eventType: 'refund.updated',
+        reason: 'no_invoice',
+      })
+      expect(JSON.stringify(warn.mock.calls)).not.toMatch(/cus_|ch_|pi_|@/)
+    } finally {
+      warn.mockRestore()
+    }
+    const row = (await db.select().from(sponsorships))[0]
+    expect(row?.refundedAt).toBeNull()
+    expect(calls.some((call) => call.startsWith('charges.retrieve'))).toBe(false)
+    expect(row && placementActiveAt(row, T0 + DAY + 1)).toBe(true)
+    await close()
+  })
+
+  it('Sentinel QA81 AMBIGUOUS: refunding an invoice-less custom-deal charge on a sponsor customer keeps the subscription placement', async () => {
+    const { db, close } = await createTestDatabase()
+    const completed = checkoutCompleted('evt_refund_checkout_custom')
+    const refund = refundEvent('evt_custom_deal_refund', 'charge.refunded', {
+      id: 'ch_custom_deal',
+      refunded: true,
+      amount_refunded: 5_000,
+      payment_intent: 'pi_custom_deal',
+      customer: 'cus_sponsor',
+    })
+    const stripe = webhookStripe([completed, refund], { lineItems: foundingLines, subscription: foundingSubscription() })
+    await send(db, stripe, completed, T0)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    try {
+      expect(await send(db, stripe, refund, T0 + DAY)).toEqual({ status: 200, body: { received: true } })
+    } finally {
+      warn.mockRestore()
+    }
+    expect((await db.select().from(sponsorships))[0]?.refundedAt).toBeNull()
     await close()
   })
 
@@ -1057,7 +1176,7 @@ describe('sponsor subscription webhook', () => {
     await close()
   })
 
-  it('does not guess between two sponsor subscriptions on the customer fallback', async () => {
+  it('does not touch two sponsor subscriptions on the customer for an invoice-less refund', async () => {
     const { db, close } = await createTestDatabase()
     const first = checkoutCompleted('evt_two_subs_1')
     const second = checkoutCompleted('evt_two_subs_2', { id: 'cs_test_second', subscription: 'sub_sponsor_2' })

@@ -1,4 +1,4 @@
-import { and, eq, isNotNull, isNull, lte, ne, or, sql } from 'drizzle-orm'
+import { and, eq, isNull, lte, ne, or, sql } from 'drizzle-orm'
 import type Stripe from 'stripe'
 import { z } from 'zod'
 import type { Database } from './db'
@@ -17,6 +17,7 @@ import { liveModeAllowed } from './stripe-key'
 import { sanitizeSponsorCompany } from './sponsor-company'
 import { linkSponsorCreative } from './sponsor-card'
 
+// Covers 2 to 3 Stripe reads for sponsor subscription events; a slow read returns 500 and Stripe retries (idempotent). See docs/runbooks/sponsor-subscriptions.md.
 const WEBHOOK_DB_BUDGET_MS = 2_000
 
 const checkoutSchema = z.object({
@@ -721,7 +722,7 @@ function stripeObjectId(value: unknown): string | null {
  * is traced through the invoice that the payment paid: a legacy
  * charge.invoice field, else the InvoicePayment for the payment intent, then
  * the invoice's parent subscription.
- * - `no_invoice`: no invoice was found, so the customer fallback may run.
+ * - `no_invoice`: no invoice was found; logged for manual handling, nothing changes.
  * - `invoice_without_subscription`: an invoice was found but it is not a
  *   subscription invoice, so nothing changes.
  * - `subscription`: the invoice's subscription id.
@@ -756,24 +757,13 @@ async function refundSubscriptionId(
     : { kind: 'invoice_without_subscription', invoiceId }
 }
 
-/** The customer on a refunded charge. A Refund only names its charge, so that is read when needed. */
-async function refundCustomerId(stripe: Stripe, record: Record<string, unknown>): Promise<string | null> {
-  const direct = stripeObjectId(record.customer)
-  if (direct) return direct
-  const chargeId = typeof record.charge === 'string' ? record.charge : null
-  if (!chargeId) return null
-  const charge = await stripe.charges.retrieve(chargeId)
-  return stripeObjectId(charge.customer)
-}
-
 /**
  * A succeeded refund or charge.refunded stops the placement. refunded_at is set once.
  * One-time sponsorships match on the payment intent. A subscription row
  * matches on the subscription the refunded invoice belongs to. An invoice
- * with no subscription changes nothing. Only when no invoice is found at all,
- * a customer with exactly one unrefunded sponsor
- * subscription and no membership is matched on the customer id; anything
- * less certain changes nothing.
+ * with no subscription changes nothing. A refund with no invoice at all is
+ * never matched on the customer id: it is logged (no PII) and changes nothing,
+ * so it is handled by hand.
  */
 async function applySponsorshipRefund(db: Database, stripe: Stripe, event: Stripe.Event, now: number): Promise<void> {
   const object = event.data?.object
@@ -803,33 +793,16 @@ async function applySponsorshipRefund(db: Database, stripe: Stripe, event: Strip
       .where(and(eq(sponsorships.stripeSubscriptionId, match.subscriptionId), isNull(sponsorships.refundedAt)))
     return
   }
-  // An invoice that is not a subscription invoice is not a sponsor
-  // subscription payment. Only a refund with no invoice at all may fall back
-  // to the customer.
-  if (match.kind !== 'no_invoice') return
-  const customerId = await refundCustomerId(stripe, record)
-  if (!customerId) return
-  const membership = await db
-    .select({ id: subscriptions.stripeSubscriptionId })
-    .from(subscriptions)
-    .where(eq(subscriptions.stripeCustomerId, customerId))
-    .limit(1)
-  if (membership.length > 0) return
-  const candidates = await db
-    .select({ id: sponsorships.id })
-    .from(sponsorships)
-    .where(
-      and(
-        eq(sponsorships.stripeCustomerId, customerId),
-        isNotNull(sponsorships.stripeSubscriptionId),
-        isNull(sponsorships.refundedAt),
-      ),
-    )
-  if (candidates.length !== 1 || !candidates[0]) return
-  await db
-    .update(sponsorships)
-    .set({ refundedAt: now, updatedAt: now })
-    .where(and(eq(sponsorships.id, candidates[0].id), isNull(sponsorships.refundedAt)))
+  // No invoice, or an invoice with no subscription: this is not a sponsor
+  // subscription payment the app can match (for example a manual dashboard
+  // charge for a custom deal). Nothing changes; it needs manual handling
+  // (docs/runbooks/sponsor-reject-refund.md). No PII is logged.
+  if (match.kind === 'no_invoice') {
+    console.warn('stripe-webhook: unmatched sponsor refund, manual handling needed', {
+      eventType: event.type,
+      reason: 'no_invoice',
+    })
+  }
 }
 
 async function applyEvent(db: Database, stripe: Stripe, event: Stripe.Event, now?: number): Promise<void> {

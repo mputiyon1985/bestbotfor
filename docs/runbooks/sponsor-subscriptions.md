@@ -16,8 +16,8 @@ Both are a featured placement on one `/best/[task]` page, with the same tool car
 - **Not a subscription schedule.** A schedule cannot be created by Checkout. It would need a second API write after every checkout, plus webhook handling for schedule phases. The founding price does not need to change after 6 months, because the founding and standard monthly prices are both $299 today, so a schedule would add moving parts without changing what anyone is charged.
 - **How the 6-month lock is kept.** The founding subscription uses its own Price (`sponsor_founding_monthly`). A later change to the standard monthly Price, or a new Price under a moved lookup key, does not touch existing founding subscriptions, because a Stripe subscription keeps the Price it was created with. The lock end is stored on the subscription metadata (`price_lock_months=6`) and in `sponsorships.price_locked_until` (subscription `start_date` plus 6 calendar months, UTC). After that date nothing changes automatically. Moving a founding sponsor to a later standard price is a manual dashboard change.
 - **Price lock, not a commitment** (James, Oct 18). The founding sponsor can cancel anytime. The 6 months only guarantee the $299 price. There is no minimum term, in the copy or in code.
-- **Cancellation.** There is no customer portal in this app. A sponsor asks by email (mark@bestbotfor.com), and the cancellation is made in the Stripe dashboard with **Cancel at end of period**. The placement then runs to the end of the paid month and stops.
-- **5 founding sponsors.** `claimSponsorSlot` refuses a founding checkout once 5 spots are in use: paid, unrefunded founding rows (a canceled founding sponsor still counts, so there are only ever 5) plus founding checkout holds younger than 24 hours whose page has no paid founding row yet. The count and the hold are one SQL statement, so two buyers cannot both take the last spot. A refund (`refunded_at`) frees the spot. The buyer sees "All 5 founding sponsor spots are taken. Choose another option." The standard $299/mo subscription is not capped.
+- **Cancellation.** There is no customer portal in this app. To cancel, the sponsor emails mark@bestbotfor.com (the `/sponsor` copy should say so: "To cancel, email mark@bestbotfor.com"), and the cancellation is made in the Stripe dashboard with **Cancel at end of period**. The placement then runs to the end of the paid month and stops.
+- **5 founding sponsors, one shared cap** (James, Oct 18). There are only ever 5 founding sponsors across the app offer and the live founding Payment Link (`plink_1URylT…`). `claimSponsorSlot` refuses a founding checkout once 5 spots are in use: paid, unrefunded `founding_sponsor` rows (a canceled founding sponsor still counts), plus founding Payment Link sales recorded as manual rows whose `stripe_checkout_session_id` starts with `founding_link:` (one spot per sale, however many period rows it has, until every row of the sale is refunded; see `docs/runbooks/sponsor-reject-refund.md`), plus founding checkout holds younger than 24 hours. A hold is skipped only when the page's paid founding row came from that hold (`paid_at` at or after the hold's `claimed_at`), so a canceled, ended founder on the same page does not hide a new hold. The count and the hold are one SQL statement, so two buyers cannot both take the last spot. A refund (`refunded_at`) frees the spot. The buyer sees "All 5 founding sponsor spots are taken. Choose another option." The standard $299/mo subscription is not capped.
 - **Which page.** Every placement, including both subscriptions, requires "Which /best page do you want to sponsor?" (`task_slug`). The server refuses a placement without a valid page.
 
 ## Membership checkout status fix
@@ -40,7 +40,7 @@ Placement window (`placementEndsAt` in `src/lib/best-placement.ts`): a subscript
 
 Slot holds (`claimSponsorSlot`): a subscription that is renewing (`active`, `trialing`, or `past_due`, no cancel scheduled) holds its task page with no end date. After a cancel is scheduled, or once it is canceled, it holds the page until `paid_through`. A new subscription checkout is refused while any paid placement on that page has not ended.
 
-Refunds: `charge.refunded` and `refund.*` set `refunded_at` once, which ends the placement and frees a founding spot. A one-time row matches on its payment intent. A subscription row has no payment intent stored (Checkout returns none for `mode=subscription`), so the handler looks up the invoice the refunded payment paid (the InvoicePayment for that payment intent) and matches the invoice's subscription. An invoice with no subscription (a one-off invoice) changes nothing. Only if no invoice is found at all does it match on the charge's customer, and only when that customer has exactly one unrefunded sponsor subscription and no membership; otherwise nothing changes. A refund does not cancel the subscription: to stop billing, also cancel it in the dashboard.
+Refunds: `charge.refunded` and `refund.*` set `refunded_at` once, which ends the placement and frees a founding spot. A one-time row matches on its payment intent. A subscription row has no payment intent stored (Checkout returns none for `mode=subscription`), so the handler looks up the invoice the refunded payment paid (the InvoicePayment for that payment intent) and matches the invoice's subscription. An invoice with no subscription (a one-off invoice) changes nothing. A refund with no invoice at all (for example a manual dashboard charge for a custom deal) is never matched on the customer: the webhook logs `unmatched sponsor refund, manual handling needed` (event type only, no PII) and changes nothing. Handle it by hand as in `docs/runbooks/sponsor-reject-refund.md`. A refund does not cancel the subscription: to stop billing, also cancel it in the dashboard. Any refund, including a partial or goodwill refund of one month, sets `refunded_at` and ends the placement for all later months while Stripe keeps billing; cancel the subscription too, or do not refund through Stripe if the placement should stay up.
 
 ## Schema
 
@@ -62,10 +62,11 @@ Test mode: `npm run stripe:setup-test` with a test secret key creates or reuses 
 
 Run these only after the PR is merged. They create three live Prices (with their Products) and add events to the live webhook. They do not delete or change any existing live object and do not rotate keys.
 
-Load the live secret key from the vault into the shell environment. Do not paste it into chat, logs, or a file in the repo. Requires `curl` and `jq`.
+Load the live secret key from the vault into this shell without leaving it in history: run `read -rs STRIPE_LIVE_SECRET_KEY` and paste it at the hidden prompt. Do not `export` it; `api()` runs in the same shell, so curl and jq never need it in their environment. Do not paste it into chat, logs, or a file in the repo. Requires `curl` and `jq`.
 
 ```bash
 set -euo pipefail
+set -f  # no glob expansion, so a '*' event in $CURRENT or $REQUIRED stays literal
 : "${STRIPE_LIVE_SECRET_KEY:?load the live secret key from the vault first}"
 STRIPE_VERSION='2026-09-30.endive'
 # The key reaches curl through a config read from process substitution, so it is
@@ -74,12 +75,24 @@ stripe_auth() { printf 'user = "%s:"\n' "$STRIPE_LIVE_SECRET_KEY"; }
 api() { curl -sS --fail-with-body --config <(stripe_auth) -H "Stripe-Version: ${STRIPE_VERSION}" "$@"; }
 
 # Creates the Product and Price for one lookup key unless an active Price with that lookup key exists.
+# An existing Price is reused only if its amount, currency, and interval match; otherwise the script aborts.
 # Args: lookup_key offering unit_amount interval(month|one_time) nickname description
 ensure_price() {
   local lookup="$1" offering="$2" amount="$3" interval="$4" nickname="$5" description="$6"
   local existing
-  existing=$(api -G https://api.stripe.com/v1/prices -d "lookup_keys[]=${lookup}" -d active=true | jq -r '.data[0].id // empty')
-  if [ -n "$existing" ]; then echo "${lookup} already exists: ${existing}" >&2; echo "$existing"; return; fi
+  local found
+  found=$(api -G https://api.stripe.com/v1/prices -d "lookup_keys[]=${lookup}" -d active=true)
+  existing=$(printf '%s' "$found" | jq -r '.data[0].id // empty')
+  if [ -n "$existing" ]; then
+    if ! printf '%s' "$found" | jq -e --argjson amount "$amount" --arg interval "$interval" '
+        .data[0] | .unit_amount == $amount and .currency == "usd"
+        and (if $interval == "one_time" then .type == "one_time" and .recurring == null
+             else .type == "recurring" and .recurring.interval == $interval and .recurring.interval_count == 1 end)' >/dev/null; then
+      echo "ABORT: ${lookup} points at ${existing}, which does not match ${amount} usd ${interval}. Fix it by hand." >&2
+      exit 1
+    fi
+    echo "${lookup} already exists and matches: ${existing}" >&2; echo "$existing"; return
+  fi
   local product
   product=$(api https://api.stripe.com/v1/products \
     -H "Idempotency-Key: live-sponsor-product-${lookup}" \
@@ -125,10 +138,13 @@ api "https://api.stripe.com/v1/webhook_endpoints/${WE}" | jq -r '"api_version=\(
 
 Then:
 
+0. **Founding Payment Link cutover** (James, Oct 18). Until this step, the live founding Payment Link `plink_1URylT…` stays active and is the only founding path; `/sponsor` keeps pointing at it. At go-live of these founding Prices, in this order: (a) in the Stripe dashboard, deactivate the founding Payment Link (Payment Links, the founding link, Deactivate). This is a dashboard action by Mark or with his OK; nothing in this runbook does it by API. (b) Confirm every completed founding Payment Link sale has its manual `founding_link:` row (sponsor-reject-refund runbook, Fulfillment step 5), so the app's shared count of 5 already includes them. (c) Then do steps 1 to 3, and switch the `/sponsor` founding call to action from the Payment Link to the in-app offer in the same deploy. Existing Payment Link founders keep their subscriptions and stay manual rows.
 1. Add the three printed values to Vercel **Production** as sensitive variables `STRIPE_PRICE_PLACEMENT_SUBSCRIPTION`, `STRIPE_PRICE_FOUNDING_MONTHLY`, `STRIPE_PRICE_FOUNDING_SETUP`, and redeploy production so the server reads them.
 2. Read-only check after the deploy: `PRAGMA table_info(sponsorships)` lists the eight new columns, and `sponsorships_subscription_idx` exists. Existing rows are unchanged.
 3. Open `https://bestbotfor.com/sponsor`: the founding and monthly subscription options are enabled, the founding line reads "$99 for 2 weeks, then $299/mo", and the one-time options are unchanged.
 4. In the Stripe dashboard (Billing, Subscriptions and emails), turn on trial-ending reminders, Smart Retries for failed payments, and emails about failed payments and expiring cards.
 5. Optional live smoke test: buy the founding offer once with a real card, confirm the webhook delivery returns 200 for `checkout.session.completed` and `invoice.paid`, confirm the row shows `subscription_status=trialing` and `paid_through` 14 days out, then refund the $99 invoice payment and cancel the subscription immediately, and confirm `customer.subscription.deleted` returns 200.
+
+Webhook time budget: the handler's database work has a 2-second budget (`WEBHOOK_DB_BUDGET_MS`), and subscription events now make 2 to 3 Stripe reads inside it (session plus subscription, or InvoicePayment plus invoice). On a slow Stripe response the webhook returns 500 and Stripe retries. That is safe, because every event is applied once, but expect occasional retried deliveries in the payment watch; they are not failures unless they keep failing.
 
 The endpoint's `api_version` decides the invoice payload shape. The handler reads the subscription id from `parent.subscription_details.subscription` (current versions) and falls back to `subscription` (older versions), so either works.
