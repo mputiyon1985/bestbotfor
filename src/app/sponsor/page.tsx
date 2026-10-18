@@ -85,7 +85,8 @@ export default function SponsorPage() {
         </li>
       </ul>
       <p className="text-sm text-muted">
-        The one-time prices above are the current list prices from server configuration. They can be changed there.
+        The prices above, one-time and subscription, are the current list prices from server configuration. They can be changed there.
+        {surface === 'live' ? ' The Payment Links below are separate Stripe links with their own prices set in Stripe.' : null}
         {surface === 'closed' ? null : ' The form does not send an amount. Checkout charges the Stripe price configured on the server.'}
       </p>
       {surface === 'live' ? <SponsorPaymentLinks hideFounding={inAppFounding} /> : null}

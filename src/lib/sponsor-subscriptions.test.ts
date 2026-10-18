@@ -494,6 +494,37 @@ describe('founding sponsor cap', () => {
     await close()
   })
 
+  it('counts a founding link sale only while its first-period row is unrefunded, and never from renewal rows alone', async () => {
+    const { db, close } = await createTestDatabase()
+    const row = (key: string, extra: Record<string, unknown> = {}) =>
+      db.insert(sponsorships).values({
+        stripeCheckoutSessionId: key,
+        stripePaymentIntentId: `pi_${key.replace(/[^a-z0-9]/gi, '_')}`,
+        offering: 'placement_monthly',
+        status: 'paid',
+        taskSlug: 'coding',
+        createdAt: NOW,
+        updatedAt: NOW,
+        paidAt: NOW,
+        ...extra,
+      })
+    // First period refunded, then a renewal row written later: the sale stays freed.
+    await row('founding_link:cs_r', { refundedAt: NOW + DAY })
+    await row('founding_link:cs_r:in_2', { paidAt: NOW + 30 * DAY })
+    expect(await foundingSpotsTaken(db, NOW + 31 * DAY)).toBe(0)
+    // A renewal row with no first-period row does not count.
+    await row('founding_link:cs_orphan:in_9', { taskSlug: 'writing' })
+    // Typos with no first-period sale id do not count either.
+    await row('founding_link:', { taskSlug: 'image' })
+    await row('founding_link::in_7', { taskSlug: 'image' })
+    expect(await foundingSpotsTaken(db, NOW + 31 * DAY)).toBe(0)
+    // Case, surrounding spaces, and a hyphen still count.
+    await row('  Founding_Link:cs_case  ', { taskSlug: 'video' })
+    await row('founding-link:cs_dash', { taskSlug: 'voice' })
+    expect(await foundingSpotsTaken(db, NOW + 31 * DAY)).toBe(2)
+    await close()
+  })
+
   it('shares one cap of 5 with founding Payment Link sales recorded as manual rows', async () => {
     const { db, close } = await createTestDatabase()
     const manual = (key: string, task: string, offering: 'placement_weekly' | 'placement_monthly', extra: Record<string, unknown> = {}) =>
@@ -511,9 +542,9 @@ describe('founding sponsor cap', () => {
     // Founding link sale 1: two periods (first period plus one renewal) count once.
     await manual(`${FOUNDING_LINK_KEY_PREFIX}cs_link_1`, 'coding', 'placement_monthly')
     await manual(`${FOUNDING_LINK_KEY_PREFIX}cs_link_1:in_2`, 'coding', 'placement_monthly', { paidAt: NOW + 30 * DAY })
-    // Founding link sale 2: first period refunded, renewal still paid, so it counts.
-    await manual(`${FOUNDING_LINK_KEY_PREFIX}cs_link_2`, 'writing', 'placement_weekly', { refundedAt: NOW + DAY })
-    await manual(`${FOUNDING_LINK_KEY_PREFIX}cs_link_2:in_3`, 'writing', 'placement_monthly', { paidAt: NOW + 14 * DAY })
+    // Founding link sale 2: a renewal refunded, first period still paid, so it counts.
+    await manual(` ${FOUNDING_LINK_KEY_PREFIX.toUpperCase()}cs_link_2 `, 'writing', 'placement_weekly')
+    await manual(`${FOUNDING_LINK_KEY_PREFIX}cs_link_2:in_3`, 'writing', 'placement_monthly', { paidAt: NOW + 14 * DAY, refundedAt: NOW + 20 * DAY })
     // Founding link sale 3: fully refunded, so its spot is free.
     await manual(`${FOUNDING_LINK_KEY_PREFIX}cs_link_3`, 'image', 'placement_monthly', { refundedAt: NOW + DAY })
     // Monthly Payment Link and one-time /sponsor rows are not founding.

@@ -92,6 +92,38 @@ Both links collect the buyer's email, name, and a required billing address. Refe
    - `status`: `paid`.
    - `paid_at`: the start of the window, normally the time of that period's payment. It is never moved later.
    - `task_slug`: the task from `best_page`.
+
+   **Founding link counting rule.** The app counts a founding link sale toward the shared cap of 5 only while its first-period row (`founding_link:<cs_…>`, no `:<in_…>` suffix) is `paid` and unrefunded. Renewal rows never count on their own. So refunding the first period frees the spot, and a renewal row written later does not take it back; if that founder should keep a spot, the first-period row must stay unrefunded in the app (agree it with James). The key is matched trimmed and case-insensitively, but always write it exactly as below.
+
+   Copy-paste template (Mark-approved production write only; fill every `<…>`, times in Unix milliseconds, `email` and `company` stay empty):
+
+   ```sql
+   -- First period of a founding Payment Link sale. For a later period use
+   -- 'founding_link:<cs_…>:<in_…>' and that period's pi_ and paid_at.
+   -- Monthly Payment Link sales use the plain '<cs_…>' or '<cs_…>:<in_…>' key, with no prefix.
+   INSERT INTO sponsorships
+     (stripe_checkout_session_id, stripe_payment_intent_id, offering, status,
+      task_slug, paid_at, created_at, updated_at)
+   VALUES
+     ('founding_link:<cs_…>', '<pi_…>', 'placement_monthly', 'paid',
+      '<task>', <paid_at_ms>, <now_ms>, <now_ms>);
+   ```
+
+   Check query (read-only) after the write. Every founding row must show `first_period = 1` for the first period, and `counts = 1` exactly for founders who hold a spot:
+
+   ```sql
+   SELECT id, stripe_checkout_session_id, offering, status, task_slug, paid_at, refunded_at,
+          (instr(substr(lower(trim(stripe_checkout_session_id)), 15), ':') = 0) AS first_period,
+          (instr(substr(lower(trim(stripe_checkout_session_id)), 15), ':') = 0
+            AND substr(lower(trim(stripe_checkout_session_id)), 15) != ''
+            AND offering IN ('placement_weekly', 'placement_monthly')
+            AND status = 'paid' AND refunded_at IS NULL) AS counts
+   FROM sponsorships
+   WHERE lower(trim(stripe_checkout_session_id)) LIKE 'founding_link:%'
+   ORDER BY stripe_checkout_session_id;
+   ```
+
+   A row you meant as founding that this query does not list (a typo in the prefix) is not counted; fix its key with a Mark-approved write.
 6. **Windows.** The app has no 2-week window for the Founding first period, and no renewal for later months. A monthly Stripe period is a calendar month, while the app window is 30 days, so a 31-day month can leave a 1-day gap. Each paid period needs its own decision and write, approved the same way, with its window starting at that invoice's payment. Agree the exact rows with James before writing.
 
 ### Sponsored label and disclosure
