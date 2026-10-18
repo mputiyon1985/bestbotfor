@@ -4,6 +4,7 @@ import { notFound, permanentRedirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { CompareNewsletter, Inline } from '@/components/compare-newsletter'
+import { DailyBotCapture } from '@/components/daily-bot-capture'
 import { JsonLd } from '@/components/json-ld'
 import { ToolLogo } from '@/components/tool-logo'
 import { reversedCuratedComparePath } from '@/data/compare-copy'
@@ -109,7 +110,11 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
           </Link>
         </section>
       )}
-      {view ? <CompareNewsletter idSuffix="end" cta={view.cta} label="The Daily Bot at the end of the page" /> : null}
+      {view ? (
+        <CompareNewsletter idSuffix="end" cta={view.cta} label="The Daily Bot at the end of the page" />
+      ) : (
+        <DailyBotCapture source="compare" />
+      )}
     </article>
   )
 }
