@@ -110,13 +110,41 @@ describe('ratings launch plan', () => {
     expect(versionTable.indexOf('| v1.2.9 |')).toBeLessThan(versionTable.indexOf('| v1.2.10 |'))
     expect(versionTable.indexOf('| v1.2.10 |')).toBeLessThan(versionTable.indexOf('| v1.2.11 |'))
     expect(versionTable.indexOf('| v1.2.11 |')).toBeLessThan(versionTable.indexOf('| v1.2.12 |'))
+    expect(versionTable.indexOf('| v1.2.12 |')).toBeLessThan(versionTable.indexOf('| v1.2.13 |'))
     const v1210 = versionTable.slice(versionTable.indexOf('| v1.2.10 |'), versionTable.indexOf('| v1.2.11 |'))
     expect(v1210).toContain('verified read-only after the f8a6236 deploy (`schema_migrations`, prod-verify of `f8a6236`, deploy `dpl_9ZTPJZi9aesSjDVDraYzB1X3LVNP`)')
     expect(v1210).not.toContain('__drizzle_migrations')
     const v1211 = versionTable.slice(versionTable.indexOf('| v1.2.11 |'), versionTable.indexOf('| v1.2.12 |'))
     expect(v1211).toContain('Gate 12 is Closed.')
-    const v1212 = versionTable.slice(versionTable.indexOf('| v1.2.12 |'))
+    const v1212 = versionTable.slice(versionTable.indexOf('| v1.2.12 |'), versionTable.indexOf('| v1.2.13 |'))
     expect(v1212).toContain('Gate 18 is Closed.')
+    const v1213 = versionTable.slice(versionTable.indexOf('| v1.2.13 |'))
+    expect(v1213).toContain('Gate 15 is Closed.')
+    expect(v1213).toContain('Gate 16 is Closed.')
+    expect(liveGates).toContain('15. **Sponsorship: live webhook subscribed to refund events.** Closed.')
+    expect(liveGates).toContain('The live endpoint is `POST /api/stripe/webhook`.')
+    expect(liveGates).toContain('16. **Sponsorship: refund runbook.** Closed.')
+    expect(liveGates).toContain('find the payment in the Stripe dashboard, then the operator approves the card with a Mark-approved production write, coordinated by James.')
+    const runbook = readFileSync(path.join(process.cwd(), 'docs/runbooks/sponsor-reject-refund.md'), 'utf8')
+    expect(runbook).toContain('The live endpoint is `POST /api/stripe/webhook`.')
+    for (const event of [
+      'checkout.session.completed',
+      'checkout.session.async_payment_succeeded',
+      'checkout.session.async_payment_failed',
+      'customer.subscription.created',
+      'customer.subscription.updated',
+      'customer.subscription.deleted',
+      'charge.refunded',
+      'refund.created',
+      'refund.updated',
+    ]) {
+      expect(runbook).toContain(`\`${event}\``)
+    }
+    expect(runbook).toContain('`/admin/sponsors` returns 404')
+    expect(runbook).not.toContain('Open `/admin/sponsors`')
+    expect(runbook).toContain('Find the payment in the Stripe dashboard.')
+    expect(runbook).toContain('Mark-approved production write, coordinated by James.')
+    expect(runbook).not.toMatch(/whsec_|we_[A-Za-z0-9]/)
     expect(v1212).toContain('Mark (via James) dropped the lawyer requirement at 7:44 AM ET on October 18, 2026.')
     expect(v1212).toContain('Sponsor wording gets internal review only.')
     expect(changelog).not.toContain('needs lawyer review before merge')
