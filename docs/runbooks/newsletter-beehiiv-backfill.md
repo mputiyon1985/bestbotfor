@@ -24,7 +24,9 @@ Reconcile looks the address up with Beehiiv’s subscription-by-email GET. It do
 3. Mark approves.
 4. Apply: `npm run backfill:beehiiv -- --reconcile-stuck --apply`
 
-When Beehiiv already has the address, the row becomes `synced` and is not posted. When Beehiiv does not have it, the row returns to `pending` for a later backfill apply. A lookup failure leaves the row `syncing`.
+When Beehiiv already has the address, the row becomes `synced` and is not posted. When Beehiiv does not have it, the row returns to `pending` for a later backfill apply. Both of those updates match the `syncing_started_at` value read before the GET. If that clock changed, someone else re-claimed the row: the update does nothing and does not post. A lookup failure leaves the row `syncing`.
+
+A signup on a stale row takes a new clock with that same compare-and-set before it posts. Only the signup that wins the new clock posts.
 
 `--stuck-after-ms` overrides the 15 minute threshold. It is a positive number of milliseconds.
 

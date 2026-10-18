@@ -118,14 +118,14 @@ export async function subscribeToNewsletter(input: {
       fetchImpl: input.fetchImpl,
     })
     if (!remote.ok) {
-      await releaseSubscriberHold(input.db, held.id, held.created)
+      await releaseSubscriberHold(input.db, held.id, held.created, held.claimClock)
       return {
         status: 'error',
         message: "We couldn't add you just now. Try again in a few minutes.",
         tracked: false,
       }
     }
-    const saved = await finishSubscriberSync(input.db, held.id, remote.id)
+    const saved = await finishSubscriberSync(input.db, held.id, remote.id, held.claimClock)
     if (!saved) {
       return {
         status: 'error',

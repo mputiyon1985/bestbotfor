@@ -783,6 +783,232 @@ describe('subscribeToNewsletter', () => {
     await close()
   })
 
+  it('does not let a reconcile 404 clear a signup that already re-claimed and posted', async () => {
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    const now = 9_000_000
+    await db.insert(subscribers).values({
+      email: 'reader@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: null,
+      status: SYNCING_SUBSCRIBER_STATUS,
+      syncingStartedAt: now - SYNCING_STALE_AFTER_MS,
+    })
+    let posts = 0
+    let gets = 0
+    let reconcileInside: () => void = () => undefined
+    const reconcileEntered = new Promise<void>((resolve) => {
+      reconcileInside = resolve
+    })
+    let finishReconcileGet: () => void = () => undefined
+    const reconcileRelease = new Promise<void>((resolve) => {
+      finishReconcileGet = resolve
+    })
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      if (init?.method === 'POST') {
+        posts += 1
+        expect(JSON.parse(String(init.body ?? '{}')).double_opt_override).toBe('on')
+        return new Response(JSON.stringify({ data: { id: 'sub_once' } }), { status: 201 })
+      }
+      gets += 1
+      if (gets === 1) {
+        reconcileInside()
+        await reconcileRelease
+        return new Response('{}', { status: 404 })
+      }
+      return new Response('{}', { status: 404 })
+    }
+    const reconcilePromise = reconcileStuckSubscribers({ db, apply: true, now, fetchImpl })
+    await reconcileEntered
+    const signup = await subscribeToNewsletter({
+      email: 'reader@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-reconcile-race',
+      now,
+      fetchImpl,
+    })
+    finishReconcileGet()
+    await reconcilePromise
+    expect(signup).toEqual({ status: 'success', message: SYNCED_SUCCESS, tracked: true })
+    expect(posts).toBe(1)
+    expect(gets).toBe(2)
+    expect((await db.select().from(subscribers))[0]).toMatchObject({
+      status: SYNCED_SUBSCRIBER_STATUS,
+      destination: 'beehiiv',
+      beehiivId: 'sub_once',
+    })
+    await close()
+  })
+
+  it('lets only one of two overlapping stale signups post', async () => {
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    const now = 9_000_000
+    await db.insert(subscribers).values({
+      email: 'reader@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: null,
+      status: SYNCING_SUBSCRIBER_STATUS,
+      syncingStartedAt: null,
+    })
+    let posts = 0
+    let lookups = 0
+    let secondLookupStarted: () => void = () => undefined
+    const secondEntered = new Promise<void>((resolve) => {
+      secondLookupStarted = resolve
+    })
+    let releaseSecondLookup: () => void = () => undefined
+    const secondLookupRelease = new Promise<void>((resolve) => {
+      releaseSecondLookup = resolve
+    })
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      if (init?.method === 'POST') {
+        posts += 1
+        expect(JSON.parse(String(init.body ?? '{}')).double_opt_override).toBe('on')
+        releaseSecondLookup()
+        return new Response(JSON.stringify({ data: { id: 'sub_once' } }), { status: 201 })
+      }
+      lookups += 1
+      if (lookups === 1) {
+        await secondEntered
+        return new Response('{}', { status: 404 })
+      }
+      secondLookupStarted()
+      await secondLookupRelease
+      return new Response('{}', { status: 404 })
+    }
+    const [first, second] = await Promise.all([
+      subscribeToNewsletter({
+        email: 'reader@example.com',
+        honeypot: '',
+        db,
+        rateKey: 'newsletter-overlap-a',
+        now,
+        fetchImpl,
+      }),
+      subscribeToNewsletter({
+        email: 'reader@example.com',
+        honeypot: '',
+        db,
+        rateKey: 'newsletter-overlap-b',
+        now,
+        fetchImpl,
+      }),
+    ])
+    expect(posts).toBe(1)
+    expect(lookups).toBe(2)
+    const posted = [first, second].filter((result) => result.tracked)
+    expect(posted).toEqual([{ status: 'success', message: SYNCED_SUCCESS, tracked: true }])
+    expect((await db.select().from(subscribers))[0]).toMatchObject({
+      status: SYNCED_SUBSCRIBER_STATUS,
+      beehiivId: 'sub_once',
+    })
+    expect(await countSyncedSubscribers(db)).toBe(1)
+    await close()
+  })
+
+  it('leaves a syncing row in place when the lookup fails', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    const now = 9_000_000
+    await db.insert(subscribers).values({
+      email: 'reader@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: null,
+      status: SYNCING_SUBSCRIBER_STATUS,
+      syncingStartedAt: now - SYNCING_STALE_AFTER_MS,
+    })
+    let posts = 0
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      if (init?.method === 'POST') {
+        posts += 1
+        return new Response('{}', { status: 201 })
+      }
+      return new Response('no', { status: 500 })
+    }
+    const reconciled = await reconcileStuckSubscribers({ db, apply: true, now, fetchImpl })
+    expect(reconciled).toMatchObject({ stale: 1, synced: 0, released: 0, failed: 1 })
+    expect((await db.select().from(subscribers))[0]?.status).toBe(SYNCING_SUBSCRIBER_STATUS)
+    const signup = await subscribeToNewsletter({
+      email: 'reader@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-lookup-error',
+      now,
+      fetchImpl,
+    })
+    expect(signup).toMatchObject({ status: 'error', tracked: false })
+    expect(posts).toBe(0)
+    expect((await db.select().from(subscribers))[0]?.status).toBe(SYNCING_SUBSCRIBER_STATUS)
+    expect(await countSyncedSubscribers(db)).toBe(0)
+    await close()
+  })
+
+  it('does not post a stale syncing row when Beehiiv is unset', async () => {
+    delete process.env.BEEHIIV_API_KEY
+    delete process.env.BEEHIIV_PUBLICATION_ID
+    const { db, close } = await createTestDatabase()
+    const now = 9_000_000
+    await db.insert(subscribers).values({
+      email: 'stale@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: null,
+      status: SYNCING_SUBSCRIBER_STATUS,
+      syncingStartedAt: null,
+    })
+    await db.insert(subscribers).values({
+      email: 'fresh@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: null,
+      status: SYNCING_SUBSCRIBER_STATUS,
+      syncingStartedAt: now,
+    })
+    let calls = 0
+    const stale = await subscribeToNewsletter({
+      email: 'stale@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-unset-stale',
+      now,
+      fetchImpl: async () => {
+        calls += 1
+        return new Response('{}', { status: 201 })
+      },
+    })
+    const fresh = await subscribeToNewsletter({
+      email: 'fresh@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-unset-fresh',
+      now: now + 1_000,
+      fetchImpl: async () => {
+        calls += 1
+        return new Response('{}', { status: 201 })
+      },
+    })
+    expect(stale).toEqual({ status: 'success', message: PENDING_SUCCESS, tracked: false })
+    expect(fresh.status).toBe('error')
+    expect(calls).toBe(0)
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'stale@example.com')))[0]?.status).toBe(
+      SYNCING_SUBSCRIBER_STATUS,
+    )
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'fresh@example.com')))[0]?.status).toBe(
+      SYNCING_SUBSCRIBER_STATUS,
+    )
+    expect(await countSyncedSubscribers(db)).toBe(0)
+    await close()
+  })
+
   it('reads the stuck-row age from the reconcile flag and keeps the default', () => {
     expect(readStuckAfterMs(['--reconcile-stuck'])).toBe(SYNCING_STALE_AFTER_MS)
     expect(readStuckAfterMs(['--reconcile-stuck', '--stuck-after-ms', '60000'])).toBe(60_000)

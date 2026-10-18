@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, eq, isNull, type SQL } from 'drizzle-orm'
 import { createBeehiivSubscription, isBeehiivConfigured, lookupBeehiivSubscriptionByEmail } from './beehiiv-api'
 import type { Database } from './db/client'
 import { dbHost, isProdHost, UNPARSEABLE } from './db/guard'
@@ -22,7 +22,7 @@ export type BackfillResult = {
 }
 
 export type SubscriberHold =
-  | { kind: 'held'; id: number; created: boolean }
+  | { kind: 'held'; id: number; created: boolean; claimClock: number }
   | { kind: 'done' }
   | { kind: 'busy' }
 
@@ -114,6 +114,11 @@ export function newsletterBackfillAllowed(input: {
   return { ok: true }
 }
 
+/** Matches the clock read before a lookup, including a null clock left by a crash. */
+function sameClaimClock(claimClock: number | null): SQL {
+  return claimClock === null ? isNull(subscribers.syncingStartedAt) : eq(subscribers.syncingStartedAt, claimClock)
+}
+
 /** One conditional update. A signup and a backfill cannot both win this row. */
 export async function claimPendingSubscriber(db: Database, id: number, now: number): Promise<boolean> {
   const claimed = await db
@@ -124,7 +129,31 @@ export async function claimPendingSubscriber(db: Database, id: number, now: numb
   return claimed.length === 1
 }
 
-export async function finishSubscriberSync(db: Database, id: number, beehiivId: string | null): Promise<boolean> {
+/**
+ * Moves a stale syncing row onto a new clock. The WHERE clause is the clock observed
+ * before the lookup, so only one signup wins and only that winner may post.
+ */
+export async function reclaimStaleSubscriber(
+  db: Database,
+  id: number,
+  observedClock: number | null,
+  now: number,
+): Promise<boolean> {
+  const claimed = await db
+    .update(subscribers)
+    .set({ status: SYNCING_SUBSCRIBER_STATUS, syncingStartedAt: now })
+    .where(and(eq(subscribers.id, id), eq(subscribers.status, SYNCING_SUBSCRIBER_STATUS), sameClaimClock(observedClock)))
+    .returning({ id: subscribers.id })
+  return claimed.length === 1
+}
+
+/** Marks synced only while this caller still owns the claim clock. */
+export async function finishSubscriberSync(
+  db: Database,
+  id: number,
+  beehiivId: string | null,
+  claimClock: number | null,
+): Promise<boolean> {
   const saved = await db
     .update(subscribers)
     .set({
@@ -133,28 +162,44 @@ export async function finishSubscriberSync(db: Database, id: number, beehiivId: 
       status: SYNCED_SUBSCRIBER_STATUS,
       syncingStartedAt: null,
     })
-    .where(and(eq(subscribers.id, id), eq(subscribers.status, SYNCING_SUBSCRIBER_STATUS)))
+    .where(and(eq(subscribers.id, id), eq(subscribers.status, SYNCING_SUBSCRIBER_STATUS), sameClaimClock(claimClock)))
     .returning({ id: subscribers.id })
   return saved.length === 1
 }
 
-/** A failed call puts a claimed row back to pending. A row this call inserted is removed. */
-export async function releaseSubscriberHold(db: Database, id: number, created: boolean): Promise<void> {
+/**
+ * A failed call puts this claim back to pending. A row this call inserted is removed.
+ * The clock is the one observed before a lookup, or the clock this call wrote.
+ * Zero rows means someone else re-claimed it, so the caller must not post.
+ */
+export async function releaseSubscriberHold(
+  db: Database,
+  id: number,
+  created: boolean,
+  claimClock: number | null,
+): Promise<boolean> {
+  const owned = and(eq(subscribers.id, id), eq(subscribers.status, SYNCING_SUBSCRIBER_STATUS), sameClaimClock(claimClock))
   if (created) {
-    await db
-      .delete(subscribers)
-      .where(and(eq(subscribers.id, id), eq(subscribers.status, SYNCING_SUBSCRIBER_STATUS)))
-    return
+    const removed = await db.delete(subscribers).where(owned).returning({ id: subscribers.id })
+    return removed.length === 1
   }
-  await db
+  const released = await db
     .update(subscribers)
     .set({ status: PENDING_SUBSCRIBER_STATUS, syncingStartedAt: null })
-    .where(and(eq(subscribers.id, id), eq(subscribers.status, SYNCING_SUBSCRIBER_STATUS)))
+    .where(owned)
+    .returning({ id: subscribers.id })
+  return released.length === 1
 }
 
 async function claimOrDone(db: Database, id: number, now: number): Promise<SubscriberHold> {
   const claimed = await claimPendingSubscriber(db, id, now)
-  if (claimed) return { kind: 'held', id, created: false }
+  if (claimed) return { kind: 'held', id, created: false, claimClock: now }
+  const again = await db.select().from(subscribers).where(eq(subscribers.id, id)).limit(1)
+  if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS && again[0].destination === 'beehiiv') return { kind: 'done' }
+  return { kind: 'busy' }
+}
+
+async function syncedOrBusy(db: Database, id: number): Promise<SubscriberHold> {
   const again = await db.select().from(subscribers).where(eq(subscribers.id, id)).limit(1)
   if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS && again[0].destination === 'beehiiv') return { kind: 'done' }
   return { kind: 'busy' }
@@ -169,17 +214,17 @@ async function holdExisting(
   if (row.status === SYNCED_SUBSCRIBER_STATUS && row.destination === 'beehiiv') return { kind: 'done' }
   if (row.status === SYNCING_SUBSCRIBER_STATUS) {
     if (!isSyncingStale(row.syncingStartedAt, now)) return { kind: 'busy' }
+    const observedClock = row.syncingStartedAt
     const lookup = await lookupBeehiivSubscriptionByEmail({ email: row.email, fetchImpl })
     if (lookup.outcome === 'found') {
-      const saved = await finishSubscriberSync(db, row.id, lookup.id)
+      const saved = await finishSubscriberSync(db, row.id, lookup.id, observedClock)
       if (saved) return { kind: 'done' }
-      const again = await db.select().from(subscribers).where(eq(subscribers.id, row.id)).limit(1)
-      if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS && again[0].destination === 'beehiiv') return { kind: 'done' }
-      return { kind: 'busy' }
+      return syncedOrBusy(db, row.id)
     }
     if (lookup.outcome === 'missing') {
-      await releaseSubscriberHold(db, row.id, false)
-      return claimOrDone(db, row.id, now)
+      const won = await reclaimStaleSubscriber(db, row.id, observedClock, now)
+      if (!won) return syncedOrBusy(db, row.id)
+      return { kind: 'held', id: row.id, created: false, claimClock: now }
     }
     return { kind: 'busy' }
   }
@@ -213,7 +258,7 @@ export async function holdSubscriberForBeehiiv(
       .returning({ id: subscribers.id })
     const id = inserted[0]?.id
     if (id === undefined) return { kind: 'busy' }
-    return { kind: 'held', id, created: true }
+    return { kind: 'held', id, created: true, claimClock: now }
   } catch (error) {
     const again = await db.select().from(subscribers).where(eq(subscribers.email, email)).limit(1)
     if (!again[0]) throw error
@@ -269,11 +314,11 @@ export async function backfillPendingSubscribers(input: {
       fetchImpl: input.fetchImpl,
     })
     if (!remote.ok) {
-      await releaseSubscriberHold(input.db, row.id, false)
+      await releaseSubscriberHold(input.db, row.id, false, now)
       failed += 1
       continue
     }
-    const saved = await finishSubscriberSync(input.db, row.id, remote.id)
+    const saved = await finishSubscriberSync(input.db, row.id, remote.id, now)
     if (saved) {
       synced += 1
       continue
@@ -332,9 +377,10 @@ export async function reconcileStuckSubscribers(input: {
   let released = 0
   let failed = 0
   for (const row of staleRows) {
+    const observedClock = row.syncingStartedAt
     const lookup = await lookupBeehiivSubscriptionByEmail({ email: row.email, fetchImpl: input.fetchImpl })
     if (lookup.outcome === 'found') {
-      const saved = await finishSubscriberSync(input.db, row.id, lookup.id)
+      const saved = await finishSubscriberSync(input.db, row.id, lookup.id, observedClock)
       if (saved) {
         synced += 1
         continue
@@ -345,10 +391,14 @@ export async function reconcileStuckSubscribers(input: {
       continue
     }
     if (lookup.outcome === 'missing') {
-      await releaseSubscriberHold(input.db, row.id, false)
+      const releasedRow = await releaseSubscriberHold(input.db, row.id, false, observedClock)
+      if (releasedRow) {
+        released += 1
+        continue
+      }
       const again = await input.db.select().from(subscribers).where(eq(subscribers.id, row.id)).limit(1)
-      if (again[0]?.status === PENDING_SUBSCRIBER_STATUS) released += 1
-      else if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS) synced += 1
+      if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS) synced += 1
+      else if (again[0]?.status === PENDING_SUBSCRIBER_STATUS) released += 1
       else failed += 1
       continue
     }
