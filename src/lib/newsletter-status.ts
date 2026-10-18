@@ -1,8 +1,11 @@
 /** Saved locally. Not sent to Beehiiv, so it is not synced and not subscribed. */
 export const PENDING_SUBSCRIBER_STATUS = 'pending'
 
-/** Claimed for a Beehiiv call. Not counted, and a second sender skips it. */
+/** Claimed for a Beehiiv call. Not counted, and a second sender skips it until it is stale. */
 export const SYNCING_SUBSCRIBER_STATUS = 'syncing'
+
+/** A claim older than this is no longer an in-flight call. Fifteen minutes. */
+export const SYNCING_STALE_AFTER_MS = 15 * 60 * 1000
 
 /** Beehiiv accepted the address with double opt-in. This is the only counted status. */
 export const SYNCED_SUBSCRIBER_STATUS = 'synced'

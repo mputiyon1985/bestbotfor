@@ -11,11 +11,14 @@ import {
   PENDING_SUBSCRIBER_STATUS,
   SYNCED_SUBSCRIBER_STATUS,
   SYNCED_SUCCESS,
+  SYNCING_STALE_AFTER_MS,
   SYNCING_SUBSCRIBER_STATUS,
   backfillPendingSubscribers,
   countSyncedSubscribers,
   newsletterBackfillAllowed,
   newsletterDatabaseName,
+  readStuckAfterMs,
+  reconcileStuckSubscribers,
   subscribeToNewsletter,
 } from './newsletter'
 
@@ -586,5 +589,204 @@ describe('subscribeToNewsletter', () => {
       }
       await rm(directory, { recursive: true, force: true })
     }
+  })
+
+  it('leaves a crash-stale syncing row out of the subscriber count and does not post it', async () => {
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    const now = 2_000_000
+    await db.insert(subscribers).values({
+      email: 'stuck@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: null,
+      status: SYNCING_SUBSCRIBER_STATUS,
+      syncingStartedAt: now - SYNCING_STALE_AFTER_MS,
+    })
+    let calls = 0
+    const applied = await backfillPendingSubscribers({
+      db,
+      apply: true,
+      now,
+      fetchImpl: async () => {
+        calls += 1
+        return new Response(JSON.stringify({ data: { id: 'sub_should_not_post' } }), { status: 201 })
+      },
+    })
+    expect(applied).toMatchObject({ pending: 0, synced: 0, failed: 0 })
+    expect(calls).toBe(0)
+    expect(await countSyncedSubscribers(db)).toBe(0)
+    expect((await db.select().from(subscribers))[0]?.status).toBe(SYNCING_SUBSCRIBER_STATUS)
+    await close()
+  })
+
+  it('reconciles a stale syncing row from Beehiiv without posting, and returns a missing one to pending', async () => {
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    const now = 5_000_000
+    await db.insert(subscribers).values({
+      email: 'found@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: null,
+      status: SYNCING_SUBSCRIBER_STATUS,
+      syncingStartedAt: null,
+    })
+    await db.insert(subscribers).values({
+      email: 'missing@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: null,
+      status: SYNCING_SUBSCRIBER_STATUS,
+      syncingStartedAt: now - SYNCING_STALE_AFTER_MS,
+    })
+    await db.insert(subscribers).values({
+      email: 'fresh@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: null,
+      status: SYNCING_SUBSCRIBER_STATUS,
+      syncingStartedAt: now - 1_000,
+    })
+    const fetchImpl: typeof fetch = async (input, init) => {
+      expect(init?.method).toBe('GET')
+      expect(String(input)).toContain('/subscriptions/by_email/')
+      expect(init?.body).toBeUndefined()
+      const url = String(input)
+      if (url.includes(encodeURIComponent('found@example.com'))) {
+        return new Response(JSON.stringify({ data: { id: 'sub_found' } }), { status: 200 })
+      }
+      return new Response('{}', { status: 404 })
+    }
+    const preview = await reconcileStuckSubscribers({ db, apply: false, now, fetchImpl })
+    expect(preview).toMatchObject({ dryRun: true, stale: 2, synced: 0, released: 0, failed: 0 })
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'found@example.com')))[0]?.status).toBe(
+      SYNCING_SUBSCRIBER_STATUS,
+    )
+
+    const applied = await reconcileStuckSubscribers({ db, apply: true, now, fetchImpl })
+    expect(applied).toMatchObject({ dryRun: false, stale: 2, synced: 1, released: 1, failed: 0, unconfigured: false })
+    const found = (await db.select().from(subscribers).where(eq(subscribers.email, 'found@example.com')))[0]
+    expect(found).toMatchObject({ status: SYNCED_SUBSCRIBER_STATUS, destination: 'beehiiv', beehiivId: 'sub_found' })
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'missing@example.com')))[0]?.status).toBe(
+      PENDING_SUBSCRIBER_STATUS,
+    )
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'fresh@example.com')))[0]?.status).toBe(
+      SYNCING_SUBSCRIBER_STATUS,
+    )
+    expect(await countSyncedSubscribers(db)).toBe(1)
+
+    const again = await reconcileStuckSubscribers({ db, apply: true, now, fetchImpl })
+    expect(again).toMatchObject({ stale: 0, synced: 0, released: 0 })
+    await close()
+  })
+
+  it('signs up again over a stale syncing row without a second post when Beehiiv already has it', async () => {
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    const now = 9_000_000
+    await db.insert(subscribers).values({
+      email: 'reader@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: null,
+      status: SYNCING_SUBSCRIBER_STATUS,
+      syncingStartedAt: now - SYNCING_STALE_AFTER_MS,
+    })
+    let posts = 0
+    let lookups = 0
+    const fetchImpl: typeof fetch = async (input, init) => {
+      if (init?.method === 'POST') {
+        posts += 1
+        return new Response(JSON.stringify({ data: { id: 'sub_posted' } }), { status: 201 })
+      }
+      lookups += 1
+      expect(String(input)).toContain(`/subscriptions/by_email/${encodeURIComponent('reader@example.com')}`)
+      return new Response(JSON.stringify({ data: { id: 'sub_already' } }), { status: 200 })
+    }
+    const result = await subscribeToNewsletter({
+      email: 'reader@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-stale-found',
+      now,
+      fetchImpl,
+    })
+    expect(result).toEqual({ status: 'success', message: SYNCED_SUCCESS, tracked: false })
+    expect(lookups).toBe(1)
+    expect(posts).toBe(0)
+    expect((await db.select().from(subscribers))[0]).toMatchObject({
+      status: SYNCED_SUBSCRIBER_STATUS,
+      beehiivId: 'sub_already',
+    })
+    const repeat = await subscribeToNewsletter({
+      email: 'reader@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-stale-found-again',
+      now: now + 1,
+      fetchImpl,
+    })
+    expect(repeat).toEqual({ status: 'success', message: SYNCED_SUCCESS, tracked: false })
+    expect(lookups).toBe(1)
+    expect(posts).toBe(0)
+    await close()
+  })
+
+  it('sends a stale syncing row once when Beehiiv does not have it', async () => {
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    const now = 9_000_000
+    await db.insert(subscribers).values({
+      email: 'reader@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: null,
+      status: SYNCING_SUBSCRIBER_STATUS,
+      syncingStartedAt: 2_000,
+    })
+    let posts = 0
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      if (init?.method === 'GET') return new Response('{}', { status: 404 })
+      posts += 1
+      expect(JSON.parse(String(init?.body ?? '{}')).double_opt_override).toBe('on')
+      return new Response(JSON.stringify({ data: { id: 'sub_once' } }), { status: 201 })
+    }
+    const fresh = await subscribeToNewsletter({
+      email: 'reader@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-fresh-syncing',
+      now: 3_000,
+      fetchImpl,
+    })
+    expect(fresh.status).toBe('error')
+    expect(posts).toBe(0)
+    expect((await db.select().from(subscribers))[0]?.status).toBe(SYNCING_SUBSCRIBER_STATUS)
+
+    const result = await subscribeToNewsletter({
+      email: 'reader@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-stale-missing',
+      now,
+      fetchImpl,
+    })
+    expect(result).toEqual({ status: 'success', message: SYNCED_SUCCESS, tracked: true })
+    expect(posts).toBe(1)
+    expect((await db.select().from(subscribers))[0]).toMatchObject({ status: SYNCED_SUBSCRIBER_STATUS, beehiivId: 'sub_once' })
+    expect(await countSyncedSubscribers(db)).toBe(1)
+    await close()
+  })
+
+  it('reads the stuck-row age from the reconcile flag and keeps the default', () => {
+    expect(readStuckAfterMs(['--reconcile-stuck'])).toBe(SYNCING_STALE_AFTER_MS)
+    expect(readStuckAfterMs(['--reconcile-stuck', '--stuck-after-ms', '60000'])).toBe(60_000)
+    expect(readStuckAfterMs(['--stuck-after-ms=120000'])).toBe(120_000)
+    expect(() => readStuckAfterMs(['--stuck-after-ms', '0'])).toThrow(/positive/)
   })
 })

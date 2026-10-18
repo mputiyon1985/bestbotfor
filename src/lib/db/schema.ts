@@ -117,6 +117,8 @@ export const subscribers = sqliteTable('subscribers', {
   beehiivId: text('beehiiv_id'),
   /** `pending` until a sender claims it as `syncing`. Synced rows are the only ones counted. */
   status: text('status').notNull().default('pending'),
+  /** Set when the row becomes `syncing`. Null means a crash left no clock, so reconcile treats it as stale. */
+  syncingStartedAt: integer('syncing_started_at'),
 })
 
 export const subscriptions = sqliteTable(

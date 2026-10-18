@@ -9,6 +9,7 @@ import { emailSchema, newsletterFieldsSchema } from './validation'
 import {
   finishSubscriberSync,
   holdSubscriberForBeehiiv,
+  isSyncingStale,
   releaseSubscriberHold,
 } from './newsletter-backfill'
 import {
@@ -16,15 +17,24 @@ import {
   PENDING_SUCCESS,
   SYNCED_SUBSCRIBER_STATUS,
   SYNCED_SUCCESS,
+  SYNCING_SUBSCRIBER_STATUS,
 } from './newsletter-status'
 
-export type { BackfillResult } from './newsletter-backfill'
-export { backfillPendingSubscribers, newsletterBackfillAllowed, newsletterDatabaseName } from './newsletter-backfill'
+export type { BackfillResult, ReconcileResult } from './newsletter-backfill'
+export {
+  backfillPendingSubscribers,
+  isSyncingStale,
+  newsletterBackfillAllowed,
+  newsletterDatabaseName,
+  readStuckAfterMs,
+  reconcileStuckSubscribers,
+} from './newsletter-backfill'
 export {
   PENDING_SUBSCRIBER_STATUS,
   PENDING_SUCCESS,
   SYNCED_SUBSCRIBER_STATUS,
   SYNCED_SUCCESS,
+  SYNCING_STALE_AFTER_MS,
   SYNCING_SUBSCRIBER_STATUS,
 } from './newsletter-status'
 
@@ -93,7 +103,7 @@ export async function subscribeToNewsletter(input: {
   }
 
   if (isBeehiivConfigured()) {
-    const held = await holdSubscriberForBeehiiv(input.db, normalized, input.now ?? Date.now())
+    const held = await holdSubscriberForBeehiiv(input.db, normalized, input.now ?? Date.now(), input.fetchImpl)
     if (held.kind === 'done') return { status: 'success', message: SYNCED_SUCCESS, tracked: false }
     if (held.kind === 'busy') {
       return {
@@ -127,6 +137,19 @@ export async function subscribeToNewsletter(input: {
   }
 
   if (existing[0]) {
+    if (
+      existing[0].status === SYNCING_SUBSCRIBER_STATUS
+      && isSyncingStale(existing[0].syncingStartedAt, input.now ?? Date.now())
+    ) {
+      return { status: 'success', message: PENDING_SUCCESS, tracked: false }
+    }
+    if (existing[0].status === SYNCING_SUBSCRIBER_STATUS) {
+      return {
+        status: 'error',
+        message: "We couldn't add you just now. Try again in a few minutes.",
+        tracked: false,
+      }
+    }
     return { status: 'success', message: PENDING_SUCCESS, tracked: false }
   }
   await input.db.insert(subscribers).values({

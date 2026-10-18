@@ -21,6 +21,11 @@ describe('client bundle scan', () => {
     expect(clientBundleHits(`${prefixCheck}\n${key}`, CLIENT_BUNDLE_FORBIDDEN)).toContain(LIVE_PUBLISHABLE)
   })
 
+  it('flags the Beehiiv API key name', () => {
+    expect(CLIENT_BUNDLE_FORBIDDEN).toContain('BEEHIIV_API_KEY')
+    expect(clientBundleHits('process.env.BEEHIIV_API_KEY', CLIENT_BUNDLE_FORBIDDEN)).toContain('BEEHIIV_API_KEY')
+  })
+
   it('still flags secret and live secret prefixes', () => {
     expect(clientBundleHits('sk_' + 'live_51abc', CLIENT_BUNDLE_FORBIDDEN)).toContain('sk_' + 'live_')
     expect(clientBundleHits('whsec_abc', CLIENT_BUNDLE_FORBIDDEN)).toContain('whsec_')
