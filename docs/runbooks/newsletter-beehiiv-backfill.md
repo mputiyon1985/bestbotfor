@@ -2,14 +2,15 @@
 
 Addresses saved before Beehiiv is configured stay `pending`. This script sends those rows once both `BEEHIIV_API_KEY` and `BEEHIIV_PUBLICATION_ID` are set. Double opt-in stays on. The confirmation email is not skipped. The script prints counts only. It does not print addresses.
 
-Dry-run is the default. `--production-launch` does not turn that off.
+Dry-run is the default. `--production-launch` does not turn that off. A dry run counts rows. It does not select email addresses and it does not call Beehiiv.
 
 ## Before apply
 
-1. Dry run first: `npm run backfill:beehiiv`
-2. Review the counts. `pending` is the number that an apply would send. `syncing` is a row already claimed. It is not a subscriber and an apply does not send it. `failed` stays 0 on a dry run.
-3. Mark approves that apply.
-4. Apply: `npm run backfill:beehiiv -- --apply`
+1. On production, apply migration `0020_subscriber_syncing_started.sql` before any backfill or reconcile. The script reads `syncing_started_at`. Without that column the run fails.
+2. Dry run first: `npm run backfill:beehiiv`
+3. Review the counts. The script prints the target host before those counts. `pending` is the number that an apply would send. `syncing` is a row already claimed. It is not a subscriber and an apply does not send it. `failed` stays 0 on a dry run.
+4. Mark approves that apply.
+5. Apply: `npm run backfill:beehiiv -- --apply`
 
 A second apply skips rows already `synced`. It does not post a `syncing` row.
 
@@ -24,43 +25,45 @@ Reconcile looks the address up with Beehiiv’s subscription-by-email GET. It do
 3. Mark approves.
 4. Apply: `npm run backfill:beehiiv -- --reconcile-stuck --apply`
 
-When Beehiiv already has the address, the row becomes `synced` and is not posted. When Beehiiv does not have it, the row returns to `pending` for a later backfill apply. Both of those updates match the `syncing_started_at` value read before the GET. If that clock changed, someone else re-claimed the row: the update does nothing and does not post. A lookup failure leaves the row `syncing`.
+When Beehiiv reports `active` or `validating`, the row becomes `synced` and is not posted. `validating` is still waiting on the double opt-in email. When Beehiiv reports `inactive` or `unsubscribed`, the row becomes `unsubscribed`. It is not marked `synced`, it is not counted, and it is not posted. A later backfill does not send it, and a later signup does not subscribe it again. Any other found status stays `syncing` and is counted as failed, so it is not sent. When Beehiiv does not have the address, the row returns to `pending` for a later backfill apply. Those updates match the `syncing_started_at` value read before the GET. If that clock changed, someone else re-claimed the row: the update does nothing and does not post. A lookup failure leaves the row `syncing`.
 
-A signup on a stale row takes a new clock with that same compare-and-set before it posts. Only the signup that wins the new clock posts.
+A signup on a stale row takes a new clock with that same compare-and-set before it posts. The new clock has to be later than the clock it read. Only the signup that wins the new clock posts.
 
-`--stuck-after-ms` overrides the 15 minute threshold. It is a positive number of milliseconds.
+`--stuck-after-ms` overrides the 15 minute threshold. It has to be at least 60000 milliseconds. A smaller value is refused.
 
-Someone who signs up again while the row is still fresh is asked to try again in a few minutes. A stale row is looked up the same way: found becomes `synced` with no second post, and missing is sent once with double opt-in.
+Someone who signs up while another request already holds the row is told “You're being added. Check your email to confirm.” That reply is not an error. While Beehiiv is unset, the same case says “You'll get a confirmation email when The Daily Bot launches.” A stale row is looked up the same way: `active` or `validating` becomes `synced` with no second post, `inactive` or `unsubscribed` is left unsubscribed with no post, and a missing address is sent once with double opt-in.
 
 ## Production
+
+Apply `0020_subscriber_syncing_started.sql` on production before the first backfill or reconcile.
 
 Production, and the production database, are refused unless both of these are set:
 
 - `--production-launch`
-- `BACKFILL_PROD_CONFIRM` equal to the database name
+- `BACKFILL_PROD_CONFIRM` equal to the confirm value
 
-The database name is the first label of the Turso host. For the production host that is `agentic-ai-co-mputiyon1985`. A local file uses its file name, such as `test.db`.
+The confirm value is the `prodDbNames` entry in `config/db-guard.json`. It is not read from the database URL. The script does not print it. A refusal does not print it either. The parsed host has to equal the `prodHosts` entry in that same file. A preview database, another Turso host, or a lookalike suffix is refused. The script prints the target host before the counts.
 
-Apply still needs `--apply`. Without it, a production launch only prints the dry-run counts.
+Apply still needs `--apply`. Without it, a production launch only prints the target host and the dry-run counts.
 
 ```sh
-BACKFILL_PROD_CONFIRM=agentic-ai-co-mputiyon1985 npm run backfill:beehiiv -- --production-launch
+BACKFILL_PROD_CONFIRM=<confirm value> npm run backfill:beehiiv -- --production-launch
 ```
 
 After Mark approves those counts:
 
 ```sh
-BACKFILL_PROD_CONFIRM=agentic-ai-co-mputiyon1985 npm run backfill:beehiiv -- --production-launch --apply
+BACKFILL_PROD_CONFIRM=<confirm value> npm run backfill:beehiiv -- --production-launch --apply
 ```
 
 A stuck-row reconcile uses the same two gates. Dry-run first:
 
 ```sh
-BACKFILL_PROD_CONFIRM=agentic-ai-co-mputiyon1985 npm run backfill:beehiiv -- --production-launch --reconcile-stuck
+BACKFILL_PROD_CONFIRM=<confirm value> npm run backfill:beehiiv -- --production-launch --reconcile-stuck
 ```
 
 After Mark approves the stale count:
 
 ```sh
-BACKFILL_PROD_CONFIRM=agentic-ai-co-mputiyon1985 npm run backfill:beehiiv -- --production-launch --reconcile-stuck --apply
+BACKFILL_PROD_CONFIRM=<confirm value> npm run backfill:beehiiv -- --production-launch --reconcile-stuck --apply
 ```

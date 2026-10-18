@@ -6,17 +6,21 @@ import { eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { subscribers } from './db/schema'
 import type { Database } from './db/client'
+import { reclaimStaleSubscriber } from './newsletter-backfill'
 import {
   PENDING_SUCCESS,
   PENDING_SUBSCRIBER_STATUS,
+  RACE_SUCCESS,
   SYNCED_SUBSCRIBER_STATUS,
   SYNCED_SUCCESS,
   SYNCING_STALE_AFTER_MS,
   SYNCING_SUBSCRIBER_STATUS,
+  UNSUBSCRIBED_NOTICE,
+  UNSUBSCRIBED_SUBSCRIBER_STATUS,
   backfillPendingSubscribers,
+  beehiivFoundAction,
   countSyncedSubscribers,
   newsletterBackfillAllowed,
-  newsletterDatabaseName,
   readStuckAfterMs,
   reconcileStuckSubscribers,
   subscribeToNewsletter,
@@ -376,47 +380,77 @@ describe('subscribeToNewsletter', () => {
     expect(newsletterBackfillAllowed({ vercelEnv: 'test', databaseUrl: 'file:./data/local.db' })).toEqual({ ok: true })
   })
 
-  it('allows a production launch only when the confirm name matches, and still dry-runs without --apply', async () => {
+  it('allows a production launch only for the exact prod host and the confirm value', async () => {
     const url = 'libsql://agentic-ai-co-mputiyon1985.aws-us-east-1.turso.io'
-    expect(newsletterDatabaseName(url)).toBe('agentic-ai-co-mputiyon1985')
-    expect(newsletterDatabaseName('file:/tmp/bestbotfor-x/test.db')).toBe('test.db')
+    const confirm = 'bestbotfor'
     expect(
       newsletterBackfillAllowed({
         vercelEnv: 'production',
         databaseUrl: url,
         productionLaunch: true,
-        confirmName: 'agentic-ai-co-mputiyon1985',
+        confirmName: confirm,
       }),
     ).toEqual({ ok: true })
     expect(
       newsletterBackfillAllowed({
         vercelEnv: undefined,
-        databaseUrl: url,
+        databaseUrl: 'libsql://token@agentic-ai-co-mputiyon1985.aws-us-east-1.turso.io.',
         productionLaunch: true,
-        confirmName: 'agentic-ai-co-mputiyon1985',
+        confirmName: `  ${confirm}  `,
       }),
     ).toEqual({ ok: true })
+    const wrongConfirm = newsletterBackfillAllowed({
+      vercelEnv: 'production',
+      databaseUrl: url,
+      productionLaunch: true,
+      confirmName: 'agentic-ai-co-mputiyon1985',
+    })
+    expect(wrongConfirm).toEqual({
+      ok: false,
+      reason: 'BACKFILL_PROD_CONFIRM does not match the configured confirm value.',
+    })
+    expect(wrongConfirm.ok ? '' : wrongConfirm.reason).not.toContain(confirm)
     expect(
       newsletterBackfillAllowed({
         vercelEnv: 'production',
         databaseUrl: url,
         productionLaunch: true,
-        confirmName: 'bestbotfor',
       }).ok,
     ).toBe(false)
-    expect(
-      newsletterBackfillAllowed({
+    const refused = [
+      'libsql://bestbotfor-preview-test-mputiyon1985.aws-us-east-1.turso.io',
+      'libsql://other-workspace.aws-us-east-1.turso.io',
+      'libsql://agentic-ai-co-mputiyon1985.aws-us-east-1.turso.io.evil.example',
+      'libsql://bestbotfor.aws-us-east-1.turso.io',
+      'file:/tmp/bestbotfor-x/test.db',
+    ]
+    for (const databaseUrl of refused) {
+      const decision = newsletterBackfillAllowed({
         vercelEnv: 'production',
-        databaseUrl: url,
+        databaseUrl,
         productionLaunch: true,
-      }).ok,
-    ).toBe(false)
+        confirmName: confirm,
+      })
+      expect(decision.ok).toBe(false)
+      if (!decision.ok) expect(decision.reason).not.toContain('configured confirm value')
+    }
+    const lookalike = newsletterBackfillAllowed({
+      vercelEnv: 'production',
+      databaseUrl: 'libsql://agentic-ai-co-mputiyon1985.aws-us-east-1.turso.io.evil.example',
+      productionLaunch: true,
+      confirmName: confirm,
+    })
+    expect(lookalike).toEqual({
+      ok: false,
+      reason:
+        'Newsletter backfill production launch refuses host agentic-ai-co-mputiyon1985.aws-us-east-1.turso.io.evil.example.',
+    })
     expect(
       newsletterBackfillAllowed({
         vercelEnv: undefined,
         databaseUrl: url,
         productionLaunch: false,
-        confirmName: 'agentic-ai-co-mputiyon1985',
+        confirmName: confirm,
       }).ok,
     ).toBe(false)
 
@@ -474,7 +508,7 @@ describe('subscribeToNewsletter', () => {
             return new Response(JSON.stringify({ data: { id: 'sub_race' } }), { status: 201 })
           },
         })
-        expect(raced).toMatchObject({ status: 'error', tracked: false })
+        expect(raced).toEqual({ status: 'success', message: RACE_SUCCESS, tracked: false })
         expect(signupCalls).toBe(0)
         return new Response(JSON.stringify({ data: { id: 'sub_backfill' } }), { status: 201 })
       },
@@ -568,6 +602,10 @@ describe('subscribeToNewsletter', () => {
       const combined = `${stdout}\n${stderr}`
       expect(combined).not.toContain('server-only')
       expect(combined).not.toContain(email)
+      const hostLine = 'Newsletter backfill target host local file.'
+      expect(stdout.indexOf(hostLine)).toBeGreaterThanOrEqual(0)
+      expect(stdout.indexOf(hostLine)).toBeLessThan(stdout.indexOf('{'))
+      expect(stdout).not.toContain('BACKFILL_PROD_CONFIRM')
       const jsonLine = stdout
         .split('\n')
         .map((line) => line.trim())
@@ -656,7 +694,7 @@ describe('subscribeToNewsletter', () => {
       expect(init?.body).toBeUndefined()
       const url = String(input)
       if (url.includes(encodeURIComponent('found@example.com'))) {
-        return new Response(JSON.stringify({ data: { id: 'sub_found' } }), { status: 200 })
+        return new Response(JSON.stringify({ data: { id: 'sub_found', status: 'active' } }), { status: 200 })
       }
       return new Response('{}', { status: 404 })
     }
@@ -705,7 +743,7 @@ describe('subscribeToNewsletter', () => {
       }
       lookups += 1
       expect(String(input)).toContain(`/subscriptions/by_email/${encodeURIComponent('reader@example.com')}`)
-      return new Response(JSON.stringify({ data: { id: 'sub_already' } }), { status: 200 })
+      return new Response(JSON.stringify({ data: { id: 'sub_already', status: 'validating' } }), { status: 200 })
     }
     const result = await subscribeToNewsletter({
       email: 'reader@example.com',
@@ -764,7 +802,7 @@ describe('subscribeToNewsletter', () => {
       now: 3_000,
       fetchImpl,
     })
-    expect(fresh.status).toBe('error')
+    expect(fresh).toEqual({ status: 'success', message: RACE_SUCCESS, tracked: false })
     expect(posts).toBe(0)
     expect((await db.select().from(subscribers))[0]?.status).toBe(SYNCING_SUBSCRIBER_STATUS)
 
@@ -904,6 +942,8 @@ describe('subscribeToNewsletter', () => {
     expect(lookups).toBe(2)
     const posted = [first, second].filter((result) => result.tracked)
     expect(posted).toEqual([{ status: 'success', message: SYNCED_SUCCESS, tracked: true }])
+    expect(first.status).toBe('success')
+    expect(second.status).toBe('success')
     expect((await db.select().from(subscribers))[0]).toMatchObject({
       status: SYNCED_SUBSCRIBER_STATUS,
       beehiivId: 'sub_once',
@@ -997,7 +1037,7 @@ describe('subscribeToNewsletter', () => {
       },
     })
     expect(stale).toEqual({ status: 'success', message: PENDING_SUCCESS, tracked: false })
-    expect(fresh.status).toBe('error')
+    expect(fresh).toEqual({ status: 'success', message: PENDING_SUCCESS, tracked: false })
     expect(calls).toBe(0)
     expect((await db.select().from(subscribers).where(eq(subscribers.email, 'stale@example.com')))[0]?.status).toBe(
       SYNCING_SUBSCRIBER_STATUS,
@@ -1014,5 +1054,163 @@ describe('subscribeToNewsletter', () => {
     expect(readStuckAfterMs(['--reconcile-stuck', '--stuck-after-ms', '60000'])).toBe(60_000)
     expect(readStuckAfterMs(['--stuck-after-ms=120000'])).toBe(120_000)
     expect(() => readStuckAfterMs(['--stuck-after-ms', '0'])).toThrow(/positive/)
+    expect(() => readStuckAfterMs(['--stuck-after-ms', '59999'])).toThrow(/at least 60000/)
+  })
+
+  it('stamps each backfill claim when that row is claimed', async () => {
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    await db.insert(subscribers).values([
+      {
+        email: 'one@example.com',
+        createdAt: 1,
+        destination: 'local',
+        beehiivId: null,
+        status: PENDING_SUBSCRIBER_STATUS,
+      },
+      {
+        email: 'two@example.com',
+        createdAt: 1,
+        destination: 'local',
+        beehiivId: null,
+        status: PENDING_SUBSCRIBER_STATUS,
+      },
+    ])
+    let tick = 50_000
+    vi.spyOn(Date, 'now').mockImplementation(() => {
+      tick += 70_000
+      return tick
+    })
+    const clocks: number[] = []
+    await backfillPendingSubscribers({
+      db,
+      apply: true,
+      fetchImpl: async (_input, init) => {
+        const email = JSON.parse(String(init?.body ?? '{}')).email as string
+        const row = (await db.select().from(subscribers).where(eq(subscribers.email, email)))[0]
+        clocks.push(row?.syncingStartedAt ?? 0)
+        return new Response(JSON.stringify({ data: { id: 'sub_tick' } }), { status: 201 })
+      },
+    })
+    expect(clocks).toHaveLength(2)
+    expect(clocks[0]).not.toBe(clocks[1])
+    expect(Math.abs((clocks[0] ?? 0) - (clocks[1] ?? 0))).toBeGreaterThanOrEqual(70_000)
+    await close()
+  })
+
+  it('does not reclaim a row onto a clock that is not newer than the one it saw', async () => {
+    const { db, close } = await createTestDatabase()
+    const observed = 80_000
+    const inserted = await db
+      .insert(subscribers)
+      .values({
+        email: 'clock@example.com',
+        createdAt: 1,
+        destination: 'local',
+        beehiivId: null,
+        status: SYNCING_SUBSCRIBER_STATUS,
+        syncingStartedAt: observed,
+      })
+      .returning({ id: subscribers.id })
+    const id = inserted[0]?.id ?? 0
+    expect(await reclaimStaleSubscriber(db, id, observed, observed)).toBe(false)
+    expect(await reclaimStaleSubscriber(db, id, observed, observed - 1)).toBe(false)
+    expect((await db.select().from(subscribers))[0]?.syncingStartedAt).toBe(observed)
+    expect(await reclaimStaleSubscriber(db, id, observed, observed + 1)).toBe(true)
+    expect((await db.select().from(subscribers))[0]?.syncingStartedAt).toBe(observed + 1)
+    await close()
+  })
+
+  it('marks validating synced and leaves inactive or unsubscribed without posting', async () => {
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    expect(beehiivFoundAction('active')).toBe('sync')
+    expect(beehiivFoundAction('Validating')).toBe('sync')
+    expect(beehiivFoundAction('inactive')).toBe('opt_out')
+    expect(beehiivFoundAction('unsubscribed')).toBe('opt_out')
+    expect(beehiivFoundAction('')).toBe('leave')
+    const { db, close } = await createTestDatabase()
+    const now = 9_000_000
+    await db.insert(subscribers).values([
+      {
+        email: 'validating@example.com',
+        createdAt: 1,
+        destination: 'local',
+        beehiivId: null,
+        status: SYNCING_SUBSCRIBER_STATUS,
+        syncingStartedAt: null,
+      },
+      {
+        email: 'inactive@example.com',
+        createdAt: 1,
+        destination: 'local',
+        beehiivId: null,
+        status: SYNCING_SUBSCRIBER_STATUS,
+        syncingStartedAt: null,
+      },
+      {
+        email: 'gone@example.com',
+        createdAt: 1,
+        destination: 'local',
+        beehiivId: null,
+        status: SYNCING_SUBSCRIBER_STATUS,
+        syncingStartedAt: null,
+      },
+      {
+        email: 'unknown@example.com',
+        createdAt: 1,
+        destination: 'local',
+        beehiivId: null,
+        status: SYNCING_SUBSCRIBER_STATUS,
+        syncingStartedAt: null,
+      },
+    ])
+    let posts = 0
+    const fetchImpl: typeof fetch = async (input, init) => {
+      if (init?.method === 'POST') {
+        posts += 1
+        return new Response('{}', { status: 201 })
+      }
+      const url = String(input)
+      if (url.includes(encodeURIComponent('validating@example.com'))) {
+        return new Response(JSON.stringify({ data: { id: 'sub_validating', status: 'validating' } }), { status: 200 })
+      }
+      if (url.includes(encodeURIComponent('inactive@example.com'))) {
+        return new Response(JSON.stringify({ data: { id: 'sub_inactive', status: 'inactive' } }), { status: 200 })
+      }
+      if (url.includes(encodeURIComponent('gone@example.com'))) {
+        return new Response(JSON.stringify({ data: { id: 'sub_gone', status: 'unsubscribed' } }), { status: 200 })
+      }
+      return new Response(JSON.stringify({ data: { id: 'sub_unknown' } }), { status: 200 })
+    }
+    const applied = await reconcileStuckSubscribers({ db, apply: true, now, fetchImpl })
+    expect(applied).toMatchObject({ stale: 4, synced: 1, released: 0, optedOut: 2, failed: 1 })
+    expect(posts).toBe(0)
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'validating@example.com')))[0]).toMatchObject({
+      status: SYNCED_SUBSCRIBER_STATUS,
+      destination: 'beehiiv',
+    })
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'inactive@example.com')))[0]?.status).toBe(
+      UNSUBSCRIBED_SUBSCRIBER_STATUS,
+    )
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'gone@example.com')))[0]?.status).toBe(
+      UNSUBSCRIBED_SUBSCRIBER_STATUS,
+    )
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'unknown@example.com')))[0]?.status).toBe(
+      SYNCING_SUBSCRIBER_STATUS,
+    )
+    expect(await countSyncedSubscribers(db)).toBe(1)
+    const again = await subscribeToNewsletter({
+      email: 'gone@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-opt-out',
+      now,
+      fetchImpl,
+    })
+    expect(again).toEqual({ status: 'success', message: UNSUBSCRIBED_NOTICE, tracked: false })
+    expect(posts).toBe(0)
+    await close()
   })
 })

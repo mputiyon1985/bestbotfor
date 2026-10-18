@@ -1,7 +1,8 @@
-import { and, eq, isNull, type SQL } from 'drizzle-orm'
+import { and, count, eq, isNull, lte, or, type SQL } from 'drizzle-orm'
+import guardConfig from '../../config/db-guard.json'
 import { createBeehiivSubscription, isBeehiivConfigured, lookupBeehiivSubscriptionByEmail } from './beehiiv-api'
 import type { Database } from './db/client'
-import { dbHost, isProdHost, UNPARSEABLE } from './db/guard'
+import { dbHost, isProdHost, normalizeHost, UNPARSEABLE, type DbGuardConfig } from './db/guard'
 import { subscribers } from './db/schema'
 import { absoluteUrl } from './site'
 import { newsletterReferringPath } from './newsletter-source'
@@ -10,7 +11,13 @@ import {
   SYNCED_SUBSCRIBER_STATUS,
   SYNCING_STALE_AFTER_MS,
   SYNCING_SUBSCRIBER_STATUS,
+  UNSUBSCRIBED_SUBSCRIBER_STATUS,
 } from './newsletter-status'
+
+const dbGuard = guardConfig as DbGuardConfig
+
+/** A stuck-row override below one minute would treat an in-flight claim as stale. */
+export const MIN_STUCK_AFTER_MS = 60_000
 
 export type BackfillResult = {
   dryRun: boolean
@@ -25,12 +32,15 @@ export type SubscriberHold =
   | { kind: 'held'; id: number; created: boolean; claimClock: number }
   | { kind: 'done' }
   | { kind: 'busy' }
+  | { kind: 'opted_out' }
+  | { kind: 'unavailable' }
 
 export type ReconcileResult = {
   dryRun: boolean
   stale: number
   synced: number
   released: number
+  optedOut: number
   failed: number
   unconfigured: boolean
 }
@@ -49,7 +59,7 @@ export function isSyncingStale(startedAt: number | null, now: number, staleAfter
   return now - startedAt >= staleAfterMs
 }
 
-/** `--stuck-after-ms` overrides the default. Omitted uses fifteen minutes. */
+/** `--stuck-after-ms` overrides the default. Omitted uses fifteen minutes. Values under one minute are refused. */
 export function readStuckAfterMs(argv: readonly string[], fallback = SYNCING_STALE_AFTER_MS): number {
   const inline = argv.find((arg) => arg.startsWith('--stuck-after-ms='))
   const index = argv.indexOf('--stuck-after-ms')
@@ -58,30 +68,25 @@ export function readStuckAfterMs(argv: readonly string[], fallback = SYNCING_STA
   if (!raw || !/^[1-9][0-9]*$/.test(raw)) {
     throw new Error('--stuck-after-ms must be a positive number of milliseconds.')
   }
-  return Number(raw)
-}
-
-/**
- * Turso's database name is the first label of the host. A local file uses its file name.
- * `BACKFILL_PROD_CONFIRM` has to equal this before a production launch.
- */
-export function newsletterDatabaseName(url: string): string | null {
-  const trimmed = url.trim()
-  const host = dbHost(trimmed)
-  if (host && host !== UNPARSEABLE) {
-    const label = host.split('.')[0] ?? ''
-    return label || null
+  const value = Number(raw)
+  if (value < MIN_STUCK_AFTER_MS) {
+    throw new Error(`--stuck-after-ms must be at least ${MIN_STUCK_AFTER_MS} milliseconds.`)
   }
-  if (trimmed === ':memory:' || host === UNPARSEABLE) return null
-  if (!trimmed.startsWith('file:')) return null
-  const pathPart = trimmed.slice('file:'.length).replace(/^\/\//, '')
-  const base = pathPart.split(/[/\\]/).filter(Boolean).pop() ?? ''
-  return base || null
+  return value
+}
+
+/** Active and validating (pending double opt-in) may be marked synced. Inactive and unsubscribed may not. */
+export function beehiivFoundAction(status: string): 'sync' | 'opt_out' | 'leave' {
+  const value = status.trim().toLowerCase()
+  if (value === 'active' || value === 'validating') return 'sync'
+  if (value === 'inactive' || value === 'unsubscribed') return 'opt_out'
+  return 'leave'
 }
 
 /**
- * Dry-run is the caller's default. Production and the production database are refused
- * unless `productionLaunch` is set and `confirmName` equals `newsletterDatabaseName`.
+ * Dry-run is the caller's default. A production launch requires the parsed host to be
+ * exactly a `prodHosts` entry and `confirmName` to equal a `prodDbNames` entry.
+ * The confirm value is not taken from the URL and is not included in a refusal.
  */
 export function newsletterBackfillAllowed(input: {
   vercelEnv: string | undefined
@@ -92,15 +97,21 @@ export function newsletterBackfillAllowed(input: {
   const url = input.databaseUrl?.trim() ?? ''
   if (!url) return { ok: false, reason: 'Set TURSO_DATABASE_URL before the newsletter backfill.' }
   if (input.productionLaunch) {
-    const name = newsletterDatabaseName(url)
-    const confirm = input.confirmName?.trim() ?? ''
-    if (!name || confirm !== name) {
+    const host = dbHost(url)
+    const prodHosts = dbGuard.prodHosts.map((entry) => normalizeHost(entry))
+    if (!host || host === UNPARSEABLE || !prodHosts.includes(host)) {
       return {
         ok: false,
-        reason: name
-          ? `BACKFILL_PROD_CONFIRM must equal the database name "${name}" before a production launch.`
-          : 'BACKFILL_PROD_CONFIRM must equal the database name before a production launch.',
+        reason:
+          host && host !== UNPARSEABLE
+            ? `Newsletter backfill production launch refuses host ${host}.`
+            : 'Newsletter backfill production launch refuses this database URL.',
       }
+    }
+    const confirm = input.confirmName?.trim() ?? ''
+    const confirmValues = dbGuard.prodDbNames.map((entry) => entry.trim()).filter((entry) => entry.length > 0)
+    if (!confirm || !confirmValues.includes(confirm)) {
+      return { ok: false, reason: 'BACKFILL_PROD_CONFIRM does not match the configured confirm value.' }
     }
     return { ok: true }
   }
@@ -139,6 +150,7 @@ export async function reclaimStaleSubscriber(
   observedClock: number | null,
   now: number,
 ): Promise<boolean> {
+  if (observedClock !== null && now <= observedClock) return false
   const claimed = await db
     .update(subscribers)
     .set({ status: SYNCING_SUBSCRIBER_STATUS, syncingStartedAt: now })
@@ -160,6 +172,25 @@ export async function finishSubscriberSync(
       destination: 'beehiiv',
       beehiivId,
       status: SYNCED_SUBSCRIBER_STATUS,
+      syncingStartedAt: null,
+    })
+    .where(and(eq(subscribers.id, id), eq(subscribers.status, SYNCING_SUBSCRIBER_STATUS), sameClaimClock(claimClock)))
+    .returning({ id: subscribers.id })
+  return saved.length === 1
+}
+
+/** Records an opt-out only while this caller still owns the claim clock. Does not mark the row synced. */
+async function noteSubscriberUnsubscribed(
+  db: Database,
+  id: number,
+  beehiivId: string | null,
+  claimClock: number | null,
+): Promise<boolean> {
+  const saved = await db
+    .update(subscribers)
+    .set({
+      beehiivId,
+      status: UNSUBSCRIBED_SUBSCRIBER_STATUS,
       syncingStartedAt: null,
     })
     .where(and(eq(subscribers.id, id), eq(subscribers.status, SYNCING_SUBSCRIBER_STATUS), sameClaimClock(claimClock)))
@@ -191,18 +222,23 @@ export async function releaseSubscriberHold(
   return released.length === 1
 }
 
+function holdFromStatus(status: string | undefined): SubscriberHold {
+  if (status === UNSUBSCRIBED_SUBSCRIBER_STATUS) return { kind: 'opted_out' }
+  return { kind: 'busy' }
+}
+
 async function claimOrDone(db: Database, id: number, now: number): Promise<SubscriberHold> {
   const claimed = await claimPendingSubscriber(db, id, now)
   if (claimed) return { kind: 'held', id, created: false, claimClock: now }
   const again = await db.select().from(subscribers).where(eq(subscribers.id, id)).limit(1)
   if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS && again[0].destination === 'beehiiv') return { kind: 'done' }
-  return { kind: 'busy' }
+  return holdFromStatus(again[0]?.status)
 }
 
 async function syncedOrBusy(db: Database, id: number): Promise<SubscriberHold> {
   const again = await db.select().from(subscribers).where(eq(subscribers.id, id)).limit(1)
   if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS && again[0].destination === 'beehiiv') return { kind: 'done' }
-  return { kind: 'busy' }
+  return holdFromStatus(again[0]?.status)
 }
 
 async function holdExisting(
@@ -212,11 +248,19 @@ async function holdExisting(
   fetchImpl?: typeof fetch,
 ): Promise<SubscriberHold> {
   if (row.status === SYNCED_SUBSCRIBER_STATUS && row.destination === 'beehiiv') return { kind: 'done' }
+  if (row.status === UNSUBSCRIBED_SUBSCRIBER_STATUS) return { kind: 'opted_out' }
   if (row.status === SYNCING_SUBSCRIBER_STATUS) {
     if (!isSyncingStale(row.syncingStartedAt, now)) return { kind: 'busy' }
     const observedClock = row.syncingStartedAt
     const lookup = await lookupBeehiivSubscriptionByEmail({ email: row.email, fetchImpl })
     if (lookup.outcome === 'found') {
+      const action = beehiivFoundAction(lookup.status)
+      if (action === 'opt_out') {
+        const noted = await noteSubscriberUnsubscribed(db, row.id, lookup.id, observedClock)
+        if (noted) return { kind: 'opted_out' }
+        return syncedOrBusy(db, row.id)
+      }
+      if (action === 'leave') return { kind: 'unavailable' }
       const saved = await finishSubscriberSync(db, row.id, lookup.id, observedClock)
       if (saved) return { kind: 'done' }
       return syncedOrBusy(db, row.id)
@@ -226,7 +270,7 @@ async function holdExisting(
       if (!won) return syncedOrBusy(db, row.id)
       return { kind: 'held', id: row.id, created: false, claimClock: now }
     }
-    return { kind: 'busy' }
+    return { kind: 'unavailable' }
   }
   if (row.status !== PENDING_SUBSCRIBER_STATUS) return { kind: 'busy' }
   return claimOrDone(db, row.id, now)
@@ -266,10 +310,23 @@ export async function holdSubscriberForBeehiiv(
   }
 }
 
+async function countSubscribers(db: Database, where: SQL | undefined): Promise<number> {
+  const [row] = await db.select({ total: count() }).from(subscribers).where(where)
+  return Number(row?.total ?? 0)
+}
+
+function staleSyncingFilter(now: number, staleAfterMs: number): SQL {
+  const cutoff = now - staleAfterMs
+  return and(
+    eq(subscribers.status, SYNCING_SUBSCRIBER_STATUS),
+    or(isNull(subscribers.syncingStartedAt), lte(subscribers.syncingStartedAt, cutoff)),
+  ) as SQL
+}
+
 /**
  * Sends each pending address to Beehiiv with double opt-in. The row is marked syncing
- * before the call. A second run skips rows already synced or still in progress.
- * Dry-run counts them and does not call Beehiiv.
+ * before the call, using the clock at claim time. A second run skips rows already synced
+ * or still in progress. Dry-run counts rows and does not read email addresses.
  */
 export async function backfillPendingSubscribers(input: {
   db: Database
@@ -277,16 +334,13 @@ export async function backfillPendingSubscribers(input: {
   fetchImpl?: typeof fetch
   now?: number
 }): Promise<BackfillResult> {
-  const pendingRows = await input.db.select().from(subscribers).where(eq(subscribers.status, PENDING_SUBSCRIBER_STATUS))
-  const syncingRows = await input.db
-    .select({ id: subscribers.id })
-    .from(subscribers)
-    .where(eq(subscribers.status, SYNCING_SUBSCRIBER_STATUS))
+  const pending = await countSubscribers(input.db, eq(subscribers.status, PENDING_SUBSCRIBER_STATUS))
+  const syncing = await countSubscribers(input.db, eq(subscribers.status, SYNCING_SUBSCRIBER_STATUS))
   if (!input.apply) {
     return {
       dryRun: true,
-      pending: pendingRows.length,
-      syncing: syncingRows.length,
+      pending,
+      syncing,
       synced: 0,
       failed: 0,
       unconfigured: !isBeehiivConfigured(),
@@ -295,18 +349,19 @@ export async function backfillPendingSubscribers(input: {
   if (!isBeehiivConfigured()) {
     return {
       dryRun: false,
-      pending: pendingRows.length,
-      syncing: syncingRows.length,
+      pending,
+      syncing,
       synced: 0,
-      failed: pendingRows.length,
+      failed: pending,
       unconfigured: true,
     }
   }
+  const pendingRows = await input.db.select().from(subscribers).where(eq(subscribers.status, PENDING_SUBSCRIBER_STATUS))
   let synced = 0
   let failed = 0
-  const now = input.now ?? Date.now()
   for (const row of pendingRows) {
-    const claimed = await claimPendingSubscriber(input.db, row.id, now)
+    const claimedAt = input.now ?? Date.now()
+    const claimed = await claimPendingSubscriber(input.db, row.id, claimedAt)
     if (!claimed) continue
     const remote = await createBeehiivSubscription({
       email: row.email,
@@ -314,11 +369,11 @@ export async function backfillPendingSubscribers(input: {
       fetchImpl: input.fetchImpl,
     })
     if (!remote.ok) {
-      await releaseSubscriberHold(input.db, row.id, false, now)
+      await releaseSubscriberHold(input.db, row.id, false, claimedAt)
       failed += 1
       continue
     }
-    const saved = await finishSubscriberSync(input.db, row.id, remote.id, now)
+    const saved = await finishSubscriberSync(input.db, row.id, remote.id, claimedAt)
     if (saved) {
       synced += 1
       continue
@@ -330,7 +385,7 @@ export async function backfillPendingSubscribers(input: {
   return {
     dryRun: false,
     pending: pendingRows.length,
-    syncing: syncingRows.length,
+    syncing,
     synced,
     failed,
     unconfigured: false,
@@ -338,9 +393,10 @@ export async function backfillPendingSubscribers(input: {
 }
 
 /**
- * Looks up each stale syncing row by email. A found address is marked synced and is not posted.
- * A missing address returns to pending. Dry-run counts them and does not call Beehiiv.
- * Fresh syncing rows stay claimed. Syncing rows are not subscriber counts.
+ * Looks up each stale syncing row by email. `active` and `validating` are marked synced
+ * and are not posted. `inactive` and `unsubscribed` are recorded as unsubscribed and are
+ * not posted. A missing address returns to pending. Dry-run counts rows and does not
+ * read email addresses. Fresh syncing rows stay claimed.
  */
 export async function reconcileStuckSubscribers(input: {
   db: Database
@@ -351,14 +407,14 @@ export async function reconcileStuckSubscribers(input: {
 }): Promise<ReconcileResult> {
   const now = input.now ?? Date.now()
   const staleAfterMs = input.staleAfterMs ?? SYNCING_STALE_AFTER_MS
-  const syncingRows = await input.db.select().from(subscribers).where(eq(subscribers.status, SYNCING_SUBSCRIBER_STATUS))
-  const staleRows = syncingRows.filter((row) => isSyncingStale(row.syncingStartedAt, now, staleAfterMs))
+  const staleFilter = staleSyncingFilter(now, staleAfterMs)
   if (!input.apply) {
     return {
       dryRun: true,
-      stale: staleRows.length,
+      stale: await countSubscribers(input.db, staleFilter),
       synced: 0,
       released: 0,
+      optedOut: 0,
       failed: 0,
       unconfigured: !isBeehiivConfigured(),
     }
@@ -366,20 +422,40 @@ export async function reconcileStuckSubscribers(input: {
   if (!isBeehiivConfigured()) {
     return {
       dryRun: false,
-      stale: staleRows.length,
+      stale: await countSubscribers(input.db, staleFilter),
       synced: 0,
       released: 0,
-      failed: staleRows.length,
+      optedOut: 0,
+      failed: await countSubscribers(input.db, staleFilter),
       unconfigured: true,
     }
   }
+  const staleRows = await input.db.select().from(subscribers).where(staleFilter)
   let synced = 0
   let released = 0
+  let optedOut = 0
   let failed = 0
   for (const row of staleRows) {
     const observedClock = row.syncingStartedAt
     const lookup = await lookupBeehiivSubscriptionByEmail({ email: row.email, fetchImpl: input.fetchImpl })
     if (lookup.outcome === 'found') {
+      const action = beehiivFoundAction(lookup.status)
+      if (action === 'leave') {
+        failed += 1
+        continue
+      }
+      if (action === 'opt_out') {
+        const noted = await noteSubscriberUnsubscribed(input.db, row.id, lookup.id, observedClock)
+        if (noted) {
+          optedOut += 1
+          continue
+        }
+        const again = await input.db.select().from(subscribers).where(eq(subscribers.id, row.id)).limit(1)
+        if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS) synced += 1
+        else if (again[0]?.status === UNSUBSCRIBED_SUBSCRIBER_STATUS) optedOut += 1
+        else failed += 1
+        continue
+      }
       const saved = await finishSubscriberSync(input.db, row.id, lookup.id, observedClock)
       if (saved) {
         synced += 1
@@ -387,6 +463,7 @@ export async function reconcileStuckSubscribers(input: {
       }
       const again = await input.db.select().from(subscribers).where(eq(subscribers.id, row.id)).limit(1)
       if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS) synced += 1
+      else if (again[0]?.status === UNSUBSCRIBED_SUBSCRIBER_STATUS) optedOut += 1
       else failed += 1
       continue
     }
@@ -399,10 +476,11 @@ export async function reconcileStuckSubscribers(input: {
       const again = await input.db.select().from(subscribers).where(eq(subscribers.id, row.id)).limit(1)
       if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS) synced += 1
       else if (again[0]?.status === PENDING_SUBSCRIBER_STATUS) released += 1
+      else if (again[0]?.status === UNSUBSCRIBED_SUBSCRIBER_STATUS) optedOut += 1
       else failed += 1
       continue
     }
     failed += 1
   }
-  return { dryRun: false, stale: staleRows.length, synced, released, failed, unconfigured: false }
+  return { dryRun: false, stale: staleRows.length, synced, released, optedOut, failed, unconfigured: false }
 }

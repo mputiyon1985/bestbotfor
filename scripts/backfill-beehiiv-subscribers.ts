@@ -1,9 +1,8 @@
-import { assertSafeDbTarget } from '../src/lib/db/guard'
+import { assertSafeDbTarget, dbHost } from '../src/lib/db/guard'
 import { getDb } from '../src/lib/db/client'
 import {
   backfillPendingSubscribers,
   newsletterBackfillAllowed,
-  newsletterDatabaseName,
   readStuckAfterMs,
   reconcileStuckSubscribers,
 } from '../src/lib/newsletter-backfill'
@@ -11,9 +10,9 @@ import {
 /**
  * Dry-run unless --apply is passed. --production-launch and --reconcile-stuck
  * still dry-run until --apply. Production needs both that flag and
- * BACKFILL_PROD_CONFIRM set to the database name.
+ * BACKFILL_PROD_CONFIRM set to the confirm value in config/db-guard.json.
  * Beehiiv double opt-in stays on, so a confirmation email is not skipped.
- * Addresses are not printed.
+ * Addresses are not printed. The target host is printed before the counts.
  */
 async function main(): Promise<void> {
   const apply = process.argv.includes('--apply')
@@ -40,11 +39,9 @@ async function main(): Promise<void> {
     }
   }
   const url = databaseUrl?.trim() ?? ''
-  if (productionLaunch) {
-    console.log(`Newsletter backfill production launch confirmed for ${newsletterDatabaseName(url)}.`)
-  } else {
-    assertSafeDbTarget(url)
-  }
+  if (!productionLaunch) assertSafeDbTarget(url)
+  const host = dbHost(url)
+  console.log(`Newsletter backfill target host ${host ?? 'local file'}.`)
   if (reconcile) {
     const result = await reconcileStuckSubscribers({ db: getDb(), apply, staleAfterMs })
     console.log(
@@ -54,6 +51,7 @@ async function main(): Promise<void> {
         stale: result.stale,
         synced: result.synced,
         released: result.released,
+        optedOut: result.optedOut,
         failed: result.failed,
         unconfigured: result.unconfigured,
         productionLaunch,

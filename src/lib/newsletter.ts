@@ -9,33 +9,37 @@ import { emailSchema, newsletterFieldsSchema } from './validation'
 import {
   finishSubscriberSync,
   holdSubscriberForBeehiiv,
-  isSyncingStale,
   releaseSubscriberHold,
 } from './newsletter-backfill'
 import {
   PENDING_SUBSCRIBER_STATUS,
   PENDING_SUCCESS,
+  RACE_SUCCESS,
   SYNCED_SUBSCRIBER_STATUS,
   SYNCED_SUCCESS,
-  SYNCING_SUBSCRIBER_STATUS,
+  UNSUBSCRIBED_NOTICE,
+  UNSUBSCRIBED_SUBSCRIBER_STATUS,
 } from './newsletter-status'
 
 export type { BackfillResult, ReconcileResult } from './newsletter-backfill'
 export {
   backfillPendingSubscribers,
+  beehiivFoundAction,
   isSyncingStale,
   newsletterBackfillAllowed,
-  newsletterDatabaseName,
   readStuckAfterMs,
   reconcileStuckSubscribers,
 } from './newsletter-backfill'
 export {
   PENDING_SUBSCRIBER_STATUS,
   PENDING_SUCCESS,
+  RACE_SUCCESS,
   SYNCED_SUBSCRIBER_STATUS,
   SYNCED_SUCCESS,
   SYNCING_STALE_AFTER_MS,
   SYNCING_SUBSCRIBER_STATUS,
+  UNSUBSCRIBED_NOTICE,
+  UNSUBSCRIBED_SUBSCRIBER_STATUS,
 } from './newsletter-status'
 
 export type NewsletterResult = {
@@ -105,7 +109,13 @@ export async function subscribeToNewsletter(input: {
   if (isBeehiivConfigured()) {
     const held = await holdSubscriberForBeehiiv(input.db, normalized, input.now ?? Date.now(), input.fetchImpl)
     if (held.kind === 'done') return { status: 'success', message: SYNCED_SUCCESS, tracked: false }
+    if (held.kind === 'opted_out') {
+      return { status: 'success', message: UNSUBSCRIBED_NOTICE, tracked: false }
+    }
     if (held.kind === 'busy') {
+      return { status: 'success', message: RACE_SUCCESS, tracked: false }
+    }
+    if (held.kind === 'unavailable') {
       return {
         status: 'error',
         message: "We couldn't add you just now. Try again in a few minutes.",
@@ -127,28 +137,14 @@ export async function subscribeToNewsletter(input: {
     }
     const saved = await finishSubscriberSync(input.db, held.id, remote.id, held.claimClock)
     if (!saved) {
-      return {
-        status: 'error',
-        message: "We couldn't add you just now. Try again in a few minutes.",
-        tracked: false,
-      }
+      return { status: 'success', message: RACE_SUCCESS, tracked: false }
     }
     return { status: 'success', message: SYNCED_SUCCESS, tracked: true }
   }
 
   if (existing[0]) {
-    if (
-      existing[0].status === SYNCING_SUBSCRIBER_STATUS
-      && isSyncingStale(existing[0].syncingStartedAt, input.now ?? Date.now())
-    ) {
-      return { status: 'success', message: PENDING_SUCCESS, tracked: false }
-    }
-    if (existing[0].status === SYNCING_SUBSCRIBER_STATUS) {
-      return {
-        status: 'error',
-        message: "We couldn't add you just now. Try again in a few minutes.",
-        tracked: false,
-      }
+    if (existing[0].status === UNSUBSCRIBED_SUBSCRIBER_STATUS) {
+      return { status: 'success', message: UNSUBSCRIBED_NOTICE, tracked: false }
     }
     return { status: 'success', message: PENDING_SUCCESS, tracked: false }
   }

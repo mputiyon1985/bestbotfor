@@ -66,7 +66,10 @@ export async function createBeehiivSubscription(input: {
   }
 }
 
-export type BeehiivLookup = { outcome: 'found'; id: string | null } | { outcome: 'missing' } | { outcome: 'error' }
+export type BeehiivLookup =
+  | { outcome: 'found'; id: string | null; status: string }
+  | { outcome: 'missing' }
+  | { outcome: 'error' }
 
 /**
  * Reads a subscription by email. A 404 means Beehiiv does not have the address.
@@ -104,9 +107,10 @@ export async function lookupBeehiivSubscriptionByEmail(input: {
   }
 
   try {
-    const body = (await result.json()) as { data?: { id?: string } }
-    return { outcome: 'found', id: body.data?.id ?? null }
+    const body = (await result.json()) as { data?: { id?: string; status?: unknown } }
+    const status = typeof body.data?.status === 'string' ? body.data.status : ''
+    return { outcome: 'found', id: body.data?.id ?? null, status }
   } catch {
-    return { outcome: 'found', id: null }
+    return { outcome: 'found', id: null, status: '' }
   }
 }
