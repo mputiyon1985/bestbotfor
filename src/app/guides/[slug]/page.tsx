@@ -12,7 +12,8 @@ import { formatUsDate } from '@/lib/format'
 import { breadcrumbJsonLd, faqJsonLd } from '@/lib/jsonld'
 import { pageMetadata } from '@/lib/metadata'
 import { absoluteUrl, SITE_NAME } from '@/lib/site'
-import { LOADOUT_PATH } from '@/lib/seo-pages'
+import { LOADOUT_PATH, bestFreeHeading, bestFreePath } from '@/lib/seo-pages'
+import { isFreePageTask } from '@/lib/free-plan'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
@@ -71,6 +72,17 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
                 <li key={task.slug}>
                   <Link href={`/best/${task.slug}`} className="inline-flex min-h-11 items-center underline">
                     {bestGuideHeading(task.name)}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {section.freeLinks ? (
+            <ul aria-label="Free tools by job" className="grid gap-1 sm:grid-cols-2">
+              {taskSeeds.filter((task) => isFreePageTask(task.slug)).map((task) => (
+                <li key={task.slug}>
+                  <Link href={bestFreePath(task.slug)} className="inline-flex min-h-11 items-center underline">
+                    {bestFreeHeading(task.name)}
                   </Link>
                 </li>
               ))}
