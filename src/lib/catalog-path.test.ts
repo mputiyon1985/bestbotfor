@@ -48,17 +48,20 @@ describe('isUnsafeCatalogPath', () => {
     expect(isUnsafeCatalogPath('/tools/?category=coding')).toBe(false)
     expect(isUnsafeCatalogPath('/tools?page=2')).toBe(false)
     expect(isUnsafeCatalogPath('/tools?category=coding-assistant&page=2')).toBe(false)
-    expect(isUnsafeCatalogPath('/best')).toBe(true)
+    expect(isUnsafeCatalogPath('/best')).toBe(false)
     expect(isUnsafeCatalogPath('/go')).toBe(true)
     expect(isUnsafeCatalogPath('/')).toBe(false)
     expect(isUnsafeCatalogPath('/search?q=secret')).toBe(false)
   })
 
-  it('still requires a slug for /go and /best', () => {
+  it('still requires a slug for /go, and lets bare /best reach the jobs hub', () => {
     expect(isUnsafeCatalogPath('/go')).toBe(true)
     expect(isUnsafeCatalogPath('/go/')).toBe(true)
-    expect(isUnsafeCatalogPath('/best')).toBe(true)
-    expect(isUnsafeCatalogPath('/best/')).toBe(true)
+    expect(isUnsafeCatalogPath('/best')).toBe(false)
+    expect(isUnsafeCatalogPath('/best/')).toBe(false)
+    expect(isUnsafeCatalogPath('/best/%2e%2e')).toBe(true)
+    expect(isUnsafeCatalogPath('/best//')).toBe(true)
+    expect(isUnsafeCatalogPath('/best/coding/extra')).toBe(true)
   })
 
   it('reads an absolute URL without letting the parser collapse dot segments', () => {
