@@ -95,6 +95,7 @@ describe('privacy policy facts', () => {
     for (const referringPath of newsletterReferringPaths()) expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain(` ${referringPath}`)
     const page = readFileSync(path.join(process.cwd(), 'src/app/privacy/page.tsx'), 'utf8')
     expect(page).toContain('NEWSLETTER_SIGNUP_PARAGRAPH')
+    expect(page).toContain('SUGGESTION_PRIVACY_PARAGRAPH')
     expect(page).not.toContain('Lawyer note')
   })
 

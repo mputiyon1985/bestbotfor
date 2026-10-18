@@ -496,6 +496,15 @@ export const toolSponsorLinks = sqliteTable(
   (table) => [index('tool_sponsor_links_tool_ends_idx').on(table.toolId, table.endsAt)],
 )
 
+/** Private suggestion box. No address column. Not shown on the site. */
+export const suggestions = sqliteTable('suggestions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  kind: text('kind').notNull(),
+  message: text('message').notNull(),
+  email: text('email'),
+  createdAt: integer('created_at').notNull(),
+})
+
 export const userTombstones = sqliteTable('user_tombstones', {
   userHmac: text('user_hmac').primaryKey(),
   deletedAt: integer('deleted_at').notNull(),

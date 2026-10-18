@@ -8,6 +8,7 @@ import { JsonLd } from '@/components/json-ld'
 import { SiteAnalytics } from '@/components/site-analytics'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
+import { SuggestionDialog, SuggestSomethingLink } from '@/components/suggest-something'
 import { APPLE_TOUCH_ICON_PATH, BRAND, OG_IMAGE_PATH } from '@/lib/brand'
 import { secGpcOptOut } from '@/lib/gpc'
 import { isProductionDeployment } from '@/lib/indexing'
@@ -84,8 +85,12 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <SiteHeader />
       <main id="main" className="mx-auto min-h-[70vh] min-w-0 max-w-5xl px-4 pt-14 pb-10 md:py-10">
         {children}
+        <div id="suggest-something" className="mt-12 scroll-mb-24">
+          <SuggestSomethingLink className="inline-flex min-h-11 items-center gap-2 font-semibold underline-offset-4 hover:underline" />
+        </div>
       </main>
       <SiteFooter />
+      <SuggestionDialog />
       <ConsentBanner gaId={gaId.success ? gaId.data : null} secGpc={secGpc} />
       <JsonLd data={websiteJsonLd()} nonce={nonce} />
       <JsonLd data={organizationJsonLd()} nonce={nonce} />
