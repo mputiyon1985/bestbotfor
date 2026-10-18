@@ -257,14 +257,20 @@ describe('curated compare copy', () => {
     }
   })
 
-  it('does not link AssemblyAI vs Deepgram to a guide that omits one of them', () => {
+  it('links a compare page only to a guide that shows both tools', () => {
+    // AssemblyAI vs Deepgram links no guide. Since the Oct 18 catalog patch took Resemble AI off voice,
+    // /best/voice can show both, so the check is now that every linked guide shows both tools.
     expect(viewFor('assemblyai-vs-deepgram').view.ranking).toBeUndefined()
     const catalog = catalogFromSeeds()
-    for (const task of catalog.tasks) {
-      const shown = toolsForTask(catalog, task.slug)
+    for (const entry of compareCopy) {
+      const href = viewFor(entry.slug).view.ranking?.href
+      if (!href) continue
+      const [a, b] = entry.slug.split('-vs-')
+      const shown = toolsForTask(catalog, href.replace('/best/', ''))
         .slice(0, BEST_GUIDE_TOOL_COUNT)
         .map((tool) => tool.slug)
-      expect(shown.includes('assemblyai') && shown.includes('deepgram'), task.slug).toBe(false)
+      expect(shown, `${entry.slug} -> ${href}`).toContain(a)
+      expect(shown, `${entry.slug} -> ${href}`).toContain(b)
     }
   })
 
