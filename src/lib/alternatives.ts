@@ -45,7 +45,7 @@ export function alternativesHeading(toolName: string): string {
 
 /** The spec's meta, with the job named as a gerund ("for writing code") when it still fits in 155 characters. */
 export function alternativesDescription(toolName: string, taskName?: string): string {
-  const tail = 'ranked by fit and filtered by budget and experience. Free options included. Or get your pick in 30 seconds.'
+  const tail = 'ranked by fit and filtered by budget. Free options included. Or get your pick in 30 seconds.'
   if (taskName) {
     const withJob = `The best ${toolName} alternatives for ${taskGerund(taskName)}, ${tail}`
     if (withJob.length <= 155) return withJob

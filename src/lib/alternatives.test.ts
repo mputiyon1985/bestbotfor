@@ -51,7 +51,7 @@ describe('alternatives pages', () => {
     }
     expect(alternativesTitle('ChatGPT')).toBe('ChatGPT Alternatives: The Best Picks by Budget (2026)')
     expect(alternativesDescription('ChatGPT')).toBe(
-      'The best ChatGPT alternatives, ranked by fit and filtered by budget and experience. Free options included. Or get your pick in 30 seconds.',
+      'The best ChatGPT alternatives, ranked by fit and filtered by budget. Free options included. Or get your pick in 30 seconds.',
     )
     expect(alternativesDescription('Cursor', 'Write code')).toContain('Cursor alternatives for writing code')
   })
