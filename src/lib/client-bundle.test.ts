@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { readFileSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import path from 'node:path'
 import { ESLint } from 'eslint'
 import {
@@ -113,6 +114,51 @@ describe('catalog guard hardening', () => {
     expect(detect("// 'use client'\nexport {}")).toBe(false)
     expect(detect("export const a = 'use client'\n")).toBe(false)
   })
+
+  it('detects a use client directive after a #! line and other string directives', () => {
+    const detect = isClientModuleSource as (text: string) => boolean
+    expect(detect("#!/usr/bin/env node\n'use client'\n")).toBe(true)
+    expect(detect("'use strict'\n'use client'\n")).toBe(true)
+    expect(detect("'use strict'; \"use client\"")).toBe(true)
+    expect(detect("\uFEFF#!/usr/bin/env node\n// a\n'use strict' // b\n/* c */ 'use client'\n")).toBe(true)
+    expect(detect("'use strict'\nexport {}\n'use client'\n")).toBe(false)
+    expect(detect("'abc'.length\n'use client'\n")).toBe(false)
+    expect(detect("'use client'.length\n")).toBe(false)
+    expect(detect("'use strict' + 'use client'\n")).toBe(false)
+    expect(detect("#!/usr/bin/env node\nexport {}\n")).toBe(false)
+  })
+
+  it('lint flags real src/ client fixtures whose directive is not on the first line', () => {
+    // Real files under src/, so the test goes through clientModules() and the
+    // CLIENT_MODULES file list that eslint.config.mjs builds when it loads.
+    const dir = path.join(process.cwd(), 'src', `.lint-fixtures-${process.pid}-${Date.now()}`)
+    const relative = path.relative(process.cwd(), dir).split(path.sep).join('/')
+    const body = "import { SPONSOR_OFFERINGS } from '@/lib/sponsor-offerings'\n\nexport const ids = SPONSOR_OFFERINGS.map((offering) => offering.id)\n"
+    const fixtures: Record<string, { text: string; flagged: boolean }> = {
+      'comment-first.ts': { text: `// A client module.\n/** Docs. */\n'use client'\n\n${body}`, flagged: true },
+      'use-strict-first.ts': { text: `'use strict'\n'use client'\n\n${body}`, flagged: true },
+      'shebang-first.ts': { text: `#!/usr/bin/env node\n'use client'\n\n${body}`, flagged: true },
+      'server-module.ts': { text: `// Not a client module.\n${body}`, flagged: false },
+    }
+    mkdirSync(dir, { recursive: true })
+    try {
+      for (const [name, fixture] of Object.entries(fixtures)) writeFileSync(path.join(dir, name), fixture.text)
+      const run = spawnSync(
+        process.execPath,
+        [path.join(process.cwd(), 'node_modules', 'eslint', 'bin', 'eslint.js'), '--no-cache', '--format', 'json', relative],
+        { cwd: process.cwd(), encoding: 'utf8' },
+      )
+      const results = JSON.parse(run.stdout || '[]') as { filePath: string; messages: { ruleId: string | null }[] }[]
+      for (const [name, fixture] of Object.entries(fixtures)) {
+        const result = results.find((entry) => path.basename(entry.filePath) === name)
+        expect(result, name).toBeDefined()
+        const restricted = (result?.messages ?? []).filter((message) => message.ruleId === '@typescript-eslint/no-restricted-imports')
+        expect(restricted.length, name).toBe(fixture.flagged ? 1 : 0)
+      }
+    } finally {
+      rmSync(dir, { recursive: true, force: true })
+    }
+  }, 120_000)
 
   it('fails when manifests miss app routes or no public route was parsed', () => {
     const appPaths = ['/sponsor/page', '/admin/sponsors/page', '/api/og/route']
