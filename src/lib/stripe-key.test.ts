@@ -88,6 +88,12 @@ describe('stripe key policy', () => {
     expect(portal.indexOf('const stripe = getStripe()')).toBeGreaterThan(-1)
     expect(portal.indexOf('const stripe = getStripe()')).toBeLessThan(portal.indexOf('sessions.create'))
     expect(portal).toContain("if (!stripe || !userId) redirect('/pricing')")
+
+    const sponsor = readFileSync(path.join(process.cwd(), 'src/app/sponsor/actions.ts'), 'utf8')
+    const cardAction = sponsor.slice(sponsor.indexOf('export async function submitSponsorCardAction'))
+    expect(cardAction.indexOf('const stripe = getStripe()')).toBeGreaterThan(-1)
+    expect(cardAction.indexOf('const stripe = getStripe()')).toBeLessThan(cardAction.indexOf('verifyPaidSponsorCheckout'))
+    expect(cardAction).toContain("if (!stripe) return { status: 'error', message: 'That checkout session is not a paid placement.' }")
   })
 
   it('does not turn membership billing on without the membership price', () => {

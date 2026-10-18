@@ -172,6 +172,7 @@ describe('handleStripeWebhook', () => {
       db,
       stripe: stripeStub([event]),
       secret: SECRET,
+      allowLive: false,
     })
     expect(result.status).toBe(400)
     expect(result.body.error).toBe('live-mode-rejected')
