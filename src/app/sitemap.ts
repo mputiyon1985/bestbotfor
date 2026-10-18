@@ -11,9 +11,26 @@ import { bestFreePath } from '@/lib/seo-pages'
 
 export const dynamic = 'force-dynamic'
 
+/** Static sitemap paths. /search stays off this list because that page is noindex. */
+export const SITEMAP_STATIC_PATHS = [
+  '/',
+  '/about',
+  '/how-we-rate',
+  '/newsletter',
+  '/disclosure',
+  '/privacy',
+  '/terms',
+  '/pricing',
+  '/sponsor',
+  '/tools',
+  '/best',
+  '/ai-loadout',
+  ...GUIDES.map((guide) => guidePath(guide.slug)),
+] as const
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const site = getSiteUrl()
-  const staticPaths = ['/', '/about', '/how-we-rate', '/newsletter', '/disclosure', '/privacy', '/terms', '/pricing', '/sponsor', '/search', '/tools', '/best', '/ai-loadout', ...GUIDES.map((guide) => guidePath(guide.slug))]
+  const staticPaths = SITEMAP_STATIC_PATHS
   const entries: MetadataRoute.Sitemap = staticPaths.map((path) => ({
     url: new URL(path, site).toString(),
     changeFrequency: 'weekly',
