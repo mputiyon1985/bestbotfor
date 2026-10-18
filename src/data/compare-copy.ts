@@ -1,5 +1,8 @@
 /**
- * Curated /compare copy checked Oct 17, 2026.
+ * Curated /compare copy. Make, Murf, Lovable, v0, and Synthesia prices were re-checked Oct 18, 2026.
+ * Each page's "Last checked" line uses the vendor "checked" dates in its sources.
+ * When those dates agree, that date is the line. When they differ, the line uses the earliest,
+ * so a later re-check of one tool does not claim the other tool was read that day.
  * `{{a:task}}` and `{{b:task}}` are fit scores filled from the catalog at render time.
  * The numbers in the handoff are a snapshot for review, not a second source of truth.
  * "Our rating" cells are also filled from the catalog, not stored here.
@@ -58,17 +61,49 @@ export type CompareCopy = {
   ranking?: { href: string; label: string }
 }
 
-export const COMPARE_CHECKED_LINE =
-  "Last checked Oct 17, 2026. Prices change, so confirm on the vendor's site before you pay."
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
+
+const CHECKED_DATE = new RegExp(
+  `(?:^|[^A-Za-z-])checked ((?:${MONTHS.join('|')}) \\d{1,2}, \\d{4})`,
+  'g',
+)
+
+/**
+ * Latest vendor check date when every price source on the page shares it.
+ * Earliest when they differ, because the later date would overclaim the older source.
+ */
+export function comparePageCheckedLine(sources: readonly string[]): string {
+  const dates = new Set<string>()
+  for (const source of sources) {
+    for (const match of source.matchAll(CHECKED_DATE)) {
+      const date = match[1]
+      if (date) dates.add(date)
+    }
+  }
+  const date = [...dates].sort(compareCheckedDate)[0]
+  if (!date) throw new Error('Compare page is missing a vendor checked date')
+  return `Last checked ${date}. Prices change, so confirm on the vendor's site before you pay.`
+}
+
+function compareCheckedDate(left: string, right: string): number {
+  return checkedDateValue(left) - checkedDateValue(right)
+}
+
+function checkedDateValue(label: string): number {
+  const match = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2}), (\d{4})$/.exec(label)
+  if (!match) return Number.MAX_SAFE_INTEGER
+  const month = MONTHS.indexOf(match[1] as (typeof MONTHS)[number]) + 1
+  return Number(match[3]) * 10000 + month * 100 + Number(match[2])
+}
 
 export const COMPARE_SECONDARY_NOTE =
   "[S] = secondary source (third party), not read directly on the vendor's page."
 
-export const COMPARE_DIGEST_FINE_PRINT = 'Free. One email each weekday. Unsubscribe anytime.'
+export const COMPARE_DIGEST_FINE_PRINT = 'Free AI newsletter, first issue coming soon. Unsubscribe anytime.'
 
 const catalogSource = 'BestBotFor catalog: src/data/scores-v2.3.csv (Our rating, category rank) and live /best pages (fit %), read Oct 17, 2026'
 
-export const compareCopy: readonly CompareCopy[] = [
+const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
   {
     slug: 'elevenlabs-vs-murf',
     metaTitle: 'ElevenLabs vs Murf: Which AI Voice Tool Is Right for You?',
@@ -79,7 +114,6 @@ export const compareCopy: readonly CompareCopy[] = [
     nameB: 'Murf',
     verdict:
       'For most voiceovers, pick **ElevenLabs**: it scores higher on our voiceover job ({{a:voice}} vs {{b:voice}}) and its free plan gives 10,000 credits a month. Pick **Murf** if you want a studio-style editor for scripts and slides, billed by hours of voice.',
-    checkedLine: COMPARE_CHECKED_LINE,
     pickAHeading: 'Pick ElevenLabs if…',
     pickBHeading: 'Pick Murf if…',
     pickA: [
@@ -99,16 +133,16 @@ export const compareCopy: readonly CompareCopy[] = [
         label: 'Free plan',
         kind: 'text',
         a: 'Yes: 10,000 credits a month, no commercial license',
-        b: 'Studio: 10 minutes of voice generation, no downloads [S]. API: $10 free credit',
-        source: '[1]; [2]; [S1]',
+        b: 'Studio: 10 minutes of voice generation, no downloads. API: $10 free credit',
+        source: '[1]; [2]',
       },
       {
         label: 'Paid from',
         kind: 'text',
-        a: 'Starter $6/mo (first month $1 until Oct 18); Creator $22/mo',
-        aAfter: { after: '2026-10-18', text: 'Starter $6/mo; Creator $22/mo' },
-        b: 'Studio Creator $29/mo, or $19/mo billed yearly [S]',
-        source: '[1]; [S1]',
+        // Standard list prices only. Nova left off the time-limited first-month promos so this cell does not go stale.
+        a: 'Starter $6/mo; Creator $22/mo',
+        b: 'Studio Creator $29/mo, or $19/mo billed yearly',
+        source: '[1]; [2]',
       },
       {
         label: 'How you pay',
@@ -127,13 +161,13 @@ export const compareCopy: readonly CompareCopy[] = [
       { label: 'Skill level', kind: 'text', a: 'Beginner', b: 'Beginner', source: 'BestBotFor catalog' },
     ],
     secondaryNote: COMPARE_SECONDARY_NOTE,
-    cta: 'Voice tools change prices almost monthly. Get **The Daily Bot**, a short daily email with new AI tools and price changes, so you hear when this verdict changes.',
+    cta: 'Voice tools change prices almost monthly. Get **The Daily Bot** for new AI tools and price changes, so you hear when this verdict changes.',
     sources: [
       '[1] ElevenLabs pricing: https://elevenlabs.io/pricing (vendor, checked Oct 17, 2026)',
-      '[2] Murf pricing (API tab): https://murf.ai/pricing (vendor, checked Oct 17, 2026)',
-      '[S1] Murf Studio prices (secondary: Murf Studio tab renders client-side and was not readable by our fetch): https://vorec.ai/blog/murf-pricing ; https://leapfun.ai/murf-pricing (third party, read Oct 12 and Oct 2, 2026)',
+      '[2] Murf pricing: https://murf.ai/pricing (vendor, checked Oct 18, 2026)',
       catalogSource,
     ],
+    ranking: { href: '/best/voice', label: 'See the full Voice ranking' },
   },
   {
     slug: 'n8n-vs-make',
@@ -145,7 +179,6 @@ export const compareCopy: readonly CompareCopy[] = [
     nameB: 'Make',
     verdict:
       'Pick **Make** if you want visual automations without code and a real free plan. Pick **n8n** if you are technical, want to build AI agents, or want to self-host for free. It is #1 in our Automation rating.',
-    checkedLine: COMPARE_CHECKED_LINE,
     pickAHeading: 'Pick n8n if…',
     pickBHeading: 'Pick Make if…',
     pickA: [
@@ -154,7 +187,7 @@ export const compareCopy: readonly CompareCopy[] = [
       'You want to self-host for free (Community Edition) or pay per full workflow run, not per step',
     ],
     pickB: [
-      'You want a no-code, visual builder with 1,000+ app integrations',
+      'You want a no-code, visual builder with 3,500+ apps',
       'You want a free cloud plan (1,000 credits a month)',
       'You run simpler, lower-volume automations',
     ],
@@ -173,8 +206,8 @@ export const compareCopy: readonly CompareCopy[] = [
         label: 'Paid from',
         kind: 'text',
         a: 'Starter €20/mo billed yearly; Pro €50/mo billed yearly',
-        b: 'Core $9/mo billed yearly or $10.59 monthly (10,000 credits) [S]',
-        source: '[3]; [S2]',
+        b: 'Core $9/mo, Pro $16/mo, Team $29/mo billed yearly; monthly billing costs more. Each starts at 10,000 credits.',
+        source: '[3]; [4]',
       },
       {
         label: 'How you pay',
@@ -186,13 +219,13 @@ export const compareCopy: readonly CompareCopy[] = [
       { label: 'Skill level', kind: 'text', a: 'Advanced', b: 'Intermediate', source: 'BestBotFor catalog' },
     ],
     secondaryNote: COMPARE_SECONDARY_NOTE,
-    cta: 'Automation pricing shifts often (Make moved to credits on Aug 27). Get **The Daily Bot** for daily AI tool and pricing changes in plain English.',
+    cta: 'Automation pricing shifts often (Make moved to credits on Aug 27). Get **The Daily Bot** for AI tool and pricing changes in plain English.',
     sources: [
       '[3] n8n pricing: https://n8n.io/pricing/ (vendor, checked Oct 17, 2026)',
-      '[4] Make pricing (FAQ: credits, free plan): https://www.make.com/en/pricing (vendor, checked Oct 17, 2026)',
-      '[S2] Make plan prices (secondary: plan cards render client-side): https://meetalog.com/make-com-pricing/ ; https://www.mainsum.com/make-vs-n8n/ (third party, citing make.com Oct 13, 2026)',
+      '[4] Make pricing: https://www.make.com/en/pricing (vendor, checked Oct 18, 2026). Plan prices read on https://www.make.com/en/compare/make-vs-zapier (vendor, checked Oct 18, 2026)',
       catalogSource,
     ],
+    ranking: { href: '/best/automation', label: 'See the full Automation ranking' },
   },
   {
     slug: 'heygen-vs-synthesia',
@@ -204,7 +237,6 @@ export const compareCopy: readonly CompareCopy[] = [
     nameB: 'Synthesia',
     verdict:
       'Pick **Synthesia** for training and business video. It edges our "make a video" fit ({{b:video}} vs {{a:video}}) and supports 140+ languages. Pick **HeyGen** for marketing and creator videos: it has a free plan with 3 short videos a month, and Pro exports in 4K.',
-    checkedLine: COMPARE_CHECKED_LINE,
     pickAHeading: 'Pick HeyGen if…',
     pickBHeading: 'Pick Synthesia if…',
     pickA: [
@@ -254,9 +286,10 @@ export const compareCopy: readonly CompareCopy[] = [
     cta: 'AI video plans change credits and prices fast. Get **The Daily Bot** and we will tell you when HeyGen or Synthesia changes.',
     sources: [
       '[5] HeyGen pricing: https://www.heygen.com/pricing (vendor, checked Oct 17, 2026)',
-      '[6] Synthesia pricing: https://www.synthesia.io/pricing (vendor, checked Oct 17, 2026)',
+      '[6] Synthesia pricing: https://www.synthesia.io/pricing (vendor, checked Oct 18, 2026)',
       catalogSource,
     ],
+    ranking: { href: '/best/video', label: 'See the full Video ranking' },
   },
   {
     slug: 'descript-vs-runway',
@@ -268,7 +301,6 @@ export const compareCopy: readonly CompareCopy[] = [
     nameB: 'Runway',
     verdict:
       'They do different jobs. Pick **Descript** to edit recorded video and podcasts by editing the transcript. Pick **Runway** to generate new shots from prompts. It is our top pick for "make a video" (fit {{b:video}}).',
-    checkedLine: COMPARE_CHECKED_LINE,
     pickAHeading: 'Pick Descript if…',
     pickBHeading: 'Pick Runway if…',
     pickA: [
@@ -321,6 +353,7 @@ export const compareCopy: readonly CompareCopy[] = [
       '[8] Runway pricing: https://runwayml.com/pricing (vendor, checked Oct 17, 2026)',
       catalogSource,
     ],
+    ranking: { href: '/best/video', label: 'See the full Video ranking' },
   },
   {
     slug: 'granola-vs-fathom',
@@ -332,7 +365,6 @@ export const compareCopy: readonly CompareCopy[] = [
     nameB: 'Fathom',
     verdict:
       "Pick **Granola** if you don't want a bot joining your calls and mostly need clean notes. Pick **Fathom** if you want unlimited free recordings and clips, with history beyond 30 days on the free plan.",
-    checkedLine: COMPARE_CHECKED_LINE,
     pickAHeading: 'Pick Granola if…',
     pickBHeading: 'Pick Fathom if…',
     pickA: [
@@ -396,7 +428,6 @@ export const compareCopy: readonly CompareCopy[] = [
     nameB: 'Fireflies',
     verdict:
       'For most teams, pick **Fireflies**. It rates higher with us (#2 in Meetings), and Pro is $10 a seat billed yearly. Pick **Fathom** if you are a solo user who wants unlimited recordings and AI summaries for free.',
-    checkedLine: COMPARE_CHECKED_LINE,
     pickAHeading: 'Pick Fathom if…',
     pickBHeading: 'Pick Fireflies if…',
     pickA: [
@@ -442,12 +473,13 @@ export const compareCopy: readonly CompareCopy[] = [
       },
     ],
     secondaryNote: COMPARE_SECONDARY_NOTE,
-    cta: 'Prices on notetakers keep dropping. Get **The Daily Bot**, one short email a day, to catch the next price cut.',
+    cta: 'Prices on notetakers keep dropping. Get **The Daily Bot** to catch the next price cut.',
     sources: [
       '[10] Fathom pricing: https://www.fathom.ai/pricing (vendor, checked Oct 17, 2026)',
       '[11] Fireflies pricing (read from the page HTML; plan grid renders client-side): https://fireflies.ai/pricing (vendor, checked Oct 17, 2026)',
       catalogSource,
     ],
+    ranking: { href: '/best/meetings', label: 'See the full Meetings ranking' },
   },
   {
     slug: 'lovable-vs-v0',
@@ -459,7 +491,6 @@ export const compareCopy: readonly CompareCopy[] = [
     nameB: 'v0',
     verdict:
       "Pick **Lovable** to go from a prompt to a working app with a built-in backend if you don't code. It is our #1 for building an app from a prompt (fit {{a:vibe-coding}}). Pick **v0** if you want polished front-end code that deploys to Vercel and you are comfortable in code.",
-    checkedLine: COMPARE_CHECKED_LINE,
     pickAHeading: 'Pick Lovable if…',
     pickBHeading: 'Pick v0 if…',
     pickA: [
@@ -487,26 +518,27 @@ export const compareCopy: readonly CompareCopy[] = [
         label: 'Paid from',
         kind: 'text',
         a: 'Pro $25/mo (100 credits) or $21/mo billed yearly',
-        b: 'From $30 per user/mo with $30 of included credits',
+        b: 'Plus $30 per user/mo',
         source: '[12a]; [13]',
       },
       {
         label: 'Business tier',
         kind: 'text',
-        a: 'Business from $50/mo',
+        a: 'Business $50/mo, or $42/mo billed yearly',
         b: 'Business $100 per user/mo',
         source: '[12a]; [13]',
       },
       { label: 'Skill level', kind: 'text', a: 'Beginner', b: 'Intermediate', source: 'BestBotFor catalog' },
     ],
     secondaryNote: COMPARE_SECONDARY_NOTE,
-    cta: 'Vibe-coding tools ship new models and plans constantly. Get **The Daily Bot** and keep up in 5 minutes a day.',
+    cta: 'Vibe-coding tools ship new models and plans constantly. Get **The Daily Bot** and keep up in one short read.',
     sources: [
-      '[12] Lovable pricing FAQ: https://lovable.dev/pricing (vendor, checked Oct 17, 2026)',
-      '[12a] Lovable subscription tiers (vendor docs): https://docs.lovable.dev/introduction/subscription-plans (vendor docs, checked Oct 17, 2026)',
-      '[13] v0 pricing: https://v0.app/pricing (vendor, checked Oct 17, 2026)',
+      '[12] Lovable pricing FAQ: https://lovable.dev/pricing (vendor, checked Oct 18, 2026)',
+      '[12a] Lovable subscription tiers (vendor docs): https://docs.lovable.dev/introduction/subscription-plans (vendor docs, checked Oct 18, 2026)',
+      '[13] v0 pricing: https://v0.app/pricing (vendor, checked Oct 18, 2026)',
       catalogSource,
     ],
+    ranking: { href: '/best/vibe-coding', label: 'See the full Build an app from a prompt ranking' },
   },
   {
     slug: 'assemblyai-vs-deepgram',
@@ -518,7 +550,6 @@ export const compareCopy: readonly CompareCopy[] = [
     nameB: 'Deepgram',
     verdict:
       'Both are developer APIs, not apps. For batch transcription, **AssemblyAI** Universal-2 is cheaper per hour ($0.15 vs $0.26 for Deepgram Nova-3). **Deepgram** gives more free credit to start ($200 vs $50) and adds text-to-speech on the same platform.',
-    checkedLine: COMPARE_CHECKED_LINE,
     pickAHeading: 'Pick AssemblyAI if…',
     pickBHeading: 'Pick Deepgram if…',
     pickA: [
@@ -571,7 +602,7 @@ export const compareCopy: readonly CompareCopy[] = [
       { label: 'Skill level', kind: 'skill', source: 'BestBotFor catalog' },
     ],
     secondaryNote: COMPARE_SECONDARY_NOTE,
-    cta: 'Speech AI prices fell again this year. Get **The Daily Bot** for daily AI and API pricing changes.',
+    cta: 'Speech AI prices fell again this year. Get **The Daily Bot** for AI and API pricing changes.',
     sources: [
       '[14] AssemblyAI pricing: https://www.assemblyai.com/pricing (vendor, checked Oct 17, 2026 (page says last updated Sep 28, 2026))',
       '[15] Deepgram pricing: https://deepgram.com/pricing (vendor, checked Oct 17, 2026)',
@@ -579,6 +610,11 @@ export const compareCopy: readonly CompareCopy[] = [
     ],
   },
 ]
+
+export const compareCopy: readonly CompareCopy[] = compareCopyDraft.map((entry) => ({
+  ...entry,
+  checkedLine: comparePageCheckedLine(entry.sources),
+}))
 
 const bySlug = new Map(compareCopy.map((entry) => [entry.slug, entry]))
 

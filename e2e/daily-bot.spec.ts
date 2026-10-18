@@ -26,7 +26,7 @@ test('the homepage offers the Daily Bot', async ({ page }) => {
   const region = dailyBot(page)
   await expect(region).toHaveCount(1)
   await expect(region.getByLabel('Email address')).toBeVisible()
-  await expect(region.getByRole('button', { name: 'Get the daily digest' })).toBeVisible()
+  await expect(region.getByRole('button', { name: 'Get The Daily Bot' })).toBeVisible()
   await expectBelow(page.getByRole('heading', { name: 'Questions', exact: true }), region)
 })
 
@@ -84,7 +84,7 @@ test('a pending signup does not fire newsletter_signup', async ({ page }) => {
   await page.goto('/newsletter')
   const email = `daily-bot-${Date.now()}@example.com`
   await page.getByLabel('Email address').fill(email)
-  await page.getByRole('button', { name: 'Get the daily digest' }).click()
+  await page.getByRole('button', { name: 'Get The Daily Bot' }).click()
   await expect(page.getByRole('status')).toHaveText("You'll get a confirmation email when The Daily Bot launches.")
 
   const before = await page.evaluate(() => (window as AnalyticsWindow).__gaEvents ?? [])
