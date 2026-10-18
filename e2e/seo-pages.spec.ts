@@ -41,7 +41,7 @@ test.describe('seo hub pages', () => {
       await expect(table.getByRole('link', { name: top.name, exact: true }).first()).toHaveAttribute('href', `/tools/${top.slug}`)
       await expect(table.getByRole('link', { name: bestGuideHeading(task.name), exact: true })).toHaveAttribute('href', `/best/${task.slug}`)
     }
-    await expect(page.locator('input[name="source"][value="best"]')).toHaveCount(1)
+    await expect(page.locator('input[name="source"][value="ai-loadout"]')).toHaveCount(1)
     const pdf = page.getByRole('link', { name: 'Download the AI Loadout (PDF)' })
     await expect(pdf).toHaveAttribute('href', '/ai-loadout.pdf')
     const file = await request.get('/ai-loadout.pdf')
@@ -63,6 +63,7 @@ test.describe('seo hub pages', () => {
     const schemas = await page.locator('script[type="application/ld+json"]').allTextContents()
     expect(schemas.some((text) => text.includes('"FAQPage"'))).toBe(true)
     expect(schemas.some((text) => text.includes('"BreadcrumbList"'))).toBe(true)
+    await expect(page.locator('input[name="source"][value="guides"]')).toHaveCount(1)
   })
 
   test('unknown guides are a noindex 404', async ({ page }) => {
