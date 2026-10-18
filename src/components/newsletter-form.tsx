@@ -8,6 +8,8 @@ import { subscribeAction, type NewsletterState } from '@/app/newsletter/actions'
 
 const initial: NewsletterState = { status: 'idle', message: '', tracked: false }
 
+export const NEWSLETTER_BUTTON_LABEL = 'Get The Daily Bot'
+
 export function NewsletterForm({
   source,
   idSuffix = '',
@@ -56,7 +58,7 @@ export function NewsletterForm({
         <input id={honeyId} name="company_website" type="text" tabIndex={-1} autoComplete="off" />
       </div>
       <button type="submit" disabled={pending} className="min-h-12 rounded-full bg-indigo px-5 font-medium text-white">
-        {pending ? 'Sending…' : 'Get the daily digest'}
+        {pending ? 'Sending…' : NEWSLETTER_BUTTON_LABEL}
       </button>
       <p id={statusId} role="status" className={state.status === 'error' ? 'text-danger' : 'text-muted'}>
         {state.message}
