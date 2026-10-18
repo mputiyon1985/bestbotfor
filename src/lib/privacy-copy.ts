@@ -116,7 +116,7 @@ export function rateLimitPrivacyParagraphs(input: RetentionCopyInput = {}): stri
 }
 
 export const NEWSLETTER_SIGNUP_PARAGRAPH =
-  'If you join the newsletter, we store your email address. Before the digest is connected to Beehiiv, we keep that address as a pending signup and you are not subscribed yet. When the digest is connected, we send the address to Beehiiv, including an address we stored while it was pending. You get a confirmation email first (double opt-in). You are subscribed only after you confirm that message. We do not ask for your name on the form.'
+  'If you join the newsletter, we store your email address. Before the digest is connected to Beehiiv, we keep that address as a pending signup and you are not subscribed yet. When the digest is connected, we send that email address to Beehiiv, including an address we stored while it was pending. We also send utm_source set to bestbotfor, utm_medium set to website, and referring_site set to the absolute URL of the page that offered the form. That page is one of /, /result, /best, /compare, or /newsletter. You get a confirmation email first (double opt-in). You are subscribed only after you confirm that message. We do not ask for your name on the form. We keep a newsletter email address for [retention period for the lawyer]. If you unsubscribe, we honor that. The signup form does not turn it back on. The only way back is your own resubscribe link.'
 
 export const SHARING_PARAGRAPH =
   'We use Clerk for accounts, Stripe for payments, Beehiiv for the digest when it is connected, Google Analytics for site measurement when it is configured and analytics is allowed, Vercel to host the site and for cookieless analytics, and Turso to store the database. We do not sell personal information.'

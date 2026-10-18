@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- The privacy policy says a connected newsletter signup sends Beehiiv the email address, `utm_source` `bestbotfor`, `utm_medium` `website`, and `referring_site` as the absolute URL of `/`, `/result`, `/best`, `/compare`, or `/newsletter`. Newsletter email retention is a bracketed placeholder for the lawyer. An unsubscribe stays in place, and the only way back is the person's own resubscribe link. `PRIVACY_UPDATED` stays October 17, 2026. This policy text needs lawyer review before merge.
 - Merged main `f8a6236`. A hand-check of `drizzle/meta/_journal.json` matches the SQL files through `0021` at idx 19. Global Privacy Control gating and `ACTION_LIMITS` are unchanged.
 - The privacy policy says a newsletter address stored before Beehiiv is connected stays a pending signup and is not subscribed yet. When the digest is connected, that address is sent to Beehiiv. A confirmation email (double opt-in) still comes before the address is subscribed. This policy text needs lawyer review before merge.
 - Merged main `1dc745a` (the sponsor stack). A hand-check of `drizzle/meta/_journal.json` against the SQL files matches: 17 tags, idx 0 through 16, one file per tag. `drizzle/0009_sponsorships.sql` is on disk. There is no `0010` file or journal row. Sponsor checkout uses the shared `ACTION_LIMITS`, including the existing newsletter, visit, quiz, checkout, and portal windows. Global Privacy Control gating is unchanged. This policy text needs lawyer review before merge.

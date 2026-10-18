@@ -80,8 +80,13 @@ describe('privacy policy facts', () => {
 
   it('says a newsletter signup gets a confirmation email before the address is subscribed', () => {
     expect(NEWSLETTER_SIGNUP_PARAGRAPH).toBe(
-      'If you join the newsletter, we store your email address. Before the digest is connected to Beehiiv, we keep that address as a pending signup and you are not subscribed yet. When the digest is connected, we send the address to Beehiiv, including an address we stored while it was pending. You get a confirmation email first (double opt-in). You are subscribed only after you confirm that message. We do not ask for your name on the form.',
+      'If you join the newsletter, we store your email address. Before the digest is connected to Beehiiv, we keep that address as a pending signup and you are not subscribed yet. When the digest is connected, we send that email address to Beehiiv, including an address we stored while it was pending. We also send utm_source set to bestbotfor, utm_medium set to website, and referring_site set to the absolute URL of the page that offered the form. That page is one of /, /result, /best, /compare, or /newsletter. You get a confirmation email first (double opt-in). You are subscribed only after you confirm that message. We do not ask for your name on the form. We keep a newsletter email address for [retention period for the lawyer]. If you unsubscribe, we honor that. The signup form does not turn it back on. The only way back is your own resubscribe link.',
     )
+    expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain('utm_source set to bestbotfor')
+    expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain('utm_medium set to website')
+    expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain('referring_site')
+    expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain('[retention period for the lawyer]')
+    expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain('The only way back is your own resubscribe link.')
     const page = readFileSync(path.join(process.cwd(), 'src/app/privacy/page.tsx'), 'utf8')
     expect(page).toContain('NEWSLETTER_SIGNUP_PARAGRAPH')
     expect(page).not.toContain('Lawyer note')
