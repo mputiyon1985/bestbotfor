@@ -8,9 +8,12 @@ import {
   CLIENT_BUNDLE_FORBIDDEN,
   clientBundleHits,
   isAdminRoute,
+  manifestCoverageProblems,
   parseClientReferenceManifest,
   scrubClientBundleText,
 } from './client-bundle'
+// @ts-expect-error -- plain ESM config module without types
+import { isClientModuleSource } from '../../eslint.config.mjs'
 
 const LIVE_PUBLISHABLE = ['pk_', 'live_'].join('')
 const CLERK_FORMAT = ['pk_', 'test_', '... or ', 'pk_', 'live_', '...'].join('')
@@ -96,4 +99,28 @@ describe('sponsor catalog guard', () => {
     expect(queue).toContain("from '@/lib/sponsor-offerings'")
     expect(await lint('src/components/sponsor-card-queue.tsx', queue)).toEqual([])
   }, 60_000)
+})
+
+describe('catalog guard hardening', () => {
+  it('detects a use client directive after leading comments', () => {
+    const detect = isClientModuleSource as (text: string) => boolean
+    expect(detect("'use client'\nexport {}")).toBe(true)
+    expect(detect('"use client";\n')).toBe(true)
+    expect(detect("// header\n// more\n'use client'\n")).toBe(true)
+    expect(detect("/** doc\n * block */\n'use client'\n")).toBe(true)
+    expect(detect("\uFEFF/* a */ // b\n\n  /* c */\n'use client'\n")).toBe(true)
+    expect(detect("import x from 'y'\n'use client'\n")).toBe(false)
+    expect(detect("// 'use client'\nexport {}")).toBe(false)
+    expect(detect("export const a = 'use client'\n")).toBe(false)
+  })
+
+  it('fails when manifests miss app routes or no public route was parsed', () => {
+    const appPaths = ['/sponsor/page', '/admin/sponsors/page', '/api/og/route']
+    expect(manifestCoverageProblems(appPaths, appPaths)).toEqual([])
+    const partial = manifestCoverageProblems(appPaths, ['/admin/sponsors/page', '/api/og/route'])
+    expect(partial.join('\n')).toContain('fewer than the 3 app routes')
+    expect(partial.join('\n')).toContain('/sponsor/page')
+    expect(manifestCoverageProblems(['/admin/page'], ['/admin/page'])).toEqual(['no non-admin route was parsed'])
+    expect(manifestCoverageProblems([], [])).toEqual(['app-paths-manifest.json lists no app routes', 'no non-admin route was parsed'])
+  })
 })

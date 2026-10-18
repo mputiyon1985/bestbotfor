@@ -145,3 +145,14 @@ test('sponsor success and cancel pages do not record the payment', async ({ page
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Checkout canceled')
   await expect(page.getByText(/have not been charged/)).toBeVisible()
 })
+
+test('sponsor pages send no catalog Price env names in the HTML or RSC data', async ({ request }) => {
+  for (const pathname of ['/sponsor', '/sponsor/success']) {
+    const response = await request.get(pathname)
+    expect(response.status(), pathname).toBe(200)
+    const html = await response.text()
+    // The flight data (self.__next_f) carries every server-to-client prop.
+    expect(html, pathname).toContain('self.__next_f')
+    for (const needle of ['priceEnv', 'STRIPE_PRICE_']) expect(html.includes(needle), `${pathname} contains ${needle}`).toBe(false)
+  }
+})
