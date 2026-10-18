@@ -31,7 +31,8 @@ import {
 import { matchesPath } from '@/lib/matches'
 import { pageMetadata } from '@/lib/metadata'
 import { slugSchema } from '@/lib/validation'
-import { BEST_HUB_PATH, LOADOUT_PATH } from '@/lib/seo-pages'
+import { BEST_HUB_PATH, LOADOUT_PATH, bestFreePath } from '@/lib/seo-pages'
+import { isFreePageTask } from '@/lib/free-plan'
 import { guidePath } from '@/content/guides'
 import { alternativesForTask, alternativesPath } from '@/lib/alternatives'
 
@@ -194,6 +195,9 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
       </p>
       <nav aria-label="More guides" className="text-sm text-muted">
         <ul className="flex flex-wrap gap-x-6">
+          {isFreePageTask(task.slug) ? (
+            <li><Link className="inline-flex min-h-11 items-center underline" href={bestFreePath(task.slug)}>Only want free tools?</Link></li>
+          ) : null}
           <li><Link className="inline-flex min-h-11 items-center underline" href={guidePath('how-to-choose-an-ai-tool')}>New to this? How to choose an AI tool</Link></li>
           <li><Link className="inline-flex min-h-11 items-center underline" href={LOADOUT_PATH}>Get the AI Loadout</Link></li>
           {alternatives ? (

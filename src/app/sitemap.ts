@@ -5,6 +5,9 @@ import { GUIDES, guidePath } from '@/content/guides'
 import { listPublicSlugs } from '@/lib/catalog'
 import { indexableMatchPath } from '@/lib/result-index'
 import { getSiteUrl } from '@/lib/site'
+import { loadFreePage } from '@/lib/free-page-data'
+import { isFreePageTask } from '@/lib/free-plan'
+import { bestFreePath } from '@/lib/seo-pages'
 
 export const dynamic = 'force-dynamic'
 
@@ -22,6 +25,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     for (const slug of catalog.tasks) {
       entries.push({ url: new URL(`/best/${slug}`, site).toString(), changeFrequency: 'weekly', priority: 0.8 })
       entries.push({ url: new URL(indexableMatchPath(slug), site).toString(), changeFrequency: 'weekly', priority: 0.6 })
+    }
+    // Free pages follow the same rule as their robots tag: listed only when every note is fresh.
+    for (const slug of catalog.tasks.filter(isFreePageTask)) {
+      const page = await loadFreePage(slug)
+      if (page?.indexable) entries.push({ url: new URL(bestFreePath(slug), site).toString(), changeFrequency: 'weekly', priority: 0.7 })
     }
     for (const slug of catalog.tools) {
       entries.push({ url: new URL(`/tools/${slug}`, site).toString(), changeFrequency: 'weekly', priority: 0.7 })
