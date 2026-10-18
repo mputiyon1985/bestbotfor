@@ -7,8 +7,14 @@ import {
   SPONSOR_SUBSCRIPTION_NOTICE,
 } from '@/lib/sponsor-payment-links'
 
-/** Live-only sponsor subscriptions. Each button opens Stripe's hosted Payment Link. */
-export function SponsorPaymentLinks() {
+/**
+ * Live-only sponsor subscriptions. Each button opens Stripe's hosted Payment Link.
+ * `hideFounding` drops the founding Payment Link once the in-app founding
+ * Prices are configured, so the two founding offers never show together
+ * (one shared cap of 5). The Monthly link is unaffected.
+ */
+export function SponsorPaymentLinks({ hideFounding = false }: { hideFounding?: boolean } = {}) {
+  const links = SPONSOR_PAYMENT_LINKS.filter((link) => !(hideFounding && link.id === 'founding_sponsor'))
   return (
     <section aria-labelledby="sponsor-subscriptions" className="space-y-3">
       <h2 id="sponsor-subscriptions" className="font-bold text-2xl">
@@ -23,7 +29,7 @@ export function SponsorPaymentLinks() {
         .
       </p>
       <ul className="space-y-3">
-        {SPONSOR_PAYMENT_LINKS.map((link) => (
+        {links.map((link) => (
           <li key={link.id} className="rounded-2xl border border-line px-4 py-3">
             <p className="font-semibold">{link.title}</p>
             <p>{link.terms}</p>

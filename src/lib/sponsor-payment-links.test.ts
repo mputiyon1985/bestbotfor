@@ -17,7 +17,13 @@ const liveKey = ['sk', 'live', 'example'].join('_')
 const testKey = ['sk', 'test', 'example'].join('_')
 const allowLive = ['tr', 'ue'].join('')
 
-const ENV_KEYS = ['VERCEL_ENV', 'STRIPE_ALLOW_LIVE', 'STRIPE_SECRET_KEY'] as const
+const ENV_KEYS = [
+  'VERCEL_ENV',
+  'STRIPE_ALLOW_LIVE',
+  'STRIPE_SECRET_KEY',
+  'STRIPE_PRICE_FOUNDING_MONTHLY',
+  'STRIPE_PRICE_FOUNDING_SETUP',
+] as const
 const ORIGINAL = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]))
 
 afterEach(() => {
@@ -114,5 +120,47 @@ describe('sponsor payment links', () => {
       expect(html).not.toContain(SPONSOR_CANCEL_LINE)
       expect(html).not.toContain('Questions or custom deals?')
     }
+  })
+
+  describe('founding go-live gate', () => {
+    const live = { VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }
+    const [foundingLink, monthlyLink] = SPONSOR_PAYMENT_LINKS
+    const foundingRadio = (html: string) => html.match(/<input[^>]*value="founding_sponsor"[^>]*>/)?.[0] ?? ''
+
+    it('shows the founding Payment Link while the in-app founding Prices are not set', () => {
+      const html = pageHtml({ ...live, STRIPE_PRICE_FOUNDING_MONTHLY: undefined, STRIPE_PRICE_FOUNDING_SETUP: undefined })
+      expect(html).toContain(`href="${foundingLink.url}"`)
+      expect(html).toContain(foundingLink.cta)
+      expect(html).toContain(`href="${monthlyLink.url}"`)
+      expect(foundingRadio(html)).toContain('disabled')
+    })
+
+    it('still shows the founding Payment Link when only one founding Price is set', () => {
+      for (const env of [
+        { STRIPE_PRICE_FOUNDING_MONTHLY: 'price_founding_monthly_test', STRIPE_PRICE_FOUNDING_SETUP: undefined },
+        { STRIPE_PRICE_FOUNDING_MONTHLY: undefined, STRIPE_PRICE_FOUNDING_SETUP: 'price_founding_setup_test' },
+      ]) {
+        const html = pageHtml({ ...live, ...env })
+        expect(html).toContain(`href="${foundingLink.url}"`)
+        expect(foundingRadio(html)).toContain('disabled')
+      }
+    })
+
+    it('hides the founding Payment Link and shows the in-app founding offer once the founding Prices are set', () => {
+      const html = pageHtml({
+        ...live,
+        STRIPE_PRICE_FOUNDING_MONTHLY: 'price_founding_monthly_test',
+        STRIPE_PRICE_FOUNDING_SETUP: 'price_founding_setup_test',
+      })
+      expect(html).not.toContain(foundingLink.url)
+      expect(html).not.toContain(foundingLink.paymentLinkId)
+      expect(html).not.toContain(foundingLink.cta)
+      expect(html).toContain(`href="${monthlyLink.url}"`)
+      expect(html).toContain(monthlyLink.cta)
+      expect(html).toContain(SPONSOR_CANCEL_LINE)
+      const radio = foundingRadio(html)
+      expect(radio).not.toBe('')
+      expect(radio).not.toContain('disabled')
+    })
   })
 })
