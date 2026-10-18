@@ -13,6 +13,19 @@ export type AffiliateSeed = {
   commissionNote: string | null
 }
 
+/**
+ * Free-plan catalog fields for /best/[task]/free. All three are required for a
+ * tool to count as documented; see src/lib/free-plan.ts for the index rule.
+ */
+export type FreePlanFields = {
+  /** One or two sentences on what the free plan includes and its key limits. */
+  freePlanNote: string
+  /** The vendor's own pricing or plan page (https). */
+  freePlanSource: string
+  /** ISO date (YYYY-MM-DD, ET) the source was last checked. */
+  freePlanCheckedAt: string
+}
+
 export type TaskSeed = {
   slug: string
   name: string

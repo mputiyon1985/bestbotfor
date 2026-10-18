@@ -4,6 +4,7 @@ const databaseUrl = process.env.TURSO_DATABASE_URL || 'file:./data/e2e.db'
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://127.0.0.1:3000'
 const ratingsOnUrl = 'http://127.0.0.1:3001'
 const sponsorsOnUrl = 'http://127.0.0.1:3002'
+const freePlanHooksUrl = 'http://127.0.0.1:3003'
 const sitePort = new URL(siteUrl).port || '3000'
 const e2eStripeKey = ['sk', 'test', 'e2e', 'placeholder'].join('_')
 const e2eWebhookSecret = ['whsec', 'e2e', 'placeholder'].join('_')
@@ -39,7 +40,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: ['**/user-ratings-on.spec.ts', '**/admin-sponsors-on.spec.ts'],
+      testIgnore: ['**/user-ratings-on.spec.ts', '**/admin-sponsors-on.spec.ts', '**/free-pages-hooks.spec.ts'],
       use: { ...devices['Desktop Chrome'], baseURL: siteUrl },
     },
     {
@@ -51,6 +52,12 @@ export default defineConfig({
       name: 'sponsors-on',
       testMatch: '**/admin-sponsors-on.spec.ts',
       use: { ...devices['Desktop Chrome'], baseURL: sponsorsOnUrl },
+    },
+    {
+      // BBF_E2E_HOOKS=1 lets these tests pin the free-plan clock and drop a note per request.
+      name: 'free-plan-hooks',
+      testMatch: '**/free-pages-hooks.spec.ts',
+      use: { ...devices['Desktop Chrome'], baseURL: freePlanHooksUrl },
     },
   ],
   webServer: [
@@ -105,6 +112,21 @@ export default defineConfig({
         USER_RATINGS: '',
         ADMIN_SPONSORS: 'on',
         NEXT_PUBLIC_SITE_URL: sponsorsOnUrl,
+      },
+    },
+    {
+      command: 'tsx scripts/prepare-db.ts && npm run start',
+      url: freePlanHooksUrl,
+      reuseExistingServer: false,
+      timeout: 120_000,
+      env: {
+        ...sharedEnv,
+        PORT: '3003',
+        TURSO_DATABASE_URL: 'file:./data/e2e-free-plan-hooks.db',
+        USER_RATINGS: '',
+        ADMIN_SPONSORS: '',
+        NEXT_PUBLIC_SITE_URL: freePlanHooksUrl,
+        BBF_E2E_HOOKS: '1',
       },
     },
   ],

@@ -50,3 +50,26 @@ export function jobLabel(taskName: string): string {
   const gerund = taskGerund(taskName)
   return gerund.charAt(0).toUpperCase() + gerund.slice(1)
 }
+
+/** "Write code" → "Best Free AI Tool for Writing Code (2026)". The spec's head copy, with the gerund. */
+export function bestFreeTitle(taskName: string, year = 2026): string {
+  const words = taskGerund(taskName)
+    .split(' ')
+    .map((word) => (word === 'SEO' ? word : word.charAt(0).toUpperCase() + word.slice(1)))
+    .join(' ')
+  return `Best Free AI Tool for ${words} (${year})`
+}
+
+export function bestFreeHeading(taskName: string): string {
+  return `Best free AI tool for ${taskGerund(taskName)}`
+}
+
+/** The "checked against vendor pages" claim only appears when every note on the page is fresh. */
+export function bestFreeDescription(taskName: string, documented: boolean): string {
+  const lead = `The best free AI tool for ${taskGerund(taskName)}, plus up to five free alternatives`
+  return documented ? `${lead}, with what each free plan includes. Checked against vendor pages.` : `${lead}. Confirm each free plan on the vendor’s site.`
+}
+
+export function bestFreePath(taskSlug: string): string {
+  return `/best/${taskSlug}/free`
+}

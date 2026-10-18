@@ -1,6 +1,6 @@
 import { createHash, createHmac, hkdfSync } from 'node:crypto'
-import { describe, expect, it } from 'vitest'
-import { resolveGoRedirect, type GoToolRecord } from './go-redirect'
+import { describe, expect, it, vi } from 'vitest'
+import { resolveGoRedirect, resolveHeadGoRedirect, type GoToolRecord } from './go-redirect'
 
 const cursor = {
   headers: new Headers(),
@@ -13,6 +13,34 @@ const cursor = {
 function tool(url = 'https://cursor.com'): GoToolRecord {
   return { id: 7, url, affiliateUrl: 'https://evil.example/aff' }
 }
+
+describe('resolveHeadGoRedirect', () => {
+  it('redirects to the reviewed seed URL and does not log', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      expect(resolveHeadGoRedirect('cursor')).toEqual({
+        status: 302,
+        location: 'https://cursor.com/',
+        click: null,
+      })
+      expect(error).not.toHaveBeenCalled()
+    } finally {
+      error.mockRestore()
+    }
+  })
+
+  it('keeps the same 404 checks and ignores a query-shaped slug', () => {
+    expect(resolveHeadGoRedirect('not-a-real-tool')).toEqual({
+      status: 404,
+      body: 'That tool is not in the catalog.',
+    })
+    expect(resolveHeadGoRedirect('..')).toEqual({
+      status: 404,
+      body: 'That address is not a tool in the catalog.',
+    })
+    expect(resolveHeadGoRedirect('cursor?ref=1').status).toBe(404)
+  })
+})
 
 describe('resolveGoRedirect', () => {
   it('redirects to the reviewed host and does not wait on the click write', async () => {
@@ -31,6 +59,7 @@ describe('resolveGoRedirect', () => {
   })
 
   it('fails open when the rate limit throws or never returns, and does not answer 503', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const thrown = await resolveGoRedirect({
       ...cursor,
       deadlineMs: 50,
@@ -51,6 +80,9 @@ describe('resolveGoRedirect', () => {
     })
     expect(Date.now() - started).toBeLessThan(400)
     expect(hung).toEqual({ status: 302, location: 'https://cursor.com/', click: null })
+    expect(error).toHaveBeenCalledWith('go rate limit failed', 'deadline')
+    expect(error).toHaveBeenCalledWith('go catalog failed', 'deadline')
+    error.mockRestore()
   })
 
   it('still refuses a network that is over the limit', async () => {
