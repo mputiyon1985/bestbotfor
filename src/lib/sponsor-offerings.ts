@@ -1,3 +1,11 @@
+export {
+  SPONSOR_COMPANY_PUBLISHED,
+  SPONSOR_LOGO_HINT,
+  SPONSOR_OFFERING_NOT_CONFIGURED,
+  SPONSOR_REVIEW_NOTICE,
+  SPONSOR_TASK_FIELD_LABEL,
+} from './sponsor-form-copy'
+
 /**
  * Approved sponsor list prices. Checkout never reads these numbers from the
  * browser. It charges the Stripe Price id in the matching env var.
@@ -42,25 +50,12 @@ export const FOUNDING_SPONSOR_CAP = 5
 /** Shown when every founding spot is taken. */
 export const FOUNDING_SOLD_OUT = 'All 5 founding sponsor spots are taken. Choose another option.'
 
-/** Label of the required task-page field. */
-export const SPONSOR_TASK_FIELD_LABEL = 'Which /best page do you want to sponsor?'
-
-/** Shown in place of the price and terms on a form option whose checkout is not configured. */
-export const SPONSOR_OFFERING_NOT_CONFIGURED = 'Checkout for this slot is not configured yet.'
-
 /**
  * Shown beside the founding offer and on its Checkout pay button. Stripe caps
  * custom_text.submit.message at 1200 characters.
  */
 export const SPONSOR_FOUNDING_NOTICE =
   '$99 today covers the first 2 weeks. Then $299 per month, renewing monthly. Founding price locked for 6 months. Cancel anytime.'
-
-/** Shown on /sponsor next to the company field. The name is published on the guide. */
-export const SPONSOR_COMPANY_PUBLISHED = 'Your company name is published with a Sponsored label.'
-
-/** Shown on /sponsor. The tool card is not public until an admin approves it. */
-export const SPONSOR_REVIEW_NOTICE =
-  'Your tool card is reviewed before it goes live. If it is rejected, you can submit a new version once within 7 days. After that, the order is refunded from the Stripe dashboard. An approved card is published with a Sponsored label.'
 
 /** Shown on the admin reject control. Rejecting a card does not call Stripe. */
 export const SPONSOR_REFUND_NOTE =
@@ -76,8 +71,6 @@ export const SPONSOR_INVISIBLE_WARNING =
 
 /** Buyer logo cap. Well under the old 200 KB limit so the page does not embed a large image. */
 export const SPONSOR_LOGO_MAX_BYTES = 64 * 1024
-
-export const SPONSOR_LOGO_HINT = 'PNG, JPEG, or WebP. 64 KB maximum.'
 
 /**
  * Stable label for this Checkout flow. A retried sponsor form must send the

@@ -1,7 +1,8 @@
-import { createElement } from 'react'
+import { createElement, isValidElement, type ReactNode } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it } from 'vitest'
 import SponsorPage from '@/app/sponsor/page'
+import { SponsorForm, type SponsorFormOffering } from '@/components/sponsor-form'
 import { SPONSOR_CONTACT_EMAIL, SPONSOR_CONTACT_MAILTO } from '@/lib/sponsor-checkout-gate'
 import {
   SPONSOR_FOUNDING_NOTICE,
@@ -305,7 +306,7 @@ describe('sponsor payment links', () => {
         expect(option(html, id)).not.toContain('$')
         expect(option(html, id)).not.toContain('·')
       }
-      // Nothing in the page payload carries the hidden offers' terms either.
+      // The rendered HTML has none of the hidden offers' terms. The client props are checked separately below.
       expect(html).not.toContain(OFFERING_SUBSCRIPTION_NOTICE)
       expect(html).not.toContain(SPONSOR_FOUNDING_NOTICE)
       // The one-time options keep their prices.
@@ -327,6 +328,68 @@ describe('sponsor payment links', () => {
       for (const id of ['placement_subscription', 'founding_sponsor']) {
         expect(option(html, id)).not.toContain(SPONSOR_OFFERING_NOT_CONFIGURED)
       }
+    })
+  })
+
+  describe('offerings prop sent to the client SponsorForm', () => {
+    const live = { VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }
+
+    /** Walks the element tree SponsorPage returns, without rendering, to the SponsorForm element's props. */
+    function formOfferings(env: Partial<Record<(typeof ENV_KEYS)[number], string | undefined>>): SponsorFormOffering[] {
+      pageHtml(env)
+      resetStripeCache()
+      const found: SponsorFormOffering[][] = []
+      const walk = (node: ReactNode): void => {
+        if (Array.isArray(node)) return node.forEach(walk)
+        if (!isValidElement(node)) return
+        const props = node.props as { children?: ReactNode; offerings?: SponsorFormOffering[] }
+        if (node.type === SponsorForm && props.offerings) found.push(props.offerings)
+        walk(props.children)
+      }
+      walk(SponsorPage())
+      expect(found).toHaveLength(1)
+      return found[0] ?? []
+    }
+
+    it('sends an empty summary, priceLabel and notice for every unavailable offering', () => {
+      const cases = [
+        { ...live, STRIPE_PRICE_PLACEMENT_MONTHLY: 'price_month_test' },
+        { ...live, STRIPE_PRICE_FOUNDING_MONTHLY: 'price_founding_monthly_test' },
+        { VERCEL_ENV: 'preview', STRIPE_SECRET_KEY: testKey, STRIPE_PRICE_PLACEMENT_SUBSCRIPTION: 'price_subscription_test' },
+      ]
+      for (const env of cases) {
+        const offerings = formOfferings(env)
+        const unavailable = offerings.filter((offering) => !offering.available)
+        expect(unavailable.map((offering) => offering.id)).toEqual(expect.arrayContaining(['founding_sponsor']))
+        for (const offering of unavailable) {
+          expect({ id: offering.id, summary: offering.summary, priceLabel: offering.priceLabel, notice: offering.notice }).toEqual({
+            id: offering.id,
+            summary: '',
+            priceLabel: '',
+            notice: '',
+          })
+          expect(offering.title).not.toBe('')
+        }
+      }
+    })
+
+    it('keeps the summary, priceLabel and notice for available offerings', () => {
+      const offerings = formOfferings({
+        ...live,
+        STRIPE_PRICE_PLACEMENT_MONTHLY: 'price_month_test',
+        STRIPE_PRICE_PLACEMENT_SUBSCRIPTION: 'price_subscription_test',
+        STRIPE_PRICE_FOUNDING_MONTHLY: 'price_founding_monthly_test',
+        STRIPE_PRICE_FOUNDING_SETUP: 'price_founding_setup_test',
+      })
+      const byId = Object.fromEntries(offerings.map((offering) => [offering.id, offering]))
+      for (const id of ['placement_monthly', 'placement_subscription', 'founding_sponsor']) {
+        expect(byId[id]?.available).toBe(true)
+        expect(byId[id]?.summary).not.toBe('')
+        expect(byId[id]?.priceLabel).not.toBe('')
+        expect(byId[id]?.notice).not.toBe('')
+      }
+      expect(byId.founding_sponsor?.notice).toBe(SPONSOR_FOUNDING_NOTICE)
+      expect(byId.placement_subscription?.priceLabel).toBe('$299/mo')
     })
   })
 })

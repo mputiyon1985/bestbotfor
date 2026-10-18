@@ -8,7 +8,7 @@ import {
   SPONSOR_OFFERING_NOT_CONFIGURED,
   SPONSOR_REVIEW_NOTICE,
   SPONSOR_TASK_FIELD_LABEL,
-} from '@/lib/sponsor-offerings'
+} from '@/lib/sponsor-form-copy'
 
 export type SponsorFormOffering = {
   id: string

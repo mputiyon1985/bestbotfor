@@ -2,7 +2,7 @@
 
 import { useActionState } from 'react'
 import { submitSponsorCardAction, type SponsorFormState } from '@/app/sponsor/actions'
-import { SPONSOR_LOGO_HINT, SPONSOR_REVIEW_NOTICE } from '@/lib/sponsor-offerings'
+import { SPONSOR_LOGO_HINT, SPONSOR_REVIEW_NOTICE } from '@/lib/sponsor-form-copy'
 
 const initial: SponsorFormState = { status: 'idle', message: '' }
 
