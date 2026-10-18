@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next'
 import { comparePairSeeds } from '@/data/catalog'
+import { ALTERNATIVE_PAGES, alternativesPath } from '@/lib/alternatives'
 import { GUIDES, guidePath } from '@/content/guides'
 import { listPublicSlugs } from '@/lib/catalog'
 import { indexableMatchPath } from '@/lib/result-index'
@@ -27,6 +28,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   } catch (error) {
     console.error('sitemap catalog unavailable', error instanceof Error ? error.name : 'error')
+  }
+
+  for (const page of ALTERNATIVE_PAGES) {
+    entries.push({ url: new URL(alternativesPath(page.tool), site).toString(), changeFrequency: 'weekly', priority: 0.7 })
   }
 
   for (const [a, b] of comparePairSeeds) {

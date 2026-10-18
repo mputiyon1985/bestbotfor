@@ -1,6 +1,9 @@
+import { toolSeeds } from '@/data/catalog'
+import { isUnsafeCatalogSlug } from './catalog-path'
 import { isDeadline, withDeadline } from './deadline'
 import { countryCode, hashIp, sameOriginPath } from './ip'
 import { decideRedirect } from './redirect'
+import { slugSchema } from './validation'
 
 export const GO_DB_BUDGET_MS = 800
 
@@ -20,6 +23,29 @@ export type GoToolRecord = {
 export type GoOutcome =
   | { status: 302; location: string; click: GoClick | null }
   | { status: 404 | 429; body: string }
+
+const NOT_A_TOOL = 'That address is not a tool in the catalog.'
+const NOT_IN_CATALOG = 'That tool is not in the catalog.'
+
+/**
+ * HEAD probes use the reviewed seed URL and do not call the rate limiter or
+ * the catalog. A timeout on either of those logs an error from the GET path,
+ * and a probe does not need a click row. The destination is the same official
+ * URL a catalog timeout uses. Affiliate URLs and request query strings are
+ * not read.
+ */
+export function resolveHeadGoRedirect(slug: string): GoOutcome {
+  if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) {
+    return { status: 404, body: NOT_A_TOOL }
+  }
+  const reviewed = toolSeeds.find((item) => item.slug === slug)
+  if (!reviewed) return { status: 404, body: NOT_IN_CATALOG }
+  const decision = decideRedirect({
+    tool: { url: reviewed.url, affiliateUrl: null, allowedHosts: reviewed.allowedHosts },
+  })
+  if (decision.type === 'not_found') return { status: 404, body: NOT_IN_CATALOG }
+  return { status: 302, location: decision.url, click: null }
+}
 
 /**
  * At most one database call is awaited before the redirect, and a rate-limit

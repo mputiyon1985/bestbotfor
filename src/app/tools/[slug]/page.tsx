@@ -8,6 +8,7 @@ import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
 import { comparePairSeeds } from '@/data/catalog'
+import { alternativesPath, getAlternativePage } from '@/lib/alternatives'
 import { getTool, getToolsBySlugs } from '@/lib/catalog'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
 import { breadcrumbJsonLd, softwareJsonLd } from '@/lib/jsonld'
@@ -94,6 +95,13 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
           ))}
         </ul>
       </section>
+      {getAlternativePage(tool.slug) ? (
+        <p>
+          <Link className="inline-flex min-h-11 items-center font-semibold underline" href={alternativesPath(tool.slug)}>
+            Alternatives to {tool.name}
+          </Link>
+        </p>
+      ) : null}
       {comparisons.length > 0 ? (
         <section>
           <h2 className="font-semibold text-3xl">Comparisons</h2>
