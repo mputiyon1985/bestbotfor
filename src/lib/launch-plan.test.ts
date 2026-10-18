@@ -66,6 +66,7 @@ describe('ratings launch plan', () => {
     expect(plan).toContain('James decided on October 17, 2026, at 7:53 PM ET that BestBotFor uses Beehiiv double opt-in.')
     expect(plan).toContain('No production Beehiiv keys go in until that double opt-in is enabled, concurrent duplicate signups are deduped to a single Beehiiv call, a per-email signup limit exists, and Turnstile is considered.')
     expect(plan).not.toContain('our own confirm step')
+    expect(plan).toContain('**Beehiiv pending backfill.** Production migrations `0020` and `0021` are already applied. The backfill runs only via `--production-launch`, with a dry run first and Mark\'s OK. Open. This gate does not run the backfill.')
     for (const question of [
       'placement and UTM values sent to Beehiiv',
       'the retention period for newsletter emails',
@@ -76,10 +77,11 @@ describe('ratings launch plan', () => {
       expect(plan).toContain(question)
     }
     const migrator = plan.slice(plan.indexOf('**Migrator.**'), plan.indexOf('Until every gate above is met'))
-    expect(migrator).toContain('17 tags, idx 0 through 16, one file per tag')
-    expect(migrator).toContain('`drizzle/0009_sponsorships.sql` is on disk')
+    expect(migrator).toContain('20 tags, idx 0 through 19, one file per tag')
+    expect(migrator).toContain('`0021_subscriber_beehiiv_status` is idx 19')
+    expect(migrator).toContain('`drizzle/0021_subscriber_beehiiv_status.sql` is on disk')
+    expect(migrator).toContain('`0020_subscriber_syncing_started` is idx 18')
     expect(migrator).toContain('There is no `0010` file and no `0010` journal row.')
-    expect(migrator).toContain('`0018_retention_indexes` is idx 16.')
     expect(migrator).toContain('This plan does not switch migrators.')
     expect(migrator).not.toContain('is not on this branch')
     expect(migrator).not.toContain('orphan journal row')
