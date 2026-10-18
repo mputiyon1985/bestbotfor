@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Gate 15 is closed on a dated record. On 2026-10-18 Tony read back the live Stripe endpoint through the API, at 2:31:12 PM ET. It points at `https://bestbotfor.com/api/stripe/webhook`, is enabled, in live mode, on API `2026-09-30.endive`, and subscribed to 16 events: the 9 the handler applies (`checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `charge.refunded`, `refund.created`, `refund.updated`), plus `invoice.paid`, `invoice.payment_failed`, and five `charge.dispute.*` events that are logged and answered 200. `STRIPE_ALLOW_LIVE` is `true` in Production, set after Mark approved go-live on 2026-10-18. The endpoint id is in the launch plan only. Gate 16 is closed on James's CEO OK on 2026-10-18. The refund runbook now matches the code:
+  - `/admin/sponsors` opens in preview, development, and test when `ADMIN_SPONSORS` is `on`, and returns 404 in production until gate 19.
+  - A production approval does what `recordSponsorCardReview` does; a status flip alone does not publish a card.
+  - The webhook's `refunded_at` and the guarded `markSponsorRefunded` write are separate. A blank reason is stored as "Refunded in the Stripe dashboard."
+  - The 7-day `refund_pending` change runs only when the queue or a resubmission loads.
+  - Live events get 400 unless `VERCEL_ENV` is `production` and `STRIPE_ALLOW_LIVE` is `true`.
+  - A new "Payment Link sales" section covers the Founding and Monthly links: manual fulfillment, refunds and cancellations, the 6-month price lock done by hand, and disputes.
+    - It lists the fields of the manual `sponsorships` row (a unique session key per period, that period's payment intent, the weekly or monthly offering, `paid`, `paid_at`, and the task from `best_page`). A dashboard refund of that payment intent then hides the placement automatically.
+    - Before a sale is confirmed, the page must have no paid placement in that window, because a Payment Link sale does not reserve the slot.
+    - Sales are referred to by Stripe object id only, never by buyer email, name, or address.
+    - Placements publish only through the row and an approved card, so they carry the Sponsored label and fall under `/disclosure`. Catalog or copy edits never feature a sponsor.
+    - The monthly window is 30 days. Unhandled events still write a `stripe_events` row. Disputes cover `/sponsor` sales too.
+    - The slot check also looks for an unexpired 24-hour `/sponsor` slot claim on the task. A subscription period's payment intent comes from its invoice payment.
+  - The live-mode line says live events get 400 unless `VERCEL_ENV` is exactly `production` and `STRIPE_ALLOW_LIVE` is exactly `true`. Gate 16 records James's condition: it closes on Sentinel's re-QA PASS, and he merges only on that PASS.
+  - The newsletter export runbook names `.env.export.local` (covered by `.env.*.local` in `.gitignore`), shows `set -a; . ./.env.export.local; set +a`, and creates the token with `turso db tokens create <db> --read-only`.
+
+  Launch-plan row v1.2.14 (v1.2.13 is #78's).
 - The newsletter sponsor runbook now says the sponsor's copy goes under the Sponsored label and the sponsor's link goes under that copy, with `rel="sponsored nofollow"`. A production run of `npm run export:newsletter-sponsor` uses a read-only token only. Gate 17 stays closed on James's CEO OK (2026-10-18).
 - A paid $49 newsletter slot is exported for a Daily Bot issue with a Sponsored label that the buyer cannot remove. `renderPaidNewsletterSponsor` in `src/lib/newsletter-sponsor.ts` adds the label in code and escapes the company name. `npm run export:newsletter-sponsor` prints that HTML for one issue date and does not print the buyer email. Pending, refunded, mispriced, and `/best` placements are left out. The runbook is `docs/runbooks/newsletter-sponsor-label.md`. Gate 17 is closed.
 - Live Stripe mode now requires `VERCEL_ENV` exactly `production` and `STRIPE_ALLOW_LIVE` exactly `true`. Neither value is trimmed, so `Production`, `PRODUCTION`, ` production`, `production `, blank, preview, development, test, and an unset `VERCEL_ENV` all stay off. `getStripe()` returns null for a live key in those cases, so membership checkout and the billing portal cannot open a live session. The webhook rejects a `livemode` event unless both values match. Test secret keys still work on every environment. Sponsor live billing uses the same check, so a live key outside production is no longer the live sponsor surface.
