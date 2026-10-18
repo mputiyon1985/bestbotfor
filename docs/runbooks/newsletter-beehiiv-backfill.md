@@ -44,6 +44,8 @@ Production, and the production database, are refused unless both of these are se
 
 The confirm value is the `prodDbNames` entry in `config/db-guard.json`. It is not read from the database URL. The script does not print it. A refusal does not print it either. The parsed host has to equal the `prodHosts` entry in that same file. A preview database, another Turso host, or a lookalike suffix is refused. The script prints the target host before the counts.
 
+The operator’s production `TURSO_AUTH_TOKEN` comes from the Vercel production environment or the vault. Load it through an env file that is not committed. Never paste that token into chat or logs.
+
 Apply still needs `--apply`. Without it, a production launch only prints the target host and the dry-run counts.
 
 ```sh
