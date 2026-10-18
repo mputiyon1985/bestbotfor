@@ -46,6 +46,13 @@ function stripeStub(
         },
       },
     },
+    // A refund for a payment intent with no sponsor row looks up its invoice.
+    // None of these payments paid an invoice.
+    invoicePayments: {
+      async list() {
+        return { data: [] }
+      },
+    },
   } as unknown as Stripe
 }
 
