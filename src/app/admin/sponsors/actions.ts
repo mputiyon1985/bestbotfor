@@ -1,12 +1,15 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { notFound } from 'next/navigation'
 import { requireAdminStepUp } from '@/lib/admin'
 import { getDb } from '@/lib/db'
+import { adminSponsorsEnabled } from '@/lib/flags'
 import { markSponsorRefunded, recordSponsorCardReview } from '@/lib/sponsor-card'
 
 /** Approves or rejects one pending tool card. A stale second factor asks the client to reverify. */
 export async function reviewSponsorCardAction(formData: FormData) {
+  if (!adminSponsorsEnabled()) notFound()
   const access = await requireAdminStepUp()
   if ('clerk_error' in access) return access
   const decision = formData.get('decision')
@@ -33,12 +36,13 @@ export async function reviewSponsorCardAction(formData: FormData) {
     updatedAt,
     contentHash,
   })
-  if (result.ok) revalidatePath('/admin/sponsor-cards')
+  if (result.ok) revalidatePath('/admin/sponsors')
   return result
 }
 
 /** Records that the admin refunded this card in the Stripe dashboard. Does not call Stripe. */
 export async function markSponsorRefundedAction(formData: FormData) {
+  if (!adminSponsorsEnabled()) notFound()
   const access = await requireAdminStepUp()
   if ('clerk_error' in access) return access
   const creativeId = Number(formData.get('creative_id'))
@@ -51,6 +55,6 @@ export async function markSponsorRefundedAction(formData: FormData) {
     reason: String(formData.get('reason') ?? ''),
     now: Date.now(),
   })
-  if (result.ok) revalidatePath('/admin/sponsor-cards')
+  if (result.ok) revalidatePath('/admin/sponsors')
   return result
 }
