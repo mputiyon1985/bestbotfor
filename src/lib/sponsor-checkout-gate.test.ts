@@ -58,11 +58,53 @@ function env(overrides: Record<string, string | undefined>): Record<string, stri
 }
 
 describe('sponsor checkout surface', () => {
+  it('opens live billing only for exact production with the flag and a live key', () => {
+    for (const key of [liveKey, restrictedLiveKey]) {
+      expect(sponsorLiveBilling(env({ VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: key }))).toBe(true)
+      expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: key }))).toBe('live')
+    }
+    const notProduction = [
+      'preview',
+      'test',
+      'development',
+      undefined,
+      '',
+      ' ',
+      'Production',
+      'PRODUCTION',
+      ' production',
+      'production ',
+      '\tproduction',
+      'production\n',
+      'prod',
+      'production-preview',
+    ]
+    for (const vercelEnv of notProduction) {
+      for (const nodeEnv of ['production', 'development', 'test', undefined]) {
+        for (const key of [liveKey, restrictedLiveKey]) {
+          const input = env({ VERCEL_ENV: vercelEnv, NODE_ENV: nodeEnv, STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: key })
+          const label = JSON.stringify({ vercelEnv, nodeEnv, restricted: key === restrictedLiveKey })
+          expect(sponsorLiveBilling(input), label).toBe(false)
+          expect(sponsorCheckoutSurface(input), label).toBe('closed')
+        }
+      }
+    }
+  })
+
+  it('shows the test surface only with a test-mode key', () => {
+    for (const vercelEnv of ['preview', 'development', undefined]) {
+      const nodeEnv = vercelEnv === undefined ? 'development' : 'production'
+      expect(sponsorCheckoutSurface(env({ VERCEL_ENV: vercelEnv, NODE_ENV: nodeEnv, STRIPE_SECRET_KEY: testKey })), String(vercelEnv)).toBe('test')
+      for (const key of [undefined, '', '  ', liveKey, restrictedLiveKey, 'not-a-key']) {
+        expect(sponsorCheckoutSurface(env({ VERCEL_ENV: vercelEnv, NODE_ENV: nodeEnv, STRIPE_SECRET_KEY: key })), JSON.stringify({ vercelEnv, key: key === undefined ? 'unset' : key.length })).toBe('closed')
+      }
+    }
+  })
+
   it('is live only when the flag is exactly true and the key is sk_live or rk_live', () => {
     expect(sponsorLiveBilling(env({ STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }))).toBe(true)
     expect(sponsorLiveBilling(env({ STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: restrictedLiveKey }))).toBe(true)
     expect(sponsorCheckoutSurface(env({ STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }))).toBe('live')
-    expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'preview', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: restrictedLiveKey }))).toBe('live')
 
     for (const flag of [undefined, 'false', 'TRUE', 'True', ' true', 'true ', 'yes', '1']) {
       expect(sponsorCheckoutSurface(env({ STRIPE_ALLOW_LIVE: flag, STRIPE_SECRET_KEY: liveKey })), flag).toBe('closed')
@@ -86,7 +128,8 @@ describe('sponsor checkout surface', () => {
     expect(
       sponsorCheckoutSurface(env({ VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: testKey, SPONSOR_PUBLIC_CHECKOUT: '1' })),
     ).toBe('closed')
-    expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'preview-branch', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }))).toBe('live')
+    expect(sponsorLiveBilling(env({ VERCEL_ENV: 'preview-branch', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }))).toBe(false)
+    expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'preview-branch', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }))).toBe('closed')
   })
 })
 
@@ -174,6 +217,35 @@ describe('production sponsor page', () => {
       expect(POST().status, JSON.stringify(item)).toBe(503)
       expectSponsorMetadata(true)
     }
+  })
+
+  it('keeps the page, metadata, route, and action closed outside exact production with the flag and a live key', async () => {
+    for (const vercelEnv of ['preview', 'test', 'development', undefined, 'Production', ' production', 'production ']) {
+      if (vercelEnv === undefined) delete process.env.VERCEL_ENV
+      else process.env.VERCEL_ENV = vercelEnv
+      process.env.STRIPE_ALLOW_LIVE = allowLive
+      process.env.STRIPE_SECRET_KEY = liveKey
+      const html = pageHtml()
+      const label = String(vercelEnv)
+      expect(html, label).toContain(SPONSOR_OPENING_SOON)
+      expect(html, label).not.toContain('Stripe live mode')
+      expect(html, label).not.toContain('Stripe test mode')
+      expect(html, label).not.toContain('Continue to checkout')
+      expectSponsorMetadata(true)
+      expect(POST().status, label).toBe(503)
+      expect(await sponsorCheckoutAction({ status: 'idle', message: '' }, new FormData()), label).toEqual({ status: 'error', message: SPONSOR_OPENING_SOON })
+    }
+  })
+
+  it('opens the live page and metadata on exact production with the flag and a live key', () => {
+    process.env.VERCEL_ENV = 'production'
+    process.env.STRIPE_ALLOW_LIVE = allowLive
+    process.env.STRIPE_SECRET_KEY = liveKey
+    const html = pageHtml()
+    expect(html).toContain('Checkout uses Stripe live mode.')
+    expect(html).not.toContain('Stripe test mode')
+    expect(html).not.toContain(SPONSOR_OPENING_SOON)
+    expectSponsorMetadata(false)
   })
 
   it('shows test checkout on preview, development, and test', () => {

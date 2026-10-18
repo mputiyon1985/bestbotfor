@@ -18,6 +18,7 @@
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
     "backfill:beehiiv": "tsx scripts/backfill-beehiiv-subscribers.ts",
+    "export:newsletter-sponsor": "tsx scripts/export-newsletter-sponsor.ts",
     "check:stripe-keys": "tsx scripts/check-no-live-stripe-keys.ts",
     "check:gitleaks": "tsx scripts/check-gitleaks.ts",
     "check:bundle": "tsx scripts/check-client-bundle.ts",
