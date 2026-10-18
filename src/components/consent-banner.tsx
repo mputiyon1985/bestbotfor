@@ -4,23 +4,12 @@ import { useEffect, useState } from 'react'
 import { usePathname } from 'next/navigation'
 import { isAdminPath } from '@/lib/admin-path'
 import { analyticsPageView } from '@/lib/analytics-page'
+import { CONSENT_COOKIE, CONSENT_EVENT, readConsent } from '@/lib/consent'
 import { OPEN_CONSENT_EVENT } from './cookie-settings-button'
-
-const COOKIE = 'bbf_consent'
-
-export const CONSENT_EVENT = 'bbf-consent'
-
-export function readConsent(): 'granted' | 'denied' | null {
-  if (typeof document === 'undefined') return null
-  const match = document.cookie.split('; ').find((part) => part.startsWith(`${COOKIE}=`))
-  const value = match?.split('=')[1]
-  if (value === 'granted' || value === 'denied') return value
-  return null
-}
 
 function writeChoice(value: 'granted' | 'denied') {
   const secure = window.location.protocol === 'https:' ? '; Secure' : ''
-  document.cookie = `${COOKIE}=${value}; Path=/; Max-Age=15552000; SameSite=Lax${secure}`
+  document.cookie = `${CONSENT_COOKIE}=${value}; Path=/; Max-Age=15552000; SameSite=Lax${secure}`
 }
 
 function updateConsent(value: 'granted' | 'denied') {
@@ -86,6 +75,7 @@ export function ConsentBanner({ gaId }: { gaId: string | null }) {
     if (choice === 'granted' && gaId && !isAdminPath(pathname)) {
       loadGoogleAnalytics(gaId)
       setTracking(true)
+      window.dispatchEvent(new Event(CONSENT_EVENT))
     }
     const open = () => setVisible(true)
     window.addEventListener(OPEN_CONSENT_EVENT, open)
