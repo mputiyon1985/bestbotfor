@@ -2,7 +2,8 @@
 
 ## Unreleased
 
-- Gate 18 is closed. Mark dropped the lawyer requirement at 7:44 AM ET on October 18, 2026. Sponsor wording gets internal review only. Gate 1 is closed on that same decision. The launch plan no longer waits on a lawyer sign-off. No ratings copy changed.
+- The header nav links to `/sponsor` as Advertise. The footer still says Sponsor. Each `/best` guide has a small “Feature your tool here” link to `/sponsor`, separate from the Sponsored label.
+- Gate 18 is closed. Mark (via James) dropped the lawyer requirement at 7:44 AM ET on October 18, 2026. Sponsor wording gets internal review only. Gate 1 is closed on that same decision. The launch plan no longer waits on a lawyer sign-off. No ratings copy changed.
 - Mark (via James, 7:44 AM ET on October 18, 2026) is skipping the lawyer sign-off and publishing the privacy policy. `PRIVACY_UPDATED` is October 18, 2026. While someone is subscribed, we keep the email and the signup record. After they unsubscribe, that `subscribers` row stays, with the email, the unsubscribe status, when it was created, where it was sent, and the Beehiiv id when we have one. Nothing deletes those rows on a schedule. Beehiiv keeps its own record. A deletion request deletes our copy within 30 days, and this change does not add a deletion job. Launch gate 12 is closed. Gate 1 no longer waits on a signed lawyer document for this policy.
 - The privacy policy says a connected newsletter signup sends Beehiiv the email address, `utm_source` `bestbotfor`, `utm_medium` `website`, and `referring_site` as the absolute URL of `/`, `/result`, `/best`, `/compare`, or `/newsletter`. An unsubscribe stays in place, and the only way back is the person's own resubscribe link.
 - Merged main `f8a6236`. A hand-check of `drizzle/meta/_journal.json` matches the SQL files through `0021` at idx 19. Global Privacy Control gating and `ACTION_LIMITS` are unchanged.

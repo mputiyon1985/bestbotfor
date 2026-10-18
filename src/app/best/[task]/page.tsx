@@ -169,6 +169,9 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
             See all matches
           </Link>
         </p>
+        <p className="text-sm text-muted">
+          <Link href="/sponsor" className="underline underline-offset-4">Feature your tool here</Link>
+        </p>
       </div>
       <section>
         <h2 className="font-semibold text-3xl">Questions</h2>

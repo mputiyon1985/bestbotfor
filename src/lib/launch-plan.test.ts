@@ -47,7 +47,7 @@ describe('ratings launch plan', () => {
       '`charge.refunded`, `refund.created`, and `refund.updated`',
       '**Sponsorship: refund runbook.**',
       '**Sponsorship: newsletter sponsor labels.**',
-      '**Sponsorship wording.** Closed. Mark dropped the lawyer requirement at 7:44 AM ET on October 18, 2026. Sponsor wording gets internal review only.',
+      '**Sponsorship wording.** Closed. Mark (via James) dropped the lawyer requirement at 7:44 AM ET on October 18, 2026. Sponsor wording gets internal review only.',
     ]) {
       expect(plan).toContain(gate)
     }
@@ -58,6 +58,9 @@ describe('ratings launch plan', () => {
     expect(plan).not.toContain("Mark's written confirmation stays an open gate item.")
     expect(plan).not.toContain('Recorded as given')
     expect(plan).not.toContain('**Sponsorship: lawyer question on sponsorship wording.**')
+    expect(plan).not.toContain('lawyer-review copy')
+    expect(plan).toContain('### A15: Policy and content pages (internal-review copy)')
+    expect(plan).toContain('| A15 | Policy and content pages (internal-review copy) |')
     expect(plan).not.toContain("This gate stays open until the lawyer's signed document is attached.")
     expect(plan).not.toContain("lawyer's sign-off")
     const liveGates = plan.slice(plan.indexOf('## 6. Launch gates'), plan.indexOf('## 7. Out of MVP'))
@@ -118,7 +121,7 @@ describe('ratings launch plan', () => {
     expect(changelog).not.toContain('needs lawyer review before merge')
     expect(changelog).not.toContain('lawyer packet sign-off')
     expect(changelog).not.toContain('Open lawyer-packet questions')
-    expect(changelog).toContain('Sponsor wording gets internal review only.')
+    expect(changelog).toContain('Mark (via James) dropped the lawyer requirement at 7:44 AM ET on October 18, 2026. Sponsor wording gets internal review only.')
     expect(changelog).not.toContain('The written sign-off is a pending link.')
     expect(changelog).not.toContain('lawyer question on sponsorship wording')
     const v126 = versionTable.slice(versionTable.indexOf('| v1.2.6 |'), versionTable.indexOf('| v1.2.7 |'))
