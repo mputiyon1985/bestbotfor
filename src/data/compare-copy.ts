@@ -1,5 +1,5 @@
 /**
- * Curated /compare copy checked Oct 17, 2026.
+ * Curated /compare copy. Make, Murf, Lovable, v0, and Synthesia prices were re-checked Oct 18, 2026.
  * `{{a:task}}` and `{{b:task}}` are fit scores filled from the catalog at render time.
  * The numbers in the handoff are a snapshot for review, not a second source of truth.
  * "Our rating" cells are also filled from the catalog, not stored here.
@@ -59,7 +59,7 @@ export type CompareCopy = {
 }
 
 export const COMPARE_CHECKED_LINE =
-  "Last checked Oct 17, 2026. Prices change, so confirm on the vendor's site before you pay."
+  "Last checked Oct 18, 2026. Prices change, so confirm on the vendor's site before you pay."
 
 export const COMPARE_SECONDARY_NOTE =
   "[S] = secondary source (third party), not read directly on the vendor's page."
@@ -130,8 +130,8 @@ export const compareCopy: readonly CompareCopy[] = [
     cta: 'Voice tools change prices almost monthly. Get **The Daily Bot**, a short daily email with new AI tools and price changes, so you hear when this verdict changes.',
     sources: [
       '[1] ElevenLabs pricing: https://elevenlabs.io/pricing (vendor, checked Oct 17, 2026)',
-      '[2] Murf pricing (API tab): https://murf.ai/pricing (vendor, checked Oct 17, 2026)',
-      '[S1] Murf Studio prices (secondary: Murf Studio tab renders client-side and was not readable by our fetch): https://vorec.ai/blog/murf-pricing ; https://leapfun.ai/murf-pricing (third party, read Oct 12 and Oct 2, 2026)',
+      '[2] Murf pricing (API tab): https://murf.ai/pricing (vendor, checked Oct 18, 2026)',
+      '[S1] Murf Studio prices (secondary: Murf Studio tab renders client-side and was not readable by our fetch): https://vorec.ai/blog/murf-pricing ; https://leapfun.ai/murf-pricing (third party, read Oct 12 and Oct 2, 2026; Creator price re-checked Oct 18, 2026)',
       catalogSource,
     ],
   },
@@ -173,7 +173,7 @@ export const compareCopy: readonly CompareCopy[] = [
         label: 'Paid from',
         kind: 'text',
         a: 'Starter €20/mo billed yearly; Pro €50/mo billed yearly',
-        b: 'Core $9/mo billed yearly or $10.59 monthly (10,000 credits) [S]',
+        b: 'Core $12/mo billed yearly, or $16 monthly (10,000 credits). Pro $21/mo billed yearly, or $28 monthly. Teams $38/mo billed yearly, or $51 monthly [S]',
         source: '[3]; [S2]',
       },
       {
@@ -189,8 +189,8 @@ export const compareCopy: readonly CompareCopy[] = [
     cta: 'Automation pricing shifts often (Make moved to credits on Aug 27). Get **The Daily Bot** for daily AI tool and pricing changes in plain English.',
     sources: [
       '[3] n8n pricing: https://n8n.io/pricing/ (vendor, checked Oct 17, 2026)',
-      '[4] Make pricing (FAQ: credits, free plan): https://www.make.com/en/pricing (vendor, checked Oct 17, 2026)',
-      '[S2] Make plan prices (secondary: plan cards render client-side): https://meetalog.com/make-com-pricing/ ; https://www.mainsum.com/make-vs-n8n/ (third party, citing make.com Oct 13, 2026)',
+      '[4] Make pricing (FAQ: credits, free plan): https://www.make.com/en/pricing (vendor, checked Oct 18, 2026)',
+      '[S2] Make plan prices (secondary: plan cards render client-side): https://meetalog.com/make-com-pricing/ ; https://www.mainsum.com/make-vs-n8n/ (third party, prices re-checked Oct 18, 2026)',
       catalogSource,
     ],
   },
@@ -254,7 +254,7 @@ export const compareCopy: readonly CompareCopy[] = [
     cta: 'AI video plans change credits and prices fast. Get **The Daily Bot** and we will tell you when HeyGen or Synthesia changes.',
     sources: [
       '[5] HeyGen pricing: https://www.heygen.com/pricing (vendor, checked Oct 17, 2026)',
-      '[6] Synthesia pricing: https://www.synthesia.io/pricing (vendor, checked Oct 17, 2026)',
+      '[6] Synthesia pricing: https://www.synthesia.io/pricing (vendor, checked Oct 18, 2026)',
       catalogSource,
     ],
   },
@@ -487,13 +487,13 @@ export const compareCopy: readonly CompareCopy[] = [
         label: 'Paid from',
         kind: 'text',
         a: 'Pro $25/mo (100 credits) or $21/mo billed yearly',
-        b: 'From $30 per user/mo with $30 of included credits',
+        b: 'Plus $30/user/mo',
         source: '[12a]; [13]',
       },
       {
         label: 'Business tier',
         kind: 'text',
-        a: 'Business from $50/mo',
+        a: 'Business $50/mo, or $42/mo billed yearly',
         b: 'Business $100 per user/mo',
         source: '[12a]; [13]',
       },
@@ -502,9 +502,9 @@ export const compareCopy: readonly CompareCopy[] = [
     secondaryNote: COMPARE_SECONDARY_NOTE,
     cta: 'Vibe-coding tools ship new models and plans constantly. Get **The Daily Bot** and keep up in 5 minutes a day.',
     sources: [
-      '[12] Lovable pricing FAQ: https://lovable.dev/pricing (vendor, checked Oct 17, 2026)',
-      '[12a] Lovable subscription tiers (vendor docs): https://docs.lovable.dev/introduction/subscription-plans (vendor docs, checked Oct 17, 2026)',
-      '[13] v0 pricing: https://v0.app/pricing (vendor, checked Oct 17, 2026)',
+      '[12] Lovable pricing FAQ: https://lovable.dev/pricing (vendor, checked Oct 18, 2026)',
+      '[12a] Lovable subscription tiers (vendor docs): https://docs.lovable.dev/introduction/subscription-plans (vendor docs, checked Oct 18, 2026)',
+      '[13] v0 pricing: https://v0.app/pricing (vendor, checked Oct 18, 2026)',
       catalogSource,
     ],
   },

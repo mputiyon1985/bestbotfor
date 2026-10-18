@@ -90,7 +90,7 @@ describe('curated compare copy', () => {
       expect(entry.metaTitle.length, entry.slug).toBeLessThanOrEqual(60)
       expect(entry.metaDescription.length, entry.slug).toBeLessThanOrEqual(155)
       expect(entry.checkedLine).toBe(
-        "Last checked Oct 17, 2026. Prices change, so confirm on the vendor's site before you pay.",
+        "Last checked Oct 18, 2026. Prices change, so confirm on the vendor's site before you pay.",
       )
     }
   })
@@ -210,6 +210,28 @@ describe('curated compare copy', () => {
         expect(redirectTarget(error), pair).toEqual({ url: target, status: 308 })
       }
     }
+  })
+
+  it('uses Nova’s Oct 18, 2026 price re-check', () => {
+    const make = cell(viewFor('n8n-vs-make').view, 'Paid from').b
+    expect(make).toContain('Core $12/mo billed yearly, or $16 monthly')
+    expect(make).toContain('Pro $21/mo billed yearly, or $28 monthly')
+    expect(make).toContain('Teams $38/mo billed yearly, or $51 monthly')
+    expect(make).not.toContain('$9/mo')
+    expect(make).not.toContain('10.59')
+
+    const murf = cell(viewFor('elevenlabs-vs-murf').view, 'Paid from').b
+    expect(murf).toContain('$29/mo')
+    expect(murf).toContain('$19/mo billed yearly')
+
+    const builders = viewFor('lovable-vs-v0').view
+    expect(cell(builders, 'Paid from').a).toContain('Pro $25/mo')
+    expect(cell(builders, 'Paid from').a).toContain('$21/mo billed yearly')
+    expect(cell(builders, 'Business tier').a).toBe('Business $50/mo, or $42/mo billed yearly')
+    expect(cell(builders, 'Paid from').b).toBe('Plus $30/user/mo')
+    expect(`${cell(builders, 'Paid from').b} ${cell(builders, 'Business tier').b}`).not.toContain('$90')
+
+    expect(cell(viewFor('heygen-vs-synthesia').view, 'Paid from').b).toBe('Starter $29/mo billed monthly')
   })
 
   it('drops the ElevenLabs first-month promo after Oct 18, 2026', () => {
