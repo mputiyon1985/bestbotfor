@@ -4,7 +4,7 @@ test('a visitor can sign up for the newsletter', async ({ page }) => {
   await page.goto('/newsletter')
   await page.getByLabel('Email address').fill('reader@example.com')
   await page.getByRole('button', { name: 'Get the daily digest' }).click()
-  await expect(page.getByRole('status')).toHaveText("Thanks. You're on the list.")
+  await expect(page.getByRole('status')).toHaveText("You'll get a confirmation email when The Daily Bot launches.")
 })
 
 test('a filled honeypot still looks like a successful signup', async ({ page }) => {
@@ -12,7 +12,7 @@ test('a filled honeypot still looks like a successful signup', async ({ page }) 
   await page.getByLabel('Email address').fill('bot@example.com')
   await page.locator('input[name="company_website"]').fill('https://spam.example')
   await page.getByRole('button', { name: 'Get the daily digest' }).click()
-  await expect(page.getByRole('status')).toHaveText("Thanks. You're on the list.")
+  await expect(page.getByRole('status')).toHaveText("You'll get a confirmation email when The Daily Bot launches.")
 })
 
 test('an invalid email is rejected', async ({ page }) => {

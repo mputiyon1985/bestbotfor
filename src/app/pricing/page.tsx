@@ -32,7 +32,7 @@ export default async function PricingPage({
         Checkout uses Stripe test mode. No real charges occur.
       </p>
       {notice ? <p role="alert">{notice}</p> : null}
-      <p>Members can save picker results and read the longer comparison notes. The public guides stay free.</p>
+      <p>A free account can save 10 picks. Membership saves without a cap and opens the longer comparison notes. The public guides stay free.</p>
       {price.available ? (
         <p className="font-bold text-4xl">{formatStripeAmount(price.unitAmount, price.currency, price.interval)}</p>
       ) : price.reason === 'unconfigured' ? (
@@ -41,7 +41,7 @@ export default async function PricingPage({
         <p>Pricing is temporarily unavailable. We will not guess a number.</p>
       )}
       <ul className="list-disc space-y-2 pl-5">
-        <li>Save the picks you want to come back to.</li>
+        <li>Save picks without the free-account cap.</li>
         <li>Read the members’ notes on comparison pages.</li>
         <li>Manage the subscription in Stripe’s billing portal.</li>
       </ul>
