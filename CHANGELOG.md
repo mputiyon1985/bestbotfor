@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- While `/sponsor` checkout is closed, the page keeps the prices, the offer, and the mailto, and it hides the Stripe checkout sentences and the form explanation. Those sentences come back on their own when preview, local development, or live billing shows checkout.
 - Production `/sponsor` stays closed until live billing is on (`STRIPE_ALLOW_LIVE` is exactly `true` and the secret key starts with the prefix `sk_live_` or `rk_live_`). Test checkout is only for `VERCEL_ENV` exactly `preview` or `development`, or for an unset `VERCEL_ENV` when `NODE_ENV` is not `production`. A blank value, a whitespace variant such as `production `, an unknown value such as `preview-branch`, and an unset `VERCEL_ENV` in a production Node process stay closed. That page shows “Founding sponsor spots opening soon” and a mailto to mark@bestbotfor.com, keeps the prices, and hides the test-mode banner and the checkout button. There is no public query bypass. `POST /api/sponsor/checkout` returns 503 in that closed state, and the sponsor checkout action does not create a Stripe session.
 - The header nav links to `/sponsor` as Advertise. The footer still says Sponsor. Each `/best` guide has a small “Feature your tool here” link to `/sponsor`, separate from the Sponsored label.
 - Gate 18 is closed. Mark (via James) dropped the lawyer requirement at 7:44 AM ET on October 18, 2026. Sponsor wording gets internal review only. Gate 1 is closed on that same decision. The launch plan no longer waits on a lawyer sign-off. No ratings copy changed.
