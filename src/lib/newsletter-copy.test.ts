@@ -39,6 +39,7 @@ describe('newsletter signup copy', () => {
     ]) {
       expect(withoutProductName(text)).not.toMatch(CADENCE)
     }
+    expect(compareCopy.map((entry) => entry.cta).join('\n')).not.toContain('5-minute')
     expect(source('src/lib/privacy-copy.ts')).not.toMatch(/\bweekday/i)
     expect(source('src/data/compare-copy.ts')).not.toMatch(/\b(weekday|each day)\b/i)
   })
