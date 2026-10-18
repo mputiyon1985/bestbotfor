@@ -179,11 +179,93 @@ describe('handleStripeWebhook', () => {
       db,
       stripe: stripeStub([event]),
       secret: SECRET,
+      allowLive: false,
     })
     expect(result.status).toBe(400)
     expect(result.body.error).toBe('live-mode-rejected')
     expect(await db.select().from(subscriptions)).toEqual([])
     await close()
+  })
+
+  it('rejects a live-mode event when the flag is on outside exact production', async () => {
+    const previousAllow = process.env.STRIPE_ALLOW_LIVE
+    const previousVercel = process.env.VERCEL_ENV
+    process.env.STRIPE_ALLOW_LIVE = ['tr', 'ue'].join('')
+    const { db, close } = await createTestDatabase()
+    try {
+      const cases: Array<string | undefined> = [
+        undefined,
+        '',
+        'preview',
+        'development',
+        'test',
+        'Production',
+        'PRODUCTION',
+        ' production',
+        'production ',
+        'preview-branch',
+      ]
+      for (const [index, vercelEnv] of cases.entries()) {
+        if (vercelEnv === undefined) delete process.env.VERCEL_ENV
+        else process.env.VERCEL_ENV = vercelEnv
+        const event = subscriptionEvent(`evt_live_env_${index}`, true)
+        const result = await handleStripeWebhook({
+          rawBody: JSON.stringify(event),
+          signature: 'valid',
+          db,
+          stripe: stripeStub([event]),
+          secret: SECRET,
+        })
+        expect(result.status, JSON.stringify(vercelEnv)).toBe(400)
+        expect(result.body.error, JSON.stringify(vercelEnv)).toBe('live-mode-rejected')
+      }
+      expect(await db.select().from(subscriptions)).toEqual([])
+
+      process.env.VERCEL_ENV = 'preview'
+      const testEvent = subscriptionEvent('evt_test_preview', false)
+      const applied = await handleStripeWebhook({
+        rawBody: JSON.stringify(testEvent),
+        signature: 'valid',
+        db,
+        stripe: stripeStub([testEvent]),
+        secret: SECRET,
+      })
+      expect(applied).toEqual({ status: 200, body: { received: true } })
+    } finally {
+      if (previousAllow === undefined) delete process.env.STRIPE_ALLOW_LIVE
+      else process.env.STRIPE_ALLOW_LIVE = previousAllow
+      if (previousVercel === undefined) delete process.env.VERCEL_ENV
+      else process.env.VERCEL_ENV = previousVercel
+      await close()
+    }
+  })
+
+  it('applies a live-mode subscription only for exact production with the flag on', async () => {
+    const previousAllow = process.env.STRIPE_ALLOW_LIVE
+    const previousVercel = process.env.VERCEL_ENV
+    process.env.STRIPE_ALLOW_LIVE = ['tr', 'ue'].join('')
+    process.env.VERCEL_ENV = 'production'
+    const { db, close } = await createTestDatabase()
+    try {
+      const event = subscriptionEvent('evt_live_prod', true)
+      const result = await handleStripeWebhook({
+        rawBody: JSON.stringify(event),
+        signature: 'valid',
+        db,
+        stripe: stripeStub([event]),
+        secret: SECRET,
+      })
+      expect(result).toEqual({ status: 200, body: { received: true } })
+      const rows = await db.select().from(subscriptions).where(eq(subscriptions.stripeSubscriptionId, 'sub_123'))
+      expect(rows).toHaveLength(1)
+      expect(rows[0]).toMatchObject({ clerkUserId: 'user_1', status: 'active' })
+    } finally {
+      if (previousAllow === undefined) delete process.env.STRIPE_ALLOW_LIVE
+      else process.env.STRIPE_ALLOW_LIVE = previousAllow
+      if (previousVercel === undefined) delete process.env.VERCEL_ENV
+      else process.env.VERCEL_ENV = previousVercel
+      await close()
+    }
   })
 
   it('applies a test subscription once and treats the retry as a duplicate', async () => {
