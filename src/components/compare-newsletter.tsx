@@ -17,7 +17,7 @@ export function CompareNewsletter({
         <Inline text={cta} />
       </p>
       <div className="mt-4">
-        <NewsletterForm idSuffix={idSuffix} />
+        <NewsletterForm source="compare" idSuffix={idSuffix} />
       </div>
       <p className="text-sm text-muted">{COMPARE_DIGEST_FINE_PRINT}</p>
     </section>

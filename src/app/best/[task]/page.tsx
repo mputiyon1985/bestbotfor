@@ -3,10 +3,15 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { DailyBotCapture } from '@/components/daily-bot-capture'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
+import { SponsoredPlacement, sponsoredCardIsVisible } from '@/components/sponsored-placement'
+import { scheduleSponsorImpression } from '@/lib/sponsor-impressions'
+import { readActiveBestPlacement } from '@/lib/best-placement'
 import { getTask, listTaskCandidates } from '@/lib/catalog'
+import { getDb } from '@/lib/db'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
 import { breadcrumbJsonLd, faqJsonLd, itemListJsonLd } from '@/lib/jsonld'
 import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
@@ -43,12 +48,29 @@ export async function generateMetadata({ params }: { params: Promise<{ task: str
 export default async function BestPage({ params }: { params: Promise<{ task: string }> }) {
   const { task: slug } = await params
   if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) notFound()
-  const [loaded, headerStore] = await Promise.all([listTaskCandidates(slug), headers()])
+  const [loaded, headerStore, placement] = await Promise.all([
+    listTaskCandidates(slug),
+    headers(),
+    readActiveBestPlacement(() => getDb(), slug),
+  ])
   const task = loaded?.task
   const ranked = loaded?.tools ?? []
   const top = ranked[0]
   if (!task || !top) notFound()
   const nonce = headerStore.get('x-nonce')
+  if (sponsoredCardIsVisible(placement)) {
+    scheduleSponsorImpression({
+      db: getDb(),
+      sponsorshipId: placement.sponsorshipId,
+      now: Date.now(),
+      method: headerStore.get('x-bbf-method'),
+      userAgent: headerStore.get('user-agent'),
+      purpose: headerStore.get('purpose'),
+      secPurpose: headerStore.get('sec-purpose'),
+      routerPrefetch: headerStore.get('next-router-prefetch') ?? headerStore.get('next-router-segment-prefetch'),
+      middlewarePrefetch: headerStore.get('x-middleware-prefetch'),
+    })
+  }
   const verified = formatUsDate(top.lastVerifiedAt)
   const freeOption = ranked.find((tool) => tool.hasFreeTier)
   const faqs = [
@@ -90,6 +112,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
           Visit {top.name}
         </OutboundLink>
       </p>
+      <SponsoredPlacement placement={placement} />
       <div className="min-w-0 space-y-4">
         <p id="fit-legend" className="text-sm text-muted">{BEST_GUIDE_FIT_LEGEND}</p>
         <ul aria-label={listLabel} className="grid gap-3 md:hidden">
@@ -161,6 +184,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
       <p className="text-sm text-muted">
         Want this personalized? <Link className="underline" href="/">Get your own pick in 30 seconds</Link>: answer three questions.
       </p>
+      <DailyBotCapture source="best" />
     </article>
   )
 }

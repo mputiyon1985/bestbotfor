@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
-import { chmod, mkdir, writeFile } from 'node:fs/promises'
+import { chmod, mkdtemp, mkdir, writeFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import path from 'node:path'
 
 const VERSION = '8.30.1'
@@ -55,9 +56,35 @@ async function main(): Promise<void> {
     await chmod(binary, 0o755)
   }
 
+  const configDir = await mkdtemp(path.join(tmpdir(), 'bestbotfor-gitleaks-'))
+  const configPath = path.join(configDir, 'gitleaks.toml')
+  const liveKey = ['(?:sk|rk)', 'live', '[0-9a-zA-Z]{10,}'].join('_')
+  await writeFile(
+    configPath,
+    [
+      'title = "bestbotfor"',
+      '',
+      '[extend]',
+      'useDefault = true',
+      '',
+      '[[rules]]',
+      'id = "stripe-webhook-signing-secret"',
+      'description = "Stripe webhook signing secret"',
+      "regex = '''(?i)whsec_[0-9a-zA-Z]{32,}'''",
+      'keywords = ["whsec_"]',
+      '',
+      '[[rules]]',
+      'id = "stripe-live-secret"',
+      'description = "Stripe live secret or restricted key"',
+      `regex = '''(?i)${liveKey}'''`,
+      'keywords = ["live_"]',
+      '',
+    ].join('\n'),
+  )
+
   const result = spawnSync(
     binary,
-    ['detect', '--source', process.cwd(), '--redact', '--no-banner', '--exit-code', '1'],
+    ['detect', '--source', process.cwd(), '--config', configPath, '--redact', '--no-banner', '--exit-code', '1'],
     { encoding: 'utf8' },
   )
   if (result.stdout) process.stdout.write(result.stdout)

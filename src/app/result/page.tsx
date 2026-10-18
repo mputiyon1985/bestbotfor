@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { cache } from 'react'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { DailyBotCapture } from '@/components/daily-bot-capture'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
@@ -20,6 +21,7 @@ import { QUIZ_ALTERNATIVE_COUNT } from '@/lib/scoring'
 import { breadcrumbJsonLd } from '@/lib/jsonld'
 import { memberAccess } from '@/lib/members'
 import { pageMetadata } from '@/lib/metadata'
+import { savePickSignUpHref } from '@/lib/save-pick-prompt'
 import { absoluteUrl } from '@/lib/site'
 import { firstString, quizSchema, type QuizAnswers } from '@/lib/validation'
 import { savePickAction } from './actions'
@@ -146,12 +148,13 @@ export default async function ResultPage({
   const [top, ...alternatives] = result.picks
   if (!top) {
     return (
-      <div>
+      <div className="space-y-8">
         <h1 className="font-bold text-4xl">{fewStrongOptionsLabel}</h1>
         <p className="mt-3 text-muted">Try a nearby job from the list on the home page.</p>
         <Link href="/" className="mt-6 inline-flex min-h-12 items-center font-semibold underline">
           Start over
         </Link>
+        <DailyBotCapture source="result" />
       </div>
     )
   }
@@ -201,14 +204,22 @@ export default async function ResultPage({
             Save this pick
           </button>
         </form>
+      ) : access.reason === 'unauthenticated' ? (
+        <p>
+          <Link href={savePickSignUpHref(sharePath)} className="inline-flex min-h-11 items-center font-semibold underline">
+            Create a free account to keep up with new tools
+          </Link>
+        </p>
       ) : (
         <p className="text-sm text-muted">
-          <Link href={access.reason === 'unauthenticated' ? '/sign-in' : '/pricing'} className="font-semibold underline">
+          <Link href="/pricing" className="font-semibold underline">
             Members
           </Link>{' '}
           can save this pick.
         </p>
       )}
+
+      <DailyBotCapture source="result" />
 
       <section aria-labelledby="alternatives-heading">
         <h2 id="alternatives-heading" className="font-semibold text-3xl">Alternatives</h2>
@@ -307,7 +318,7 @@ export default async function ResultPage({
       </p>
       <p className="text-sm text-muted">
         The button goes to the tool’s own site. We are not adding an affiliate code. See the{' '}
-        <Link href="/disclosure" className="underline">affiliate disclosure</Link>.
+        <Link href="/disclosure" className="underline">Disclosures</Link>.
       </p>
     </article>
   )
