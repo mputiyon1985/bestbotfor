@@ -3,6 +3,7 @@ import { taskSeeds } from '@/data/catalog'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { SponsorCheckoutNotice } from '@/components/sponsor-checkout-notice'
 import { SponsorForm } from '@/components/sponsor-form'
+import { SponsorPaymentLinks } from '@/components/sponsor-payment-links'
 import { pageMetadata } from '@/lib/metadata'
 import { sponsorCheckoutSurface } from '@/lib/sponsor-checkout-gate'
 import { SPONSOR_OFFERINGS, SPONSOR_ONE_TIME_NOTICE, sponsorPriceId, sponsorPriceLabel } from '@/lib/sponsor-offerings'
@@ -62,6 +63,7 @@ export default function SponsorPage() {
         These are the current list prices from server configuration. They can be changed there.
         {surface === 'closed' ? null : ' The form does not send an amount. Checkout charges the Stripe price configured on the server.'}
       </p>
+      {surface === 'live' ? <SponsorPaymentLinks /> : null}
       {surface === 'closed' ? null : <SponsorForm offerings={offerings} tasks={tasks} />}
     </article>
   )
