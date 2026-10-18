@@ -12,6 +12,8 @@ import {
   PORTAL_RATE_WINDOW_MS,
   RESULT_RATE_LIMIT,
   RESULT_RATE_WINDOW_MS,
+  SPONSOR_RATE_LIMIT,
+  SPONSOR_RATE_WINDOW_MS,
 } from './rate-windows'
 
 export const ACTION_LIMITS = {
@@ -20,6 +22,7 @@ export const ACTION_LIMITS = {
   portal: { limit: PORTAL_RATE_LIMIT, windowMs: PORTAL_RATE_WINDOW_MS },
   newsletter: { limit: NEWSLETTER_RATE_LIMIT, windowMs: NEWSLETTER_RATE_WINDOW_MS },
   go: { limit: GO_RATE_LIMIT, windowMs: GO_RATE_WINDOW_MS },
+  sponsor: { limit: SPONSOR_RATE_LIMIT, windowMs: SPONSOR_RATE_WINDOW_MS },
 } as const
 
 export type RateLimitOnError = 'open' | 'closed'
@@ -30,9 +33,10 @@ export type RateLimitDecision = 'allow' | 'limit' | 'unavailable'
 /**
  * A slow limiter must not hang the caller. Over-limit still blocks.
  * `onError` is chosen at each call. Write and abuse-sensitive actions
- * (checkout, the billing portal, signup forms) pass `closed`, which returns
- * `unavailable` so the caller can deny the write. Read-only /result and
- * catalog pages stay `open`: a valid quiz must never 503 because the limiter failed.
+ * (checkout, the billing portal, sponsor checkout, signup forms) pass `closed`,
+ * which returns `unavailable` so the caller can deny the write. Read-only
+ * /result and catalog pages stay `open`: a valid quiz must never 503 because
+ * the limiter failed.
  */
 export async function allowRate(
   db: Database,

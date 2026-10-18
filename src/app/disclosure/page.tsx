@@ -4,12 +4,14 @@ import { LawyerReviewNotice } from '@/components/lawyer-review-notice'
 import { userRatingsEnabled } from '@/lib/flags'
 import { pageMetadata } from '@/lib/metadata'
 import { DISCLOSURE_ADVERTISER_PARAGRAPH } from '@/lib/ratings-policy-copy'
+import { SPONSORSHIP_DISCLOSURE } from '@/lib/sponsorship-disclosure'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = pageMetadata({
-  title: 'Affiliate disclosure',
-  description: 'How BestBotFor handles affiliate links, commissions, and recommendations.',
+  title: 'Disclosures',
+  description:
+    'How BestBotFor handles affiliate links, paid featured placements, newsletter sponsorships, and recommendations.',
   path: '/disclosure',
 })
 
@@ -17,8 +19,8 @@ export default function DisclosurePage() {
   const ratings = userRatingsEnabled()
   return (
     <article className="max-w-2xl space-y-4">
-      <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Affiliate disclosure', path: '/disclosure' }]} />
-      <h1 className="font-bold text-5xl">Affiliate disclosure</h1>
+      <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Disclosures', path: '/disclosure' }]} />
+      <h1 className="font-bold text-5xl">Disclosures</h1>
       <p>
         BestBotFor may earn money if we later join an affiliate or referral program and you buy through a link we
         control. That relationship would not change the editorial rank.
@@ -33,6 +35,7 @@ export default function DisclosurePage() {
         we do not invent one.
       </p>
       <p>Recommendations are opinions based on the catalog, not a promise that a tool will work for your project.</p>
+      <p>{SPONSORSHIP_DISCLOSURE}</p>
       <p>Tool logos and icons are trademarks of their owners. They are used on BestBotFor for identification only and do not imply endorsement.</p>
       {ratings ? (
         <>

@@ -3,7 +3,10 @@ import { defineConfig, devices } from '@playwright/test'
 const databaseUrl = process.env.TURSO_DATABASE_URL || 'file:./data/e2e.db'
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://127.0.0.1:3000'
 const ratingsOnUrl = 'http://127.0.0.1:3001'
+const sponsorsOnUrl = 'http://127.0.0.1:3002'
 const sitePort = new URL(siteUrl).port || '3000'
+const e2eStripeKey = ['sk', 'test', 'e2e', 'placeholder'].join('_')
+const e2eWebhookSecret = ['whsec', 'e2e', 'placeholder'].join('_')
 
 const sharedEnv = {
   ...process.env,
@@ -36,7 +39,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: '**/user-ratings-on.spec.ts',
+      testIgnore: ['**/user-ratings-on.spec.ts', '**/admin-sponsors-on.spec.ts'],
       use: { ...devices['Desktop Chrome'], baseURL: siteUrl },
     },
     {
@@ -44,10 +47,15 @@ export default defineConfig({
       testMatch: '**/user-ratings-on.spec.ts',
       use: { ...devices['Desktop Chrome'], baseURL: ratingsOnUrl },
     },
+    {
+      name: 'sponsors-on',
+      testMatch: '**/admin-sponsors-on.spec.ts',
+      use: { ...devices['Desktop Chrome'], baseURL: sponsorsOnUrl },
+    },
   ],
   webServer: [
     {
-      command: 'tsx scripts/prepare-db.ts && npm run start',
+      command: 'tsx scripts/e2e-server.ts',
       url: siteUrl,
       reuseExistingServer: !process.env.CI,
       timeout: 120_000,
@@ -57,7 +65,18 @@ export default defineConfig({
         TURSO_DATABASE_URL: databaseUrl,
         // Blank keeps user ratings off. VERCEL_ENV=test still allows result faults.
         USER_RATINGS: '',
+        ADMIN_SPONSORS: '',
         NEXT_PUBLIC_SITE_URL: siteUrl,
+        // This run is the loopback host. Sponsor checkout must return here, not to production.
+        VERCEL_BRANCH_URL: siteUrl,
+        STRIPE_SECRET_KEY: e2eStripeKey,
+        STRIPE_WEBHOOK_SECRET: e2eWebhookSecret,
+        STRIPE_PRICE_PLACEMENT_WEEKLY: 'price_e2e_weekly',
+        STRIPE_PRICE_PLACEMENT_MONTHLY: 'price_e2e_monthly',
+        STRIPE_PRICE_NEWSLETTER_SLOT: 'price_e2e_newsletter',
+        STRIPE_API_HOST: '127.0.0.1',
+        STRIPE_API_PORT: '12111',
+        STRIPE_ALLOW_LIVE: 'false',
       },
     },
     {
@@ -70,7 +89,22 @@ export default defineConfig({
         PORT: '3001',
         TURSO_DATABASE_URL: 'file:./data/e2e-ratings-on.db',
         USER_RATINGS: 'on',
+        ADMIN_SPONSORS: '',
         NEXT_PUBLIC_SITE_URL: ratingsOnUrl,
+      },
+    },
+    {
+      command: 'tsx scripts/prepare-db.ts && npm run start',
+      url: sponsorsOnUrl,
+      reuseExistingServer: false,
+      timeout: 120_000,
+      env: {
+        ...sharedEnv,
+        PORT: '3002',
+        TURSO_DATABASE_URL: 'file:./data/e2e-sponsors-on.db',
+        USER_RATINGS: '',
+        ADMIN_SPONSORS: 'on',
+        NEXT_PUBLIC_SITE_URL: sponsorsOnUrl,
       },
     },
   ],
