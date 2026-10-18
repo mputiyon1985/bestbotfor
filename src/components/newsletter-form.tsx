@@ -8,12 +8,18 @@ import { subscribeAction, type NewsletterState } from '@/app/newsletter/actions'
 
 const initial: NewsletterState = { status: 'idle', message: '', tracked: false }
 
-export function NewsletterForm({ source }: { source: NewsletterSource }) {
+export function NewsletterForm({
+  source,
+  idSuffix = '',
+}: {
+  source: NewsletterSource
+  idSuffix?: string
+}) {
   const [state, action, pending] = useActionState(subscribeAction, initial)
   const tracked = useRef(false)
-  const emailId = `${source}-email`
-  const statusId = `${source}-status`
-  const honeyId = `${source}-company-website`
+  const emailId = idSuffix ? `email-${idSuffix}` : `${source}-email`
+  const statusId = idSuffix ? `newsletter-status-${idSuffix}` : `${source}-status`
+  const honeyId = idSuffix ? `company-website-${idSuffix}` : `${source}-company-website`
 
   useEffect(() => {
     if (state.status !== 'success' || !state.tracked) return

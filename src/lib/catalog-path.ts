@@ -39,6 +39,8 @@ export function isUnsafeCatalogPath(rawUrl: string): boolean {
   // The tools directory is a real page. Job and redirect routes still require one slug.
   // /tools/<slug>/rate is the ratings route. A safe slug is not an extra catalog segment.
   if (root === 'tools' && (rest === '' || rest === '/')) return false
+  // /go/s/123 is the Sponsored-card redirect. It is not a catalog slug.
+  if (root === 'go' && /^\/s\/[1-9][0-9]*\/?$/.test(rest)) return false
   const rate = root === 'tools' ? /^\/([^/]+)\/rate\/?$/.exec(rest) : null
   const segment = rate ?? /^\/([^/]+)\/?$/.exec(rest)
   if (!segment?.[1]) return true
