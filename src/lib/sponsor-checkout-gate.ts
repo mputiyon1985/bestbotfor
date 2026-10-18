@@ -23,13 +23,15 @@ export function sponsorLiveBilling(env: SponsorCheckoutEnv = process.env): boole
 }
 
 /**
- * Test checkout is allowed only for exact preview or development, or for local
- * dev where VERCEL_ENV is unset and NODE_ENV is not production. Blank values,
- * whitespace, and unknown names stay closed. Live billing still opens checkout.
+ * Test checkout is allowed only for exact preview, development, or test (the
+ * value the e2e servers set, since `npm start` runs NODE_ENV=production), or
+ * for local dev where VERCEL_ENV is unset and NODE_ENV is not production.
+ * Production, blank values, whitespace, and unknown names stay closed. Live
+ * billing still opens checkout.
  */
 export function sponsorTestCheckoutAllowed(env: SponsorCheckoutEnv = process.env): boolean {
   const vercelEnv = env.VERCEL_ENV
-  if (vercelEnv === 'preview' || vercelEnv === 'development') return true
+  if (vercelEnv === 'preview' || vercelEnv === 'development' || vercelEnv === 'test') return true
   return vercelEnv === undefined && env.NODE_ENV !== 'production'
 }
 

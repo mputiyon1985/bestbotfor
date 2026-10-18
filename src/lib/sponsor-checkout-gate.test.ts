@@ -113,14 +113,15 @@ describe('sponsor checkout surface', () => {
     expect(sponsorCheckoutSurface(env({ STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: '' }))).toBe('closed')
   })
 
-  it('allows test checkout only for exact preview, development, or local dev', () => {
+  it('allows test checkout only for exact preview, development, test, or local dev', () => {
     expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'preview', STRIPE_SECRET_KEY: testKey }))).toBe('test')
     expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'development', STRIPE_SECRET_KEY: testKey }))).toBe('test')
+    expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'test', NODE_ENV: 'production', STRIPE_SECRET_KEY: testKey }))).toBe('test')
     expect(sponsorCheckoutSurface(env({ VERCEL_ENV: undefined, NODE_ENV: 'development', STRIPE_SECRET_KEY: testKey }))).toBe('test')
     expect(sponsorCheckoutSurface(env({ VERCEL_ENV: undefined, NODE_ENV: 'test', STRIPE_SECRET_KEY: testKey }))).toBe('test')
     expect(sponsorCheckoutSurface(env({ VERCEL_ENV: undefined, NODE_ENV: undefined, STRIPE_SECRET_KEY: testKey }))).toBe('test')
 
-    for (const vercelEnv of ['production', 'production ', ' preview', 'development ', 'preview-branch', 'test', 'staging', '']) {
+    for (const vercelEnv of ['production', 'production ', ' preview', 'development ', 'preview-branch', ' test', 'test ', 'TEST', 'testing', 'staging', '', ' ']) {
       expect(sponsorCheckoutSurface(env({ VERCEL_ENV: vercelEnv, NODE_ENV: 'development', STRIPE_SECRET_KEY: testKey })), JSON.stringify(vercelEnv)).toBe('closed')
     }
     expect(sponsorCheckoutSurface(env({ VERCEL_ENV: undefined, NODE_ENV: 'production', STRIPE_SECRET_KEY: testKey }))).toBe('closed')
@@ -196,6 +197,8 @@ describe('production sponsor page', () => {
       { VERCEL_ENV: '', NODE_ENV: 'development' },
       { VERCEL_ENV: 'production ', NODE_ENV: 'development' },
       { VERCEL_ENV: 'preview-branch', NODE_ENV: 'development' },
+      { VERCEL_ENV: ' test', NODE_ENV: 'production' },
+      { VERCEL_ENV: '  ', NODE_ENV: 'production' },
     ]
     for (const item of cases) {
       if (item.VERCEL_ENV === undefined) delete process.env.VERCEL_ENV
@@ -243,8 +246,8 @@ describe('production sponsor page', () => {
     expectSponsorMetadata(false)
   })
 
-  it('shows test checkout on preview and development', () => {
-    for (const vercelEnv of ['preview', 'development']) {
+  it('shows test checkout on preview, development, and test', () => {
+    for (const vercelEnv of ['preview', 'development', 'test']) {
       process.env.VERCEL_ENV = vercelEnv
       delete process.env.STRIPE_ALLOW_LIVE
       process.env.STRIPE_SECRET_KEY = testKey
