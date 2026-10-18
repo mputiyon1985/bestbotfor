@@ -29,6 +29,13 @@ const ENV_KEYS = [
 ] as const
 
 const ORIGINAL = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]))
+const ORIGINAL_NODE_ENV = process.env.NODE_ENV
+
+function setNodeEnv(value: string | undefined) {
+  const env = process.env as { NODE_ENV?: string }
+  if (value === undefined) delete env.NODE_ENV
+  else env.NODE_ENV = value
+}
 
 afterEach(() => {
   resetStripeCache()
@@ -37,11 +44,13 @@ afterEach(() => {
     if (value === undefined) delete process.env[key]
     else process.env[key] = value
   }
+  setNodeEnv(ORIGINAL_NODE_ENV)
 })
 
 function env(overrides: Record<string, string | undefined>): Record<string, string | undefined> {
   return {
     VERCEL_ENV: 'production',
+    NODE_ENV: 'production',
     STRIPE_ALLOW_LIVE: undefined,
     STRIPE_SECRET_KEY: testKey,
     ...overrides,
@@ -62,14 +71,21 @@ describe('sponsor checkout surface', () => {
     expect(sponsorCheckoutSurface(env({ STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: '' }))).toBe('closed')
   })
 
-  it('keeps test checkout off production and on every other environment', () => {
-    for (const vercelEnv of ['preview', 'development', 'test', 'preview-branch', '', undefined]) {
-      expect(sponsorCheckoutSurface(env({ VERCEL_ENV: vercelEnv, STRIPE_SECRET_KEY: testKey })), String(vercelEnv)).toBe('test')
+  it('allows test checkout only for exact preview, development, or local dev', () => {
+    expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'preview', STRIPE_SECRET_KEY: testKey }))).toBe('test')
+    expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'development', STRIPE_SECRET_KEY: testKey }))).toBe('test')
+    expect(sponsorCheckoutSurface(env({ VERCEL_ENV: undefined, NODE_ENV: 'development', STRIPE_SECRET_KEY: testKey }))).toBe('test')
+    expect(sponsorCheckoutSurface(env({ VERCEL_ENV: undefined, NODE_ENV: 'test', STRIPE_SECRET_KEY: testKey }))).toBe('test')
+    expect(sponsorCheckoutSurface(env({ VERCEL_ENV: undefined, NODE_ENV: undefined, STRIPE_SECRET_KEY: testKey }))).toBe('test')
+
+    for (const vercelEnv of ['production', 'production ', ' preview', 'development ', 'preview-branch', 'test', 'staging', '']) {
+      expect(sponsorCheckoutSurface(env({ VERCEL_ENV: vercelEnv, NODE_ENV: 'development', STRIPE_SECRET_KEY: testKey })), JSON.stringify(vercelEnv)).toBe('closed')
     }
-    expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'production', STRIPE_SECRET_KEY: testKey }))).toBe('closed')
+    expect(sponsorCheckoutSurface(env({ VERCEL_ENV: undefined, NODE_ENV: 'production', STRIPE_SECRET_KEY: testKey }))).toBe('closed')
     expect(
       sponsorCheckoutSurface(env({ VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: testKey, SPONSOR_PUBLIC_CHECKOUT: '1' })),
     ).toBe('closed')
+    expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'preview-branch', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }))).toBe('live')
   })
 })
 
@@ -107,6 +123,27 @@ describe('production sponsor page', () => {
     expect(html).toContain('Continue to checkout')
     expect(html).not.toContain(SPONSOR_OPENING_SOON)
     expect(html).not.toContain('Stripe test mode')
+  })
+
+  it('stays closed for unset production, a blank env, a padded production value, and an unknown name', () => {
+    const cases = [
+      { VERCEL_ENV: undefined, NODE_ENV: 'production' },
+      { VERCEL_ENV: '', NODE_ENV: 'development' },
+      { VERCEL_ENV: 'production ', NODE_ENV: 'development' },
+      { VERCEL_ENV: 'preview-branch', NODE_ENV: 'development' },
+    ]
+    for (const item of cases) {
+      if (item.VERCEL_ENV === undefined) delete process.env.VERCEL_ENV
+      else process.env.VERCEL_ENV = item.VERCEL_ENV
+      setNodeEnv(item.NODE_ENV)
+      delete process.env.STRIPE_ALLOW_LIVE
+      process.env.STRIPE_SECRET_KEY = testKey
+      const html = pageHtml()
+      expect(html, JSON.stringify(item)).toContain(SPONSOR_OPENING_SOON)
+      expect(html, JSON.stringify(item)).not.toContain('Stripe test mode')
+      expect(html, JSON.stringify(item)).not.toContain('Continue to checkout')
+      expect(POST().status, JSON.stringify(item)).toBe(503)
+    }
   })
 
   it('shows test checkout on preview and development', () => {

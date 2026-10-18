@@ -13,7 +13,7 @@ type SponsorCheckoutEnv = Record<string, string | undefined>
 
 /**
  * Live billing is on only when STRIPE_ALLOW_LIVE is exactly "true" and the
- * secret key is an sk_live or rk_live key. Anything else is off.
+ * secret key uses a live prefix. Anything else is off.
  */
 export function sponsorLiveBilling(env: SponsorCheckoutEnv = process.env): boolean {
   const key = env.STRIPE_SECRET_KEY?.trim() ?? ''
@@ -21,13 +21,20 @@ export function sponsorLiveBilling(env: SponsorCheckoutEnv = process.env): boole
 }
 
 /**
- * Test checkout is for preview and local development. Production stays closed
- * until live billing is on. The decision reads the server environment only.
+ * Test checkout is allowed only for exact preview or development, or for local
+ * dev where VERCEL_ENV is unset and NODE_ENV is not production. Blank values,
+ * whitespace, and unknown names stay closed. Live billing still opens checkout.
  */
+export function sponsorTestCheckoutAllowed(env: SponsorCheckoutEnv = process.env): boolean {
+  const vercelEnv = env.VERCEL_ENV
+  if (vercelEnv === 'preview' || vercelEnv === 'development') return true
+  return vercelEnv === undefined && env.NODE_ENV !== 'production'
+}
+
 export function sponsorCheckoutSurface(env: SponsorCheckoutEnv = process.env): SponsorCheckoutSurface {
   if (sponsorLiveBilling(env)) return 'live'
-  if (env.VERCEL_ENV === 'production') return 'closed'
-  return 'test'
+  if (sponsorTestCheckoutAllowed(env)) return 'test'
+  return 'closed'
 }
 
 export function sponsorCheckoutClosed(env: SponsorCheckoutEnv = process.env): boolean {
