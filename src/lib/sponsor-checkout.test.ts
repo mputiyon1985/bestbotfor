@@ -38,8 +38,16 @@ describe('sponsor offerings', () => {
       ['STRIPE_PRICE_PLACEMENT_WEEKLY', 9_900, 'sponsor_best_placement_weekly'],
       ['STRIPE_PRICE_PLACEMENT_MONTHLY', 29_900, 'sponsor_best_placement_monthly'],
       ['STRIPE_PRICE_NEWSLETTER_SLOT', 4_900, 'sponsor_newsletter_issue'],
+      ['STRIPE_PRICE_PLACEMENT_SUBSCRIPTION', 29_900, 'sponsor_best_placement_monthly_recurring'],
+      ['STRIPE_PRICE_FOUNDING_MONTHLY', 29_900, 'sponsor_founding_monthly'],
     ])
-    expect(SPONSOR_OFFERINGS.map((offering) => sponsorPriceLabel(offering.unitAmount))).toEqual(['$99', '$299', '$49'])
+    expect(SPONSOR_OFFERINGS.map((offering) => sponsorPriceLabel(offering.unitAmount))).toEqual([
+      '$99',
+      '$299',
+      '$49',
+      '$299',
+      '$299',
+    ])
     expect(SPONSOR_ONE_TIME_NOTICE).toBe('One-time payment, no auto-renewal.')
     expect(SPONSOR_BUSINESS_NAME).toBe('BestBotFor')
     expect(SPONSOR_BUSINESS_NAME.length).toBeLessThanOrEqual(22)
@@ -168,6 +176,7 @@ describe('sponsor company publication copy', () => {
             title: 'Week',
             summary: 'A week',
             priceLabel: '$99',
+            notice: 'One-time payment, no auto-renewal.',
             target: 'task',
             available: true,
           },

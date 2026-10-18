@@ -1,5 +1,6 @@
 import { placementWindowMs } from './best-placement'
 import type { Database } from './db/client'
+import { isSubscriptionOffering, isTaskOffering } from './sponsor-offerings'
 
 /** Stripe Checkout expires after 24 hours. A claim older than that can be taken. */
 export const SPONSOR_CHECKOUT_EXPIRY_MS = 24 * 60 * 60 * 1000
@@ -8,6 +9,9 @@ export const SPONSOR_SLOT_TAKEN = 'That task page already has a placement in thi
 
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000
 const MONTH_MS = 30 * 24 * 60 * 60 * 1000
+
+/** Largest Date value. A renewing subscription has no fixed end, so it holds the task until here. */
+export const OPEN_ENDED_MS = 8_640_000_000_000_000
 
 export type SponsorSlotClaim = {
   taskSlug: string
@@ -20,13 +24,20 @@ export type SponsorSlotClaim = {
  * Hold a task page for one checkout. One statement inserts or takes over an
  * expired claim, and only when no paid unrefunded window overlaps the new
  * placement. A second request for a live claim changes nothing.
+ *
+ * A subscription (new or existing) has no fixed end while it is renewing:
+ * active, trialing, or past_due, with no cancellation scheduled. It holds the
+ * task open-ended. A subscription with a scheduled cancel, or one that ended,
+ * holds the task until paid_through. A new subscription checkout overlaps any
+ * paid placement on the task that has not ended yet.
  */
 export async function claimSponsorSlot(
   db: Database,
   input: SponsorSlotClaim,
 ): Promise<{ ok: true } | { ok: false; message: string }> {
-  const windowMs = placementWindowMs(input.offering)
-  if (windowMs == null) return { ok: true }
+  if (!isTaskOffering(input.offering)) return { ok: true }
+  const windowMs = isSubscriptionOffering(input.offering) ? null : placementWindowMs(input.offering)
+  const newEnd = windowMs == null ? OPEN_ENDED_MS : input.now + windowMs
   const claimed = await db.$client.execute({
     sql: `INSERT INTO sponsorship_slot_claims (task_slug, request_key, offering, claimed_at)
       SELECT ?, ?, ?, ?
@@ -36,12 +47,18 @@ export async function claimSponsorSlot(
           AND status = 'paid'
           AND refunded_at IS NULL
           AND paid_at IS NOT NULL
-          AND offering IN ('placement_weekly', 'placement_monthly')
+          AND offering IN ('placement_weekly', 'placement_monthly', 'placement_subscription', 'founding_sponsor')
           AND paid_at < ?
-          AND ? < paid_at + CASE offering
-            WHEN 'placement_weekly' THEN ?
-            WHEN 'placement_monthly' THEN ?
-            ELSE 0
+          AND ? < CASE offering
+            WHEN 'placement_weekly' THEN paid_at + ?
+            WHEN 'placement_monthly' THEN paid_at + ?
+            ELSE CASE
+              WHEN canceled_at IS NULL
+                AND cancel_at IS NULL
+                AND coalesce(subscription_status, '') IN ('active', 'trialing', 'past_due')
+              THEN ?
+              ELSE coalesce(paid_through, 0)
+            END
           END
       )
       ON CONFLICT(task_slug) DO UPDATE SET
@@ -57,10 +74,11 @@ export async function claimSponsorSlot(
       input.offering,
       input.now,
       input.taskSlug,
-      input.now + windowMs,
+      newEnd,
       input.now,
       WEEK_MS,
       MONTH_MS,
+      OPEN_ENDED_MS,
       input.now - SPONSOR_CHECKOUT_EXPIRY_MS,
     ],
   })

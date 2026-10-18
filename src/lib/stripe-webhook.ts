@@ -1,11 +1,17 @@
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, eq, isNull, lte, ne, or, sql } from 'drizzle-orm'
 import type Stripe from 'stripe'
 import { z } from 'zod'
 import type { Database } from './db'
 import { sponsorships, stripeEvents, subscriptions } from './db/schema'
 import { getDb } from './db'
 import { isDeadline, withDeadline } from './deadline'
-import { sponsorOffering, sponsorPriceId } from './sponsor-offerings'
+import {
+  sponsorOffering,
+  sponsorPriceId,
+  sponsorPriceLockMonths,
+  sponsorSetupPriceId,
+  type SubscriptionSponsorOffering,
+} from './sponsor-offerings'
 import { getStripe, stripeWebhookSecret } from './stripe'
 import { liveModeAllowed } from './stripe-key'
 import { sanitizeSponsorCompany } from './sponsor-company'
@@ -139,18 +145,33 @@ async function applyWebhook(
 /** Events the test-mode webhook is subscribed to for sponsor refunds. */
 export const SPONSOR_REFUND_WEBHOOK_EVENTS = ['charge.refunded', 'refund.created', 'refund.updated'] as const
 
-const KNOWN_EVENT_TYPES = new Set<string>([
+/**
+ * Events the webhook endpoint must send for sponsor subscriptions
+ * (founding_sponsor, placement_subscription), on top of the checkout and
+ * refund events. The post-merge runbook adds these to the live endpoint.
+ */
+export const SPONSOR_SUBSCRIPTION_WEBHOOK_EVENTS = [
   'checkout.session.completed',
   'checkout.session.async_payment_succeeded',
   'checkout.session.async_payment_failed',
+  'invoice.paid',
+  'invoice.payment_failed',
   'customer.subscription.created',
   'customer.subscription.updated',
   'customer.subscription.deleted',
+] as const
+
+const KNOWN_EVENT_TYPES = new Set<string>([
+  ...SPONSOR_SUBSCRIPTION_WEBHOOK_EVENTS,
   ...SPONSOR_REFUND_WEBHOOK_EVENTS,
 ])
 
+const stripeRef = z.union([z.string(), z.object({ id: z.string() })]).nullable().optional()
+
 const sponsorshipCheckoutSchema = z.object({
   id: z.string().min(1).max(255),
+  mode: z.string().optional(),
+  subscription: stripeRef,
   payment_status: z.string().optional(),
   customer: z.union([z.string(), z.object({ id: z.string() })]).nullable().optional(),
   payment_intent: z.union([z.string(), z.object({ id: z.string() })]).nullable().optional(),
@@ -208,6 +229,11 @@ async function applySponsorship(db: Database, stripe: Stripe, event: Stripe.Even
   }
   const offering = sponsorOffering(parsed.data.metadata.offering)
   if (!offering) throw new Error('sponsorship payload failed validation')
+  if (offering.billing === 'subscription') {
+    await applySponsorSubscriptionCheckout(db, stripe, event, parsed.data, offering, clock)
+    return
+  }
+  if (parsed.data.mode !== undefined && parsed.data.mode !== 'payment') throw new Error('sponsorship mode mismatch')
   const expectedPriceId = sponsorPriceId(offering.id)
   if (!expectedPriceId) throw new Error('sponsorship price is not configured')
   const session = await stripe.checkout.sessions.retrieve(parsed.data.id, { expand: ['line_items'] })
@@ -270,6 +296,379 @@ async function applySponsorship(db: Database, stripe: Stripe, event: Stripe.Even
   })
 }
 
+type SponsorshipCheckout = z.infer<typeof sponsorshipCheckoutSchema>
+
+function sessionLines(session: Stripe.Checkout.Session): Array<{ priceId: string | null; quantity: number | null }> {
+  return (session.line_items?.data ?? []).map((item) => {
+    const price = item.price
+    return {
+      priceId: !price ? null : typeof price === 'string' ? price : price.id,
+      quantity: typeof item.quantity === 'number' ? item.quantity : null,
+    }
+  })
+}
+
+function secondsToMs(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) && value > 0 ? value * 1000 : null
+}
+
+/** Calendar months after a UTC instant, clamped to the last day of the target month. */
+export function addUtcMonths(ms: number, months: number): number {
+  const start = new Date(ms)
+  const target = new Date(
+    Date.UTC(
+      start.getUTCFullYear(),
+      start.getUTCMonth() + months,
+      1,
+      start.getUTCHours(),
+      start.getUTCMinutes(),
+      start.getUTCSeconds(),
+      start.getUTCMilliseconds(),
+    ),
+  )
+  const lastDay = new Date(Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0)).getUTCDate()
+  target.setUTCDate(Math.min(start.getUTCDate(), lastDay))
+  return target.getTime()
+}
+
+type SubscriptionSnapshot = {
+  status: string
+  paidThrough: number | null
+  cancelAt: number | null
+  canceledAt: number | null
+  startMs: number | null
+}
+
+/** Paid-through, cancel, and status fields read from a retrieved Subscription. */
+function subscriptionSnapshot(subscription: Stripe.Subscription, expectedPriceId: string): SubscriptionSnapshot {
+  const items = subscription.items?.data ?? []
+  const item = items.find((entry) => entry.price?.id === expectedPriceId)
+  if (!item) throw new Error('sponsorship subscription price mismatch')
+  if (typeof item.quantity === 'number' && item.quantity !== 1) throw new Error('sponsorship quantity mismatch')
+  const periodEnd = secondsToMs(item.current_period_end)
+  const trialEnd = secondsToMs(subscription.trial_end)
+  // Trialing: the founding $99 paid for the trial, so the placement runs to
+  // trial_end. Active: the first period's invoice was paid at checkout.
+  // past_due: the current period's invoice is unpaid, so only the time up to
+  // the start of that period was paid for.
+  let paidThrough: number | null = null
+  if (subscription.status === 'trialing') paidThrough = trialEnd
+  else if (subscription.status === 'active') paidThrough = periodEnd
+  else if (subscription.status === 'past_due') paidThrough = secondsToMs(item.current_period_start)
+  let cancelAt = secondsToMs(subscription.cancel_at)
+  if (cancelAt == null && subscription.cancel_at_period_end) cancelAt = periodEnd
+  return {
+    status: subscription.status,
+    paidThrough,
+    cancelAt,
+    canceledAt: secondsToMs(subscription.canceled_at),
+    startMs: secondsToMs(subscription.start_date),
+  }
+}
+
+/**
+ * checkout.session.completed (and the async variants) for a sponsor
+ * subscription. The session and the Subscription are both re-read from
+ * Stripe, so the row reflects Stripe's current state even when this event is
+ * processed after invoice.paid or customer.subscription.updated. The prices
+ * on the session must be exactly the server-configured recurring Price, plus
+ * the setup Price for the founding offer, each with quantity 1.
+ */
+async function applySponsorSubscriptionCheckout(
+  db: Database,
+  stripe: Stripe,
+  event: Stripe.Event,
+  data: SponsorshipCheckout,
+  offering: SubscriptionSponsorOffering,
+  clock?: number,
+): Promise<void> {
+  if (data.mode !== 'subscription') throw new Error('sponsorship mode mismatch')
+  const metadata = data.metadata
+  if (!metadata) throw new Error('sponsorship payload failed validation')
+  const expectedPriceId = sponsorPriceId(offering.id)
+  if (!expectedPriceId) throw new Error('sponsorship price is not configured')
+  const expectedSetupId = 'setup' in offering ? sponsorSetupPriceId(offering.id) : null
+  if ('setup' in offering && !expectedSetupId) throw new Error('sponsorship price is not configured')
+
+  const session = await stripe.checkout.sessions.retrieve(data.id, { expand: ['line_items'] })
+  if (session.id !== data.id) throw new Error('sponsorship price mismatch')
+  const lines = sessionLines(session)
+  const expected = [expectedPriceId, ...(expectedSetupId ? [expectedSetupId] : [])].sort()
+  const actual = lines.map((line) => line.priceId ?? '').sort()
+  if (actual.length !== expected.length || actual.some((id, index) => id !== expected[index])) {
+    throw new Error('sponsorship price mismatch')
+  }
+  if (lines.some((line) => line.quantity !== 1)) throw new Error('sponsorship quantity mismatch')
+
+  const now = clock ?? Date.now()
+  const status = sponsorshipStatus(event.type, data.payment_status === 'no_payment_required' ? 'paid' : data.payment_status)
+  const subscriptionId = stripeId(data.subscription) ?? stripeId(session.subscription as string | { id: string } | null)
+  if (!subscriptionId) {
+    // An async payment can fail before Stripe creates the subscription. Record the failed row only.
+    if (status !== 'failed') throw new Error('sponsorship subscription missing')
+  }
+  let snapshot: SubscriptionSnapshot | null = null
+  if (subscriptionId) {
+    const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+    if (subscription.id !== subscriptionId) throw new Error('sponsorship subscription mismatch')
+    const subscriptionKind = subscription.metadata?.kind
+    const subscriptionOffering = subscription.metadata?.offering
+    if (subscriptionKind !== 'sponsorship' || subscriptionOffering !== offering.id) {
+      throw new Error('sponsorship subscription mismatch')
+    }
+    snapshot = subscriptionSnapshot(subscription, expectedPriceId)
+  }
+  const lockMonths = sponsorPriceLockMonths(offering)
+  const priceLockedUntil = lockMonths > 0 && snapshot?.startMs != null ? addUtcMonths(snapshot.startMs, lockMonths) : null
+  const paidThrough = status === 'paid' ? snapshot?.paidThrough ?? null : null
+  const company = sanitizeSponsorCompany(metadata.company ?? '')
+
+  await db
+    .insert(sponsorships)
+    .values({
+      stripeCheckoutSessionId: data.id,
+      stripePaymentIntentId: null,
+      stripeCustomerId: stripeId(data.customer),
+      stripePriceId: expectedPriceId,
+      offering: offering.id,
+      status,
+      email: data.customer_email ?? metadata.email ?? null,
+      company: company.length > 0 ? company : null,
+      taskSlug: metadata.task_slug || null,
+      issueDate: null,
+      amountTotal: data.amount_total ?? null,
+      currency: data.currency ?? null,
+      createdAt: now,
+      updatedAt: now,
+      paidAt: status === 'paid' ? now : null,
+      stripeSubscriptionId: subscriptionId,
+      subscriptionStatus: snapshot?.status ?? null,
+      paidThrough,
+      priceLockedUntil,
+      cancelAt: snapshot?.cancelAt ?? null,
+      canceledAt: snapshot?.canceledAt ?? null,
+      subscriptionEventAt: snapshot ? now : null,
+    })
+    .onConflictDoUpdate({
+      target: sponsorships.stripeCheckoutSessionId,
+      set: {
+        stripeCustomerId: sql`coalesce(excluded.stripe_customer_id, ${sponsorships.stripeCustomerId})`,
+        stripePriceId: sql`coalesce(excluded.stripe_price_id, ${sponsorships.stripePriceId})`,
+        status: sql`CASE
+          WHEN ${sponsorships.status} = 'paid' OR excluded.status = 'paid' THEN 'paid'
+          WHEN ${sponsorships.status} = 'failed' AND excluded.status = 'pending' THEN ${sponsorships.status}
+          ELSE excluded.status
+        END`,
+        email: sql`coalesce(excluded.email, ${sponsorships.email})`,
+        company: sql`coalesce(excluded.company, ${sponsorships.company})`,
+        taskSlug: sql`coalesce(excluded.task_slug, ${sponsorships.taskSlug})`,
+        amountTotal: sql`coalesce(excluded.amount_total, ${sponsorships.amountTotal})`,
+        currency: sql`coalesce(excluded.currency, ${sponsorships.currency})`,
+        paidAt: sql`CASE
+          WHEN ${sponsorships.paidAt} IS NOT NULL THEN ${sponsorships.paidAt}
+          WHEN ${sponsorships.status} = 'paid' OR excluded.status = 'paid' THEN ${now}
+          ELSE NULL
+        END`,
+        stripeSubscriptionId: sql`coalesce(excluded.stripe_subscription_id, ${sponsorships.stripeSubscriptionId})`,
+        paidThrough: sql`CASE
+          WHEN excluded.paid_through IS NULL THEN ${sponsorships.paidThrough}
+          WHEN ${sponsorships.paidThrough} IS NULL THEN excluded.paid_through
+          ELSE max(${sponsorships.paidThrough}, excluded.paid_through)
+        END`,
+        priceLockedUntil: sql`coalesce(${sponsorships.priceLockedUntil}, excluded.price_locked_until)`,
+        // The re-read Subscription is current as of now. It replaces older
+        // status fields, and a canceled row never returns to another status.
+        subscriptionStatus: sql`CASE
+          WHEN ${sponsorships.subscriptionStatus} = 'canceled' THEN ${sponsorships.subscriptionStatus}
+          WHEN excluded.subscription_event_at IS NULL THEN ${sponsorships.subscriptionStatus}
+          WHEN ${sponsorships.subscriptionEventAt} IS NULL OR ${sponsorships.subscriptionEventAt} <= excluded.subscription_event_at THEN excluded.subscription_status
+          ELSE ${sponsorships.subscriptionStatus}
+        END`,
+        cancelAt: sql`CASE
+          WHEN excluded.subscription_event_at IS NULL THEN ${sponsorships.cancelAt}
+          WHEN ${sponsorships.subscriptionEventAt} IS NULL OR ${sponsorships.subscriptionEventAt} <= excluded.subscription_event_at THEN excluded.cancel_at
+          ELSE ${sponsorships.cancelAt}
+        END`,
+        canceledAt: sql`coalesce(${sponsorships.canceledAt}, excluded.canceled_at)`,
+        subscriptionEventAt: sql`CASE
+          WHEN excluded.subscription_event_at IS NULL THEN ${sponsorships.subscriptionEventAt}
+          WHEN ${sponsorships.subscriptionEventAt} IS NULL THEN excluded.subscription_event_at
+          ELSE max(${sponsorships.subscriptionEventAt}, excluded.subscription_event_at)
+        END`,
+        updatedAt: now,
+      },
+    })
+  await linkSponsorCreative(db, {
+    creativeId: metadata.creative_id,
+    sessionId: data.id,
+    now,
+  })
+}
+
+const invoiceSchema = z.object({
+  id: z.string().min(1).max(255),
+  subscription: stripeRef,
+  parent: z
+    .object({
+      subscription_details: z
+        .object({
+          subscription: stripeRef,
+        })
+        .nullable()
+        .optional(),
+    })
+    .nullable()
+    .optional(),
+  lines: z
+    .object({
+      data: z.array(
+        z.object({
+          period: z.object({ start: z.number().optional(), end: z.number().optional() }).nullable().optional(),
+        }),
+      ),
+    })
+    .nullable()
+    .optional(),
+})
+
+/** Subscription id on an invoice. Newer API versions use parent.subscription_details. */
+function invoiceSubscriptionId(invoice: z.infer<typeof invoiceSchema>): string | null {
+  return stripeId(invoice.parent?.subscription_details?.subscription) ?? stripeId(invoice.subscription)
+}
+
+/**
+ * invoice.paid extends paid_through to the latest line period end (a renewal
+ * moves it one month forward) and clears a past payment failure.
+ * invoice.payment_failed records the failure and marks a renewing row
+ * past_due, so the renewal grace stops and the card ends at paid_through.
+ * An invoice for a subscription with no sponsor row (a membership, or a
+ * sponsor checkout whose completed event has not been processed yet) changes
+ * nothing; the checkout handler re-reads the Subscription when it runs.
+ */
+async function applySponsorInvoice(db: Database, event: Stripe.Event, now: number): Promise<void> {
+  const parsed = invoiceSchema.safeParse(event.data?.object)
+  if (!parsed.success) throw new Error('invoice payload failed validation')
+  const subscriptionId = invoiceSubscriptionId(parsed.data)
+  if (!subscriptionId) return
+  if (event.type === 'invoice.paid') {
+    const ends = (parsed.data.lines?.data ?? [])
+      .map((line) => secondsToMs(line.period?.end))
+      .filter((value): value is number => value != null)
+    const periodEnd = ends.length > 0 ? Math.max(...ends) : null
+    await db
+      .update(sponsorships)
+      .set({
+        status: 'paid',
+        paidAt: sql`coalesce(${sponsorships.paidAt}, ${now})`,
+        paidThrough:
+          periodEnd == null
+            ? sql`${sponsorships.paidThrough}`
+            : sql`CASE
+                WHEN ${sponsorships.paidThrough} IS NULL THEN ${periodEnd}
+                ELSE max(${sponsorships.paidThrough}, ${periodEnd})
+              END`,
+        paymentFailedAt: null,
+        subscriptionStatus: sql`CASE
+          WHEN ${sponsorships.subscriptionStatus} = 'past_due' THEN 'active'
+          ELSE ${sponsorships.subscriptionStatus}
+        END`,
+        updatedAt: now,
+      })
+      .where(and(eq(sponsorships.stripeSubscriptionId, subscriptionId), ne(sponsorships.status, 'failed')))
+    return
+  }
+  await db
+    .update(sponsorships)
+    .set({
+      paymentFailedAt: now,
+      subscriptionStatus: sql`CASE
+        WHEN ${sponsorships.subscriptionStatus} IN ('active', 'trialing') THEN 'past_due'
+        ELSE ${sponsorships.subscriptionStatus}
+      END`,
+      updatedAt: now,
+    })
+    .where(eq(sponsorships.stripeSubscriptionId, subscriptionId))
+}
+
+const sponsorSubscriptionSchema = z.object({
+  id: z.string().min(1).max(255),
+  status: z.string().min(1).max(40),
+  cancel_at: z.number().nullable().optional(),
+  cancel_at_period_end: z.boolean().nullable().optional(),
+  canceled_at: z.number().nullable().optional(),
+  ended_at: z.number().nullable().optional(),
+  metadata: z.object({ kind: z.literal('sponsorship') }),
+  items: z
+    .object({
+      data: z.array(z.object({ current_period_end: z.number().optional() })).optional(),
+    })
+    .optional(),
+})
+
+function isSponsorSubscriptionEvent(event: Stripe.Event): boolean {
+  if (!event.type.startsWith('customer.subscription.')) return false
+  const object = event.data?.object
+  if (!object || typeof object !== 'object' || !('metadata' in object)) return false
+  const metadata = object.metadata
+  return Boolean(metadata && typeof metadata === 'object' && 'kind' in metadata && metadata.kind === 'sponsorship')
+}
+
+/**
+ * customer.subscription.created/updated/deleted for a sponsor subscription.
+ * Updates the status, the scheduled cancel, and canceled_at on the matching
+ * row. An event older than the last applied one is ignored, and a canceled
+ * row stays canceled. deleted is terminal: it also ends the placement at
+ * ended_at when that is before paid_through (an immediate cancel). A
+ * cancel at period end keeps the placement to the end of the paid month.
+ */
+async function applySponsorSubscriptionEvent(db: Database, event: Stripe.Event, now: number): Promise<void> {
+  const parsed = sponsorSubscriptionSchema.safeParse(event.data?.object)
+  if (!parsed.success) throw new Error('subscription payload failed validation')
+  const data = parsed.data
+  const eventAt = secondsToMs(event.created) ?? now
+  const periodEnd = secondsToMs(data.items?.data?.[0]?.current_period_end)
+  let cancelAt = secondsToMs(data.cancel_at)
+  if (cancelAt == null && data.cancel_at_period_end) cancelAt = periodEnd
+  if (event.type === 'customer.subscription.deleted') {
+    const ended = secondsToMs(data.ended_at) ?? secondsToMs(data.canceled_at) ?? eventAt
+    await db
+      .update(sponsorships)
+      .set({
+        subscriptionStatus: 'canceled',
+        canceledAt: sql`coalesce(${sponsorships.canceledAt}, ${secondsToMs(data.canceled_at) ?? ended})`,
+        cancelAt: null,
+        paidThrough: sql`CASE
+          WHEN ${sponsorships.paidThrough} IS NULL THEN NULL
+          WHEN ${sponsorships.paidThrough} > ${ended} THEN ${ended}
+          ELSE ${sponsorships.paidThrough}
+        END`,
+        subscriptionEventAt: sql`CASE
+          WHEN ${sponsorships.subscriptionEventAt} IS NULL THEN ${eventAt}
+          ELSE max(${sponsorships.subscriptionEventAt}, ${eventAt})
+        END`,
+        updatedAt: now,
+      })
+      .where(eq(sponsorships.stripeSubscriptionId, data.id))
+    return
+  }
+  await db
+    .update(sponsorships)
+    .set({
+      subscriptionStatus: data.status,
+      cancelAt,
+      canceledAt: sql`coalesce(${sponsorships.canceledAt}, ${secondsToMs(data.canceled_at)})`,
+      subscriptionEventAt: eventAt,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(sponsorships.stripeSubscriptionId, data.id),
+        or(isNull(sponsorships.subscriptionStatus), ne(sponsorships.subscriptionStatus, 'canceled')),
+        or(isNull(sponsorships.subscriptionEventAt), lte(sponsorships.subscriptionEventAt, eventAt)),
+      ),
+    )
+}
+
 function paymentIntentId(value: unknown): string | null {
   if (typeof value === 'string') return value.startsWith('pi_') ? value : null
   if (!value || typeof value !== 'object' || !('id' in value)) return null
@@ -307,6 +706,16 @@ async function applyEvent(db: Database, stripe: Stripe, event: Stripe.Event, now
 
   if (event.type === 'charge.refunded' || event.type.startsWith('refund.')) {
     await applySponsorshipRefund(db, event, now ?? Date.now())
+    return
+  }
+
+  if (event.type === 'invoice.paid' || event.type === 'invoice.payment_failed') {
+    await applySponsorInvoice(db, event, now ?? Date.now())
+    return
+  }
+
+  if (isSponsorSubscriptionEvent(event)) {
+    await applySponsorSubscriptionEvent(db, event, now ?? Date.now())
     return
   }
 
