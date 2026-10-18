@@ -1,8 +1,16 @@
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
-import { CLIENT_BUNDLE_FORBIDDEN, clientBundleHits } from '../src/lib/client-bundle'
+import {
+  adminOnlyChunks,
+  CATALOG_CLIENT_FORBIDDEN,
+  CLIENT_BUNDLE_FORBIDDEN,
+  clientBundleHits,
+  parseClientReferenceManifest,
+} from '../src/lib/client-bundle'
 
-const STATIC_ROOT = path.join(process.cwd(), '.next', 'static')
+const NEXT_ROOT = path.join(process.cwd(), '.next')
+const STATIC_ROOT = path.join(NEXT_ROOT, 'static')
+const SERVER_APP_ROOT = path.join(NEXT_ROOT, 'server', 'app')
 
 async function filesIn(directory: string): Promise<string[]> {
   const found: string[] = []
@@ -28,7 +36,21 @@ async function main(): Promise<void> {
   const needles = [...CLIENT_BUNDLE_FORBIDDEN]
   if (token.length >= 20) needles.push(token)
 
+  // Chunks only /admin routes load may carry the sponsor catalog (the admin card
+  // queue). With no manifests every chunk counts as public, so the scan fails closed.
+  const manifests: { route: string; chunks: string[] }[] = []
+  try {
+    for (const full of await filesIn(SERVER_APP_ROOT)) {
+      if (!full.endsWith('_client-reference-manifest.js')) continue
+      manifests.push(...parseClientReferenceManifest(await readFile(full, 'utf8')))
+    }
+  } catch {
+    // No server app output: treat every chunk as public.
+  }
+  const adminOnly = adminOnlyChunks(manifests)
+
   const hits: string[] = []
+  const catalogHits: string[] = []
   for (const full of files) {
     let text: string
     try {
@@ -40,6 +62,12 @@ async function main(): Promise<void> {
       const label = needle === token ? 'TURSO auth token value' : needle
       hits.push(`${path.relative(process.cwd(), full)} contains ${label}`)
     }
+    const chunk = path.relative(NEXT_ROOT, full).split(path.sep).join('/')
+    if (full.endsWith('.js') && !adminOnly.has(chunk)) {
+      for (const needle of clientBundleHits(text, CATALOG_CLIENT_FORBIDDEN)) {
+        catalogHits.push(`${path.relative(process.cwd(), full)} contains ${needle}`)
+      }
+    }
   }
 
   if (hits.length > 0) {
@@ -47,7 +75,16 @@ async function main(): Promise<void> {
     for (const hit of hits) console.error(hit)
     process.exit(1)
   }
-  console.log(`Scanned ${files.length} client files. No database or Stripe secrets.`)
+  if (catalogHits.length > 0) {
+    console.error(
+      'A non-admin client chunk contains the SPONSOR_OFFERINGS catalog. Client modules must import copy from @/lib/sponsor-form-copy, not @/lib/sponsor-offerings:',
+    )
+    for (const hit of catalogHits) console.error(hit)
+    process.exit(1)
+  }
+  console.log(
+    `Scanned ${files.length} client files. No database or Stripe secrets. No sponsor catalog outside ${adminOnly.size} admin-only chunk(s) (${manifests.length} routes).`,
+  )
 }
 
 main().catch((error: unknown) => {
