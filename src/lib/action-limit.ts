@@ -6,6 +6,7 @@ export const ACTION_LIMITS = {
   result: { limit: 30, windowMs: 60_000 },
   checkout: { limit: 8, windowMs: 60 * 60_000 },
   portal: { limit: 12, windowMs: 60 * 60_000 },
+  sponsor: { limit: 8, windowMs: 60 * 60_000 },
 } as const
 
 export type RateLimitOnError = 'open' | 'closed'
@@ -16,9 +17,10 @@ export type RateLimitDecision = 'allow' | 'limit' | 'unavailable'
 /**
  * A slow limiter must not hang the caller. Over-limit still blocks.
  * `onError` is chosen at each call. Write and abuse-sensitive actions
- * (checkout, the billing portal, signup forms) pass `closed`, which returns
- * `unavailable` so the caller can deny the write. Read-only /result and
- * catalog pages stay `open`: a valid quiz must never 503 because the limiter failed.
+ * (checkout, the billing portal, sponsor checkout, signup forms) pass `closed`,
+ * which returns `unavailable` so the caller can deny the write. Read-only
+ * /result and catalog pages stay `open`: a valid quiz must never 503 because
+ * the limiter failed.
  */
 export async function allowRate(
   db: Database,

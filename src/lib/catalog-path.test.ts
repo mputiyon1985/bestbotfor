@@ -25,6 +25,12 @@ describe('isUnsafeCatalogPath', () => {
   })
 
   it('allows a single catalog slug and ignores other routes', () => {
+    expect(isUnsafeCatalogPath('/go/s/12')).toBe(false)
+    expect(isUnsafeCatalogPath('/go/s/12/')).toBe(false)
+    expect(isUnsafeCatalogPath('/go/s')).toBe(false)
+    expect(isUnsafeCatalogPath('/go/s/0')).toBe(true)
+    expect(isUnsafeCatalogPath('/go/s/01')).toBe(true)
+    expect(isUnsafeCatalogPath('/go/s/12/extra')).toBe(true)
     expect(isUnsafeCatalogPath('/go/chatgpt')).toBe(false)
     expect(isUnsafeCatalogPath('/go/chatgpt/?next=https://evil.example')).toBe(false)
     expect(isUnsafeCatalogPath('/best/coding')).toBe(false)

@@ -1,9 +1,8 @@
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
+import { CLIENT_BUNDLE_FORBIDDEN, clientBundleHits } from '../src/lib/client-bundle'
 
 const STATIC_ROOT = path.join(process.cwd(), '.next', 'static')
-
-const FORBIDDEN = ['libsql://', 'TURSO_AUTH_TOKEN', '@libsql/client']
 
 async function filesIn(directory: string): Promise<string[]> {
   const found: string[] = []
@@ -26,7 +25,7 @@ async function main(): Promise<void> {
   }
 
   const token = process.env.TURSO_AUTH_TOKEN?.trim() ?? ''
-  const needles = [...FORBIDDEN]
+  const needles = [...CLIENT_BUNDLE_FORBIDDEN]
   if (token.length >= 20) needles.push(token)
 
   const hits: string[] = []
@@ -37,19 +36,18 @@ async function main(): Promise<void> {
     } catch {
       continue
     }
-    for (const needle of needles) {
-      if (!text.includes(needle)) continue
+    for (const needle of clientBundleHits(text, needles)) {
       const label = needle === token ? 'TURSO auth token value' : needle
       hits.push(`${path.relative(process.cwd(), full)} contains ${label}`)
     }
   }
 
   if (hits.length > 0) {
-    console.error('Client bundle leaked a database credential or libsql URL:')
+    console.error('Client bundle leaked a secret or a Stripe key:')
     for (const hit of hits) console.error(hit)
     process.exit(1)
   }
-  console.log(`Scanned ${files.length} client files. No Turso token or libsql URL.`)
+  console.log(`Scanned ${files.length} client files. No database or Stripe secrets.`)
 }
 
 main().catch((error: unknown) => {
