@@ -37,15 +37,19 @@ export function generateMetadata(): Metadata {
 export default function SponsorPage() {
   const surface = sponsorCheckoutSurface()
   const mode = stripeKeyMode()
-  const offerings = SPONSOR_OFFERINGS.map((offering) => ({
-    id: offering.id,
-    title: offering.title,
-    summary: offering.summary,
-    priceLabel: sponsorOfferingPriceLabel(offering),
-    notice: sponsorOfferingNotice(offering),
-    target: offering.target,
-    available: surface !== 'closed' && mode !== 'off' && sponsorOfferingConfigured(offering.id),
-  }))
+  const offerings = SPONSOR_OFFERINGS.map((offering) => {
+    const available = surface !== 'closed' && mode !== 'off' && sponsorOfferingConfigured(offering.id)
+    // A disabled option is sent without its price or terms, so the form cannot show them.
+    return {
+      id: offering.id,
+      title: offering.title,
+      summary: available ? offering.summary : '',
+      priceLabel: available ? sponsorOfferingPriceLabel(offering) : '',
+      notice: available ? sponsorOfferingNotice(offering) : '',
+      target: offering.target,
+      available,
+    }
+  })
   const tasks = taskSeeds.map((task) => ({ slug: task.slug, name: task.name }))
   const week = sponsorPriceLabel(SPONSOR_OFFERINGS[0].unitAmount)
   const month = sponsorPriceLabel(SPONSOR_OFFERINGS[1].unitAmount)
