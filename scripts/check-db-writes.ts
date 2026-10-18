@@ -11,6 +11,7 @@ const ALLOWED = new Set([
   'src/lib/db/migrate.ts',
   'scripts/seed.ts',
   'scripts/migrate.ts',
+  'scripts/a2-catalog-corrections.ts',
   'drizzle/0004_retire_quiz_fits.sql',
   'drizzle/0007_drop_non_forge_scores.sql',
   'drizzle/0011_user_reviews.sql',

@@ -4,6 +4,7 @@ import type { Database } from './db'
 import { subscribers } from './db/schema'
 import { absoluteUrl } from './site'
 import { ACTION_LIMITS, allowRate } from './action-limit'
+import { newsletterReferringPath, type NewsletterSource } from './newsletter-source'
 import { emailSchema, newsletterFieldsSchema } from './validation'
 
 export type NewsletterResult = {
@@ -16,13 +17,15 @@ const SUCCESS = "Thanks. You're on the list."
 
 /**
  * Honeypot hits return the same success copy as a real signup and write nothing.
- * When Beehiiv env vars are unset, the email is stored locally only.
+ * Beehiiv is the named Daily Bot provider. When its env vars are unset, the
+ * email is stored in `subscribers` only. Logs never include the address.
  */
 export async function subscribeToNewsletter(input: {
   email: string
   honeypot: string
   db: Database
   rateKey: string
+  source?: NewsletterSource
   fetchImpl?: typeof fetch
   now?: number
 }): Promise<NewsletterResult> {
@@ -63,7 +66,7 @@ export async function subscribeToNewsletter(input: {
   if (isBeehiivConfigured()) {
     const remote = await createBeehiivSubscription({
       email: normalized,
-      referringSite: absoluteUrl('/newsletter'),
+      referringSite: absoluteUrl(newsletterReferringPath(input.source ?? 'newsletter')),
       fetchImpl: input.fetchImpl,
     })
     if (!remote.ok) {
