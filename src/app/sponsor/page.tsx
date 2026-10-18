@@ -60,7 +60,7 @@ export default function SponsorPage() {
         </li>
       </ul>
       <p className="text-sm text-muted">
-        These are the current list prices from server configuration. They can be changed there.
+        The one-time prices above are the current list prices from server configuration. They can be changed there.
         {surface === 'closed' ? null : ' The form does not send an amount. Checkout charges the Stripe price configured on the server.'}
       </p>
       {surface === 'live' ? <SponsorPaymentLinks /> : null}

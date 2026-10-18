@@ -6,8 +6,10 @@ import { SPONSOR_CONTACT_EMAIL, SPONSOR_CONTACT_MAILTO } from '@/lib/sponsor-che
 import { resetStripeCache } from '@/lib/stripe'
 import {
   FOUNDING_SPONSOR_LIMIT,
+  SPONSOR_CANCEL_LINE,
   SPONSOR_PAYMENT_LINK_HOST,
   SPONSOR_PAYMENT_LINKS,
+  SPONSOR_SUBSCRIPTION_DISCLOSURE,
   SPONSOR_SUBSCRIPTION_NOTICE,
 } from './sponsor-payment-links'
 
@@ -53,7 +55,7 @@ describe('sponsor payment links', () => {
     const [founding, monthly] = SPONSOR_PAYMENT_LINKS
     expect(FOUNDING_SPONSOR_LIMIT).toBe(5)
     expect(founding.terms).toBe(
-      '$99 for the first 2 weeks, then $299/mo. Founding price locked for 6 months. Cancel anytime. Limited to 5 sponsors.',
+      '$99 for the first 2 weeks, then $299/mo. Price locked at $299/mo for 6 months. Cancel anytime. Limited to 5 sponsors.',
     )
     expect(monthly.terms).toBe('$299/mo. Cancel anytime.')
     for (const link of SPONSOR_PAYMENT_LINKS) expect(link.terms.toLowerCase()).not.toContain('commitment')
@@ -71,6 +73,10 @@ describe('sponsor payment links', () => {
     }
     expect(html.indexOf('Sponsor subscriptions')).toBeGreaterThan(html.indexOf('Newsletter sponsor slot:'))
     expect(html).toContain('Continue to checkout')
+    expect(html).toContain(`${SPONSOR_SUBSCRIPTION_DISCLOSURE} <a class="underline" href="/disclosure">Disclosures</a>.`)
+    expect(html).toContain(`${SPONSOR_CANCEL_LINE} <a class="inline-flex min-h-11 items-center font-semibold underline" href="${SPONSOR_CONTACT_MAILTO}">${SPONSOR_CONTACT_EMAIL}</a>`)
+    expect(html.replace(/<[^>]+>/g, '')).toContain('To cancel, email mark@bestbotfor.com')
+    expect(html.replace(/<[^>]+>/g, '')).toContain('Placements carry a Sponsored label and never change rankings. See Disclosures.')
     expect(html).toContain(`Questions or custom deals? <a class="inline-flex min-h-11 items-center font-semibold underline" href="${SPONSOR_CONTACT_MAILTO}">${SPONSOR_CONTACT_EMAIL}</a>`)
   })
 
@@ -81,8 +87,32 @@ describe('sponsor payment links', () => {
       expect(html).not.toContain('Sponsor subscriptions')
       expect(html).not.toContain(SPONSOR_PAYMENT_LINK_HOST)
     }
+    for (const html of [preview, closed]) {
+      expect(html).not.toContain(SPONSOR_CANCEL_LINE)
+      expect(html).not.toContain(SPONSOR_SUBSCRIPTION_DISCLOSURE)
+    }
     expect(preview).toContain('Stripe test mode')
     expect(preview).not.toContain('Questions or custom deals?')
     expect(closed).not.toContain('Questions or custom deals?')
+  })
+
+  it('hides the live links on preview even with the live flag and a live key', () => {
+    for (const env of ['preview', 'development', 'test']) {
+      const html = pageHtml({ VERCEL_ENV: env, STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey })
+      expect(html).not.toContain('Sponsor subscriptions')
+      expect(html).not.toContain(SPONSOR_PAYMENT_LINK_HOST)
+      expect(html).not.toContain(SPONSOR_CANCEL_LINE)
+      expect(html).not.toContain('Questions or custom deals?')
+    }
+  })
+
+  it('hides the live links on production with a live key but without the live flag', () => {
+    for (const flag of [undefined, '', 'TRUE', '1', `${allowLive} `]) {
+      const html = pageHtml({ VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: flag, STRIPE_SECRET_KEY: liveKey })
+      expect(html).not.toContain('Sponsor subscriptions')
+      expect(html).not.toContain(SPONSOR_PAYMENT_LINK_HOST)
+      expect(html).not.toContain(SPONSOR_CANCEL_LINE)
+      expect(html).not.toContain('Questions or custom deals?')
+    }
   })
 })
