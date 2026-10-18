@@ -145,7 +145,7 @@ function CuratedBody({ view }: { view: CompareView }) {
         </section>
       </div>
       <CuratedTable view={view} />
-      <p className="text-sm text-muted">{view.secondaryNote}</p>
+      {view.secondaryNote ? <p className="text-sm text-muted">{view.secondaryNote}</p> : null}
       <CompareNewsletter idSuffix="after-table" cta={view.cta} label="The Daily Bot after the table" />
       <p className="text-sm">
         <Link className="underline" href="/">find the right AI in 30 seconds</Link>

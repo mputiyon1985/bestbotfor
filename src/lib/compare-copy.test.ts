@@ -7,16 +7,38 @@ import {
   DEEPGRAM_PRICE_PRO_STALE,
   N8N_PRICE_LABEL,
 } from '@/data/catalog-corrections'
-import { COMPARE_SECONDARY_NOTE, compareCopy, curatedCompareRedirects, reversedCuratedComparePath } from '@/data/compare-copy'
+import {
+  COMPARE_SECONDARY_NOTE,
+  compareCopy,
+  comparePageCheckedLine,
+  curatedCompareRedirects,
+  reversedCuratedComparePath,
+} from '@/data/compare-copy'
 import { editorialSeeds } from '@/data/scores-pros-cons.seed'
 import { a2CorrectionPlan } from '../../scripts/a2-catalog-corrections'
+import { BEST_GUIDE_TOOL_COUNT } from './descriptions'
+import { toolsForTask } from './recommend'
 import { catalogFromSeeds } from '@/test/catalog-from-seeds'
 import { comparisonRows, comparisonSummary } from './compare'
-import { compareCostAnswer, compareFaqs, compareView } from './compare-copy'
+import { compareCostAnswer, compareFaqs, compareView, visibleSecondaryNote } from './compare-copy'
 import { faqJsonLd } from './jsonld'
 import ComparePage, { generateMetadata as compareMetadata } from '@/app/compare/[pair]/page'
 import { priceLabel } from './format'
 import { QUIZ_RESULT_COUNT } from './scoring'
+
+const CHECKED_TAIL = "Prices change, so confirm on the vendor's site before you pay."
+
+/** Earliest vendor check when the page's sources differ; the shared date when they agree. */
+const CHECKED_ON: Record<string, string> = {
+  'elevenlabs-vs-murf': 'Oct 17, 2026',
+  'n8n-vs-make': 'Oct 17, 2026',
+  'heygen-vs-synthesia': 'Oct 17, 2026',
+  'descript-vs-runway': 'Oct 17, 2026',
+  'granola-vs-fathom': 'Oct 17, 2026',
+  'fathom-vs-fireflies': 'Oct 17, 2026',
+  'lovable-vs-v0': 'Oct 18, 2026',
+  'assemblyai-vs-deepgram': 'Oct 17, 2026',
+}
 
 const LENGTHS: Record<string, readonly [number, number]> = {
   'elevenlabs-vs-murf': [57, 127],
@@ -89,9 +111,8 @@ describe('curated compare copy', () => {
       expect(entry.metaDescription.length, entry.metaDescription).toBe(expected?.[1])
       expect(entry.metaTitle.length, entry.slug).toBeLessThanOrEqual(60)
       expect(entry.metaDescription.length, entry.slug).toBeLessThanOrEqual(155)
-      expect(entry.checkedLine).toBe(
-        "Last checked Oct 17, 2026. Prices change, so confirm on the vendor's site before you pay.",
-      )
+      expect(entry.checkedLine).toBe(`Last checked ${CHECKED_ON[entry.slug]}. ${CHECKED_TAIL}`)
+      expect(entry.checkedLine).toBe(comparePageCheckedLine(entry.sources))
     }
   })
 
@@ -152,12 +173,14 @@ describe('curated compare copy', () => {
     expect(COMPARE_SECONDARY_NOTE).not.toContain('Confirm before publishing')
     for (const entry of compareCopy) {
       expect(entry.secondaryNote, entry.slug).toBe(COMPARE_SECONDARY_NOTE)
+      expect(viewFor(entry.slug).view.secondaryNote, entry.slug).toBe('')
       expect(entry.sources.join('\n'), entry.slug).toContain('src/data/scores-v2.3.csv')
       expect(entry.sources.join('\n'), entry.slug).not.toContain('catalog/scores-v2/scores-v2.3.csv')
     }
 
-    expect(cell(voice.view, 'Paid from').b).toContain('[S]')
-    expect(cell(automation.view, 'Paid from').b).toContain('[S]')
+    expect(cell(voice.view, 'Free plan').b).not.toContain('[S]')
+    expect(cell(voice.view, 'Paid from').b).not.toContain('[S]')
+    expect(cell(automation.view, 'Paid from').b).not.toContain('[S]')
     for (const rendered of [voice, automation]) {
       const faqs = compareFaqs({
         nameA: rendered.view.nameA,
@@ -212,12 +235,124 @@ describe('curated compare copy', () => {
     }
   })
 
-  it('drops the ElevenLabs first-month promo after Oct 18, 2026', () => {
-    const during = viewFor('elevenlabs-vs-murf', '2026-10-18')
-    expect(cell(during.view, 'Paid from').a).toContain('first month $1 until Oct 18')
-    const after = viewFor('elevenlabs-vs-murf', '2026-10-19')
-    expect(cell(after.view, 'Paid from').a).toBe('Starter $6/mo; Creator $22/mo')
-    expect(cell(after.view, 'Paid from').a).not.toContain('$1')
+  it('links each compare page to its matching best guide', () => {
+    const ranking: Record<string, string> = {
+      'elevenlabs-vs-murf': '/best/voice',
+      'n8n-vs-make': '/best/automation',
+      'heygen-vs-synthesia': '/best/video',
+      'descript-vs-runway': '/best/video',
+      'granola-vs-fathom': '/best/meetings',
+      'fathom-vs-fireflies': '/best/meetings',
+      'lovable-vs-v0': '/best/vibe-coding',
+    }
+    for (const entry of compareCopy) {
+      const rendered = viewFor(entry.slug)
+      const href = ranking[entry.slug]
+      if (!href) {
+        expect(rendered.view.ranking, entry.slug).toBeUndefined()
+        continue
+      }
+      expect(rendered.view.ranking?.href, entry.slug).toBe(href)
+      expect(rendered.view.ranking?.label, entry.slug).toMatch(/^See the full .+ ranking$/)
+    }
+  })
+
+  it('does not link AssemblyAI vs Deepgram to a guide that omits one of them', () => {
+    expect(viewFor('assemblyai-vs-deepgram').view.ranking).toBeUndefined()
+    const catalog = catalogFromSeeds()
+    for (const task of catalog.tasks) {
+      const shown = toolsForTask(catalog, task.slug)
+        .slice(0, BEST_GUIDE_TOOL_COUNT)
+        .map((tool) => tool.slug)
+      expect(shown.includes('assemblyai') && shown.includes('deepgram'), task.slug).toBe(false)
+    }
+  })
+
+  it('uses the earliest vendor check date when a page’s sources differ', () => {
+    const tail = CHECKED_TAIL
+    expect(
+      comparePageCheckedLine([
+        'ElevenLabs pricing (vendor, checked Oct 17, 2026)',
+        'Murf pricing (vendor, checked Oct 18, 2026)',
+        'Murf Studio (third party, read Oct 12 and Oct 2, 2026; Creator price re-checked Oct 18, 2026)',
+        'BestBotFor catalog, read Oct 17, 2026',
+      ]),
+    ).toBe(`Last checked Oct 17, 2026. ${tail}`)
+    expect(
+      comparePageCheckedLine([
+        'Lovable pricing (vendor, checked Oct 18, 2026)',
+        'v0 pricing (vendor, checked Oct 18, 2026)',
+      ]),
+    ).toBe(`Last checked Oct 18, 2026. ${tail}`)
+    expect(
+      comparePageCheckedLine([
+        'AssemblyAI pricing (vendor, checked Oct 17, 2026 (page says last updated Sep 28, 2026))',
+        'Deepgram pricing (vendor, checked Oct 17, 2026)',
+      ]),
+    ).toBe(`Last checked Oct 17, 2026. ${tail}`)
+    expect(
+      comparePageCheckedLine(['checked Jan 31, 2026', 'checked Dec 1, 2025', 'checked Nov 2, 2026']),
+    ).toBe(`Last checked Dec 1, 2025. ${tail}`)
+    for (const month of ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']) {
+      expect(comparePageCheckedLine([`checked ${month} 2, 2026`])).toBe(`Last checked ${month} 2, 2026. ${tail}`)
+    }
+  })
+
+  it('shows the secondary-source legend only when a cell uses it', () => {
+    const legend = COMPARE_SECONDARY_NOTE
+    expect(visibleSecondaryNote(['Core $9/mo'], legend)).toBe('')
+    expect(visibleSecondaryNote(['[S1] third party'], legend)).toBe('')
+    expect(visibleSecondaryNote(['Teams $29/mo [S]'], legend)).toBe(legend)
+    expect(readFileSync(path.join(process.cwd(), 'src/app/compare/[pair]/page.tsx'), 'utf8')).toContain(
+      'view.secondaryNote ?',
+    )
+  })
+
+  it('uses Nova’s Oct 18, 2026 price re-check', () => {
+    const makeView = viewFor('n8n-vs-make').view
+    expect(makeView.pickB.join(' ')).toContain('3,500+ apps')
+    expect(makeView.pickB.join(' ')).not.toContain('1,000+ app integrations')
+    const make = cell(makeView, 'Paid from').b
+    expect(make).toBe(
+      'Core $9/mo, Pro $16/mo, Team $29/mo billed yearly; monthly billing costs more. Each starts at 10,000 credits.',
+    )
+    expect(make).not.toContain('[S]')
+    expect(make).not.toContain('10.59')
+    const makeCopy = compareCopy.find((entry) => entry.slug === 'n8n-vs-make')
+    expect(makeCopy?.sources.join('\n')).toContain('https://www.make.com/en/pricing')
+    expect(makeCopy?.sources.join('\n')).toContain('https://www.make.com/en/compare/make-vs-zapier')
+    expect(makeCopy?.sources.join('\n')).not.toContain('meetalog')
+    expect(makeCopy?.sources.join('\n')).not.toContain('mainsum')
+    expect(makeCopy?.checkedLine).toBe(`Last checked Oct 17, 2026. ${CHECKED_TAIL}`)
+
+    const murf = cell(viewFor('elevenlabs-vs-murf').view, 'Paid from').b
+    expect(murf).toContain('$29/mo')
+    expect(murf).toContain('$19/mo billed yearly')
+
+    const builders = viewFor('lovable-vs-v0').view
+    expect(cell(builders, 'Paid from').a).toContain('Pro $25/mo')
+    expect(cell(builders, 'Paid from').a).toContain('$21/mo billed yearly')
+    expect(cell(builders, 'Business tier').a).toBe('Business $50/mo, or $42/mo billed yearly')
+    expect(cell(builders, 'Paid from').b).toBe('Plus $30 per user/mo')
+    expect(`${cell(builders, 'Paid from').b} ${cell(builders, 'Business tier').b}`).not.toContain('$90')
+
+    expect(cell(viewFor('heygen-vs-synthesia').view, 'Paid from').b).toBe('Starter $29/mo billed monthly')
+  })
+
+  it('drops the expired ElevenLabs promo and the Murf third-party markers', () => {
+    const copy = compareCopy.find((entry) => entry.slug === 'elevenlabs-vs-murf')
+    expect(copy?.sources.join('\n')).not.toContain('[S')
+    expect(copy?.sources.join('\n')).not.toContain('third party')
+    expect(readFileSync(path.join(process.cwd(), 'src/data/compare-copy.ts'), 'utf8')).toContain(
+      'Standard list prices only. Nova left off the time-limited first-month promos so this cell does not go stale.',
+    )
+    for (const day of ['2026-10-17', '2026-10-18', '2026-10-19']) {
+      const view = viewFor('elevenlabs-vs-murf', day).view
+      expect(cell(view, 'Paid from').a).toBe('Starter $6/mo; Creator $22/mo')
+      expect(cell(view, 'Paid from').a).not.toContain('first month $1')
+      expect(cell(view, 'Paid from').source).toBe('[1]; [2]')
+      expect(cell(view, 'Free plan').source).toBe('[1]; [2]')
+    }
   })
 })
 
