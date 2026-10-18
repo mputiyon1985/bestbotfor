@@ -115,7 +115,7 @@ export const subscribers = sqliteTable('subscribers', {
   createdAt: integer('created_at').notNull(),
   destination: text('destination').notNull(),
   beehiivId: text('beehiiv_id'),
-  /** `pending` until Beehiiv accepts the address. Synced rows are the only ones counted. */
+  /** `pending` until a sender claims it as `syncing`. Synced rows are the only ones counted. */
   status: text('status').notNull().default('pending'),
 })
 
