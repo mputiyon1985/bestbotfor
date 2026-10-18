@@ -1,6 +1,7 @@
 import { and, eq } from 'drizzle-orm'
 import type { Database } from './db/client'
 import { sponsorships } from './db/schema'
+import { approvedCardsForSponsorships, type PublicSponsorCard } from './sponsor-card'
 import { sanitizeSponsorCompany } from './sponsor-company'
 
 /** Visible label for a /best placement that comes from an active sponsorship. */
@@ -11,18 +12,21 @@ const WEEK_MS = 7 * DAY_MS
 const MONTH_MS = 30 * DAY_MS
 
 export type SponsorshipPlacementRow = {
+  id?: number
   offering: string
   status: string
   taskSlug: string | null
   company: string | null
   paidAt: number | null
   refundedAt: number | null
+  card?: PublicSponsorCard | null
 }
 
 export type ActiveBestPlacement = {
   label: typeof SPONSORED_LABEL
   company: string | null
   offering: 'placement_weekly' | 'placement_monthly'
+  card: PublicSponsorCard
 }
 
 /** Paid window for a /best placement. Newsletter slots are not guide placements. */
@@ -35,7 +39,9 @@ export function placementWindowMs(offering: string): number | null {
 /**
  * The placement shown on one /best page. Only a paid weekly or monthly
  * sponsorship for that task, not refunded, still inside the window that
- * starts at paidAt, qualifies. paidAt is the first time the row became paid.
+ * starts at paidAt, and carrying an admin-approved tool card, qualifies.
+ * paidAt is the first time the row became paid. A pending or rejected card
+ * does not display.
  */
 export function activeBestPlacement(
   rows: SponsorshipPlacementRow[],
@@ -43,7 +49,7 @@ export function activeBestPlacement(
   now: number,
 ): ActiveBestPlacement | null {
   const matches = rows.filter((row) => {
-    if (row.status !== 'paid' || row.taskSlug !== taskSlug || row.refundedAt != null) return false
+    if (row.status !== 'paid' || row.taskSlug !== taskSlug || row.refundedAt != null || !row.card) return false
     const windowMs = placementWindowMs(row.offering)
     const start = row.paidAt
     if (windowMs == null || start == null || !Number.isFinite(start) || !Number.isFinite(now)) return false
@@ -51,12 +57,13 @@ export function activeBestPlacement(
   })
   matches.sort((left, right) => (right.paidAt ?? 0) - (left.paidAt ?? 0))
   const current = matches[0]
-  if (!current) return null
+  if (!current?.card) return null
   const company = sanitizeSponsorCompany(current.company ?? '')
   return {
     label: SPONSORED_LABEL,
     company: company.length > 0 ? company : null,
     offering: current.offering === 'placement_monthly' ? 'placement_monthly' : 'placement_weekly',
+    card: current.card,
   }
 }
 
@@ -67,6 +74,7 @@ export async function activeBestPlacementForTask(
 ): Promise<ActiveBestPlacement | null> {
   const rows = await db
     .select({
+      id: sponsorships.id,
       offering: sponsorships.offering,
       status: sponsorships.status,
       taskSlug: sponsorships.taskSlug,
@@ -76,7 +84,15 @@ export async function activeBestPlacementForTask(
     })
     .from(sponsorships)
     .where(and(eq(sponsorships.taskSlug, taskSlug), eq(sponsorships.status, 'paid')))
-  return activeBestPlacement(rows, taskSlug, now)
+  const cards = await approvedCardsForSponsorships(
+    db,
+    rows.map((row) => row.id),
+  )
+  return activeBestPlacement(
+    rows.map((row) => ({ ...row, card: cards.get(row.id) ?? null })),
+    taskSlug,
+    now,
+  )
 }
 
 /**

@@ -2,8 +2,9 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type Stripe from 'stripe'
 import type { Database } from './db/client'
-import { sponsorships, stripeEvents, subscriptions } from './db/schema'
-import { handleStripeWebhook } from './stripe-webhook'
+import { sponsorshipCreatives, sponsorships, stripeEvents, subscriptions } from './db/schema'
+import { activeBestPlacementForTask } from './best-placement'
+import { handleStripeWebhook, SPONSOR_REFUND_WEBHOOK_EVENTS } from './stripe-webhook'
 import { createTestDatabase } from '@/test/db'
 
 const SECRET = 'whsec_test_secret'
@@ -759,6 +760,114 @@ describe('handleStripeWebhook', () => {
     expect(logged).not.toContain('Example Tools')
     info.mockRestore()
     errorLog.mockRestore()
+    await close()
+  })
+
+  it('hides a placement when refund.created succeeds, including a partial amount', async () => {
+    expect(SPONSOR_REFUND_WEBHOOK_EVENTS).toEqual(['charge.refunded', 'refund.created', 'refund.updated'])
+    const { db, close } = await createTestDatabase()
+    const paid = sponsorshipEvent('evt_created_paid')
+    const stripe = stripeStub([paid])
+    await handleStripeWebhook({
+      rawBody: JSON.stringify(paid),
+      signature: 'valid',
+      db,
+      stripe,
+      secret: SECRET,
+      now: 1_700_000_000_000,
+    })
+    const created = {
+      id: 'evt_refund_created',
+      type: 'refund.created',
+      livemode: false,
+      data: {
+        object: {
+          id: 're_created',
+          object: 'refund',
+          payment_intent: 'pi_sponsor',
+          status: 'succeeded',
+          amount: 100,
+        },
+      },
+    } as unknown as Stripe.Event
+    const result = await handleStripeWebhook({
+      rawBody: JSON.stringify(created),
+      signature: 'valid',
+      db,
+      stripe: stripeStub([created]),
+      secret: SECRET,
+      now: 1_700_000_000_500,
+    })
+    expect(result.status).toBe(200)
+    const rows = await db.select().from(sponsorships)
+    expect(rows[0]?.refundedAt).toBe(1_700_000_000_500)
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    await handleStripeWebhook({
+      rawBody: JSON.stringify(created),
+      signature: 'valid',
+      db,
+      stripe: stripeStub([created]),
+      secret: SECRET,
+      now: 1_700_000_000_600,
+    })
+    expect(info).not.toHaveBeenCalledWith('stripe webhook event', 'refund.created')
+    info.mockRestore()
+    await close()
+  })
+
+  it('links a checkout card and leaves it hidden until an admin approves it', async () => {
+    const { db, close } = await createTestDatabase()
+    const png = Buffer.from(
+      'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+      'base64',
+    )
+    const created = await db
+      .insert(sponsorshipCreatives)
+      .values({
+        requestKey: 'req-card',
+        toolName: 'Widget',
+        description: 'A useful coding tool.',
+        url: 'https://example.com/widget',
+        logoMime: 'image/png',
+        logoBytes: png,
+        status: 'pending',
+        createdAt: 1,
+        updatedAt: 1,
+      })
+      .returning({ id: sponsorshipCreatives.id })
+    const creativeId = created[0]?.id
+    if (!creativeId) throw new Error('missing creative')
+    const event = sponsorshipEvent('evt_sponsor_card', 'checkout.session.completed', {
+      metadata: {
+        kind: 'sponsorship',
+        offering: 'placement_monthly',
+        email: 'sponsor@example.com',
+        company: 'Example Tools',
+        task_slug: 'coding',
+        issue_date: '',
+        price_id: 'price_e2e_monthly',
+        creative_id: String(creativeId),
+      },
+    })
+    const now = 1_700_000_000_000
+    const result = await handleStripeWebhook({
+      rawBody: JSON.stringify(event),
+      signature: 'valid',
+      db,
+      stripe: stripeStub([event]),
+      secret: SECRET,
+      now,
+    })
+    expect(result.status).toBe(200)
+    const cards = await db.select().from(sponsorshipCreatives)
+    const sponsorship = await db.select().from(sponsorships)
+    expect(cards).toHaveLength(1)
+    expect(cards[0]).toMatchObject({
+      status: 'pending',
+      sponsorshipId: sponsorship[0]?.id,
+      stripeCheckoutSessionId: 'cs_test_sponsor',
+    })
+    await expect(activeBestPlacementForTask(db, 'coding', now)).resolves.toBeNull()
     await close()
   })
 

@@ -87,6 +87,27 @@
       "breakpoints": true
     },
     {
+      "idx": 12,
+      "version": "6",
+      "when": 1792185000000,
+      "tag": "0014_sponsorship_creatives",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1792186000000,
+      "tag": "0015_sponsorship_slot_claims",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1792187000000,
+      "tag": "0016_sponsorship_card_review",
+      "breakpoints": true
+    },
+    {
       "idx": 16,
       "version": "6",
       "when": 1792188000000,

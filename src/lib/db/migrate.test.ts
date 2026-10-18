@@ -99,6 +99,9 @@ describe('sqlite file directories', () => {
     expect(ids).toContain('0009_sponsorships.sql')
     expect(ids).toContain('0012_result_rate_windows.sql')
     expect(ids).toContain('0013_sponsorship_paid_at.sql')
+    expect(ids).toContain('0014_sponsorship_creatives.sql')
+    expect(ids).toContain('0015_sponsorship_slot_claims.sql')
+    expect(ids).toContain('0016_sponsorship_card_review.sql')
     expect(ids).toContain('0018_retention_indexes.sql')
     expect(ids).not.toContain('0010_result_rate_windows.sql')
     const windows = await client.execute(
@@ -165,6 +168,9 @@ describe('sqlite file directories', () => {
       '0011_user_reviews.sql',
       '0012_result_rate_windows.sql',
       '0013_sponsorship_paid_at.sql',
+      '0014_sponsorship_creatives.sql',
+      '0015_sponsorship_slot_claims.sql',
+      '0016_sponsorship_card_review.sql',
       '0018_retention_indexes.sql',
     ])
     const tables = await client.execute(
@@ -251,6 +257,9 @@ describe('sqlite file directories', () => {
       '0011_user_reviews.sql',
       '0012_result_rate_windows.sql',
       '0013_sponsorship_paid_at.sql',
+      '0014_sponsorship_creatives.sql',
+      '0015_sponsorship_slot_claims.sql',
+      '0016_sponsorship_card_review.sql',
       '0018_retention_indexes.sql',
     ])
     const columns = await after.execute('PRAGMA table_info(sponsorships)')
@@ -294,7 +303,7 @@ describe('sqlite file directories', () => {
     await applyMigrations(url)
     const again = createClient({ url })
     const count = await again.execute('SELECT COUNT(*) AS n FROM schema_migrations')
-    expect(Number(count.rows[0]?.n)).toBe(MAIN_MIGRATIONS.length + 6)
+    expect(Number(count.rows[0]?.n)).toBe(MAIN_MIGRATIONS.length + 9)
     const stillThere = await again.execute({
       sql: "SELECT id FROM schema_migrations WHERE id = '0005_sponsorships.sql'",
     })
@@ -489,6 +498,9 @@ describe('drizzle journal', () => {
     expect(idxOf('0011_user_reviews')).toBe(9)
     expect(idxOf('0012_result_rate_windows')).toBe(10)
     expect(idxOf('0013_sponsorship_paid_at')).toBe(11)
+    expect(idxOf('0014_sponsorship_creatives')).toBe(12)
+    expect(idxOf('0015_sponsorship_slot_claims')).toBe(13)
+    expect(idxOf('0016_sponsorship_card_review')).toBe(14)
     expect(idxOf('0018_retention_indexes')).toBe(16)
     const migration = await readFile(path.join(process.cwd(), 'drizzle/0013_sponsorship_paid_at.sql'), 'utf8')
     const executable = executableSql(migration).toLowerCase()
@@ -496,6 +508,32 @@ describe('drizzle journal', () => {
     expect(executable).not.toContain('drop')
     expect(executable).not.toContain('delete')
     expect(executable).toContain('create index if not exists sponsorships_status_idx')
+    const creatives = executableSql(
+      await readFile(path.join(process.cwd(), 'drizzle/0014_sponsorship_creatives.sql'), 'utf8'),
+    ).toLowerCase()
+    expect(creatives).not.toContain('add column if not exists')
+    expect(creatives).not.toContain('drop')
+    expect(creatives).not.toContain('delete from')
+    expect(creatives).toContain('before delete on')
+    expect(creatives).toContain('create table if not exists sponsorship_creatives')
+    expect(creatives).toContain('create table if not exists sponsorship_review_events')
+    const claims = executableSql(
+      await readFile(path.join(process.cwd(), 'drizzle/0015_sponsorship_slot_claims.sql'), 'utf8'),
+    ).toLowerCase()
+    expect(claims).not.toContain('add column if not exists')
+    expect(claims).not.toContain('drop')
+    expect(claims).not.toContain('delete')
+    expect(claims).toContain('create table if not exists sponsorship_slot_claims')
+    const review = executableSql(
+      await readFile(path.join(process.cwd(), 'drizzle/0016_sponsorship_card_review.sql'), 'utf8'),
+    ).toLowerCase()
+    expect(review).not.toContain('add column if not exists')
+    expect(review).not.toContain('drop')
+    expect(review).not.toContain('delete from')
+    expect(review).toContain('before delete on')
+    expect(review).toContain('create table if not exists sponsorship_refund_events')
+    expect(review).not.toContain('ip_hash')
+    expect(review).not.toContain('user_agent')
     expect(sqlFiles).not.toContain('0013_retention_indexes.sql')
     expect(sqlFiles).not.toContain('0016_retention_indexes.sql')
   })
