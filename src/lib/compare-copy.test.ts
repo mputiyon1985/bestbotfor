@@ -299,12 +299,17 @@ describe('curated compare copy', () => {
     expect(cell(viewFor('heygen-vs-synthesia').view, 'Paid from').b).toBe('Starter $29/mo billed monthly')
   })
 
-  it('drops the ElevenLabs first-month promo after Oct 18, 2026', () => {
-    const during = viewFor('elevenlabs-vs-murf', '2026-10-18')
-    expect(cell(during.view, 'Paid from').a).toContain('first month $1 until Oct 18')
-    const after = viewFor('elevenlabs-vs-murf', '2026-10-19')
-    expect(cell(after.view, 'Paid from').a).toBe('Starter $6/mo; Creator $22/mo')
-    expect(cell(after.view, 'Paid from').a).not.toContain('$1')
+  it('drops the expired ElevenLabs promo and the Murf third-party markers', () => {
+    const copy = compareCopy.find((entry) => entry.slug === 'elevenlabs-vs-murf')
+    expect(copy?.sources.join('\n')).not.toContain('[S')
+    expect(copy?.sources.join('\n')).not.toContain('third party')
+    for (const day of ['2026-10-17', '2026-10-18', '2026-10-19']) {
+      const view = viewFor('elevenlabs-vs-murf', day).view
+      expect(cell(view, 'Paid from').a).toBe('Starter $6/mo; Creator $22/mo')
+      expect(cell(view, 'Paid from').a).not.toContain('first month $1')
+      expect(cell(view, 'Paid from').source).toBe('[1]; [2]')
+      expect(cell(view, 'Free plan').source).toBe('[1]; [2]')
+    }
   })
 })
 

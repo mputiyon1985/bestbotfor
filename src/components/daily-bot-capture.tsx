@@ -8,7 +8,7 @@ export function DailyBotCapture({ source }: { source: Exclude<NewsletterSource, 
         The Daily Bot
       </h2>
       <p className="mt-2 max-w-xl text-muted">
-        A free weekday note on AI tools: what launched, what changed price, and which bot we’d pick. We store your email.
+        A free AI newsletter: what launched, what changed price, and which bot we’d pick. First issue coming soon. We store your email.
         When the digest is connected to Beehiiv, that is where it is sent. Unsubscribe anytime.
       </p>
       <div className="mt-4 max-w-xl">

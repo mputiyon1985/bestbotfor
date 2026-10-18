@@ -93,7 +93,7 @@ function checkedDateValue(label: string): number {
 export const COMPARE_SECONDARY_NOTE =
   "[S] = secondary source (third party), not read directly on the vendor's page."
 
-export const COMPARE_DIGEST_FINE_PRINT = 'Free. One email each weekday. Unsubscribe anytime.'
+export const COMPARE_DIGEST_FINE_PRINT = 'Free AI newsletter, first issue coming soon. Unsubscribe anytime.'
 
 const catalogSource = 'BestBotFor catalog: src/data/scores-v2.3.csv (Our rating, category rank) and live /best pages (fit %), read Oct 17, 2026'
 
@@ -128,15 +128,14 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
         kind: 'text',
         a: 'Yes: 10,000 credits a month, no commercial license',
         b: 'Studio: 10 minutes of voice generation, no downloads. API: $10 free credit',
-        source: '[1]; [2]; [S1]',
+        source: '[1]; [2]',
       },
       {
         label: 'Paid from',
         kind: 'text',
-        a: 'Starter $6/mo (first month $1 until Oct 18); Creator $22/mo',
-        aAfter: { after: '2026-10-18', text: 'Starter $6/mo; Creator $22/mo' },
+        a: 'Starter $6/mo; Creator $22/mo',
         b: 'Studio Creator $29/mo, or $19/mo billed yearly',
-        source: '[1]; [S1]',
+        source: '[1]; [2]',
       },
       {
         label: 'How you pay',
@@ -158,8 +157,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
     cta: 'Voice tools change prices almost monthly. Get **The Daily Bot**, a short daily email with new AI tools and price changes, so you hear when this verdict changes.',
     sources: [
       '[1] ElevenLabs pricing: https://elevenlabs.io/pricing (vendor, checked Oct 17, 2026)',
-      '[2] Murf pricing (API tab): https://murf.ai/pricing (vendor, checked Oct 18, 2026)',
-      '[S1] Murf Studio prices (secondary: Murf Studio tab renders client-side and was not readable by our fetch): https://vorec.ai/blog/murf-pricing ; https://leapfun.ai/murf-pricing (third party, read Oct 12 and Oct 2, 2026; Creator price re-checked Oct 18, 2026)',
+      '[2] Murf pricing: https://murf.ai/pricing (vendor, checked Oct 18, 2026)',
       catalogSource,
     ],
     ranking: { href: '/best/voice', label: 'See the full Voice ranking' },
