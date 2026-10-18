@@ -53,8 +53,9 @@ export default function PrivacyPage() {
       <p>
         If Google Analytics 4 is configured, we load it with Google Consent Mode. The default is denied. If you accept,
         we grant analytics storage only. We do not grant ad storage. We do not send your email, your name, or the text
-        you type into analytics. Events are limited to starting the picker, finishing it, clicking a tool button, and
-        joining the newsletter, plus the job, budget, and experience you selected.
+        you type into analytics. Events are limited to starting the picker, finishing it, clicking a tool button,
+        joining the newsletter, and creating an account, plus the job, budget, and experience you selected. The account
+        event does not include your email or name.
       </p>
       <p>Vercel Analytics is cookieless and does not receive your email or name.</p>
       <p>Clerk and Stripe may set cookies that are required for sign-in and checkout. Those are not advertising cookies.</p>

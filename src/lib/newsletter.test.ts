@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { subscribers } from './db/schema'
 import type { Database } from './db/client'
 import { subscribeToNewsletter } from './newsletter'
+import { absoluteUrl } from './site'
 import { createTestDatabase } from '@/test/db'
 
 const originalKey = process.env.BEEHIIV_API_KEY
@@ -84,6 +85,52 @@ describe('subscribeToNewsletter', () => {
     const rows = await db.select().from(subscribers).where(eq(subscribers.email, 'reader@example.com'))
     expect(rows[0]?.destination).toBe('beehiiv')
     expect(rows[0]?.beehiivId).toBe('sub_remote')
+    await close()
+  })
+
+  it('sends the page that offered the form as the Beehiiv referring site', async () => {
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    const bodies: string[] = []
+    await subscribeToNewsletter({
+      email: 'reader@example.com',
+      honeypot: '',
+      source: 'best',
+      db,
+      rateKey: 'newsletter-source',
+      now: 1_000,
+      fetchImpl: async (_input, init) => {
+        bodies.push(String(init?.body ?? ''))
+        return new Response(JSON.stringify({ data: { id: 'sub_best' } }), { status: 201 })
+      },
+    })
+    expect(JSON.parse(bodies[0] ?? '{}')).toMatchObject({
+      email: 'reader@example.com',
+      referring_site: absoluteUrl('/best'),
+    })
+    await close()
+  })
+
+  it('does not log the email when Beehiiv rejects the signup', async () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    const result = await subscribeToNewsletter({
+      email: 'reader@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-log',
+      now: 1_000,
+      fetchImpl: async () => {
+        throw new Error('reader@example.com failed')
+      },
+    })
+    expect(result).toMatchObject({ status: 'error', tracked: false })
+    expect(await db.select().from(subscribers)).toEqual([])
+    const logged = error.mock.calls.flat().map((part) => String(part)).join('\n')
+    expect(logged).not.toContain('reader@example.com')
     await close()
   })
 

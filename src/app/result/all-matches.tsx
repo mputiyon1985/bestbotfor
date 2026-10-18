@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { DailyBotCapture } from '@/components/daily-bot-capture'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
@@ -128,6 +129,7 @@ export function AllMatches({
           ) : null}
         </div>
       </nav>
+      <DailyBotCapture source="result" />
     </article>
   )
 }
