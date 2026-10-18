@@ -1,4 +1,4 @@
-import { isLiveSecretKey, liveModeAllowed } from './stripe-key'
+import { isLiveSecretKey, isTestSecretKey, liveModeAllowed } from './stripe-key'
 
 /** Shown on production /sponsor until live billing is on. */
 export const SPONSOR_OPENING_SOON = 'Founding sponsor spots opening soon'
@@ -12,13 +12,14 @@ export type SponsorCheckoutSurface = 'live' | 'test' | 'closed'
 type SponsorCheckoutEnv = Record<string, string | undefined>
 
 /**
- * Live billing is on only when VERCEL_ENV is exactly "production",
- * STRIPE_ALLOW_LIVE is exactly "true", and the secret key uses a live prefix.
- * Anything else is off. Outside production, a live key is not live billing.
+ * Live billing is on only when all three hold: VERCEL_ENV is exactly
+ * "production", STRIPE_ALLOW_LIVE is exactly "true", and the secret key uses a
+ * live prefix. Preview, test, development, unset, and any case or whitespace
+ * variant stay off even with the flag and a live key.
  */
 export function sponsorLiveBilling(env: SponsorCheckoutEnv = process.env): boolean {
   const key = env.STRIPE_SECRET_KEY?.trim() ?? ''
-  return liveModeAllowed(env) && isLiveSecretKey(key)
+  return env.VERCEL_ENV === 'production' && liveModeAllowed(env) && isLiveSecretKey(key)
 }
 
 /**
@@ -34,9 +35,15 @@ export function sponsorTestCheckoutAllowed(env: SponsorCheckoutEnv = process.env
   return vercelEnv === undefined && env.NODE_ENV !== 'production'
 }
 
+/** The test-mode banner and form need a test-mode secret key, not just a non-production env. */
+function sponsorTestKey(env: SponsorCheckoutEnv): boolean {
+  return isTestSecretKey(env.STRIPE_SECRET_KEY?.trim() ?? '')
+}
+
+/** One gate for the page, its metadata, the checkout action, and the checkout route. */
 export function sponsorCheckoutSurface(env: SponsorCheckoutEnv = process.env): SponsorCheckoutSurface {
   if (sponsorLiveBilling(env)) return 'live'
-  if (sponsorTestCheckoutAllowed(env)) return 'test'
+  if (sponsorTestCheckoutAllowed(env) && sponsorTestKey(env)) return 'test'
   return 'closed'
 }
 
