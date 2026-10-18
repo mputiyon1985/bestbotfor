@@ -80,12 +80,15 @@ describe('privacy policy facts', () => {
 
   it('says a newsletter signup gets a confirmation email before the address is subscribed', () => {
     expect(NEWSLETTER_SIGNUP_PARAGRAPH).toBe(
-      'If you join the newsletter, we store your email address. Before the digest is connected to Beehiiv, we keep that address as a pending signup and you are not subscribed yet. When the digest is connected, we send that email address to Beehiiv, including an address we stored while it was pending. We also send utm_source set to bestbotfor, utm_medium set to website, and referring_site set to the absolute URL of the page that offered the form. That page is one of /, /result, /best, /compare, or /newsletter. You get a confirmation email first (double opt-in). You are subscribed only after you confirm that message. We do not ask for your name on the form. We keep a newsletter email address for [retention period for the lawyer]. If you unsubscribe, we honor that. The signup form does not turn it back on. The only way back is your own resubscribe link.',
+      'If you join the newsletter, we store your email address. Before the digest is connected to Beehiiv, we keep that address as a pending signup and you are not subscribed yet. When the digest is connected, we send that email address to Beehiiv, including an address we stored while it was pending. We also send utm_source set to bestbotfor, utm_medium set to website, and referring_site set to the absolute URL of the page that offered the form. That page is one of /, /result, /best, /compare, or /newsletter. You get a confirmation email first (double opt-in). You are subscribed only after you confirm that message. We do not ask for your name on the form. We keep your email address and signup record while you are subscribed. After you unsubscribe, we keep that row so we do not email you again. It holds your email, the unsubscribe status, when it was created, where it was sent, and the Beehiiv id when we have one. Beehiiv keeps its own record. We do not delete that row on a schedule. If you ask us to delete it, we delete our copy within 30 days. If you unsubscribe, we honor that. The signup form does not turn it back on. The only way back is your own resubscribe link.',
     )
     expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain('utm_source set to bestbotfor')
     expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain('utm_medium set to website')
     expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain('referring_site')
-    expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain('[retention period for the lawyer]')
+    expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain('We do not delete that row on a schedule.')
+    expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain('we delete our copy within 30 days.')
+    expect(NEWSLETTER_SIGNUP_PARAGRAPH).not.toContain('lawyer')
+    expect(NEWSLETTER_SIGNUP_PARAGRAPH).not.toContain('[')
     expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain('The only way back is your own resubscribe link.')
     const page = readFileSync(path.join(process.cwd(), 'src/app/privacy/page.tsx'), 'utf8')
     expect(page).toContain('NEWSLETTER_SIGNUP_PARAGRAPH')
@@ -111,7 +114,7 @@ describe('privacy policy facts', () => {
     expect(page).not.toContain('Lawyer note')
     expect(page).toContain('PRIVACY_UPDATED')
     const dates = readFileSync(path.join(process.cwd(), 'src/lib/ratings-policy-copy.ts'), 'utf8')
-    expect(dates).toContain("export const PRIVACY_UPDATED = 'October 17, 2026'")
+    expect(dates).toContain("export const PRIVACY_UPDATED = 'October 18, 2026'")
     expect(dates.match(/export const PRIVACY_UPDATED =/g)).toEqual(['export const PRIVACY_UPDATED ='])
     expect(PRIVACY_UPDATED_WITH_RATINGS.startsWith(`${PRIVACY_UPDATED}.`)).toBe(true)
     expect(PRIVACY_UPDATED_WITH_RATINGS).toContain('recorded on October 17, 2026')
@@ -154,7 +157,7 @@ describe('privacy policy facts', () => {
     expect(CLICK_LOG_PARAGRAPH).toBe(clickLogParagraph())
     expect(RETENTION_JOB_PARAGRAPH).toBe(retentionJobParagraph())
     expect(RETENTION_ROWS.find((row) => row.data === 'Rate-limit rows')?.kept).toBe(rateLimitRetentionKept())
-    expect(PRIVACY_UPDATED).toBe('October 17, 2026')
+    expect(PRIVACY_UPDATED).toBe('October 18, 2026')
 
     const outside = ['src/app/privacy/page.tsx', 'src/lib/ratings-policy-copy.ts']
     for (const file of outside) {
