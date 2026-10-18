@@ -29,6 +29,8 @@ export function SiteFooter() {
           <ul className="mt-2 text-sm">
             <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/about">About</Link></li>
             <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/how-we-rate">How we rate</Link></li>
+            <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/guides/how-to-choose-an-ai-tool">How to choose an AI tool</Link></li>
+            <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/ai-loadout">The AI Loadout</Link></li>
             <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/disclosure">Disclosures</Link></li>
             <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/privacy">Privacy</Link></li>
             <li><CookieSettingsButton /></li>
