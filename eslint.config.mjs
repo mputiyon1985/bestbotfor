@@ -12,12 +12,20 @@ import tseslint from 'typescript-eslint'
  * scripts/check-client-bundle.ts backs this up on the built chunks.
  */
 const CATALOG_CLIENT_ALLOWED = new Set(['src/components/sponsor-card-queue.tsx'])
+/**
+ * True when the file starts with a 'use client' directive. Next accepts the
+ * directive after leading comments (and a BOM), so those are skipped first.
+ */
+export function isClientModuleSource(text) {
+  const body = text.replace(/^\uFEFF/, '').replace(/^(?:\s*(?:\/\/[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/))*/, '')
+  return /^\s*['"]use client['"]/.test(body)
+}
 function clientModules(directory) {
   const found = []
   for (const entry of readdirSync(directory, { withFileTypes: true })) {
     const full = path.join(directory, entry.name)
     if (entry.isDirectory()) found.push(...clientModules(full))
-    else if (/\.(tsx?|jsx?|mjs)$/.test(entry.name) && /^\s*['"]use client['"]/.test(readFileSync(full, 'utf8'))) {
+    else if (/\.(tsx?|jsx?|mjs)$/.test(entry.name) && isClientModuleSource(readFileSync(full, 'utf8'))) {
       found.push(path.relative(import.meta.dirname, full).split(path.sep).join('/'))
     }
   }

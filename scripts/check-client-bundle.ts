@@ -5,12 +5,14 @@ import {
   CATALOG_CLIENT_FORBIDDEN,
   CLIENT_BUNDLE_FORBIDDEN,
   clientBundleHits,
+  manifestCoverageProblems,
   parseClientReferenceManifest,
 } from '../src/lib/client-bundle'
 
 const NEXT_ROOT = path.join(process.cwd(), '.next')
 const STATIC_ROOT = path.join(NEXT_ROOT, 'static')
 const SERVER_APP_ROOT = path.join(NEXT_ROOT, 'server', 'app')
+const APP_PATHS_MANIFEST = path.join(NEXT_ROOT, 'server', 'app-paths-manifest.json')
 
 async function filesIn(directory: string): Promise<string[]> {
   const found: string[] = []
@@ -46,6 +48,24 @@ async function main(): Promise<void> {
     }
   } catch {
     // No server app output: treat every chunk as public.
+  }
+  // A partial manifest set would make shared chunks look admin-only, so the
+  // parsed routes must cover every app route Next built.
+  let appPaths: string[] = []
+  try {
+    appPaths = Object.keys(JSON.parse(await readFile(APP_PATHS_MANIFEST, 'utf8')) as Record<string, string>)
+  } catch {
+    console.error('No readable .next/server/app-paths-manifest.json. Run the production build before the bundle scan.')
+    process.exit(1)
+  }
+  const coverage = manifestCoverageProblems(
+    appPaths,
+    manifests.map((entry) => entry.route),
+  )
+  if (coverage.length > 0) {
+    console.error('Client-reference manifests do not cover the app routes, so admin-only chunks cannot be trusted:')
+    for (const problem of coverage) console.error(problem)
+    process.exit(1)
   }
   const adminOnly = adminOnlyChunks(manifests)
 
@@ -83,7 +103,7 @@ async function main(): Promise<void> {
     process.exit(1)
   }
   console.log(
-    `Scanned ${files.length} client files. No database or Stripe secrets. No sponsor catalog outside ${adminOnly.size} admin-only chunk(s) (${manifests.length} routes).`,
+    `Scanned ${files.length} client files. No database or Stripe secrets. No sponsor catalog outside ${adminOnly.size} admin-only chunk(s) (${manifests.length} of ${appPaths.length} routes).`,
   )
 }
 
