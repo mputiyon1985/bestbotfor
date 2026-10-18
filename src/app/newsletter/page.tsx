@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { NewsletterForm } from '@/components/newsletter-form'
 import { pageMetadata } from '@/lib/metadata'
@@ -20,6 +21,9 @@ export default function NewsletterPage() {
         connected to Beehiiv, that is where the issues are sent. If Beehiiv asks you to confirm, check your inbox.
       </p>
       <NewsletterForm source="newsletter" />
+      <p className="text-sm text-muted">
+        Want every top pick on one page? <Link className="underline" href="/ai-loadout">Get the AI Loadout</Link>.
+      </p>
     </article>
   )
 }
