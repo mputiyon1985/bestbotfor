@@ -14,6 +14,8 @@ export type GuideSection = {
   terms?: { term: string; detail: string }[]
   /** Render the task list (links to every /best/[task]) under this section. */
   taskLinks?: boolean
+  /** Render links to every /best/[task]/free page under this section. */
+  freeLinks?: boolean
   /** One inline link at the end of the section. */
   link?: { href: string; label: string }
 }
@@ -53,6 +55,7 @@ export const GUIDES: readonly Guide[] = [
         id: 'budget',
         heading: 'Question 2: What can you spend?',
         paragraphs: ['The picker offers three budgets. Each one changes which tools rank highest for your job.'],
+        freeLinks: true,
         terms: [
           { term: 'Free only', detail: 'Tools that are free or have a free tier. Free plans have limits, so check what the free plan includes on the vendor’s site.' },
           { term: 'Low cost', detail: 'Tools with a free tier or a low starting price rank higher. Pricier tools can still appear if they fit the job much better.' },
