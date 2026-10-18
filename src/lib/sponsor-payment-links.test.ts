@@ -3,6 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it } from 'vitest'
 import SponsorPage from '@/app/sponsor/page'
 import { SPONSOR_CONTACT_EMAIL, SPONSOR_CONTACT_MAILTO } from '@/lib/sponsor-checkout-gate'
+import { SPONSOR_SUBSCRIPTION_NOTICE as OFFERING_SUBSCRIPTION_NOTICE } from '@/lib/sponsor-offerings'
 import { resetStripeCache } from '@/lib/stripe'
 import {
   FOUNDING_SPONSOR_LIMIT,
@@ -23,6 +24,7 @@ const ENV_KEYS = [
   'STRIPE_SECRET_KEY',
   'STRIPE_PRICE_FOUNDING_MONTHLY',
   'STRIPE_PRICE_FOUNDING_SETUP',
+  'STRIPE_PRICE_PLACEMENT_SUBSCRIPTION',
 ] as const
 const ORIGINAL = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]))
 
@@ -161,6 +163,85 @@ describe('sponsor payment links', () => {
       const radio = foundingRadio(html)
       expect(radio).not.toBe('')
       expect(radio).not.toContain('disabled')
+    })
+  })
+
+  describe('price list gate', () => {
+    const live = { VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }
+    const unset = {
+      STRIPE_PRICE_PLACEMENT_SUBSCRIPTION: undefined,
+      STRIPE_PRICE_FOUNDING_MONTHLY: undefined,
+      STRIPE_PRICE_FOUNDING_SETUP: undefined,
+    }
+    const listItems = (html: string) => [...html.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => (m[1] ?? '').replace(/<[^>]+>/g, ''))
+    const subscriptionLine = (html: string) => listItems(html).filter((li) => li.startsWith('Featured placement, monthly subscription:'))
+    const foundingLine = (html: string) => listItems(html).filter((li) => li.startsWith('Founding sponsor:'))
+    const radio = (html: string, id: string) => html.match(new RegExp(`<input[^>]*value="${id}"[^>]*>`))?.[0] ?? ''
+
+    it('leaves out the $299/mo and founding lines while their Prices are unset', () => {
+      for (const env of [live, { VERCEL_ENV: 'preview', STRIPE_SECRET_KEY: testKey }, { VERCEL_ENV: 'production', STRIPE_SECRET_KEY: testKey }]) {
+        const html = pageHtml({ ...env, ...unset })
+        expect(subscriptionLine(html)).toEqual([])
+        expect(foundingLine(html)).toEqual([])
+        expect(html).toContain('Featured placement: $299 for one month.')
+        expect(html).toContain('The prices above are the current list prices from server configuration.')
+        expect(html).not.toContain('one-time and subscription')
+      }
+      const html = pageHtml({ ...live, ...unset })
+      // The founding Payment Link card and its terms still show on live production.
+      expect(html).toContain(`href="${SPONSOR_PAYMENT_LINKS[0].url}"`)
+      expect(html).toContain(SPONSOR_PAYMENT_LINKS[0].terms)
+    })
+
+    it('keeps the founding line out when only one founding Price is set, or a value is not a Price id', () => {
+      for (const env of [
+        { STRIPE_PRICE_FOUNDING_MONTHLY: 'price_founding_monthly_test', STRIPE_PRICE_FOUNDING_SETUP: undefined },
+        { STRIPE_PRICE_FOUNDING_MONTHLY: undefined, STRIPE_PRICE_FOUNDING_SETUP: 'price_founding_setup_test' },
+        { STRIPE_PRICE_FOUNDING_MONTHLY: 'prod_not_a_price', STRIPE_PRICE_FOUNDING_SETUP: 'price_founding_setup_test' },
+        { STRIPE_PRICE_FOUNDING_MONTHLY: ' ', STRIPE_PRICE_FOUNDING_SETUP: ' ' },
+      ]) {
+        const html = pageHtml({ ...live, ...unset, ...env })
+        expect(foundingLine(html)).toEqual([])
+        expect(radio(html, 'founding_sponsor')).toContain('disabled')
+      }
+      const html = pageHtml({ ...live, ...unset, STRIPE_PRICE_PLACEMENT_SUBSCRIPTION: 'sub_not_a_price' })
+      expect(subscriptionLine(html)).toEqual([])
+      expect(radio(html, 'placement_subscription')).toContain('disabled')
+    })
+
+    it('lists each subscription line once its Prices are set, matching its radio', () => {
+      const subOnly = pageHtml({ ...live, ...unset, STRIPE_PRICE_PLACEMENT_SUBSCRIPTION: 'price_subscription_test' })
+      expect(subscriptionLine(subOnly)).toEqual([`Featured placement, monthly subscription: $299/mo. ${OFFERING_SUBSCRIPTION_NOTICE}`])
+      expect(foundingLine(subOnly)).toEqual([])
+      expect(radio(subOnly, 'placement_subscription')).not.toContain('disabled')
+      expect(subOnly).toContain('The prices above, one-time and subscription, are the current list prices from server configuration.')
+
+      const both = pageHtml({
+        ...live,
+        STRIPE_PRICE_PLACEMENT_SUBSCRIPTION: 'price_subscription_test',
+        STRIPE_PRICE_FOUNDING_MONTHLY: 'price_founding_monthly_test',
+        STRIPE_PRICE_FOUNDING_SETUP: 'price_founding_setup_test',
+      })
+      expect(subscriptionLine(both)).toHaveLength(1)
+      expect(foundingLine(both)).toHaveLength(1)
+      expect(foundingLine(both)[0]).toContain('Limited to 5 founding sponsors.')
+      expect(radio(both, 'founding_sponsor')).not.toContain('disabled')
+    })
+
+    it('matches the radios for every combination of the three subscription Prices', () => {
+      const values = [undefined, '', 'price_ok_test', 'not_a_price']
+      for (const sub of values)
+        for (const monthly of values)
+          for (const setup of values) {
+            const html = pageHtml({
+              ...live,
+              STRIPE_PRICE_PLACEMENT_SUBSCRIPTION: sub,
+              STRIPE_PRICE_FOUNDING_MONTHLY: monthly,
+              STRIPE_PRICE_FOUNDING_SETUP: setup,
+            })
+            expect(subscriptionLine(html).length).toBe(radio(html, 'placement_subscription').includes('disabled') ? 0 : 1)
+            expect(foundingLine(html).length).toBe(radio(html, 'founding_sponsor').includes('disabled') ? 0 : 1)
+          }
     })
   })
 })

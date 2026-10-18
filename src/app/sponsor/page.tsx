@@ -57,6 +57,10 @@ export default function SponsorPage() {
   // Go-live gate: once the in-app founding Prices are set, the founding Payment
   // Link is hidden so both founding offers never show together (shared cap of 5).
   const inAppFounding = sponsorOfferingConfigured('founding_sponsor')
+  // The price list names a subscription offer only once its Prices are set, the
+  // same check that enables its radio, so the list never offers a disabled option.
+  const listSubscription = Boolean(subscriptionOffering) && sponsorOfferingConfigured('placement_subscription')
+  const listFounding = Boolean(foundingOffering) && inAppFounding
 
   return (
     <article className="max-w-2xl space-y-6">
@@ -77,15 +81,22 @@ export default function SponsorPage() {
         <li>
           Newsletter sponsor slot: {issue} per issue. {SPONSOR_ONE_TIME_NOTICE}
         </li>
-        <li>
-          Featured placement, monthly subscription: {subscription}. {SPONSOR_SUBSCRIPTION_NOTICE}
-        </li>
-        <li>
-          Founding sponsor: {founding}. {SPONSOR_FOUNDING_NOTICE} Limited to {FOUNDING_SPONSOR_CAP} founding sponsors.
-        </li>
+        {listSubscription ? (
+          <li>
+            Featured placement, monthly subscription: {subscription}. {SPONSOR_SUBSCRIPTION_NOTICE}
+          </li>
+        ) : null}
+        {listFounding ? (
+          <li>
+            Founding sponsor: {founding}. {SPONSOR_FOUNDING_NOTICE} Limited to {FOUNDING_SPONSOR_CAP} founding sponsors.
+          </li>
+        ) : null}
       </ul>
       <p className="text-sm text-muted">
-        The prices above, one-time and subscription, are the current list prices from server configuration. They can be changed there.
+        {listSubscription || listFounding
+          ? 'The prices above, one-time and subscription, are the current list prices from server configuration.'
+          : 'The prices above are the current list prices from server configuration.'}{' '}
+        They can be changed there.
         {surface === 'live' ? ' The Payment Links below are separate Stripe links with their own prices set in Stripe.' : null}
         {surface === 'closed' ? null : ' The form does not send an amount. Checkout charges the Stripe price configured on the server.'}
       </p>
