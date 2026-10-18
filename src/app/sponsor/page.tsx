@@ -6,7 +6,18 @@ import { SponsorForm } from '@/components/sponsor-form'
 import { SponsorPaymentLinks } from '@/components/sponsor-payment-links'
 import { pageMetadata } from '@/lib/metadata'
 import { SPONSOR_CONTACT_EMAIL, SPONSOR_CONTACT_MAILTO, sponsorCheckoutSurface } from '@/lib/sponsor-checkout-gate'
-import { SPONSOR_OFFERINGS, SPONSOR_ONE_TIME_NOTICE, sponsorPriceId, sponsorPriceLabel } from '@/lib/sponsor-offerings'
+import {
+  FOUNDING_SPONSOR_CAP,
+  SPONSOR_FOUNDING_NOTICE,
+  SPONSOR_OFFERINGS,
+  SPONSOR_ONE_TIME_NOTICE,
+  SPONSOR_SUBSCRIPTION_NOTICE,
+  sponsorOffering,
+  sponsorOfferingConfigured,
+  sponsorOfferingNotice,
+  sponsorOfferingPriceLabel,
+  sponsorPriceLabel,
+} from '@/lib/sponsor-offerings'
 import { stripeKeyMode } from '@/lib/stripe'
 
 export const dynamic = 'force-dynamic'
@@ -30,14 +41,19 @@ export default function SponsorPage() {
     id: offering.id,
     title: offering.title,
     summary: offering.summary,
-    priceLabel: sponsorPriceLabel(offering.unitAmount),
+    priceLabel: sponsorOfferingPriceLabel(offering),
+    notice: sponsorOfferingNotice(offering),
     target: offering.target,
-    available: surface !== 'closed' && mode !== 'off' && sponsorPriceId(offering.id) !== null,
+    available: surface !== 'closed' && mode !== 'off' && sponsorOfferingConfigured(offering.id),
   }))
   const tasks = taskSeeds.map((task) => ({ slug: task.slug, name: task.name }))
   const week = sponsorPriceLabel(SPONSOR_OFFERINGS[0].unitAmount)
   const month = sponsorPriceLabel(SPONSOR_OFFERINGS[1].unitAmount)
   const issue = sponsorPriceLabel(SPONSOR_OFFERINGS[2].unitAmount)
+  const subscriptionOffering = sponsorOffering('placement_subscription')
+  const foundingOffering = sponsorOffering('founding_sponsor')
+  const subscription = subscriptionOffering ? sponsorOfferingPriceLabel(subscriptionOffering) : ''
+  const founding = foundingOffering ? sponsorOfferingPriceLabel(foundingOffering) : ''
 
   return (
     <article className="max-w-2xl space-y-6">
@@ -58,9 +74,16 @@ export default function SponsorPage() {
         <li>
           Newsletter sponsor slot: {issue} per issue. {SPONSOR_ONE_TIME_NOTICE}
         </li>
+        <li>
+          Featured placement, monthly subscription: {subscription}. {SPONSOR_SUBSCRIPTION_NOTICE}
+        </li>
+        <li>
+          Founding sponsor: {founding}. {SPONSOR_FOUNDING_NOTICE} Limited to {FOUNDING_SPONSOR_CAP} founding sponsors.
+        </li>
       </ul>
       <p className="text-sm text-muted">
-        The one-time prices above are the current list prices from server configuration. They can be changed there.
+        The prices above, one-time and subscription, are the current list prices from server configuration. They can be changed there.
+        {surface === 'live' ? ' The Payment Links below are separate Stripe links with their own prices set in Stripe.' : null}
         {surface === 'closed' ? null : ' The form does not send an amount. Checkout charges the Stripe price configured on the server.'}
       </p>
       {surface === 'live' ? <SponsorPaymentLinks /> : null}

@@ -202,7 +202,19 @@ describe('sqlite file directories', () => {
       'updated_at',
       'paid_at',
       'refunded_at',
+      'stripe_subscription_id',
+      'subscription_status',
+      'paid_through',
+      'price_locked_until',
+      'cancel_at',
+      'canceled_at',
+      'payment_failed_at',
+      'subscription_event_at',
     ])
+    const subscriptionIndex = await client.execute(
+      "SELECT name FROM sqlite_master WHERE type = 'index' AND name = 'sponsorships_subscription_idx'",
+    )
+    expect(subscriptionIndex.rows).toHaveLength(1)
     client.close()
   })
 
@@ -290,6 +302,14 @@ describe('sqlite file directories', () => {
     expect(afterCols.slice(beforeCols.length)).toEqual([
       { name: 'paid_at', type: 'INTEGER', notnull: 0, pk: 0 },
       { name: 'refunded_at', type: 'INTEGER', notnull: 0, pk: 0 },
+      { name: 'stripe_subscription_id', type: 'TEXT', notnull: 0, pk: 0 },
+      { name: 'subscription_status', type: 'TEXT', notnull: 0, pk: 0 },
+      { name: 'paid_through', type: 'INTEGER', notnull: 0, pk: 0 },
+      { name: 'price_locked_until', type: 'INTEGER', notnull: 0, pk: 0 },
+      { name: 'cancel_at', type: 'INTEGER', notnull: 0, pk: 0 },
+      { name: 'canceled_at', type: 'INTEGER', notnull: 0, pk: 0 },
+      { name: 'payment_failed_at', type: 'INTEGER', notnull: 0, pk: 0 },
+      { name: 'subscription_event_at', type: 'INTEGER', notnull: 0, pk: 0 },
     ])
     const tableSql = await after.execute(
       "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'sponsorships'",

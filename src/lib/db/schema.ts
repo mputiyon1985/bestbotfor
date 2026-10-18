@@ -166,8 +166,27 @@ export const sponsorships = sqliteTable(
     paidAt: integer('paid_at'),
     /** Set once when a refund event matches this payment. The placement stops showing. */
     refundedAt: integer('refunded_at'),
+    /** Subscription offerings only (founding_sponsor, placement_subscription). Null for one-time rows. */
+    stripeSubscriptionId: text('stripe_subscription_id'),
+    /** Last Stripe subscription status applied (trialing, active, past_due, canceled, ...). */
+    subscriptionStatus: text('subscription_status'),
+    /** End of the latest paid (or paid-trial) period, ms. The placement shows until here. Only moves forward, except an immediate cancel. */
+    paidThrough: integer('paid_through'),
+    /** Founding price lock end, ms. Subscription start plus the lock months. */
+    priceLockedUntil: integer('price_locked_until'),
+    /** When a scheduled cancellation takes effect, ms. Null when none is scheduled. */
+    cancelAt: integer('cancel_at'),
+    /** When the subscription was canceled, ms. */
+    canceledAt: integer('canceled_at'),
+    /** Last invoice.payment_failed for this subscription, ms. Cleared by the next invoice.paid. */
+    paymentFailedAt: integer('payment_failed_at'),
+    /** Stripe event.created (ms) of the last subscription status applied. Older events are ignored. */
+    subscriptionEventAt: integer('subscription_event_at'),
   },
-  (table) => [index('sponsorships_status_idx').on(table.status)],
+  (table) => [
+    index('sponsorships_status_idx').on(table.status),
+    index('sponsorships_subscription_idx').on(table.stripeSubscriptionId),
+  ],
 )
 
 /** Buyer-submitted tool card. Hidden until status is approved. */

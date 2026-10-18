@@ -3,6 +3,7 @@ import type { Database } from './db/client'
 import { sponsorships } from './db/schema'
 import { approvedCardsForSponsorships, type PublicSponsorCard } from './sponsor-card'
 import { sanitizeSponsorCompany } from './sponsor-company'
+import { isSubscriptionOffering, type TaskSponsorOfferingId } from './sponsor-offerings'
 
 /** Visible label for a /best placement that comes from an active sponsorship. */
 export const SPONSORED_LABEL = 'Sponsored'
@@ -10,6 +11,19 @@ export const SPONSORED_LABEL = 'Sponsored'
 const DAY_MS = 24 * 60 * 60 * 1000
 const WEEK_MS = 7 * DAY_MS
 const MONTH_MS = 30 * DAY_MS
+
+/**
+ * A renewal invoice is created at the period end and is usually paid within
+ * about an hour. While Stripe still reports the subscription as active or
+ * trialing, with no cancellation scheduled, the card keeps showing for this
+ * long past paid_through so a renewal does not blink the placement off. A
+ * failed renewal (past_due), a scheduled cancel, or a cancel ends it at
+ * paid_through.
+ */
+export const SUBSCRIPTION_RENEWAL_GRACE_MS = 3 * DAY_MS
+
+/** Statuses during which a sponsor subscription is expected to renew. */
+const RENEWING_STATUSES = new Set(['active', 'trialing'])
 
 export type SponsorshipPlacementRow = {
   id?: number
@@ -19,13 +33,18 @@ export type SponsorshipPlacementRow = {
   company: string | null
   paidAt: number | null
   refundedAt: number | null
+  /** Subscription rows only. */
+  paidThrough?: number | null
+  subscriptionStatus?: string | null
+  cancelAt?: number | null
+  canceledAt?: number | null
   card?: PublicSponsorCard | null
 }
 
 export type ActiveBestPlacement = {
   label: typeof SPONSORED_LABEL
   company: string | null
-  offering: 'placement_weekly' | 'placement_monthly'
+  offering: TaskSponsorOfferingId
   sponsorshipId: number
   card: PublicSponsorCard
 }
@@ -37,10 +56,42 @@ export function placementWindowMs(offering: string): number | null {
   return null
 }
 
+export type PlacementWindowRow = Pick<
+  SponsorshipPlacementRow,
+  'offering' | 'paidAt' | 'paidThrough' | 'subscriptionStatus' | 'cancelAt' | 'canceledAt'
+>
+
 /**
- * The placement shown on one /best page. Only a paid weekly or monthly
- * sponsorship for that task, not refunded, still inside the window that
- * starts at paidAt, and carrying an admin-approved tool card, qualifies.
+ * End of the paid window, ms, or null when the row is not a /best placement or
+ * has no paid window. One-time rows end a week or a month after paidAt.
+ * Subscription rows end at paidThrough, which invoice.paid moves forward each
+ * renewal, plus the renewal grace while the subscription is still renewing.
+ */
+export function placementEndsAt(row: PlacementWindowRow): number | null {
+  const start = row.paidAt
+  if (start == null || !Number.isFinite(start)) return null
+  const windowMs = placementWindowMs(row.offering)
+  if (windowMs != null) return start + windowMs
+  if (!isSubscriptionOffering(row.offering)) return null
+  const through = row.paidThrough
+  if (through == null || !Number.isFinite(through)) return null
+  const renewing =
+    RENEWING_STATUSES.has(row.subscriptionStatus ?? '') && row.canceledAt == null && row.cancelAt == null
+  return renewing ? through + SUBSCRIPTION_RENEWAL_GRACE_MS : through
+}
+
+/** True when now is inside the row's paid window (start inclusive, end exclusive). */
+export function placementActiveAt(row: PlacementWindowRow, now: number): boolean {
+  const start = row.paidAt
+  const end = placementEndsAt(row)
+  if (start == null || end == null || !Number.isFinite(now)) return false
+  return now >= start && now < end
+}
+
+/**
+ * The placement shown on one /best page. Only a paid weekly, monthly, or
+ * subscription sponsorship for that task, not refunded, still inside its paid
+ * window (placementEndsAt), and carrying an admin-approved tool card, qualifies.
  * paidAt is the first time the row became paid. A pending or rejected card
  * does not display.
  */
@@ -51,10 +102,7 @@ export function activeBestPlacement(
 ): ActiveBestPlacement | null {
   const matches = rows.filter((row) => {
     if (typeof row.id !== 'number' || row.status !== 'paid' || row.taskSlug !== taskSlug || row.refundedAt != null || !row.card) return false
-    const windowMs = placementWindowMs(row.offering)
-    const start = row.paidAt
-    if (windowMs == null || start == null || !Number.isFinite(start) || !Number.isFinite(now)) return false
-    return now >= start && now < start + windowMs
+    return placementActiveAt(row, now)
   })
   matches.sort((left, right) => (right.paidAt ?? 0) - (left.paidAt ?? 0))
   const current = matches[0]
@@ -63,10 +111,17 @@ export function activeBestPlacement(
   return {
     label: SPONSORED_LABEL,
     company: company.length > 0 ? company : null,
-    offering: current.offering === 'placement_monthly' ? 'placement_monthly' : 'placement_weekly',
+    offering: taskOfferingOf(current.offering),
     sponsorshipId: current.id,
     card: current.card,
   }
+}
+
+function taskOfferingOf(offering: string): TaskSponsorOfferingId {
+  if (offering === 'placement_monthly' || offering === 'founding_sponsor' || offering === 'placement_subscription') {
+    return offering
+  }
+  return 'placement_weekly'
 }
 
 export async function activeBestPlacementForTask(
@@ -83,6 +138,10 @@ export async function activeBestPlacementForTask(
       company: sponsorships.company,
       paidAt: sponsorships.paidAt,
       refundedAt: sponsorships.refundedAt,
+      paidThrough: sponsorships.paidThrough,
+      subscriptionStatus: sponsorships.subscriptionStatus,
+      cancelAt: sponsorships.cancelAt,
+      canceledAt: sponsorships.canceledAt,
     })
     .from(sponsorships)
     .where(and(eq(sponsorships.taskSlug, taskSlug), eq(sponsorships.status, 'paid')))
