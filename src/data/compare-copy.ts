@@ -1,5 +1,8 @@
 /**
  * Curated /compare copy. Make, Murf, Lovable, v0, and Synthesia prices were re-checked Oct 18, 2026.
+ * Each page's "Last checked" line uses the vendor "checked" dates in its sources.
+ * When those dates agree, that date is the line. When they differ, the line uses the earliest,
+ * so a later re-check of one tool does not claim the other tool was read that day.
  * `{{a:task}}` and `{{b:task}}` are fit scores filled from the catalog at render time.
  * The numbers in the handoff are a snapshot for review, not a second source of truth.
  * "Our rating" cells are also filled from the catalog, not stored here.
@@ -58,8 +61,34 @@ export type CompareCopy = {
   ranking?: { href: string; label: string }
 }
 
-export const COMPARE_CHECKED_LINE =
-  "Last checked Oct 18, 2026. Prices change, so confirm on the vendor's site before you pay."
+const CHECKED_DATE = /(?:^|[^A-Za-z-])checked (Oct \d{1,2}, \d{4})/g
+
+/**
+ * Latest vendor check date when every price source on the page shares it.
+ * Earliest when they differ, because the later date would overclaim the older source.
+ */
+export function comparePageCheckedLine(sources: readonly string[]): string {
+  const dates = new Set<string>()
+  for (const source of sources) {
+    for (const match of source.matchAll(CHECKED_DATE)) {
+      const date = match[1]
+      if (date) dates.add(date)
+    }
+  }
+  const date = [...dates].sort(compareCheckedDate)[0]
+  if (!date) throw new Error('Compare page is missing a vendor checked date')
+  return `Last checked ${date}. Prices change, so confirm on the vendor's site before you pay.`
+}
+
+function compareCheckedDate(left: string, right: string): number {
+  return checkedDateValue(left) - checkedDateValue(right)
+}
+
+function checkedDateValue(label: string): number {
+  const match = /^Oct (\d{1,2}), (\d{4})$/.exec(label)
+  if (!match) return Number.MAX_SAFE_INTEGER
+  return Number(match[2]) * 1000 + Number(match[1])
+}
 
 export const COMPARE_SECONDARY_NOTE =
   "[S] = secondary source (third party), not read directly on the vendor's page."
@@ -68,7 +97,7 @@ export const COMPARE_DIGEST_FINE_PRINT = 'Free. One email each weekday. Unsubscr
 
 const catalogSource = 'BestBotFor catalog: src/data/scores-v2.3.csv (Our rating, category rank) and live /best pages (fit %), read Oct 17, 2026'
 
-export const compareCopy: readonly CompareCopy[] = [
+const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
   {
     slug: 'elevenlabs-vs-murf',
     metaTitle: 'ElevenLabs vs Murf: Which AI Voice Tool Is Right for You?',
@@ -79,7 +108,6 @@ export const compareCopy: readonly CompareCopy[] = [
     nameB: 'Murf',
     verdict:
       'For most voiceovers, pick **ElevenLabs**: it scores higher on our voiceover job ({{a:voice}} vs {{b:voice}}) and its free plan gives 10,000 credits a month. Pick **Murf** if you want a studio-style editor for scripts and slides, billed by hours of voice.',
-    checkedLine: COMPARE_CHECKED_LINE,
     pickAHeading: 'Pick ElevenLabs if…',
     pickBHeading: 'Pick Murf if…',
     pickA: [
@@ -145,7 +173,6 @@ export const compareCopy: readonly CompareCopy[] = [
     nameB: 'Make',
     verdict:
       'Pick **Make** if you want visual automations without code and a real free plan. Pick **n8n** if you are technical, want to build AI agents, or want to self-host for free. It is #1 in our Automation rating.',
-    checkedLine: COMPARE_CHECKED_LINE,
     pickAHeading: 'Pick n8n if…',
     pickBHeading: 'Pick Make if…',
     pickA: [
@@ -204,7 +231,6 @@ export const compareCopy: readonly CompareCopy[] = [
     nameB: 'Synthesia',
     verdict:
       'Pick **Synthesia** for training and business video. It edges our "make a video" fit ({{b:video}} vs {{a:video}}) and supports 140+ languages. Pick **HeyGen** for marketing and creator videos: it has a free plan with 3 short videos a month, and Pro exports in 4K.',
-    checkedLine: COMPARE_CHECKED_LINE,
     pickAHeading: 'Pick HeyGen if…',
     pickBHeading: 'Pick Synthesia if…',
     pickA: [
@@ -268,7 +294,6 @@ export const compareCopy: readonly CompareCopy[] = [
     nameB: 'Runway',
     verdict:
       'They do different jobs. Pick **Descript** to edit recorded video and podcasts by editing the transcript. Pick **Runway** to generate new shots from prompts. It is our top pick for "make a video" (fit {{b:video}}).',
-    checkedLine: COMPARE_CHECKED_LINE,
     pickAHeading: 'Pick Descript if…',
     pickBHeading: 'Pick Runway if…',
     pickA: [
@@ -332,7 +357,6 @@ export const compareCopy: readonly CompareCopy[] = [
     nameB: 'Fathom',
     verdict:
       "Pick **Granola** if you don't want a bot joining your calls and mostly need clean notes. Pick **Fathom** if you want unlimited free recordings and clips, with history beyond 30 days on the free plan.",
-    checkedLine: COMPARE_CHECKED_LINE,
     pickAHeading: 'Pick Granola if…',
     pickBHeading: 'Pick Fathom if…',
     pickA: [
@@ -396,7 +420,6 @@ export const compareCopy: readonly CompareCopy[] = [
     nameB: 'Fireflies',
     verdict:
       'For most teams, pick **Fireflies**. It rates higher with us (#2 in Meetings), and Pro is $10 a seat billed yearly. Pick **Fathom** if you are a solo user who wants unlimited recordings and AI summaries for free.',
-    checkedLine: COMPARE_CHECKED_LINE,
     pickAHeading: 'Pick Fathom if…',
     pickBHeading: 'Pick Fireflies if…',
     pickA: [
@@ -459,7 +482,6 @@ export const compareCopy: readonly CompareCopy[] = [
     nameB: 'v0',
     verdict:
       "Pick **Lovable** to go from a prompt to a working app with a built-in backend if you don't code. It is our #1 for building an app from a prompt (fit {{a:vibe-coding}}). Pick **v0** if you want polished front-end code that deploys to Vercel and you are comfortable in code.",
-    checkedLine: COMPARE_CHECKED_LINE,
     pickAHeading: 'Pick Lovable if…',
     pickBHeading: 'Pick v0 if…',
     pickA: [
@@ -518,7 +540,6 @@ export const compareCopy: readonly CompareCopy[] = [
     nameB: 'Deepgram',
     verdict:
       'Both are developer APIs, not apps. For batch transcription, **AssemblyAI** Universal-2 is cheaper per hour ($0.15 vs $0.26 for Deepgram Nova-3). **Deepgram** gives more free credit to start ($200 vs $50) and adds text-to-speech on the same platform.',
-    checkedLine: COMPARE_CHECKED_LINE,
     pickAHeading: 'Pick AssemblyAI if…',
     pickBHeading: 'Pick Deepgram if…',
     pickA: [
@@ -579,6 +600,11 @@ export const compareCopy: readonly CompareCopy[] = [
     ],
   },
 ]
+
+export const compareCopy: readonly CompareCopy[] = compareCopyDraft.map((entry) => ({
+  ...entry,
+  checkedLine: comparePageCheckedLine(entry.sources),
+}))
 
 const bySlug = new Map(compareCopy.map((entry) => [entry.slug, entry]))
 

@@ -7,7 +7,13 @@ import {
   DEEPGRAM_PRICE_PRO_STALE,
   N8N_PRICE_LABEL,
 } from '@/data/catalog-corrections'
-import { COMPARE_SECONDARY_NOTE, compareCopy, curatedCompareRedirects, reversedCuratedComparePath } from '@/data/compare-copy'
+import {
+  COMPARE_SECONDARY_NOTE,
+  compareCopy,
+  comparePageCheckedLine,
+  curatedCompareRedirects,
+  reversedCuratedComparePath,
+} from '@/data/compare-copy'
 import { editorialSeeds } from '@/data/scores-pros-cons.seed'
 import { a2CorrectionPlan } from '../../scripts/a2-catalog-corrections'
 import { catalogFromSeeds } from '@/test/catalog-from-seeds'
@@ -17,6 +23,20 @@ import { faqJsonLd } from './jsonld'
 import ComparePage, { generateMetadata as compareMetadata } from '@/app/compare/[pair]/page'
 import { priceLabel } from './format'
 import { QUIZ_RESULT_COUNT } from './scoring'
+
+const CHECKED_TAIL = "Prices change, so confirm on the vendor's site before you pay."
+
+/** Earliest vendor check when the page's sources differ; the shared date when they agree. */
+const CHECKED_ON: Record<string, string> = {
+  'elevenlabs-vs-murf': 'Oct 17, 2026',
+  'n8n-vs-make': 'Oct 17, 2026',
+  'heygen-vs-synthesia': 'Oct 17, 2026',
+  'descript-vs-runway': 'Oct 17, 2026',
+  'granola-vs-fathom': 'Oct 17, 2026',
+  'fathom-vs-fireflies': 'Oct 17, 2026',
+  'lovable-vs-v0': 'Oct 18, 2026',
+  'assemblyai-vs-deepgram': 'Oct 17, 2026',
+}
 
 const LENGTHS: Record<string, readonly [number, number]> = {
   'elevenlabs-vs-murf': [57, 127],
@@ -89,9 +109,8 @@ describe('curated compare copy', () => {
       expect(entry.metaDescription.length, entry.metaDescription).toBe(expected?.[1])
       expect(entry.metaTitle.length, entry.slug).toBeLessThanOrEqual(60)
       expect(entry.metaDescription.length, entry.slug).toBeLessThanOrEqual(155)
-      expect(entry.checkedLine).toBe(
-        "Last checked Oct 18, 2026. Prices change, so confirm on the vendor's site before you pay.",
-      )
+      expect(entry.checkedLine).toBe(`Last checked ${CHECKED_ON[entry.slug]}. ${CHECKED_TAIL}`)
+      expect(entry.checkedLine).toBe(comparePageCheckedLine(entry.sources))
     }
   })
 
@@ -210,6 +229,30 @@ describe('curated compare copy', () => {
         expect(redirectTarget(error), pair).toEqual({ url: target, status: 308 })
       }
     }
+  })
+
+  it('uses the earliest vendor check date when a page’s sources differ', () => {
+    const tail = CHECKED_TAIL
+    expect(
+      comparePageCheckedLine([
+        'ElevenLabs pricing (vendor, checked Oct 17, 2026)',
+        'Murf pricing (vendor, checked Oct 18, 2026)',
+        'Murf Studio (third party, read Oct 12 and Oct 2, 2026; Creator price re-checked Oct 18, 2026)',
+        'BestBotFor catalog, read Oct 17, 2026',
+      ]),
+    ).toBe(`Last checked Oct 17, 2026. ${tail}`)
+    expect(
+      comparePageCheckedLine([
+        'Lovable pricing (vendor, checked Oct 18, 2026)',
+        'v0 pricing (vendor, checked Oct 18, 2026)',
+      ]),
+    ).toBe(`Last checked Oct 18, 2026. ${tail}`)
+    expect(
+      comparePageCheckedLine([
+        'AssemblyAI pricing (vendor, checked Oct 17, 2026 (page says last updated Sep 28, 2026))',
+        'Deepgram pricing (vendor, checked Oct 17, 2026)',
+      ]),
+    ).toBe(`Last checked Oct 17, 2026. ${tail}`)
   })
 
   it('uses Nova’s Oct 18, 2026 price re-check', () => {
