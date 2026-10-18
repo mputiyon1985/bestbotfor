@@ -34,6 +34,7 @@ import { slugSchema } from '@/lib/validation'
 import { BEST_HUB_PATH, LOADOUT_PATH, bestFreePath } from '@/lib/seo-pages'
 import { isFreePageTask } from '@/lib/free-plan'
 import { guidePath } from '@/content/guides'
+import { alternativesForTask, alternativesPath } from '@/lib/alternatives'
 
 export async function generateMetadata({ params }: { params: Promise<{ task: string }> }): Promise<Metadata> {
   const { task: slug } = await params
@@ -98,6 +99,8 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
   ]
   const shown = ranked.slice(0, BEST_GUIDE_TOOL_COUNT)
   const listLabel = `Tools ranked for ${taskGerund(task.name)}`
+  const alternativesPage = alternativesForTask(task.slug)
+  const alternatives = alternativesPage ? ranked.find((tool) => tool.slug === alternativesPage.tool) : undefined
 
   return (
     <article className="space-y-8">
@@ -197,6 +200,13 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
           ) : null}
           <li><Link className="inline-flex min-h-11 items-center underline" href={guidePath('how-to-choose-an-ai-tool')}>New to this? How to choose an AI tool</Link></li>
           <li><Link className="inline-flex min-h-11 items-center underline" href={LOADOUT_PATH}>Get the AI Loadout</Link></li>
+          {alternatives ? (
+            <li>
+              <Link className="inline-flex min-h-11 items-center underline" href={alternativesPath(alternatives.slug)}>
+                {`${alternatives.name} alternatives`}
+              </Link>
+            </li>
+          ) : null}
           <li><Link className="inline-flex min-h-11 items-center underline" href={BEST_HUB_PATH}>Every job</Link></li>
         </ul>
       </nav>
