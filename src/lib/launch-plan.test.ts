@@ -47,7 +47,7 @@ describe('ratings launch plan', () => {
       '`charge.refunded`, `refund.created`, and `refund.updated`',
       '**Sponsorship: refund runbook.**',
       '**Sponsorship: newsletter sponsor labels.**',
-      '**Sponsorship: lawyer question on sponsorship wording.**',
+      '**Sponsorship wording.** Closed. Mark dropped the lawyer requirement at 7:44 AM ET on October 18, 2026. Sponsor wording gets internal review only.',
     ]) {
       expect(plan).toContain(gate)
     }
@@ -57,8 +57,12 @@ describe('ratings launch plan', () => {
     expect(plan).toContain('**Mark\'s OK on #61.** Closed. Mark typed "Merge it" for #61 in James\'s chat at 7:00 PM ET on October 17, 2026. James relayed that message.')
     expect(plan).not.toContain("Mark's written confirmation stays an open gate item.")
     expect(plan).not.toContain('Recorded as given')
-    expect(plan).toContain('**Mark-approved.** James relays Mark\'s note at 7:04 PM ET on October 17, 2026, approving the whole go-live list, including the lawyer review.')
-    expect(plan).toContain('This gate stays open until the lawyer\'s signed document is attached.')
+    expect(plan).not.toContain('**Sponsorship: lawyer question on sponsorship wording.**')
+    expect(plan).not.toContain("This gate stays open until the lawyer's signed document is attached.")
+    expect(plan).not.toContain("lawyer's sign-off")
+    const liveGates = plan.slice(plan.indexOf('## 6. Launch gates'), plan.indexOf('## 7. Out of MVP'))
+    expect(liveGates).toContain('**Policy review (D13).** Closed. Mark dropped the lawyer requirement at 7:44 AM ET on October 18, 2026.')
+    expect(liveGates).not.toContain('stays open until')
     expect(plan).toContain('2. **Mark approves** the final copy and the A18 PR. Mark-approved via James relay at 7:04 PM ET; closes when the A18 PR is reviewed and merged.')
     expect(plan).not.toContain('2. **Mark approves** the final copy and the A18 PR. **Mark-approved.** Closed.')
     expect(plan).not.toContain('qa-pr29-30.md')
@@ -102,14 +106,21 @@ describe('ratings launch plan', () => {
     expect(versionTable.indexOf('| v1.2.8 |')).toBeLessThan(versionTable.indexOf('| v1.2.9 |'))
     expect(versionTable.indexOf('| v1.2.9 |')).toBeLessThan(versionTable.indexOf('| v1.2.10 |'))
     expect(versionTable.indexOf('| v1.2.10 |')).toBeLessThan(versionTable.indexOf('| v1.2.11 |'))
+    expect(versionTable.indexOf('| v1.2.11 |')).toBeLessThan(versionTable.indexOf('| v1.2.12 |'))
     const v1210 = versionTable.slice(versionTable.indexOf('| v1.2.10 |'), versionTable.indexOf('| v1.2.11 |'))
     expect(v1210).toContain('verified read-only after the f8a6236 deploy (`schema_migrations`, prod-verify of `f8a6236`, deploy `dpl_9ZTPJZi9aesSjDVDraYzB1X3LVNP`)')
     expect(v1210).not.toContain('__drizzle_migrations')
-    const v1211 = versionTable.slice(versionTable.indexOf('| v1.2.11 |'))
+    const v1211 = versionTable.slice(versionTable.indexOf('| v1.2.11 |'), versionTable.indexOf('| v1.2.12 |'))
     expect(v1211).toContain('Gate 12 is Closed.')
+    const v1212 = versionTable.slice(versionTable.indexOf('| v1.2.12 |'))
+    expect(v1212).toContain('Gate 18 is Closed.')
+    expect(v1212).toContain('Sponsor wording gets internal review only.')
     expect(changelog).not.toContain('needs lawyer review before merge')
     expect(changelog).not.toContain('lawyer packet sign-off')
     expect(changelog).not.toContain('Open lawyer-packet questions')
+    expect(changelog).toContain('Sponsor wording gets internal review only.')
+    expect(changelog).not.toContain('The written sign-off is a pending link.')
+    expect(changelog).not.toContain('lawyer question on sponsorship wording')
     const v126 = versionTable.slice(versionTable.indexOf('| v1.2.6 |'), versionTable.indexOf('| v1.2.7 |'))
     expect(v126).toContain('Gate 2 closes when the A18 PR merges.')
     expect(v126).not.toContain('Gate 2 is closed')
