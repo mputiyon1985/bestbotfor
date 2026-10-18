@@ -12,6 +12,7 @@ export type BeehiivResult = { ok: true; id: string | null } | { ok: false }
 
 /**
  * Server-side only. The API key never reaches the browser.
+ * Double opt-in is always on, so Beehiiv sends the confirmation email.
  * An existing subscriber (HTTP 409) is treated as success.
  */
 export async function createBeehiivSubscription(input: {
@@ -38,6 +39,7 @@ export async function createBeehiivSubscription(input: {
           email: input.email,
           reactivate_existing: false,
           send_welcome_email: true,
+          double_opt_override: 'on',
           utm_source: 'bestbotfor',
           utm_medium: 'website',
           referring_site: input.referringSite,

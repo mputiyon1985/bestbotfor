@@ -85,6 +85,13 @@
       "when": 1792188000000,
       "tag": "0018_retention_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1792189000000,
+      "tag": "0019_subscriber_status",
+      "breakpoints": true
     }
   ]
 }

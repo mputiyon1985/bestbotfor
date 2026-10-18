@@ -85,7 +85,7 @@ test('newsletter_signup waits for analytics consent and does not include the ema
   const email = `daily-bot-${Date.now()}@example.com`
   await page.getByLabel('Email address').fill(email)
   await page.getByRole('button', { name: 'Get the daily digest' }).click()
-  await expect(page.getByRole('status')).toHaveText("Thanks. You're on the list.")
+  await expect(page.getByRole('status')).toHaveText("You'll get a confirmation email when The Daily Bot launches.")
 
   const before = await page.evaluate(() => (window as AnalyticsWindow).__gaEvents ?? [])
   expect(before.filter((entry) => entry[1] === 'newsletter_signup')).toEqual([])
