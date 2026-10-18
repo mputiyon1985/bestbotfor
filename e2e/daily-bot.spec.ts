@@ -36,7 +36,7 @@ test('a quiz result shows the Daily Bot under the pick and a free-account prompt
   await expect(region).toHaveCount(1)
   await expectBelow(page.getByRole('heading', { level: 1 }), region)
   await expectBelow(region, page.getByRole('heading', { name: 'Alternatives' }))
-  const link = page.getByRole('link', { name: 'Create a free account to keep up with new tools' })
+  const link = page.getByRole('link', { name: 'Save this pick: free account' })
   await expect(link).toHaveAttribute('href', /\/sign-up\?redirect_url=/)
   await link.click()
   await expect(page).toHaveURL(/\/sign-up\?redirect_url=/)
