@@ -43,7 +43,7 @@
 | A12 | Admin: vendor domains and sponsor links | No | A4, A9 | 0.5 d |
 | A13 | Clerk webhook: deletion and email re-check | No | A2, A5 | 1 d |
 | A14 | Analytics events (no PII) | No | A6, A7, A11 | 0.5 d |
-| A15 | Policy and content pages (lawyer-review copy) | No | A1 | 0.5 d |
+| A15 | Policy and content pages (internal-review copy) | No | A1 | 0.5 d |
 | A16 | JSON-LD user aggregate builder (flag off) | No | A7 | 0.5 d |
 | A17 | Launch readiness: security and e2e pass | No | A1–A16, PR #28 | 0.5 d |
 | A18 | Launch: turn on in production | No (flag code and constant only) | A17 and **all launch gates** (section 6) | 0.1 d |
@@ -201,7 +201,7 @@ Total: about 17 dev-days (A1 now ships in Tony's P3 batch, and A1b takes its slo
 - **Sentinel checks:** network capture during a full review flow contains only allowlisted params.
 - **Depends on:** A6, A7, A11.
 
-### A15: Policy and content pages (lawyer-review copy)
+### A15: Policy and content pages (internal-review copy)
 
 - **Scope:** draft copy for the review guidelines page, the "How user ratings work" page (formula, tiers, threshold, moderation reasons, the transparency line placeholder), the privacy policy section for ratings and retention (spec 10.3, which in v1.1 mentions the keyed hash of the IP's network range), a `/terms` link to the guidelines, and a `/disclosure` paragraph on the Advertiser label. The new pages and the new privacy section render only when the flag is on, so production text doesn't describe an unlaunched feature. **This copy gets internal review before launch (section 6).**
 - **Files:** `src/app/review-guidelines/page.tsx`, `src/app/how-user-ratings-work/page.tsx`, `src/app/privacy/page.tsx`, `src/app/terms/page.tsx`, `src/app/disclosure/page.tsx`.
@@ -325,7 +325,7 @@ Spec D14 (changed in v1.1). One small PR. No migration, no data or schema change
 15. **Sponsorship: live webhook subscribed to refund events.** The three events are `charge.refunded`, `refund.created`, and `refund.updated` (`SPONSOR_REFUND_WEBHOOK_EVENTS` in `src/lib/stripe-webhook.ts` on draft #51). Open.
 16. **Sponsorship: refund runbook.** Open.
 17. **Sponsorship: newsletter sponsor labels.** Open.
-18. **Sponsorship wording.** Closed. Mark dropped the lawyer requirement at 7:44 AM ET on October 18, 2026. Sponsor wording gets internal review only.
+18. **Sponsorship wording.** Closed. Mark (via James) dropped the lawyer requirement at 7:44 AM ET on October 18, 2026. Sponsor wording gets internal review only.
 19. **ADMIN_SPONSORS production launch.** Open. It comes after the A18 Clerk admin test (gate 8).
 20. **Mark's OK on #61.** Closed. Mark typed "Merge it" for #61 in James's chat at 7:00 PM ET on October 17, 2026. James relayed that message. The pull request was merged from the `mputiyon1985` account as `dcfb9eb`.
 21. **GitHub Actions billing lock.** This is its own gate. The account lock is in Sentinel's QA report in the team QA workspace. It must be cleared before A18, or the e2e jobs and the T10 log-grep step cannot run. Open.

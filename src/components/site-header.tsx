@@ -17,6 +17,7 @@ export async function SiteHeader() {
     { href: '/compare/cursor-vs-github-copilot', label: 'Compare' },
     { href: '/pricing', label: 'Pricing' },
     { href: '/newsletter', label: 'Newsletter' },
+    { href: '/sponsor', label: 'Advertise' },
   ]
 
   return (
