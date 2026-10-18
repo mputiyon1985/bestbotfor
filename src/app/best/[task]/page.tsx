@@ -31,6 +31,8 @@ import {
 import { matchesPath } from '@/lib/matches'
 import { pageMetadata } from '@/lib/metadata'
 import { slugSchema } from '@/lib/validation'
+import { BEST_HUB_PATH, LOADOUT_PATH } from '@/lib/seo-pages'
+import { guidePath } from '@/content/guides'
 
 export async function generateMetadata({ params }: { params: Promise<{ task: string }> }): Promise<Metadata> {
   const { task: slug } = await params
@@ -187,6 +189,13 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
       <p className="text-sm text-muted">
         Want this personalized? <Link className="underline" href="/">Get your own pick in 30 seconds</Link>: answer three questions.
       </p>
+      <nav aria-label="More guides" className="text-sm text-muted">
+        <ul className="flex flex-wrap gap-x-6">
+          <li><Link className="inline-flex min-h-11 items-center underline" href={guidePath('how-to-choose-an-ai-tool')}>New to this? How to choose an AI tool</Link></li>
+          <li><Link className="inline-flex min-h-11 items-center underline" href={LOADOUT_PATH}>Get the AI Loadout</Link></li>
+          <li><Link className="inline-flex min-h-11 items-center underline" href={BEST_HUB_PATH}>Every job</Link></li>
+        </ul>
+      </nav>
       <DailyBotCapture source="best" />
     </article>
   )
