@@ -3,6 +3,7 @@ import {
   SPONSOR_FOUNDING_NOTICE,
   SPONSOR_INTEGRATION_IDENTIFIER,
   SPONSOR_REVIEW_NOTICE,
+  SPONSOR_TASK_FIELD_LABEL,
 } from '../src/lib/sponsor-offerings'
 
 test('sponsor page creates a hosted checkout session from the server price', async ({ page }) => {
@@ -34,7 +35,7 @@ test('sponsor page creates a hosted checkout session from the server price', asy
   await page.getByRole('radio', { name: /one month/ }).check()
   await page.getByLabel('Work email').fill('sponsor@example.com')
   await page.getByRole('textbox', { name: 'Company' }).fill('Example Tools')
-  await page.getByLabel('Task page').selectOption('coding')
+  await page.getByLabel(SPONSOR_TASK_FIELD_LABEL).selectOption('coding')
   await page.getByLabel('Tool name').fill('Widget')
   await page.getByLabel('One-line description').fill('A useful coding tool.')
   await page.getByLabel('Tool URL').fill('https://example.com/widget')
@@ -94,7 +95,7 @@ test('founding sponsor checkout is a subscription with the $99 first period and 
   await page.getByRole('radio', { name: /Founding sponsor/ }).check()
   await page.getByLabel('Work email').fill('founder@example.com')
   await page.getByRole('textbox', { name: 'Company' }).fill('Founding Tools')
-  await page.getByLabel('Task page').selectOption('writing')
+  await page.getByLabel(SPONSOR_TASK_FIELD_LABEL).selectOption('writing')
   await page.getByLabel('Tool name').fill('Widget')
   await page.getByLabel('One-line description').fill('A useful writing tool.')
   await page.getByLabel('Tool URL').fill('https://example.com/widget')

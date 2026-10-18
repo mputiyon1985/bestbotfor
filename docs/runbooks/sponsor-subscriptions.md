@@ -4,7 +4,7 @@ Two recurring sponsor offerings sit next to the one-time prices on `/sponsor`:
 
 | Offering id | What the buyer pays | Stripe objects |
 | --- | --- | --- |
-| `founding_sponsor` | $99 today for the first 2 weeks, then $299/mo. The founding price is locked for 6 months. | One-time Price `sponsor_founding_first_two_weeks` ($99) and recurring monthly Price `sponsor_founding_monthly` ($299), with a 14-day trial on the recurring item |
+| `founding_sponsor` | $99 today for the first 2 weeks, then $299/mo. Founding price locked for 6 months. Cancel anytime. Limited to 5 founding sponsors. | One-time Price `sponsor_founding_first_two_weeks` ($99) and recurring monthly Price `sponsor_founding_monthly` ($299), with a 14-day trial on the recurring item |
 | `placement_subscription` | $299/mo, renewing until canceled | Recurring monthly Price `sponsor_best_placement_monthly_recurring` ($299) |
 
 Both are a featured placement on one `/best/[task]` page, with the same tool card review as the one-time placements.
@@ -15,7 +15,14 @@ Both are a featured placement on one `/best/[task]` page, with the same tool car
 - **Not Stripe Trial Offers.** Trial Offers model a paid introductory price, but on Checkout they are a private preview that needs a preview API version and flexible billing mode. They are not used here.
 - **Not a subscription schedule.** A schedule cannot be created by Checkout. It would need a second API write after every checkout, plus webhook handling for schedule phases. The founding price does not need to change after 6 months, because the founding and standard monthly prices are both $299 today, so a schedule would add moving parts without changing what anyone is charged.
 - **How the 6-month lock is kept.** The founding subscription uses its own Price (`sponsor_founding_monthly`). A later change to the standard monthly Price, or a new Price under a moved lookup key, does not touch existing founding subscriptions, because a Stripe subscription keeps the Price it was created with. The lock end is stored on the subscription metadata (`price_lock_months=6`) and in `sponsorships.price_locked_until` (subscription `start_date` plus 6 calendar months, UTC). After that date nothing changes automatically. Moving a founding sponsor to a later standard price is a manual dashboard change.
-- **Cancellation.** There is no customer portal in this app. A sponsor asks by email (mark@bestbotfor.com), and the cancellation is made in the Stripe dashboard with **Cancel at end of period**. The placement then runs to the end of the paid month and stops. No minimum term is enforced in code.
+- **Price lock, not a commitment** (James, Oct 18). The founding sponsor can cancel anytime. The 6 months only guarantee the $299 price. There is no minimum term, in the copy or in code.
+- **Cancellation.** There is no customer portal in this app. A sponsor asks by email (mark@bestbotfor.com), and the cancellation is made in the Stripe dashboard with **Cancel at end of period**. The placement then runs to the end of the paid month and stops.
+- **5 founding sponsors.** `claimSponsorSlot` refuses a founding checkout once 5 spots are in use: paid, unrefunded founding rows (a canceled founding sponsor still counts, so there are only ever 5) plus founding checkout holds younger than 24 hours whose page has no paid founding row yet. The count and the hold are one SQL statement, so two buyers cannot both take the last spot. A refund (`refunded_at`) frees the spot. The buyer sees "All 5 founding sponsor spots are taken. Choose another option." The standard $299/mo subscription is not capped.
+- **Which page.** Every placement, including both subscriptions, requires "Which /best page do you want to sponsor?" (`task_slug`). The server refuses a placement without a valid page.
+
+## Membership checkout status fix
+
+`checkout.session.completed` for a membership subscription used to write `subscriptions.status = 'incomplete'` on every run. When it was processed after `customer.subscription.created`, it set a `trialing` or `active` membership back to `incomplete`. It now only seeds `incomplete` on a new row and leaves an existing status alone. `checkout.session.async_payment_succeeded` only moves a new or `incomplete` row to `active`. `customer.subscription.*` still always sets the status.
 
 ## How fulfillment works
 
@@ -61,7 +68,10 @@ Load the live secret key from the vault into the shell environment. Do not paste
 set -euo pipefail
 : "${STRIPE_LIVE_SECRET_KEY:?load the live secret key from the vault first}"
 STRIPE_VERSION='2026-09-30.endive'
-api() { curl -sS --fail-with-body -u "${STRIPE_LIVE_SECRET_KEY}:" -H "Stripe-Version: ${STRIPE_VERSION}" "$@"; }
+# The key reaches curl through a config read from process substitution, so it is
+# not on the curl command line (not visible in ps) and is never written to disk.
+stripe_auth() { printf 'user = "%s:"\n' "$STRIPE_LIVE_SECRET_KEY"; }
+api() { curl -sS --fail-with-body --config <(stripe_auth) -H "Stripe-Version: ${STRIPE_VERSION}" "$@"; }
 
 # Creates the Product and Price for one lookup key unless an active Price with that lookup key exists.
 # Args: lookup_key offering unit_amount interval(month|one_time) nickname description
@@ -91,10 +101,10 @@ SUB=$(ensure_price sponsor_best_placement_monthly_recurring placement_subscripti
   'Featured placement, monthly subscription. Renews every month at $299 until you cancel. Cancel anytime; it ends at the close of the paid month.')
 FOUNDING_MONTHLY=$(ensure_price sponsor_founding_monthly founding_sponsor 29900 month \
   'Founding sponsor, monthly' \
-  'Founding sponsor, monthly. $99 today covers the first 2 weeks. Then $299 per month, renewing monthly until you cancel. The $299 founding price is locked for 6 months. Cancel anytime after the first 2 weeks; it ends at the close of the paid month.')
+  'Founding sponsor, monthly. $99 today covers the first 2 weeks. Then $299 per month, renewing monthly. Founding price locked for 6 months. Cancel anytime.')
 FOUNDING_SETUP=$(ensure_price sponsor_founding_first_two_weeks founding_sponsor 9900 one_time \
   'Founding sponsor, first 2 weeks' \
-  'Founding sponsor, first 2 weeks. $99 today covers the first 2 weeks. Then $299 per month, renewing monthly until you cancel. The $299 founding price is locked for 6 months. Cancel anytime after the first 2 weeks; it ends at the close of the paid month.')
+  'Founding sponsor, first 2 weeks. $99 today covers the first 2 weeks. Then $299 per month, renewing monthly. Founding price locked for 6 months. Cancel anytime.')
 printf 'STRIPE_PRICE_PLACEMENT_SUBSCRIPTION=%s\nSTRIPE_PRICE_FOUNDING_MONTHLY=%s\nSTRIPE_PRICE_FOUNDING_SETUP=%s\n' "$SUB" "$FOUNDING_MONTHLY" "$FOUNDING_SETUP"
 
 # Add the subscription events to the live webhook. enabled_events replaces the whole list,

@@ -722,13 +722,18 @@ async function applyEvent(db: Database, stripe: Stripe, event: Stripe.Event, now
   if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
     const parsed = checkoutSchema.safeParse(event.data.object)
     if (!parsed.success || parsed.data.mode !== 'subscription' || !parsed.data.subscription) return
+    const asyncPaid = event.type === 'checkout.session.async_payment_succeeded'
     await upsertSubscription(db, {
       subscriptionId: parsed.data.subscription,
       customerId: parsed.data.customer ?? null,
       clerkUserId: parsed.data.metadata?.clerkUserId ?? null,
-      status: event.type === 'checkout.session.async_payment_succeeded' ? 'active' : 'incomplete',
+      status: asyncPaid ? 'active' : 'incomplete',
       priceId: null,
       periodEnd: null,
+      // A checkout event only seeds the status. customer.subscription.* is the
+      // source of truth, so a row it already wrote (trialing, active, ...) is
+      // not set back to incomplete when the checkout event is processed later.
+      statusSource: asyncPaid ? 'checkout_paid' : 'checkout',
     })
     return
   }
@@ -770,8 +775,24 @@ async function upsertSubscription(
     status: string
     priceId: string | null
     periodEnd: number | null
+    /**
+     * subscription: a customer.subscription.* event, which always wins.
+     * checkout: checkout.session.completed, which only sets the status on a new row.
+     * checkout_paid: async_payment_succeeded, which only moves a new or incomplete row to active.
+     */
+    statusSource?: 'subscription' | 'checkout' | 'checkout_paid'
   },
 ): Promise<void> {
+  const source = input.statusSource ?? 'subscription'
+  const status =
+    source === 'checkout'
+      ? sql`${subscriptions.status}`
+      : source === 'checkout_paid'
+        ? sql`CASE
+            WHEN ${subscriptions.status} IS NULL OR ${subscriptions.status} IN ('', 'incomplete') THEN excluded.status
+            ELSE ${subscriptions.status}
+          END`
+        : input.status
   const now = Date.now()
   await db
     .insert(subscriptions)
@@ -790,7 +811,7 @@ async function upsertSubscription(
         clerkUserId: sql`coalesce(excluded.clerk_user_id, ${subscriptions.clerkUserId})`,
         stripeCustomerId: sql`coalesce(excluded.stripe_customer_id, ${subscriptions.stripeCustomerId})`,
         stripePriceId: sql`coalesce(excluded.stripe_price_id, ${subscriptions.stripePriceId})`,
-        status: input.status,
+        status,
         currentPeriodEnd: sql`coalesce(excluded.current_period_end, ${subscriptions.currentPeriodEnd})`,
         updatedAt: now,
       },

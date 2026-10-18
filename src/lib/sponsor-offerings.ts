@@ -34,14 +34,23 @@ export const SPONSOR_SUBSCRIPTION_NOTICE = 'Renews every month at $299 until you
 
 /** Founding sponsor terms. Days and months live here so copy and Checkout cannot drift. */
 export const FOUNDING_TRIAL_DAYS = 14
+/** A price lock, not a commitment. The sponsor can cancel anytime; the $299 price is guaranteed for this long. */
 export const FOUNDING_PRICE_LOCK_MONTHS = 6
+/** At most this many founding sponsors, counting paid unrefunded founding rows plus live founding checkout holds. */
+export const FOUNDING_SPONSOR_CAP = 5
+
+/** Shown when every founding spot is taken. */
+export const FOUNDING_SOLD_OUT = 'All 5 founding sponsor spots are taken. Choose another option.'
+
+/** Label of the required task-page field. */
+export const SPONSOR_TASK_FIELD_LABEL = 'Which /best page do you want to sponsor?'
 
 /**
  * Shown beside the founding offer and on its Checkout pay button. Stripe caps
  * custom_text.submit.message at 1200 characters.
  */
 export const SPONSOR_FOUNDING_NOTICE =
-  '$99 today covers the first 2 weeks. Then $299 per month, renewing monthly until you cancel. The $299 founding price is locked for 6 months. Cancel anytime after the first 2 weeks; it ends at the close of the paid month.'
+  '$99 today covers the first 2 weeks. Then $299 per month, renewing monthly. Founding price locked for 6 months. Cancel anytime.'
 
 /** Shown on /sponsor next to the company field. The name is published on the guide. */
 export const SPONSOR_COMPANY_PUBLISHED = 'Your company name is published with a Sponsored label.'
@@ -131,7 +140,7 @@ export const SPONSOR_OFFERINGS = [
     productName: 'Founding sponsor, monthly',
     title: 'Founding sponsor',
     summary:
-      'One featured tool slot on a single /best/[task] page. $99 for the first 2 weeks, then $299/mo with the founding price locked for 6 months.',
+      'One featured tool slot on a single /best/[task] page. $99 for the first 2 weeks, then $299/mo with the founding price locked for 6 months. Limited to 5 founding sponsors.',
     cadence: 'month',
     target: 'task',
     billing: 'subscription',

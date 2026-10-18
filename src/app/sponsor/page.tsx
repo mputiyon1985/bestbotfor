@@ -6,6 +6,7 @@ import { SponsorForm } from '@/components/sponsor-form'
 import { pageMetadata } from '@/lib/metadata'
 import { sponsorCheckoutSurface } from '@/lib/sponsor-checkout-gate'
 import {
+  FOUNDING_SPONSOR_CAP,
   SPONSOR_FOUNDING_NOTICE,
   SPONSOR_OFFERINGS,
   SPONSOR_ONE_TIME_NOTICE,
@@ -76,7 +77,7 @@ export default function SponsorPage() {
           Featured placement, monthly subscription: {subscription}. {SPONSOR_SUBSCRIPTION_NOTICE}
         </li>
         <li>
-          Founding sponsor: {founding}. {SPONSOR_FOUNDING_NOTICE}
+          Founding sponsor: {founding}. {SPONSOR_FOUNDING_NOTICE} Limited to {FOUNDING_SPONSOR_CAP} founding sponsors.
         </li>
       </ul>
       <p className="text-sm text-muted">

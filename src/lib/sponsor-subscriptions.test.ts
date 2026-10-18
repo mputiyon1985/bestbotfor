@@ -12,12 +12,21 @@ import {
   placementActiveAt,
   placementEndsAt,
 } from './best-placement'
-import { SPONSOR_SLOT_TAKEN, claimSponsorSlot } from './sponsor-availability'
+import {
+  SPONSOR_CHECKOUT_EXPIRY_MS,
+  SPONSOR_SLOT_TAKEN,
+  claimSponsorSlot,
+  foundingSpotsLeft,
+  releaseSponsorSlot,
+} from './sponsor-availability'
 import { approvedSponsorRedirectUrl } from './sponsor-impressions'
 import { parseSponsorCheckout, sponsorCheckoutParams } from './sponsor-checkout'
 import {
   FOUNDING_PRICE_LOCK_MONTHS,
+  FOUNDING_SOLD_OUT,
+  FOUNDING_SPONSOR_CAP,
   FOUNDING_TRIAL_DAYS,
+  SPONSOR_TASK_FIELD_LABEL,
   SPONSOR_FOUNDING_NOTICE,
   SPONSOR_INTEGRATION_IDENTIFIER,
   SPONSOR_ONE_TIME_NOTICE,
@@ -83,7 +92,10 @@ describe('subscription sponsor offerings', () => {
     expect(SPONSOR_FOUNDING_NOTICE).toContain('$99')
     expect(SPONSOR_FOUNDING_NOTICE).toContain('first 2 weeks')
     expect(SPONSOR_FOUNDING_NOTICE).toContain('$299 per month')
-    expect(SPONSOR_FOUNDING_NOTICE).toContain('locked for 6 months')
+    // A price lock, not a commitment.
+    expect(SPONSOR_FOUNDING_NOTICE).toContain('Founding price locked for 6 months. Cancel anytime.')
+    expect(SPONSOR_FOUNDING_NOTICE).not.toMatch(/commit|after the first|minimum/i)
+    expect(FOUNDING_SPONSOR_CAP).toBe(5)
     expect(SPONSOR_FOUNDING_NOTICE.length).toBeLessThanOrEqual(1200)
     expect(SPONSOR_SUBSCRIPTION_NOTICE).toContain('until you cancel')
     expect(isSubscriptionOffering('placement_monthly')).toBe(false)
@@ -119,6 +131,9 @@ describe('subscription sponsor offerings', () => {
     )
     expect(html).toContain(SPONSOR_ONE_TIME_NOTICE)
     expect(html).toContain('$99 for 2 weeks, then $299/mo')
+    expect(SPONSOR_TASK_FIELD_LABEL).toBe('Which /best page do you want to sponsor?')
+    expect(html).toContain(`<label for="sponsor-task" class="font-semibold">${SPONSOR_TASK_FIELD_LABEL}</label>`)
+    expect(html).toMatch(/<select id="sponsor-task" name="task_slug" required=""/)
     expect(html.match(/One-time payment, no auto-renewal/g)).toHaveLength(1)
   })
 })
@@ -365,6 +380,85 @@ describe('subscription slot claims', () => {
     expect(blocked.ok).toBe(false)
     const open = await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'placement_subscription', requestKey: 'req-b', now: NOW + 7 * DAY })
     expect(open).toEqual({ ok: true })
+    await close()
+  })
+})
+
+describe('founding sponsor cap', () => {
+  const NOW = Date.UTC(2026, 9, 18)
+  const TASKS = ['coding', 'writing', 'image', 'video', 'voice', 'music', 'research']
+
+  it('allows 5 founding sponsors, counts live holds once, and frees a hold that expires or is released', async () => {
+    const { db, close } = await createTestDatabase()
+    expect(await foundingSpotsLeft(db, NOW)).toBe(5)
+    // Two paid founding sponsors.
+    for (const [index, task] of TASKS.slice(0, 2).entries()) {
+      await db.insert(sponsorships).values({
+        stripeCheckoutSessionId: `cs_paid_${index}`,
+        offering: 'founding_sponsor',
+        status: 'paid',
+        taskSlug: task,
+        createdAt: NOW,
+        updatedAt: NOW,
+        paidAt: NOW,
+        stripeSubscriptionId: `sub_${index}`,
+        subscriptionStatus: 'trialing',
+        paidThrough: NOW + 14 * DAY,
+      })
+    }
+    // A paid row whose own hold is still live counts once.
+    await db.$client.execute({
+      sql: 'INSERT INTO sponsorship_slot_claims (task_slug, request_key, offering, claimed_at) VALUES (?, ?, ?, ?)',
+      args: [TASKS[0] ?? '', 'req-paid-0', 'founding_sponsor', NOW],
+    })
+    expect(await foundingSpotsLeft(db, NOW + 1)).toBe(3)
+    // Three more checkouts hold the last three spots.
+    for (const task of TASKS.slice(2, 5)) {
+      expect(await claimSponsorSlot(db, { taskSlug: task, offering: 'founding_sponsor', requestKey: `req-${task}`, now: NOW + 2 })).toEqual({
+        ok: true,
+      })
+    }
+    expect(await foundingSpotsLeft(db, NOW + 3)).toBe(0)
+    // A sixth is refused as sold out, and a retry of a held checkout still works.
+    expect(await claimSponsorSlot(db, { taskSlug: TASKS[5] ?? '', offering: 'founding_sponsor', requestKey: 'req-6', now: NOW + 4 })).toEqual({
+      ok: false,
+      message: FOUNDING_SOLD_OUT,
+    })
+    expect(await claimSponsorSlot(db, { taskSlug: TASKS[2] ?? '', offering: 'founding_sponsor', requestKey: `req-${TASKS[2]}`, now: NOW + 5 })).toEqual({
+      ok: true,
+    })
+    // The standard subscription is not capped.
+    expect(await claimSponsorSlot(db, { taskSlug: TASKS[5] ?? '', offering: 'placement_subscription', requestKey: 'req-sub', now: NOW + 6 })).toEqual({
+      ok: true,
+    })
+    // A released hold frees its spot.
+    await releaseSponsorSlot(db, { taskSlug: TASKS[3] ?? '', requestKey: `req-${TASKS[3]}` })
+    expect(await claimSponsorSlot(db, { taskSlug: TASKS[6] ?? '', offering: 'founding_sponsor', requestKey: 'req-7', now: NOW + 7 })).toEqual({
+      ok: true,
+    })
+    // An expired hold frees its spot too.
+    expect(await foundingSpotsLeft(db, NOW + 7 + SPONSOR_CHECKOUT_EXPIRY_MS)).toBe(3)
+    await close()
+  })
+
+  it('keeps counting a canceled founding sponsor and frees a refunded one', async () => {
+    const { db, close } = await createTestDatabase()
+    for (const [index, task] of TASKS.slice(0, 5).entries()) {
+      await db.insert(sponsorships).values({
+        stripeCheckoutSessionId: `cs_${index}`,
+        offering: 'founding_sponsor',
+        status: 'paid',
+        taskSlug: task,
+        createdAt: NOW,
+        updatedAt: NOW,
+        paidAt: NOW,
+        subscriptionStatus: index === 0 ? 'canceled' : 'active',
+        canceledAt: index === 0 ? NOW + DAY : null,
+        paidThrough: NOW + DAY,
+        refundedAt: index === 1 ? NOW + DAY : null,
+      })
+    }
+    expect(await foundingSpotsLeft(db, NOW + 2 * DAY)).toBe(1)
     await close()
   })
 })
@@ -714,6 +808,53 @@ describe('sponsor subscription webhook', () => {
     await expect(approvedSponsorRedirectUrl(db, row.id, TRIAL_END_S * 1000 + SUBSCRIPTION_RENEWAL_GRACE_MS)).resolves.toBeNull()
     await db.update(sponsorships).set({ subscriptionStatus: 'canceled', canceledAt: T0 + DAY }).where(eq(sponsorships.id, row.id))
     expect(await activeBestPlacementForTask(db, 'coding', TRIAL_END_S * 1000 + 1)).toBeNull()
+    await close()
+  })
+
+  it('does not set a trialing membership back to incomplete when checkout.session.completed arrives after subscription.created', async () => {
+    const { db, close } = await createTestDatabase()
+    const created = {
+      id: 'evt_member_created',
+      type: 'customer.subscription.created',
+      created: T0S,
+      livemode: false,
+      data: {
+        object: {
+          id: 'sub_member_trial',
+          customer: 'cus_member',
+          status: 'trialing',
+          metadata: { clerkUserId: 'user_9' },
+          items: { data: [{ price: { id: 'price_member' }, current_period_end: TRIAL_END_S }] },
+        },
+      },
+    } as unknown as Stripe.Event
+    const completed = {
+      id: 'evt_member_checkout',
+      type: 'checkout.session.completed',
+      created: T0S,
+      livemode: false,
+      data: {
+        object: { id: 'cs_member', mode: 'subscription', subscription: 'sub_member_trial', customer: 'cus_member', metadata: { clerkUserId: 'user_9' } },
+      },
+    } as unknown as Stripe.Event
+    const asyncPaid = { ...completed, id: 'evt_member_async', type: 'checkout.session.async_payment_succeeded' } as Stripe.Event
+    const stripe = webhookStripe([created, completed, asyncPaid], { lineItems: [], subscription: {} })
+    await send(db, stripe, created, T0)
+    await send(db, stripe, completed, T0 + 1)
+    let rows = await db.select().from(subscriptions).where(eq(subscriptions.stripeSubscriptionId, 'sub_member_trial'))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ status: 'trialing', clerkUserId: 'user_9', stripePriceId: 'price_member' })
+    await send(db, stripe, asyncPaid, T0 + 2)
+    rows = await db.select().from(subscriptions).where(eq(subscriptions.stripeSubscriptionId, 'sub_member_trial'))
+    expect(rows[0]?.status).toBe('trialing')
+
+    // In the usual order the checkout seeds incomplete and the subscription event replaces it.
+    const { db: db2, close: close2 } = await createTestDatabase()
+    await send(db2, stripe, completed, T0)
+    expect((await db2.select().from(subscriptions))[0]?.status).toBe('incomplete')
+    await send(db2, stripe, created, T0 + 1)
+    expect((await db2.select().from(subscriptions))[0]?.status).toBe('trialing')
+    await close2()
     await close()
   })
 

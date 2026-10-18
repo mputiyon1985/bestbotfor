@@ -9,7 +9,7 @@ import { clientIp, rateLimitKey } from '@/lib/ip'
 import { isStripeHostedUrl } from '@/lib/redirect'
 import { SPONSOR_OPENING_SOON, sponsorCheckoutClosed } from '@/lib/sponsor-checkout-gate'
 import { parseSponsorCheckout, sponsorCheckoutParams, sponsorRateLimitMessage } from '@/lib/sponsor-checkout'
-import { claimSponsorSlot, releaseSponsorSlot, SPONSOR_SLOT_TAKEN } from '@/lib/sponsor-availability'
+import { claimSponsorSlot, releaseSponsorSlot } from '@/lib/sponsor-availability'
 import { readSponsorCardForm, savePendingSponsorCard, saveSponsorCardForSession } from '@/lib/sponsor-card'
 import { verifyPaidSponsorCheckout } from '@/lib/sponsor-session'
 import {
@@ -52,7 +52,7 @@ export async function sponsorCheckoutAction(_previous: SponsorFormState, formDat
       requestKey: parsed.value.requestId,
       now: Date.now(),
     })
-    if (!claim.ok) return { status: 'error', message: SPONSOR_SLOT_TAKEN }
+    if (!claim.ok) return { status: 'error', message: claim.message }
   }
 
   let creativeId: string | undefined
