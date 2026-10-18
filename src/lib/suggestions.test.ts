@@ -11,9 +11,9 @@ import { ACTION_LIMITS } from '@/lib/action-limit'
 import { BRAND } from '@/lib/brand'
 import { SUGGESTIONS_DDL, adoptSuggestionsSchema } from '@/lib/db/migrate'
 import { suggestions } from '@/lib/db/schema'
-import { SUGGESTION_PRIVACY_PARAGRAPH } from '@/lib/privacy-copy'
+import { SUGGESTION_PRIVACY_PARAGRAPH, suggestionPrivacyParagraph } from '@/lib/privacy-copy'
 import { notifySuggestion, SUGGESTION_NOTIFY_EMAIL } from '@/lib/suggestion-mail'
-import { SUGGESTION_SUCCESS, submitSuggestion } from '@/lib/suggestions'
+import { SUGGESTION_SUCCESS, cleanSuggestionMessage, hasVisibleText, submitSuggestion } from '@/lib/suggestions'
 import { createTestDatabase } from '@/test/db'
 import { eq } from 'drizzle-orm'
 
@@ -116,9 +116,9 @@ describe('suggestions', () => {
       rateKey: 'hash-invalid',
       now: 12,
     })
-    expect(long).toEqual({ status: 'error', message: 'Keep the message under 2000 characters.' })
-    expect(kind).toEqual({ status: 'error', message: 'Choose like, add, or remove.' })
-    expect(email).toEqual({ status: 'error', message: 'Enter a valid email address.' })
+    expect(long).toEqual({ status: 'error', field: 'message', message: 'Keep the message under 2000 characters.' })
+    expect(kind).toEqual({ status: 'error', field: 'kind', message: 'Choose like, add, or remove.' })
+    expect(email).toEqual({ status: 'error', field: 'email', message: 'Enter a valid email address.' })
     const rows = await test.db.select().from(suggestions)
     expect(rows).toEqual([])
     await test.close()
@@ -207,6 +207,53 @@ describe('suggestions', () => {
     await test.close()
   })
 
+  it('strips NUL and control characters but keeps newlines and tabs', async () => {
+    const test = await createTestDatabase()
+    const result = await submitSuggestion({
+      kind: 'add',
+      message: '  Line one\u0000 kept\r\n\tLine two\u0007\u001b\u009b end  ',
+      email: '',
+      honeypot: '',
+      db: test.db,
+      rateKey: 'hash-clean',
+      now: 50,
+    })
+    expect(result.status).toBe('success')
+    const rows = await test.db.select().from(suggestions)
+    expect(rows[0]?.message).toBe('Line one kept\n\tLine two end')
+    expect(cleanSuggestionMessage('a\u0000b\nc\td')).toBe('ab\nc\td')
+    await test.close()
+  })
+
+  it('rejects a message of only invisible or whitespace characters, without using the limit', async () => {
+    const test = await createTestDatabase()
+    for (const message of ['\u200b\u200b', '\u200b \u2060\ufeff', '\u00a0\u3000\t\n', '\u0000\u0001', '\u202e\u2066', '\u3164\u2800']) {
+      expect(hasVisibleText(cleanSuggestionMessage(message))).toBe(false)
+      const result = await submitSuggestion({ kind: 'like', message, email: '', honeypot: '', db: test.db, rateKey: 'hash-blank', now: 60 })
+      expect(result).toEqual({ status: 'error', field: 'message', message: 'Enter a message.' })
+    }
+    expect(hasVisibleText('e\u0301')).toBe(true)
+    expect(hasVisibleText('\u{1F600}')).toBe(true)
+    expect(await test.db.select().from(suggestions)).toEqual([])
+    const limits = await test.db.$client.execute('SELECT "key" FROM rate_limits')
+    expect(limits.rows).toHaveLength(0)
+    await test.close()
+  })
+
+  it('validates before consuming the limit, so failed submits do not lock out a valid one', async () => {
+    const test = await createTestDatabase()
+    const rateKey = 'hash-typos'
+    for (let index = 0; index < ACTION_LIMITS.suggestion.limit + 3; index += 1) {
+      const bad = await submitSuggestion({ kind: 'like', message: index % 2 ? '' : 'Hi', email: index % 2 ? '' : 'bad@', honeypot: '', db: test.db, rateKey, now: 100 + index })
+      expect(bad.status).toBe('error')
+    }
+    const limits = await test.db.$client.execute({ sql: 'SELECT "key" FROM rate_limits WHERE "key" = ?', args: [rateKey] })
+    expect(limits.rows).toHaveLength(0)
+    const good = await submitSuggestion({ kind: 'like', message: 'Real note', email: '', honeypot: '', db: test.db, rateKey, now: 200 })
+    expect(good).toEqual({ status: 'success', message: SUGGESTION_SUCCESS })
+    await test.close()
+  })
+
   it('adds a missing email column and keeps the existing row', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'bestbotfor-suggestions-'))
     directories.push(root)
@@ -254,9 +301,15 @@ describe('suggestions', () => {
     expect(source('src/components/site-footer.tsx')).toContain('<SuggestSomethingLink')
     const page = source('src/app/privacy/page.tsx')
     expect(page).toContain('SUGGESTION_PRIVACY_PARAGRAPH')
-    expect(SUGGESTION_PRIVACY_PARAGRAPH).toBe(
+    expect(SUGGESTION_PRIVACY_PARAGRAPH).toContain(
       'If you suggest something, we store the feedback (whether you like something, want something added, or want something removed, and the message) and we store your email address only when you choose to include it.',
     )
+    expect(SUGGESTION_PRIVACY_PARAGRAPH).toContain('We keep your email address for up to 90 days so we can reply, then clear it and keep the note.')
+    expect(SUGGESTION_PRIVACY_PARAGRAPH).toContain('We delete each suggestion 24 months after you send it.')
+    expect(SUGGESTION_PRIVACY_PARAGRAPH).toContain('do not send it to an email provider')
+    expect(SUGGESTION_PRIVACY_PARAGRAPH).toContain('It is off in production now')
+    expect(suggestionPrivacyParagraph(true)).toContain('The retention job does this about once a day.')
+    expect(suggestionPrivacyParagraph(true)).not.toContain('off in production')
     expect(notifySuggestion({ id: 1, kind: 'like' })).toEqual({
       sent: false,
       reason: 'no-mail-transport',

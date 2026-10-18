@@ -26,6 +26,10 @@ export function SuggestionDialog() {
   const messageId = 'suggestion-message'
   const emailId = 'suggestion-email'
   const statusId = 'suggestion-status'
+  const errorId = 'suggestion-error'
+  const errorField = state.status === 'error' && 'field' in state ? state.field : undefined
+  const invalid = (field: 'kind' | 'message' | 'email') => (errorField === field ? true : undefined)
+  const describedBy = (field: 'kind' | 'message' | 'email') => (errorField === field ? errorId : undefined)
   const honeyId = 'suggestion-company-website'
 
   useEffect(() => {
@@ -64,7 +68,7 @@ export function SuggestionDialog() {
           <label htmlFor={kindId} className="font-semibold">
             Type
           </label>
-          <select id={kindId} name="kind" required className="mt-2 min-h-12 w-full rounded-xl border border-line bg-card px-3">
+          <select id={kindId} name="kind" required aria-invalid={invalid('kind')} aria-describedby={describedBy('kind')} className="mt-2 min-h-12 w-full rounded-xl border border-line bg-card px-3">
             <option value="like">Like something</option>
             <option value="add">Add something</option>
             <option value="remove">Remove something</option>
@@ -80,8 +84,8 @@ export function SuggestionDialog() {
             required
             maxLength={2000}
             rows={5}
-            aria-invalid={state.status === 'error'}
-            aria-describedby={statusId}
+            aria-invalid={invalid('message')}
+            aria-describedby={describedBy('message')}
             className="mt-2 w-full rounded-xl border border-line bg-card px-3 py-2"
           />
         </div>
@@ -95,6 +99,8 @@ export function SuggestionDialog() {
             type="email"
             autoComplete="email"
             maxLength={254}
+            aria-invalid={invalid('email')}
+            aria-describedby={describedBy('email')}
             className="mt-2 min-h-12 w-full rounded-xl border border-line bg-card px-3"
           />
         </div>
@@ -105,8 +111,11 @@ export function SuggestionDialog() {
         <button type="submit" disabled={pending} className="min-h-12 rounded-full bg-indigo px-5 font-medium text-white">
           {pending ? 'Sending…' : 'Send suggestion'}
         </button>
-        <p id={statusId} role="status" className={state.status === 'error' ? 'text-danger' : 'text-muted'}>
-          {state.message}
+        <p id={errorId} role="alert" className="text-danger">
+          {state.status === 'error' ? state.message : ''}
+        </p>
+        <p id={statusId} role="status" className="text-muted">
+          {state.status === 'success' ? state.message : ''}
         </p>
       </form>
     </dialog>

@@ -11,6 +11,8 @@ import {
   PORTAL_RATE_WINDOW_MS,
   RESULT_RATE_WINDOW_MS,
   RESULT_WINDOW_PURGE_INTERVAL_MS,
+  SPONSOR_RATE_WINDOW_MS,
+  SUGGESTION_RATE_WINDOW_MS,
 } from './rate-windows'
 import { PRIVACY_UPDATED, PRIVACY_UPDATED_WITH_RATINGS, RETENTION_ROWS } from './ratings-policy-copy'
 import { newsletterReferringPaths } from './newsletter-source'
@@ -35,6 +37,9 @@ describe('privacy policy facts', () => {
     expect(text).toContain('one hour')
     expect(text).toContain('one minute')
     expect(text).toContain('word unknown')
+    expect(paragraphs.join('\n')).toContain(`The suggestion box uses a ${windowPhrase(SUGGESTION_RATE_WINDOW_MS)} window`)
+    expect(paragraphs.join('\n')).toContain(`sponsor checkout uses a ${windowPhrase(SPONSOR_RATE_WINDOW_MS)} window`)
+    expect(windowPhrase(SUGGESTION_RATE_WINDOW_MS)).toBe('one hour')
     expect(text).toContain('do not delete those rows when the window ends')
     expect(text).toContain('After the window ends, the next request for the same code resets the count')
     expect(text).toContain('stays in the database while the retention job is off')
