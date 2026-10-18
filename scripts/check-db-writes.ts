@@ -24,6 +24,7 @@ const ALLOWED = new Set([
   // 0009 is reviewed DDL for stripe_events and sponsorships.
   'drizzle/0009_sponsorships.sql',
   'drizzle/0011_user_reviews.sql',
+  'drizzle/0019_subscriber_status.sql',
   // Daily retention cron. Deletes rate_limits rows whose reset_at is more
   // than 24 hours old, including rows left under a previous HMAC key, and
   // result_rate_windows rows whose expires_at is more than 24 hours old.
