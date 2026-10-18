@@ -175,7 +175,8 @@ describe('curated compare copy', () => {
       expect(entry.sources.join('\n'), entry.slug).not.toContain('catalog/scores-v2/scores-v2.3.csv')
     }
 
-    expect(cell(voice.view, 'Paid from').b).toContain('[S]')
+    expect(cell(voice.view, 'Free plan').b).not.toContain('[S]')
+    expect(cell(voice.view, 'Paid from').b).not.toContain('[S]')
     expect(cell(automation.view, 'Paid from').b).toContain('[S]')
     for (const rendered of [voice, automation]) {
       const faqs = compareFaqs({
@@ -231,6 +232,24 @@ describe('curated compare copy', () => {
     }
   })
 
+  it('links each compare page to its matching best guide', () => {
+    const ranking: Record<string, string> = {
+      'elevenlabs-vs-murf': '/best/voice',
+      'n8n-vs-make': '/best/automation',
+      'heygen-vs-synthesia': '/best/video',
+      'descript-vs-runway': '/best/video',
+      'granola-vs-fathom': '/best/meetings',
+      'fathom-vs-fireflies': '/best/meetings',
+      'lovable-vs-v0': '/best/vibe-coding',
+      'assemblyai-vs-deepgram': '/best/voice',
+    }
+    for (const entry of compareCopy) {
+      const rendered = viewFor(entry.slug)
+      expect(rendered.view.ranking?.href, entry.slug).toBe(ranking[entry.slug])
+      expect(rendered.view.ranking?.label, entry.slug).toMatch(/^See the full .+ ranking$/)
+    }
+  })
+
   it('uses the earliest vendor check date when a page’s sources differ', () => {
     const tail = CHECKED_TAIL
     expect(
@@ -256,7 +275,10 @@ describe('curated compare copy', () => {
   })
 
   it('uses Nova’s Oct 18, 2026 price re-check', () => {
-    const make = cell(viewFor('n8n-vs-make').view, 'Paid from').b
+    const makeView = viewFor('n8n-vs-make').view
+    expect(makeView.pickB.join(' ')).toContain('3,500+ apps')
+    expect(makeView.pickB.join(' ')).not.toContain('1,000+ app integrations')
+    const make = cell(makeView, 'Paid from').b
     expect(make).toContain('Core $12/mo billed yearly, or $16 monthly')
     expect(make).toContain('Pro $21/mo billed yearly, or $28 monthly')
     expect(make).toContain('Teams $38/mo billed yearly, or $51 monthly')
@@ -271,8 +293,8 @@ describe('curated compare copy', () => {
     expect(cell(builders, 'Paid from').a).toContain('Pro $25/mo')
     expect(cell(builders, 'Paid from').a).toContain('$21/mo billed yearly')
     expect(cell(builders, 'Business tier').a).toBe('Business $50/mo, or $42/mo billed yearly')
-    expect(cell(builders, 'Paid from').b).toBe('Plus $30/user/mo')
-    expect(`${cell(builders, 'Paid from').b} ${cell(builders, 'Business tier').b}`).not.toContain('$90')
+    expect(cell(builders, 'Paid from').b).toBe('Plus $30 (shown reduced from $90)')
+    expect(cell(builders, 'Business tier').b).not.toContain('$90')
 
     expect(cell(viewFor('heygen-vs-synthesia').view, 'Paid from').b).toBe('Starter $29/mo billed monthly')
   })

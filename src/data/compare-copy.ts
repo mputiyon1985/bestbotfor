@@ -127,7 +127,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
         label: 'Free plan',
         kind: 'text',
         a: 'Yes: 10,000 credits a month, no commercial license',
-        b: 'Studio: 10 minutes of voice generation, no downloads [S]. API: $10 free credit',
+        b: 'Studio: 10 minutes of voice generation, no downloads. API: $10 free credit',
         source: '[1]; [2]; [S1]',
       },
       {
@@ -135,7 +135,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
         kind: 'text',
         a: 'Starter $6/mo (first month $1 until Oct 18); Creator $22/mo',
         aAfter: { after: '2026-10-18', text: 'Starter $6/mo; Creator $22/mo' },
-        b: 'Studio Creator $29/mo, or $19/mo billed yearly [S]',
+        b: 'Studio Creator $29/mo, or $19/mo billed yearly',
         source: '[1]; [S1]',
       },
       {
@@ -162,6 +162,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
       '[S1] Murf Studio prices (secondary: Murf Studio tab renders client-side and was not readable by our fetch): https://vorec.ai/blog/murf-pricing ; https://leapfun.ai/murf-pricing (third party, read Oct 12 and Oct 2, 2026; Creator price re-checked Oct 18, 2026)',
       catalogSource,
     ],
+    ranking: { href: '/best/voice', label: 'See the full Voice ranking' },
   },
   {
     slug: 'n8n-vs-make',
@@ -181,7 +182,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
       'You want to self-host for free (Community Edition) or pay per full workflow run, not per step',
     ],
     pickB: [
-      'You want a no-code, visual builder with 1,000+ app integrations',
+      'You want a no-code, visual builder with 3,500+ apps',
       'You want a free cloud plan (1,000 credits a month)',
       'You run simpler, lower-volume automations',
     ],
@@ -220,6 +221,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
       '[S2] Make plan prices (secondary: plan cards render client-side): https://meetalog.com/make-com-pricing/ ; https://www.mainsum.com/make-vs-n8n/ (third party, prices re-checked Oct 18, 2026)',
       catalogSource,
     ],
+    ranking: { href: '/best/automation', label: 'See the full Automation ranking' },
   },
   {
     slug: 'heygen-vs-synthesia',
@@ -283,6 +285,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
       '[6] Synthesia pricing: https://www.synthesia.io/pricing (vendor, checked Oct 18, 2026)',
       catalogSource,
     ],
+    ranking: { href: '/best/video', label: 'See the full Video ranking' },
   },
   {
     slug: 'descript-vs-runway',
@@ -346,6 +349,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
       '[8] Runway pricing: https://runwayml.com/pricing (vendor, checked Oct 17, 2026)',
       catalogSource,
     ],
+    ranking: { href: '/best/video', label: 'See the full Video ranking' },
   },
   {
     slug: 'granola-vs-fathom',
@@ -471,6 +475,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
       '[11] Fireflies pricing (read from the page HTML; plan grid renders client-side): https://fireflies.ai/pricing (vendor, checked Oct 17, 2026)',
       catalogSource,
     ],
+    ranking: { href: '/best/meetings', label: 'See the full Meetings ranking' },
   },
   {
     slug: 'lovable-vs-v0',
@@ -509,7 +514,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
         label: 'Paid from',
         kind: 'text',
         a: 'Pro $25/mo (100 credits) or $21/mo billed yearly',
-        b: 'Plus $30/user/mo',
+        b: 'Plus $30 (shown reduced from $90)',
         source: '[12a]; [13]',
       },
       {
@@ -529,6 +534,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
       '[13] v0 pricing: https://v0.app/pricing (vendor, checked Oct 18, 2026)',
       catalogSource,
     ],
+    ranking: { href: '/best/vibe-coding', label: 'See the full Build an app from a prompt ranking' },
   },
   {
     slug: 'assemblyai-vs-deepgram',
@@ -598,6 +604,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
       '[15] Deepgram pricing: https://deepgram.com/pricing (vendor, checked Oct 17, 2026)',
       catalogSource,
     ],
+    ranking: { href: '/best/voice', label: 'See the full Voice ranking' },
   },
 ]
 
