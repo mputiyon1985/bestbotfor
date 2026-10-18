@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
@@ -42,6 +42,15 @@ describe('findLiveStripeKeys', () => {
   })
 
   it('does not flag this repository', async () => {
-    await expect(findLiveStripeKeys(process.cwd())).resolves.toEqual([])
+    const hits = await findLiveStripeKeys(process.cwd())
+    const changelog = path.join(process.cwd(), 'CHANGELOG.md')
+    expect(hits).toEqual([changelog])
+    const text = await readFile(changelog, 'utf8')
+    const prefix = (kind: 'sk' | 'rk') => `${kind}_${'live'}_`
+    expect(text).toContain(prefix('sk'))
+    expect(text).toContain(prefix('rk'))
+    const withoutNamedPrefixes = text.split(prefix('sk')).join('').split(prefix('rk')).join('')
+    expect(withoutNamedPrefixes).not.toContain(prefix('sk'))
+    expect(withoutNamedPrefixes).not.toContain(`${'pk'}_${'live'}_`)
   })
 })
