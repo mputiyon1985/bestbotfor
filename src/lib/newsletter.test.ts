@@ -14,8 +14,9 @@ import {
   SYNCED_SUBSCRIBER_STATUS,
   SYNCED_SUCCESS,
   SYNCING_STALE_AFTER_MS,
+  FAILED_NOTICE,
+  FAILED_SUBSCRIBER_STATUS,
   SYNCING_SUBSCRIBER_STATUS,
-  UNSUBSCRIBED_NOTICE,
   UNSUBSCRIBED_SUBSCRIBER_STATUS,
   backfillPendingSubscribers,
   beehiivFoundAction,
@@ -1127,8 +1128,12 @@ describe('subscribeToNewsletter', () => {
     process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
     expect(beehiivFoundAction('active')).toBe('sync')
     expect(beehiivFoundAction('Validating')).toBe('sync')
+    expect(beehiivFoundAction('pending')).toBe('sync')
     expect(beehiivFoundAction('inactive')).toBe('opt_out')
     expect(beehiivFoundAction('unsubscribed')).toBe('opt_out')
+    expect(beehiivFoundAction('invalid')).toBe('terminal')
+    expect(beehiivFoundAction('paused')).toBe('terminal')
+    expect(beehiivFoundAction('needs_attention')).toBe('terminal')
     expect(beehiivFoundAction('')).toBe('leave')
     const { db, close } = await createTestDatabase()
     const now = 9_000_000
@@ -1201,16 +1206,218 @@ describe('subscribeToNewsletter', () => {
       SYNCING_SUBSCRIBER_STATUS,
     )
     expect(await countSyncedSubscribers(db)).toBe(1)
-    const again = await subscribeToNewsletter({
-      email: 'gone@example.com',
+    await close()
+  })
+
+  it('treats Beehiiv pending as already in Beehiiv and does not post', async () => {
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    const now = 9_000_000
+    await db.insert(subscribers).values({
+      email: 'waiting@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: null,
+      status: SYNCING_SUBSCRIBER_STATUS,
+      syncingStartedAt: null,
+    })
+    let posts = 0
+    const fetchImpl: typeof fetch = async (input, init) => {
+      if (init?.method === 'POST') {
+        posts += 1
+        return new Response(JSON.stringify({ data: { id: 'sub_posted' } }), { status: 201 })
+      }
+      expect(String(input)).toContain(encodeURIComponent('waiting@example.com'))
+      return new Response(JSON.stringify({ data: { id: 'sub_waiting', status: 'pending' } }), { status: 200 })
+    }
+    const applied = await reconcileStuckSubscribers({ db, apply: true, now, fetchImpl })
+    expect(applied).toMatchObject({ stale: 1, synced: 1, terminal: 0, failed: 0 })
+    expect(posts).toBe(0)
+    expect((await db.select().from(subscribers))[0]).toMatchObject({
+      status: SYNCED_SUBSCRIBER_STATUS,
+      beehiivId: 'sub_waiting',
+    })
+    await db
+      .update(subscribers)
+      .set({ status: SYNCING_SUBSCRIBER_STATUS, destination: 'local', beehiivId: null, syncingStartedAt: null })
+      .where(eq(subscribers.email, 'waiting@example.com'))
+    const signup = await subscribeToNewsletter({
+      email: 'waiting@example.com',
       honeypot: '',
       db,
-      rateKey: 'newsletter-opt-out',
+      rateKey: 'newsletter-beehiiv-pending',
       now,
       fetchImpl,
     })
-    expect(again).toEqual({ status: 'success', message: UNSUBSCRIBED_NOTICE, tracked: false })
+    expect(signup).toEqual({ status: 'success', message: SYNCED_SUCCESS, tracked: false })
     expect(posts).toBe(0)
+    expect((await db.select().from(subscribers))[0]?.status).toBe(SYNCED_SUBSCRIBER_STATUS)
+    await close()
+  })
+
+  it('parks invalid, paused, and needs_attention once and does not post them', async () => {
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    const now = 9_000_000
+    const rows = [
+      { email: 'bad@example.com', status: 'invalid', id: 'sub_invalid' },
+      { email: 'paused@example.com', status: 'paused', id: 'sub_paused' },
+      { email: 'attention@example.com', status: 'needs_attention', id: 'sub_attention' },
+    ]
+    await db.insert(subscribers).values(
+      rows.map((row) => ({
+        email: row.email,
+        createdAt: 1,
+        destination: 'local',
+        beehiivId: null,
+        status: SYNCING_SUBSCRIBER_STATUS,
+        syncingStartedAt: null,
+      })),
+    )
+    let posts = 0
+    const fetchImpl: typeof fetch = async (input, init) => {
+      if (init?.method === 'POST') {
+        posts += 1
+        return new Response('{}', { status: 201 })
+      }
+      const url = String(input)
+      const match = rows.find((row) => url.includes(encodeURIComponent(row.email)))
+      return new Response(JSON.stringify({ data: { id: match?.id, status: match?.status } }), { status: 200 })
+    }
+    const applied = await reconcileStuckSubscribers({ db, apply: true, now, fetchImpl })
+    expect(applied).toMatchObject({ stale: 3, synced: 0, terminal: 3, failed: 0, optedOut: 0 })
+    expect(posts).toBe(0)
+    for (const row of rows) {
+      expect((await db.select().from(subscribers).where(eq(subscribers.email, row.email)))[0]).toMatchObject({
+        status: FAILED_SUBSCRIBER_STATUS,
+        beehiivStatus: row.status,
+        beehiivId: row.id,
+      })
+    }
+    expect(await countSyncedSubscribers(db)).toBe(0)
+    const again = await reconcileStuckSubscribers({ db, apply: true, now, fetchImpl })
+    expect(again).toMatchObject({ stale: 0, terminal: 0, failed: 0 })
+    expect(posts).toBe(0)
+    const signup = await subscribeToNewsletter({
+      email: 'bad@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-terminal',
+      now,
+      fetchImpl,
+    })
+    expect(signup).toEqual({ status: 'error', message: FAILED_NOTICE, tracked: false })
+    expect(posts).toBe(0)
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'bad@example.com')))[0]?.status).toBe(
+      FAILED_SUBSCRIBER_STATUS,
+    )
+    await close()
+  })
+
+  it('lets one fresh submit opt in again and keeps unsubscribed rows out of backfill and reconcile', async () => {
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    const now = 9_000_000
+    await db.insert(subscribers).values({
+      email: 'return@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: 'sub_old',
+      status: UNSUBSCRIBED_SUBSCRIBER_STATUS,
+      syncingStartedAt: null,
+    })
+    await db.insert(subscribers).values({
+      email: 'stuck-out@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: null,
+      status: SYNCING_SUBSCRIBER_STATUS,
+      syncingStartedAt: null,
+    })
+    let posts = 0
+    const fetchImpl: typeof fetch = async (input, init) => {
+      if (init?.method === 'POST') {
+        posts += 1
+        expect(JSON.parse(String(init.body ?? '{}')).double_opt_override).toBe('on')
+        expect(JSON.parse(String(init.body ?? '{}')).email).toBe('return@example.com')
+        return new Response(JSON.stringify({ data: { id: 'sub_again' } }), { status: 201 })
+      }
+      return new Response(JSON.stringify({ data: { id: 'sub_remote_out', status: 'unsubscribed' } }), { status: 200 })
+    }
+    const reconciled = await reconcileStuckSubscribers({ db, apply: true, now, fetchImpl })
+    expect(reconciled).toMatchObject({ stale: 1, synced: 0, optedOut: 1, terminal: 0, failed: 0 })
+    expect(posts).toBe(0)
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'stuck-out@example.com')))[0]?.status).toBe(
+      UNSUBSCRIBED_SUBSCRIBER_STATUS,
+    )
+    const backfill = await backfillPendingSubscribers({ db, apply: true, now, fetchImpl })
+    expect(backfill).toMatchObject({ pending: 0, synced: 0, failed: 0 })
+    expect(posts).toBe(0)
+    const signup = await subscribeToNewsletter({
+      email: 'return@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-resubscribe',
+      now,
+      fetchImpl,
+    })
+    expect(signup).toEqual({ status: 'success', message: SYNCED_SUCCESS, tracked: true })
+    expect(posts).toBe(1)
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'return@example.com')))[0]).toMatchObject({
+      status: SYNCED_SUBSCRIBER_STATUS,
+      beehiivId: 'sub_again',
+    })
+    const repeat = await subscribeToNewsletter({
+      email: 'return@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-resubscribe-again',
+      now: now + 1,
+      fetchImpl,
+    })
+    expect(repeat).toEqual({ status: 'success', message: SYNCED_SUCCESS, tracked: false })
+    expect(posts).toBe(1)
+    await close()
+  })
+
+  it('puts a failed re-subscribe back to unsubscribed so backfill does not send it', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    await db.insert(subscribers).values({
+      email: 'return@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: null,
+      status: UNSUBSCRIBED_SUBSCRIBER_STATUS,
+    })
+    let posts = 0
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      if (init?.method === 'POST') {
+        posts += 1
+        expect(JSON.parse(String(init.body ?? '{}')).double_opt_override).toBe('on')
+        return new Response('no', { status: 500 })
+      }
+      return new Response('{}', { status: 404 })
+    }
+    const signup = await subscribeToNewsletter({
+      email: 'return@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-resubscribe-fail',
+      now: 4_000,
+      fetchImpl,
+    })
+    expect(signup.status).toBe('error')
+    expect(posts).toBe(1)
+    expect((await db.select().from(subscribers))[0]?.status).toBe(UNSUBSCRIBED_SUBSCRIBER_STATUS)
+    const backfill = await backfillPendingSubscribers({ db, apply: true, fetchImpl })
+    expect(backfill).toMatchObject({ pending: 0, synced: 0, failed: 0 })
+    expect(posts).toBe(1)
     await close()
   })
 })

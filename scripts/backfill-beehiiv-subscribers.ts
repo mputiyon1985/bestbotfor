@@ -52,6 +52,7 @@ async function main(): Promise<void> {
         synced: result.synced,
         released: result.released,
         optedOut: result.optedOut,
+        terminal: result.terminal,
         failed: result.failed,
         unconfigured: result.unconfigured,
         productionLaunch,

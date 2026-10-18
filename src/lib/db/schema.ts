@@ -115,7 +115,9 @@ export const subscribers = sqliteTable('subscribers', {
   createdAt: integer('created_at').notNull(),
   destination: text('destination').notNull(),
   beehiivId: text('beehiiv_id'),
-  /** `pending` until a sender claims it as `syncing`. `synced` is counted. `unsubscribed` is not sent again. */
+  /** Beehiiv's status when this row is parked as `failed`. Null for every other row. */
+  beehiivStatus: text('beehiiv_status'),
+  /** `pending` until a sender claims it as `syncing`. `synced` is counted. `unsubscribed` is not sent by backfill. `failed` is terminal. */
   status: text('status').notNull().default('pending'),
   /** Set when the row becomes `syncing`. Null means a crash left no clock, so reconcile treats it as stale. */
   syncingStartedAt: integer('syncing_started_at'),

@@ -12,9 +12,15 @@ export const SYNCED_SUBSCRIBER_STATUS = 'synced'
 
 /**
  * Beehiiv reports this address inactive or unsubscribed.
- * It is not counted, and nothing sends it again.
+ * Reconcile and backfill do not send it. A new form submit may opt in again.
  */
 export const UNSUBSCRIBED_SUBSCRIBER_STATUS = 'unsubscribed'
+
+/**
+ * Beehiiv reported invalid, paused, or needs_attention.
+ * Not counted, and nothing posts it.
+ */
+export const FAILED_SUBSCRIBER_STATUS = 'failed'
 
 export const PENDING_SUCCESS = "You'll get a confirmation email when The Daily Bot launches."
 
@@ -24,5 +30,5 @@ export const SYNCED_SUCCESS = 'Check your email to confirm.'
 /** Another request already holds this address. This is not a failure. */
 export const RACE_SUCCESS = "You're being added. Check your email to confirm."
 
-/** Beehiiv says this address opted out. A later signup does not subscribe it again. */
-export const UNSUBSCRIBED_NOTICE = 'This address is unsubscribed. We will not add it again.'
+/** Beehiiv cannot accept this address. A later signup does not post it. */
+export const FAILED_NOTICE = "This address can't be added."

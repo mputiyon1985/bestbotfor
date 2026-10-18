@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { createBeehiivSubscription, isBeehiivConfigured } from './beehiiv'
 import type { Database } from './db/client'
 import { subscribers } from './db/schema'
@@ -14,10 +14,11 @@ import {
 import {
   PENDING_SUBSCRIBER_STATUS,
   PENDING_SUCCESS,
+  FAILED_NOTICE,
+  FAILED_SUBSCRIBER_STATUS,
   RACE_SUCCESS,
   SYNCED_SUBSCRIBER_STATUS,
   SYNCED_SUCCESS,
-  UNSUBSCRIBED_NOTICE,
   UNSUBSCRIBED_SUBSCRIBER_STATUS,
 } from './newsletter-status'
 
@@ -33,12 +34,13 @@ export {
 export {
   PENDING_SUBSCRIBER_STATUS,
   PENDING_SUCCESS,
+  FAILED_NOTICE,
+  FAILED_SUBSCRIBER_STATUS,
   RACE_SUCCESS,
   SYNCED_SUBSCRIBER_STATUS,
   SYNCED_SUCCESS,
   SYNCING_STALE_AFTER_MS,
   SYNCING_SUBSCRIBER_STATUS,
-  UNSUBSCRIBED_NOTICE,
   UNSUBSCRIBED_SUBSCRIBER_STATUS,
 } from './newsletter-status'
 
@@ -105,12 +107,15 @@ export async function subscribeToNewsletter(input: {
   if (existing[0] && isSyncedToBeehiiv(existing[0])) {
     return { status: 'success', message: SYNCED_SUCCESS, tracked: false }
   }
+  if (existing[0]?.status === FAILED_SUBSCRIBER_STATUS) {
+    return { status: 'error', message: FAILED_NOTICE, tracked: false }
+  }
 
   if (isBeehiivConfigured()) {
     const held = await holdSubscriberForBeehiiv(input.db, normalized, input.now ?? Date.now(), input.fetchImpl)
     if (held.kind === 'done') return { status: 'success', message: SYNCED_SUCCESS, tracked: false }
-    if (held.kind === 'opted_out') {
-      return { status: 'success', message: UNSUBSCRIBED_NOTICE, tracked: false }
+    if (held.kind === 'terminal') {
+      return { status: 'error', message: FAILED_NOTICE, tracked: false }
     }
     if (held.kind === 'busy') {
       return { status: 'success', message: RACE_SUCCESS, tracked: false }
@@ -128,7 +133,7 @@ export async function subscribeToNewsletter(input: {
       fetchImpl: input.fetchImpl,
     })
     if (!remote.ok) {
-      await releaseSubscriberHold(input.db, held.id, held.created, held.claimClock)
+      await releaseSubscriberHold(input.db, held.id, held.created, held.claimClock, held.restore)
       return {
         status: 'error',
         message: "We couldn't add you just now. Try again in a few minutes.",
@@ -144,7 +149,10 @@ export async function subscribeToNewsletter(input: {
 
   if (existing[0]) {
     if (existing[0].status === UNSUBSCRIBED_SUBSCRIBER_STATUS) {
-      return { status: 'success', message: UNSUBSCRIBED_NOTICE, tracked: false }
+      await input.db
+        .update(subscribers)
+        .set({ status: PENDING_SUBSCRIBER_STATUS, syncingStartedAt: null })
+        .where(and(eq(subscribers.id, existing[0].id), eq(subscribers.status, UNSUBSCRIBED_SUBSCRIBER_STATUS)))
     }
     return { status: 'success', message: PENDING_SUCCESS, tracked: false }
   }

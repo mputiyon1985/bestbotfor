@@ -6,7 +6,7 @@ Dry-run is the default. `--production-launch` does not turn that off. A dry run 
 
 ## Before apply
 
-1. On production, apply migration `0020_subscriber_syncing_started.sql` before any backfill or reconcile. The script reads `syncing_started_at`. Without that column the run fails.
+1. On production, apply `0020_subscriber_syncing_started.sql` and `0021_subscriber_beehiiv_status.sql` before any backfill or reconcile. The script reads `syncing_started_at` and writes `beehiiv_status` for a parked row. Without those columns the run fails.
 2. Dry run first: `npm run backfill:beehiiv`
 3. Review the counts. The script prints the target host before those counts. `pending` is the number that an apply would send. `syncing` is a row already claimed. It is not a subscriber and an apply does not send it. `failed` stays 0 on a dry run.
 4. Mark approves that apply.
@@ -25,17 +25,17 @@ Reconcile looks the address up with Beehiiv’s subscription-by-email GET. It do
 3. Mark approves.
 4. Apply: `npm run backfill:beehiiv -- --reconcile-stuck --apply`
 
-When Beehiiv reports `active` or `validating`, the row becomes `synced` and is not posted. `validating` is still waiting on the double opt-in email. When Beehiiv reports `inactive` or `unsubscribed`, the row becomes `unsubscribed`. It is not marked `synced`, it is not counted, and it is not posted. A later backfill does not send it, and a later signup does not subscribe it again. Any other found status stays `syncing` and is counted as failed, so it is not sent. When Beehiiv does not have the address, the row returns to `pending` for a later backfill apply. Those updates match the `syncing_started_at` value read before the GET. If that clock changed, someone else re-claimed the row: the update does nothing and does not post. A lookup failure leaves the row `syncing`.
+When Beehiiv reports `active`, `validating`, or `pending`, the row becomes `synced` and is not posted. `validating` means Beehiiv is still checking the address. `pending` means double opt-in is waiting for the confirmation email. When Beehiiv reports `inactive` or `unsubscribed`, the row becomes `unsubscribed`. It is not marked `synced`, it is not counted, and reconcile does not post it. Backfill does not send `unsubscribed` rows. A person who submits the form again has given fresh consent: that one request claims the row and sends double opt-in. The success line is “Check your email to confirm.” When Beehiiv reports `invalid`, `paused`, or `needs_attention`, the row becomes `failed` and `beehiiv_status` stores that Beehiiv status. The reconcile summary counts those rows as `terminal`. They are not posted, and the next reconcile does not see them. Any other found status stays `syncing` and is counted as failed, so it is not sent. When Beehiiv does not have the address, the row returns to `pending` for a later backfill apply. Those updates match the `syncing_started_at` value read before the GET. If that clock changed, someone else re-claimed the row: the update does nothing and does not post. A lookup failure leaves the row `syncing`.
 
 A signup on a stale row takes a new clock with that same compare-and-set before it posts. The new clock has to be later than the clock it read. Only the signup that wins the new clock posts.
 
 `--stuck-after-ms` overrides the 15 minute threshold. It has to be at least 60000 milliseconds. A smaller value is refused.
 
-Someone who signs up while another request already holds the row is told “You're being added. Check your email to confirm.” That reply is not an error. While Beehiiv is unset, the same case says “You'll get a confirmation email when The Daily Bot launches.” A stale row is looked up the same way: `active` or `validating` becomes `synced` with no second post, `inactive` or `unsubscribed` is left unsubscribed with no post, and a missing address is sent once with double opt-in.
+Someone who signs up while another request already holds the row is told “You're being added. Check your email to confirm.” That reply is not an error. While Beehiiv is unset, the same case says “You'll get a confirmation email when The Daily Bot launches.” A stale row is looked up the same way: `active`, `validating`, and `pending` become `synced` with no second post. `validating` means the address is being checked. `pending` is the double opt-in wait. `inactive` or `unsubscribed` stays unsubscribed with no post from reconcile. A missing address is sent once with double opt-in. A later form submit on an `unsubscribed` row is the one request that may send double opt-in again.
 
 ## Production
 
-Apply `0020_subscriber_syncing_started.sql` on production before the first backfill or reconcile.
+Apply `0020_subscriber_syncing_started.sql` and `0021_subscriber_beehiiv_status.sql` on production before the first backfill or reconcile.
 
 Production, and the production database, are refused unless both of these are set:
 

@@ -7,6 +7,7 @@ import { subscribers } from './db/schema'
 import { absoluteUrl } from './site'
 import { newsletterReferringPath } from './newsletter-source'
 import {
+  FAILED_SUBSCRIBER_STATUS,
   PENDING_SUBSCRIBER_STATUS,
   SYNCED_SUBSCRIBER_STATUS,
   SYNCING_STALE_AFTER_MS,
@@ -29,10 +30,10 @@ export type BackfillResult = {
 }
 
 export type SubscriberHold =
-  | { kind: 'held'; id: number; created: boolean; claimClock: number }
+  | { kind: 'held'; id: number; created: boolean; claimClock: number; restore: 'pending' | 'unsubscribed' }
   | { kind: 'done' }
   | { kind: 'busy' }
-  | { kind: 'opted_out' }
+  | { kind: 'terminal' }
   | { kind: 'unavailable' }
 
 export type ReconcileResult = {
@@ -41,6 +42,7 @@ export type ReconcileResult = {
   synced: number
   released: number
   optedOut: number
+  terminal: number
   failed: number
   unconfigured: boolean
 }
@@ -75,11 +77,15 @@ export function readStuckAfterMs(argv: readonly string[], fallback = SYNCING_STA
   return value
 }
 
-/** Active and validating (pending double opt-in) may be marked synced. Inactive and unsubscribed may not. */
-export function beehiivFoundAction(status: string): 'sync' | 'opt_out' | 'leave' {
+/**
+ * `pending` is Beehiiv's double opt-in wait. `validating` means the address is being checked.
+ * Both are already in Beehiiv. `invalid`, `paused`, and `needs_attention` are terminal.
+ */
+export function beehiivFoundAction(status: string): 'sync' | 'opt_out' | 'terminal' | 'leave' {
   const value = status.trim().toLowerCase()
-  if (value === 'active' || value === 'validating') return 'sync'
+  if (value === 'active' || value === 'validating' || value === 'pending') return 'sync'
   if (value === 'inactive' || value === 'unsubscribed') return 'opt_out'
+  if (value === 'invalid' || value === 'paused' || value === 'needs_attention') return 'terminal'
   return 'leave'
 }
 
@@ -159,6 +165,16 @@ export async function reclaimStaleSubscriber(
   return claimed.length === 1
 }
 
+/** A new form submit may opt in again. Only that compare-and-set may post. */
+export async function claimUnsubscribedSubscriber(db: Database, id: number, now: number): Promise<boolean> {
+  const claimed = await db
+    .update(subscribers)
+    .set({ status: SYNCING_SUBSCRIBER_STATUS, syncingStartedAt: now })
+    .where(and(eq(subscribers.id, id), eq(subscribers.status, UNSUBSCRIBED_SUBSCRIBER_STATUS)))
+    .returning({ id: subscribers.id })
+  return claimed.length === 1
+}
+
 /** Marks synced only while this caller still owns the claim clock. */
 export async function finishSubscriberSync(
   db: Database,
@@ -198,6 +214,27 @@ async function noteSubscriberUnsubscribed(
   return saved.length === 1
 }
 
+/** Parks invalid, paused, or needs_attention. The Beehiiv status is stored. Nothing posts the row. */
+async function noteSubscriberTerminal(
+  db: Database,
+  id: number,
+  beehiivId: string | null,
+  beehiivStatus: string,
+  claimClock: number | null,
+): Promise<boolean> {
+  const saved = await db
+    .update(subscribers)
+    .set({
+      beehiivId,
+      beehiivStatus: beehiivStatus.trim().toLowerCase(),
+      status: FAILED_SUBSCRIBER_STATUS,
+      syncingStartedAt: null,
+    })
+    .where(and(eq(subscribers.id, id), eq(subscribers.status, SYNCING_SUBSCRIBER_STATUS), sameClaimClock(claimClock)))
+    .returning({ id: subscribers.id })
+  return saved.length === 1
+}
+
 /**
  * A failed call puts this claim back to pending. A row this call inserted is removed.
  * The clock is the one observed before a lookup, or the clock this call wrote.
@@ -208,6 +245,7 @@ export async function releaseSubscriberHold(
   id: number,
   created: boolean,
   claimClock: number | null,
+  restore: 'pending' | 'unsubscribed' = 'pending',
 ): Promise<boolean> {
   const owned = and(eq(subscribers.id, id), eq(subscribers.status, SYNCING_SUBSCRIBER_STATUS), sameClaimClock(claimClock))
   if (created) {
@@ -216,23 +254,32 @@ export async function releaseSubscriberHold(
   }
   const released = await db
     .update(subscribers)
-    .set({ status: PENDING_SUBSCRIBER_STATUS, syncingStartedAt: null })
+    .set({
+      status: restore === 'unsubscribed' ? UNSUBSCRIBED_SUBSCRIBER_STATUS : PENDING_SUBSCRIBER_STATUS,
+      syncingStartedAt: null,
+    })
     .where(owned)
     .returning({ id: subscribers.id })
   return released.length === 1
 }
 
 function holdFromStatus(status: string | undefined): SubscriberHold {
-  if (status === UNSUBSCRIBED_SUBSCRIBER_STATUS) return { kind: 'opted_out' }
+  if (status === FAILED_SUBSCRIBER_STATUS) return { kind: 'terminal' }
   return { kind: 'busy' }
 }
 
 async function claimOrDone(db: Database, id: number, now: number): Promise<SubscriberHold> {
   const claimed = await claimPendingSubscriber(db, id, now)
-  if (claimed) return { kind: 'held', id, created: false, claimClock: now }
+  if (claimed) return { kind: 'held', id, created: false, claimClock: now, restore: 'pending' }
   const again = await db.select().from(subscribers).where(eq(subscribers.id, id)).limit(1)
   if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS && again[0].destination === 'beehiiv') return { kind: 'done' }
   return holdFromStatus(again[0]?.status)
+}
+
+async function claimUnsubscribedOrBusy(db: Database, id: number, now: number): Promise<SubscriberHold> {
+  const claimed = await claimUnsubscribedSubscriber(db, id, now)
+  if (claimed) return { kind: 'held', id, created: false, claimClock: now, restore: 'unsubscribed' }
+  return syncedOrBusy(db, id)
 }
 
 async function syncedOrBusy(db: Database, id: number): Promise<SubscriberHold> {
@@ -248,7 +295,8 @@ async function holdExisting(
   fetchImpl?: typeof fetch,
 ): Promise<SubscriberHold> {
   if (row.status === SYNCED_SUBSCRIBER_STATUS && row.destination === 'beehiiv') return { kind: 'done' }
-  if (row.status === UNSUBSCRIBED_SUBSCRIBER_STATUS) return { kind: 'opted_out' }
+  if (row.status === FAILED_SUBSCRIBER_STATUS) return { kind: 'terminal' }
+  if (row.status === UNSUBSCRIBED_SUBSCRIBER_STATUS) return claimUnsubscribedOrBusy(db, row.id, now)
   if (row.status === SYNCING_SUBSCRIBER_STATUS) {
     if (!isSyncingStale(row.syncingStartedAt, now)) return { kind: 'busy' }
     const observedClock = row.syncingStartedAt
@@ -256,8 +304,15 @@ async function holdExisting(
     if (lookup.outcome === 'found') {
       const action = beehiivFoundAction(lookup.status)
       if (action === 'opt_out') {
-        const noted = await noteSubscriberUnsubscribed(db, row.id, lookup.id, observedClock)
-        if (noted) return { kind: 'opted_out' }
+        const won = await reclaimStaleSubscriber(db, row.id, observedClock, now)
+        if (won) return { kind: 'held', id: row.id, created: false, claimClock: now, restore: 'unsubscribed' }
+        const again = await db.select().from(subscribers).where(eq(subscribers.id, row.id)).limit(1)
+        if (again[0]?.status === UNSUBSCRIBED_SUBSCRIBER_STATUS) return claimUnsubscribedOrBusy(db, row.id, now)
+        return syncedOrBusy(db, row.id)
+      }
+      if (action === 'terminal') {
+        const noted = await noteSubscriberTerminal(db, row.id, lookup.id, lookup.status, observedClock)
+        if (noted) return { kind: 'terminal' }
         return syncedOrBusy(db, row.id)
       }
       if (action === 'leave') return { kind: 'unavailable' }
@@ -268,11 +323,11 @@ async function holdExisting(
     if (lookup.outcome === 'missing') {
       const won = await reclaimStaleSubscriber(db, row.id, observedClock, now)
       if (!won) return syncedOrBusy(db, row.id)
-      return { kind: 'held', id: row.id, created: false, claimClock: now }
+      return { kind: 'held', id: row.id, created: false, claimClock: now, restore: 'pending' }
     }
     return { kind: 'unavailable' }
   }
-  if (row.status !== PENDING_SUBSCRIBER_STATUS) return { kind: 'busy' }
+  if (row.status !== PENDING_SUBSCRIBER_STATUS) return holdFromStatus(row.status)
   return claimOrDone(db, row.id, now)
 }
 
@@ -302,7 +357,7 @@ export async function holdSubscriberForBeehiiv(
       .returning({ id: subscribers.id })
     const id = inserted[0]?.id
     if (id === undefined) return { kind: 'busy' }
-    return { kind: 'held', id, created: true, claimClock: now }
+    return { kind: 'held', id, created: true, claimClock: now, restore: 'pending' }
   } catch (error) {
     const again = await db.select().from(subscribers).where(eq(subscribers.email, email)).limit(1)
     if (!again[0]) throw error
@@ -393,10 +448,11 @@ export async function backfillPendingSubscribers(input: {
 }
 
 /**
- * Looks up each stale syncing row by email. `active` and `validating` are marked synced
- * and are not posted. `inactive` and `unsubscribed` are recorded as unsubscribed and are
- * not posted. A missing address returns to pending. Dry-run counts rows and does not
- * read email addresses. Fresh syncing rows stay claimed.
+ * Looks up each stale syncing row by email. `active`, `validating`, and `pending`
+ * (double opt-in waiting) are marked synced and are not posted. `inactive` and
+ * `unsubscribed` are recorded as unsubscribed and are not posted. `invalid`, `paused`,
+ * and `needs_attention` are parked as `failed` with Beehiiv's status stored. A missing
+ * address returns to pending. Dry-run counts rows and does not read email addresses.
  */
 export async function reconcileStuckSubscribers(input: {
   db: Database
@@ -415,6 +471,7 @@ export async function reconcileStuckSubscribers(input: {
       synced: 0,
       released: 0,
       optedOut: 0,
+      terminal: 0,
       failed: 0,
       unconfigured: !isBeehiivConfigured(),
     }
@@ -426,6 +483,7 @@ export async function reconcileStuckSubscribers(input: {
       synced: 0,
       released: 0,
       optedOut: 0,
+      terminal: 0,
       failed: await countSubscribers(input.db, staleFilter),
       unconfigured: true,
     }
@@ -434,6 +492,7 @@ export async function reconcileStuckSubscribers(input: {
   let synced = 0
   let released = 0
   let optedOut = 0
+  let terminal = 0
   let failed = 0
   for (const row of staleRows) {
     const observedClock = row.syncingStartedAt
@@ -442,6 +501,18 @@ export async function reconcileStuckSubscribers(input: {
       const action = beehiivFoundAction(lookup.status)
       if (action === 'leave') {
         failed += 1
+        continue
+      }
+      if (action === 'terminal') {
+        const noted = await noteSubscriberTerminal(input.db, row.id, lookup.id, lookup.status, observedClock)
+        if (noted) {
+          terminal += 1
+          continue
+        }
+        const again = await input.db.select().from(subscribers).where(eq(subscribers.id, row.id)).limit(1)
+        if (again[0]?.status === FAILED_SUBSCRIBER_STATUS) terminal += 1
+        else if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS) synced += 1
+        else failed += 1
         continue
       }
       if (action === 'opt_out') {
@@ -453,6 +524,7 @@ export async function reconcileStuckSubscribers(input: {
         const again = await input.db.select().from(subscribers).where(eq(subscribers.id, row.id)).limit(1)
         if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS) synced += 1
         else if (again[0]?.status === UNSUBSCRIBED_SUBSCRIBER_STATUS) optedOut += 1
+        else if (again[0]?.status === FAILED_SUBSCRIBER_STATUS) terminal += 1
         else failed += 1
         continue
       }
@@ -464,6 +536,7 @@ export async function reconcileStuckSubscribers(input: {
       const again = await input.db.select().from(subscribers).where(eq(subscribers.id, row.id)).limit(1)
       if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS) synced += 1
       else if (again[0]?.status === UNSUBSCRIBED_SUBSCRIBER_STATUS) optedOut += 1
+      else if (again[0]?.status === FAILED_SUBSCRIBER_STATUS) terminal += 1
       else failed += 1
       continue
     }
@@ -477,10 +550,11 @@ export async function reconcileStuckSubscribers(input: {
       if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS) synced += 1
       else if (again[0]?.status === PENDING_SUBSCRIBER_STATUS) released += 1
       else if (again[0]?.status === UNSUBSCRIBED_SUBSCRIBER_STATUS) optedOut += 1
+      else if (again[0]?.status === FAILED_SUBSCRIBER_STATUS) terminal += 1
       else failed += 1
       continue
     }
     failed += 1
   }
-  return { dryRun: false, stale: staleRows.length, synced, released, optedOut, failed, unconfigured: false }
+  return { dryRun: false, stale: staleRows.length, synced, released, optedOut, terminal, failed, unconfigured: false }
 }
