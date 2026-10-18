@@ -37,15 +37,19 @@ export function generateMetadata(): Metadata {
 export default function SponsorPage() {
   const surface = sponsorCheckoutSurface()
   const mode = stripeKeyMode()
-  const offerings = SPONSOR_OFFERINGS.map((offering) => ({
-    id: offering.id,
-    title: offering.title,
-    summary: offering.summary,
-    priceLabel: sponsorOfferingPriceLabel(offering),
-    notice: sponsorOfferingNotice(offering),
-    target: offering.target,
-    available: surface !== 'closed' && mode !== 'off' && sponsorOfferingConfigured(offering.id),
-  }))
+  const offerings = SPONSOR_OFFERINGS.map((offering) => {
+    const available = surface !== 'closed' && mode !== 'off' && sponsorOfferingConfigured(offering.id)
+    // A disabled option is sent without its price or terms, so the form cannot show them.
+    return {
+      id: offering.id,
+      title: offering.title,
+      summary: available ? offering.summary : '',
+      priceLabel: available ? sponsorOfferingPriceLabel(offering) : '',
+      notice: available ? sponsorOfferingNotice(offering) : '',
+      target: offering.target,
+      available,
+    }
+  })
   const tasks = taskSeeds.map((task) => ({ slug: task.slug, name: task.name }))
   const week = sponsorPriceLabel(SPONSOR_OFFERINGS[0].unitAmount)
   const month = sponsorPriceLabel(SPONSOR_OFFERINGS[1].unitAmount)
@@ -54,6 +58,13 @@ export default function SponsorPage() {
   const foundingOffering = sponsorOffering('founding_sponsor')
   const subscription = subscriptionOffering ? sponsorOfferingPriceLabel(subscriptionOffering) : ''
   const founding = foundingOffering ? sponsorOfferingPriceLabel(foundingOffering) : ''
+  // Go-live gate: once the in-app founding Prices are set, the founding Payment
+  // Link is hidden so both founding offers never show together (shared cap of 5).
+  const inAppFounding = sponsorOfferingConfigured('founding_sponsor')
+  // The price list names a subscription offer only once its Prices are set, the
+  // same check that enables its radio, so the list never offers a disabled option.
+  const listSubscription = Boolean(subscriptionOffering) && sponsorOfferingConfigured('placement_subscription')
+  const listFounding = Boolean(foundingOffering) && inAppFounding
 
   return (
     <article className="max-w-2xl space-y-6">
@@ -74,19 +85,26 @@ export default function SponsorPage() {
         <li>
           Newsletter sponsor slot: {issue} per issue. {SPONSOR_ONE_TIME_NOTICE}
         </li>
-        <li>
-          Featured placement, monthly subscription: {subscription}. {SPONSOR_SUBSCRIPTION_NOTICE}
-        </li>
-        <li>
-          Founding sponsor: {founding}. {SPONSOR_FOUNDING_NOTICE} Limited to {FOUNDING_SPONSOR_CAP} founding sponsors.
-        </li>
+        {listSubscription ? (
+          <li>
+            Featured placement, monthly subscription: {subscription}. {SPONSOR_SUBSCRIPTION_NOTICE}
+          </li>
+        ) : null}
+        {listFounding ? (
+          <li>
+            Founding sponsor: {founding}. {SPONSOR_FOUNDING_NOTICE} Limited to {FOUNDING_SPONSOR_CAP} founding sponsors.
+          </li>
+        ) : null}
       </ul>
       <p className="text-sm text-muted">
-        The prices above, one-time and subscription, are the current list prices from server configuration. They can be changed there.
+        {listSubscription || listFounding
+          ? 'The prices above, one-time and subscription, are the current list prices from server configuration.'
+          : 'The prices above are the current list prices from server configuration.'}{' '}
+        They can be changed there.
         {surface === 'live' ? ' The Payment Links below are separate Stripe links with their own prices set in Stripe.' : null}
         {surface === 'closed' ? null : ' The form does not send an amount. Checkout charges the Stripe price configured on the server.'}
       </p>
-      {surface === 'live' ? <SponsorPaymentLinks /> : null}
+      {surface === 'live' ? <SponsorPaymentLinks hideFounding={inAppFounding} /> : null}
       {surface === 'live' ? (
         <p>
           Questions or custom deals?{' '}

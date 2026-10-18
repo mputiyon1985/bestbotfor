@@ -29,17 +29,14 @@ Repeat this read-back whenever a link, its Prices, or its copy changes, and upda
 
 There is ONE founding cap of 5, shared by the Founding Payment Link and the in-app founding offer from #81. It is not 5 per path.
 
-- Until #81's founding Prices go live, the Founding Payment Link stays live and is the only founding path. Its Stripe `completed_sessions.limit` of 5 is the cap.
-- #81's founding count must include every founding sponsorship row, including the manual rows created from Payment Link sales (the `founding_link:` prefix on `stripe_checkout_session_id`, see the refund runbook, Fulfillment step 5).
-- At go-live of #81's founding Prices, in one release window:
-  1. Read back the Founding link again and note `restrictions.completed_sessions.count`.
-  2. Confirm every completed Founding link sale has its manual `founding_link:` row, so the app's count already includes them.
-  3. Deactivate the Founding Payment Link in the Stripe dashboard. That is a live Stripe change by Mark or with his OK, never by API from this repo.
-  4. In the same deploy, switch `/sponsor` from the Founding Payment Link to #81's in-app founding offer.
-  Founders already sold through the link keep their Stripe subscriptions, price lock, and manual rows.
-- The Monthly link is not part of the founding cap. Whether it stays next to #81's in-app monthly subscription is decided when #81 lands.
+- Go-live of the in-app founding Prices has ONE procedure: `sponsor-subscriptions.md`, "Post-merge live steps", step 0. Follow it exactly; this section does not repeat it. In short: the founding Payment Link `plink_1URylT…` is deactivated in the Stripe dashboard first (0(a), by Mark or with his OK, never by API), and only AFTER that are the `founding_link:` rows confirmed (0(b)), so a link sale cannot land between the check and the deactivation.
+- **Cutover order (James, Oct 18), in exactly this order:** 1. #88 merged and deployed to production. 2. Deactivate the Founding Payment Link in the Stripe dashboard (`plink_1URylT…`), by Mark or with his OK (never by API). 3. Every completed founding link sale confirmed to have its `founding_link:` row. 4. The preview test-mode run passed. 5. James gives the go-live OK. 6. Only then set BOTH `STRIPE_PRICE_FOUNDING_SETUP` and `STRIPE_PRICE_FOUNDING_MONTHLY` in Production. Rows are checked only AFTER the link is deactivated.
+- #88 hides the Founding Payment Link on `/sponsor` automatically once BOTH founding Price variables are set to valid ids (the same check that enables the in-app founding option). No manual CTA switch is needed.
+- Count rule: the app's shared count of 5 includes paid, unrefunded in-app founding rows plus Payment Link sales, where a link sale counts only through its first-period row (`founding_link:<cs_…>`) and only while that row is unrefunded. Later-period rows (`founding_link:<cs_…>:<in_…>`) do not add to the count. See the refund runbook, Fulfillment step 5.
+- Founders already sold through the link keep their Stripe subscriptions, price lock, and manual rows.
+- The Monthly link is not part of the founding cap.
 
-When the 5th founding sale completes, Stripe deactivates the Founding link and the `/sponsor` card stays up until a code change hides it (Sentinel P3-1 on #84, not done). A session opened before the 5th completes can still finish, so the payment watch should check for a 6th founding sale and refund it.
+**Still open (Sentinel P3-1 on #84):** when the 5th founding link sale completes, Stripe deactivates the link but the `/sponsor` card stays up until a code change hides it; #88 hides it only on configuration, not on sell-out. A session opened before the 5th completes can still finish, so until sell-out hiding ships, the live payment watch must check for a 6th founding sale and refund it.
 
 ## Cancelling
 

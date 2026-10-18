@@ -38,3 +38,42 @@ export function clientBundleHits(text: string, needles: readonly string[]): stri
   const scrubbed = scrubClientBundleText(text)
   return needles.filter((needle) => needle.length > 0 && scrubbed.includes(needle))
 }
+
+/**
+ * Strings that only the SPONSOR_OFFERINGS catalog puts in a chunk: the
+ * minified `priceEnv:` property and the Price env var names. Public list
+ * pricing, not secrets, but the catalog belongs on the server; the only client
+ * importer allowed is the admin card queue. See eslint.config.mjs.
+ */
+export const CATALOG_CLIENT_FORBIDDEN = ['priceEnv:', 'STRIPE_PRICE_'] as const
+
+/** True for an App Router route under /admin, e.g. "/admin/sponsors/page". */
+export function isAdminRoute(route: string): boolean {
+  return route === '/admin' || route.startsWith('/admin/')
+}
+
+/** Route keys and the static chunk paths ("static/chunks/x.js") in one client-reference manifest file. */
+export function parseClientReferenceManifest(text: string): { route: string; chunks: string[] }[] {
+  const entries: { route: string; chunks: string[] }[] = []
+  const starts = [...text.matchAll(/__RSC_MANIFEST\[("(?:[^"\\]|\\.)*")\]\s*=/g)]
+  starts.forEach((match, index) => {
+    const end = starts[index + 1]?.index ?? text.length
+    const body = text.slice((match.index ?? 0) + match[0].length, end)
+    const chunks = new Set<string>()
+    for (const chunk of body.matchAll(/"\/?_next\/(static\/[^"]+?\.js)"/g)) if (chunk[1]) chunks.add(chunk[1])
+    entries.push({ route: JSON.parse(match[1] ?? '""') as string, chunks: [...chunks] })
+  })
+  return entries
+}
+
+/**
+ * Chunks that only admin routes load. A chunk any non-admin route loads, or
+ * that no manifest lists, is treated as public.
+ */
+export function adminOnlyChunks(manifests: readonly { route: string; chunks: readonly string[] }[]): Set<string> {
+  const admin = new Set<string>()
+  const publicChunks = new Set<string>()
+  for (const { route, chunks } of manifests) for (const chunk of chunks) (isAdminRoute(route) ? admin : publicChunks).add(chunk)
+  for (const chunk of publicChunks) admin.delete(chunk)
+  return admin
+}

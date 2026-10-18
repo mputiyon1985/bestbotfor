@@ -70,7 +70,7 @@ The `refund_pending` condition is what makes a second record do nothing. A free-
 
 Two live Stripe Payment Links sell sponsor slots outside the app's `/sponsor` checkout:
 
-- **Founding:** `plink_1URylTIJUbygfAuc07cebXfn`. $99 for the first 2 weeks, then $299/mo. Founding price locked for 6 months. Cancel anytime. Capped at 5 founding sponsors in total, shared with the app's in-app founding offer (one cap, James, Oct 18). It stays live as the only founding path until the founding Prices go live, then it is deactivated (sponsor-subscriptions runbook, post-merge step 0).
+- **Founding:** `plink_1URylTIJUbygfAuc07cebXfn`. $99 for the first 2 weeks, then $299/mo. Founding price locked for 6 months. Cancel anytime. Capped at 5 founding sponsors in total, shared with the app's in-app founding offer (one cap, James, Oct 18). It stays live as the only founding path until cutover, where it is deactivated first (sponsor-subscriptions runbook, post-merge step 0(a)), before the founding Prices are set.
 - **Monthly:** `plink_1URyeXIJUbygfAucnLlkSP5u`. $299/mo.
 
 Both ask for a required `best_page` custom field: the `/best` page the buyer wants. Their metadata has no `kind=sponsorship`, so the webhook does not treat them as sponsorships. They create no `sponsorships` row, no card, and no placement. Their subscription events upsert a row in the membership `subscriptions` table with no `clerk_user_id`. Membership checks look rows up by user id, so that row grants nothing.
@@ -93,7 +93,9 @@ Both links collect the buyer's email, name, and a required billing address. Refe
    - `paid_at`: the start of the window, normally the time of that period's payment. It is never moved later.
    - `task_slug`: the task from `best_page`.
 
-   **Founding link counting rule.** The app counts a founding link sale toward the shared cap of 5 only while its first-period row (`founding_link:<cs_…>`, no `:<in_…>` suffix) is `paid` and unrefunded. Renewal rows never count on their own. So refunding the first period frees the spot, and a renewal row written later does not take it back; if that founder should keep a spot, the first-period row must stay unrefunded in the app (agree it with James). The key is matched trimmed and case-insensitively, but always write it exactly as below.
+   **Founding link counting rule.** The app counts a founding link sale toward the shared cap of 5 only while its first-period row (`founding_link:<cs_…>`, no `:<in_…>` suffix) is `paid` and unrefunded. Renewal rows never count on their own. So refunding the first period frees the spot, and a renewal row written later does not take it back. Keeping a refunded founder's spot is a rare manual exception that needs Mark's OK: first run the check query below and confirm the webhook has already set `refunded_at` on the first-period row, and wait until every refund event for that payment (`charge.refunded`, `refund.created`, `refund.updated`, including any retries) shows delivered in the Stripe Dashboard; only then clear `refunded_at` on that row, then re-run the check query, and re-run it again the next day. Any later refund on that payment frees the spot again.
+
+   **Refunded first period, renewals still paid.** That founder is no longer counted, but its renewal rows still place the card, so the page keeps showing it while the spot looks free; if the spot is resold, six founders show. (F), decided by James: refunding a founder's first-period `pi_…` in Stripe frees their spot automatically, because the webhook sets `refunded_at` on that first-period row; no row fix is needed. If the first period is refunded but the founder should keep the spot, that is a manual exception that needs Mark's OK: after the refund, run the check query below and confirm the webhook has already set `refunded_at` on that first-period row (if it is still empty, wait and re-check; never clear it before the webhook has set it, or the late webhook will set it again and free the spot). Each refund sends up to three events (`charge.refunded`, `refund.created`, `refund.updated`), and each sets `refunded_at` when it is empty, and Stripe retries failed deliveries, so also wait until every one of those events for that payment, including any retries, shows delivered in the Stripe Dashboard. Only then a write clearing `refunded_at` on that row, then a re-run of the check query, and another re-run the next day. Any later refund on that payment frees the spot again. To end a founder, cancel the founder's subscription in the dashboard and mark the renewal rows refunded (set `refunded_at`), with Mark's OK. The key is matched trimmed and case-insensitively, but always write it exactly as below.
 
    Copy-paste template (Mark-approved production write only; fill every `<…>`, times in Unix milliseconds, `email` and `company` stay empty):
 
@@ -123,7 +125,32 @@ Both links collect the buyer's email, name, and a required billing address. Refe
    ORDER BY stripe_checkout_session_id;
    ```
 
-   A row you meant as founding that this query does not list (a typo in the prefix) is not counted; fix its key with a Mark-approved write.
+   Flag any sale whose rows all show `first_period = 0`: it has renewal rows but no first-period row, so it is not counted. This query lists such sales directly; it must return no rows:
+
+   ```sql
+   SELECT substr(lower(trim(stripe_checkout_session_id)), 15,
+            instr(substr(lower(trim(stripe_checkout_session_id)), 15), ':') - 1) AS sale
+   FROM sponsorships
+   WHERE lower(trim(stripe_checkout_session_id)) LIKE 'founding_link:%'
+     AND instr(substr(lower(trim(stripe_checkout_session_id)), 15), ':') > 0
+   GROUP BY sale
+   HAVING sale NOT IN (
+     SELECT substr(lower(trim(stripe_checkout_session_id)), 15) FROM sponsorships
+     WHERE lower(trim(stripe_checkout_session_id)) LIKE 'founding_link:%'
+       AND instr(substr(lower(trim(stripe_checkout_session_id)), 15), ':') = 0
+   );
+   ```
+
+   SQLite `trim()` strips spaces only, so a key with a leading tab or newline, or a typo such as `founding_lnk:`, is not listed above and not counted. Run this near-miss query too; every row it returns that is not in the check query output needs its key fixed:
+
+   ```sql
+   SELECT id, stripe_checkout_session_id, offering, status, refunded_at
+   FROM sponsorships
+   WHERE lower(stripe_checkout_session_id) LIKE '%found%'
+     AND lower(trim(stripe_checkout_session_id)) NOT LIKE 'founding_link:%';
+   ```
+
+   A row you meant as founding that the check query does not list (a typo in the prefix) is not counted; fix its key with a Mark-approved write.
 6. **Windows.** The app has no 2-week window for the Founding first period, and no renewal for later months. A monthly Stripe period is a calendar month, while the app window is 30 days, so a 31-day month can leave a 1-day gap. Each paid period needs its own decision and write, approved the same way, with its window starting at that invoice's payment. Agree the exact rows with James before writing.
 
 ### Sponsored label and disclosure
