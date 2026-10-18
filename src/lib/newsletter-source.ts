@@ -1,7 +1,7 @@
 /** Each /alternatives/[tool] page has its own source, so referring_site is that exact page. */
 export const ALTERNATIVES_NEWSLETTER_TOOLS = ['chatgpt', 'midjourney', 'zapier', 'cursor', 'elevenlabs'] as const
 
-type AlternativesSource = `alternatives-${(typeof ALTERNATIVES_NEWSLETTER_TOOLS)[number]}`
+export type AlternativesSource = `alternatives-${(typeof ALTERNATIVES_NEWSLETTER_TOOLS)[number]}`
 
 export const NEWSLETTER_SOURCES = [
   'home',
@@ -50,7 +50,9 @@ export function newsletterReferringPaths(): string[] {
 }
 
 /** The form source for an /alternatives/[tool] page, or null when that page has none. */
-export function alternativesNewsletterSource(toolSlug: string): NewsletterSource | null {
-  const source = `alternatives-${toolSlug}`
-  return (NEWSLETTER_SOURCES as readonly string[]).includes(source) ? (source as NewsletterSource) : null
+export function alternativesNewsletterSource(toolSlug: string): AlternativesSource | null {
+  for (const tool of ALTERNATIVES_NEWSLETTER_TOOLS) {
+    if (tool === toolSlug) return `alternatives-${tool}`
+  }
+  return null
 }
