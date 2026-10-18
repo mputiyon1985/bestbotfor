@@ -154,7 +154,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
       { label: 'Skill level', kind: 'text', a: 'Beginner', b: 'Beginner', source: 'BestBotFor catalog' },
     ],
     secondaryNote: COMPARE_SECONDARY_NOTE,
-    cta: 'Voice tools change prices almost monthly. Get **The Daily Bot**, a short daily email with new AI tools and price changes, so you hear when this verdict changes.',
+    cta: 'Voice tools change prices almost monthly. Get **The Daily Bot** for new AI tools and price changes, so you hear when this verdict changes.',
     sources: [
       '[1] ElevenLabs pricing: https://elevenlabs.io/pricing (vendor, checked Oct 17, 2026)',
       '[2] Murf pricing: https://murf.ai/pricing (vendor, checked Oct 18, 2026)',
@@ -212,7 +212,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
       { label: 'Skill level', kind: 'text', a: 'Advanced', b: 'Intermediate', source: 'BestBotFor catalog' },
     ],
     secondaryNote: COMPARE_SECONDARY_NOTE,
-    cta: 'Automation pricing shifts often (Make moved to credits on Aug 27). Get **The Daily Bot** for daily AI tool and pricing changes in plain English.',
+    cta: 'Automation pricing shifts often (Make moved to credits on Aug 27). Get **The Daily Bot** for AI tool and pricing changes in plain English.',
     sources: [
       '[3] n8n pricing: https://n8n.io/pricing/ (vendor, checked Oct 17, 2026)',
       '[4] Make pricing (FAQ: credits, free plan): https://www.make.com/en/pricing (vendor, checked Oct 18, 2026)',
@@ -467,7 +467,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
       },
     ],
     secondaryNote: COMPARE_SECONDARY_NOTE,
-    cta: 'Prices on notetakers keep dropping. Get **The Daily Bot**, one short email a day, to catch the next price cut.',
+    cta: 'Prices on notetakers keep dropping. Get **The Daily Bot** to catch the next price cut.',
     sources: [
       '[10] Fathom pricing: https://www.fathom.ai/pricing (vendor, checked Oct 17, 2026)',
       '[11] Fireflies pricing (read from the page HTML; plan grid renders client-side): https://fireflies.ai/pricing (vendor, checked Oct 17, 2026)',
@@ -525,7 +525,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
       { label: 'Skill level', kind: 'text', a: 'Beginner', b: 'Intermediate', source: 'BestBotFor catalog' },
     ],
     secondaryNote: COMPARE_SECONDARY_NOTE,
-    cta: 'Vibe-coding tools ship new models and plans constantly. Get **The Daily Bot** and keep up in 5 minutes a day.',
+    cta: 'Vibe-coding tools ship new models and plans constantly. Get **The Daily Bot** and keep up in one short read.',
     sources: [
       '[12] Lovable pricing FAQ: https://lovable.dev/pricing (vendor, checked Oct 18, 2026)',
       '[12a] Lovable subscription tiers (vendor docs): https://docs.lovable.dev/introduction/subscription-plans (vendor docs, checked Oct 18, 2026)',
@@ -596,7 +596,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
       { label: 'Skill level', kind: 'skill', source: 'BestBotFor catalog' },
     ],
     secondaryNote: COMPARE_SECONDARY_NOTE,
-    cta: 'Speech AI prices fell again this year. Get **The Daily Bot** for daily AI and API pricing changes.',
+    cta: 'Speech AI prices fell again this year. Get **The Daily Bot** for AI and API pricing changes.',
     sources: [
       '[14] AssemblyAI pricing: https://www.assemblyai.com/pricing (vendor, checked Oct 17, 2026 (page says last updated Sep 28, 2026))',
       '[15] Deepgram pricing: https://deepgram.com/pricing (vendor, checked Oct 17, 2026)',
