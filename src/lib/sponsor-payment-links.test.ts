@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it } from 'vitest'
 import SponsorPage from '@/app/sponsor/page'
+import { SPONSOR_CONTACT_EMAIL, SPONSOR_CONTACT_MAILTO } from '@/lib/sponsor-checkout-gate'
 import { resetStripeCache } from '@/lib/stripe'
 import {
   FOUNDING_SPONSOR_LIMIT,
@@ -69,6 +70,8 @@ describe('sponsor payment links', () => {
       expect(html).toContain(link.cta)
     }
     expect(html.indexOf('Sponsor subscriptions')).toBeGreaterThan(html.indexOf('Newsletter sponsor slot:'))
+    expect(html).toContain('Continue to checkout')
+    expect(html).toContain(`Questions or custom deals? <a class="inline-flex min-h-11 items-center font-semibold underline" href="${SPONSOR_CONTACT_MAILTO}">${SPONSOR_CONTACT_EMAIL}</a>`)
   })
 
   it('hides the live links on test checkout and on closed production', () => {
@@ -79,5 +82,7 @@ describe('sponsor payment links', () => {
       expect(html).not.toContain(SPONSOR_PAYMENT_LINK_HOST)
     }
     expect(preview).toContain('Stripe test mode')
+    expect(preview).not.toContain('Questions or custom deals?')
+    expect(closed).not.toContain('Questions or custom deals?')
   })
 })
