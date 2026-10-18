@@ -6,6 +6,8 @@ import {
   PORTAL_RATE_WINDOW_MS,
   RESULT_RATE_WINDOW_MS,
   RESULT_WINDOW_PURGE_INTERVAL_MS,
+  SPONSOR_RATE_WINDOW_MS,
+  SUGGESTION_RATE_WINDOW_MS,
 } from './rate-windows'
 import { DATA_RETENTION_PRODUCTION_LAUNCH } from './retention-flags'
 
@@ -64,7 +66,7 @@ export function clickLogParagraph(input: RetentionCopyInput = {}): string {
 
 export function retentionJobParagraph(input: RetentionCopyInput = {}): string {
   const launch = retentionCopyOn(input)
-  const schedule = `it runs about once a day. It deletes a rate-limit row or a quiz-result row that is still there 24 hours after the window ends, so that deletion lands about 24 to 48 hours after the window ends. ${BACKLOG_CAVEAT} It removes the click address code after about 90 days and leaves the rest of the click row.`
+  const schedule = `it runs about once a day. It deletes a rate-limit row or a quiz-result row that is still there 24 hours after the window ends, so that deletion lands about 24 to 48 hours after the window ends. ${BACKLOG_CAVEAT} It removes the click address code after about 90 days and leaves the rest of the click row. It clears the optional email on a suggestion after 90 days and deletes a suggestion after 24 months.`
   const sooner =
     'A quiz-result row can still be deleted sooner, when a later request runs cleanup after the window ends. That cleanup does not wait for this job.'
   const onSchedule = schedule.replace(/^./, (letter) => letter.toUpperCase())
@@ -101,7 +103,7 @@ export function rateLimitPrivacyParagraphs(input: RetentionCopyInput = {}): stri
   const cleanup = windowPhrase(RESULT_WINDOW_PURGE_INTERVAL_MS)
   return [
     'When a rate limit uses the network address, we store a code made from a fixed label, the limit name, the address, and a secret key. That code is still pseudonymous personal data. If we have no address, the code uses the word unknown instead of an address.',
-    `Newsletter signup stores that code with a count and a window end time. The window is ${newsletter}. Visit redirects use a ${visit} window. Social-card images use a ${card} window. We do not delete those rows when the window ends. After the window ends, the next request for the same code resets the count. ${
+    `Newsletter signup stores that code with a count and a window end time. The window is ${newsletter}. Visit redirects use a ${visit} window. Social-card images use a ${card} window. The suggestion box uses a ${windowPhrase(SUGGESTION_RATE_WINDOW_MS)} window, and sponsor checkout uses a ${windowPhrase(SPONSOR_RATE_WINDOW_MS)} window. We do not delete those rows when the window ends. After the window ends, the next request for the same code resets the count. ${
       launch
         ? `The retention job deletes the row about 24 to 48 hours after the window ends. ${BACKLOG_CAVEAT}`
         : 'A row that is never requested again stays in the database while the retention job is off.'
@@ -117,6 +119,20 @@ export function rateLimitPrivacyParagraphs(input: RetentionCopyInput = {}): stri
 
 export const NEWSLETTER_SIGNUP_PARAGRAPH =
   'If you join the newsletter, we store your email address. Before the digest is connected to Beehiiv, we keep that address as a pending signup and you are not subscribed yet. When the digest is connected, we send that email address to Beehiiv, including an address we stored while it was pending. We also send utm_source set to bestbotfor, utm_medium set to website, and referring_site set to the absolute URL of the page that offered the form. That page is one of /, /result, /best, /compare, /newsletter, /ai-loadout, /guides/how-to-choose-an-ai-tool, /alternatives/chatgpt, /alternatives/midjourney, /alternatives/zapier, /alternatives/cursor, or /alternatives/elevenlabs. You get a confirmation email first (double opt-in). You are subscribed only after you confirm that message. We do not ask for your name on the form. We keep your email address and signup record while you are subscribed. After you unsubscribe, we keep that row so we do not email you again. It holds your email, the unsubscribe status, when it was created, where it was sent, and the Beehiiv id when we have one. Beehiiv keeps its own record. We do not delete that row on a schedule. If you ask us to delete it, we delete our copy within 30 days. If you unsubscribe, we honor that. The signup form does not turn it back on. The only way back is your own resubscribe link.'
+
+const SUGGESTION_BASE =
+  'If you suggest something, we store the feedback (whether you like something, want something added, or want something removed, and the message) and we store your email address only when you choose to include it. We use that email only to reply to you, and we do not add it to the newsletter or send it to Beehiiv.'
+
+/** Retention for suggestions (James, Oct 18): email cleared after 90 days, row deleted after 24 months. */
+export function suggestionPrivacyParagraph(input: RetentionCopyInput = {}): string {
+  const rule = 'We keep your email address for up to 90 days so we can reply, then clear it and keep the note. We delete each suggestion 24 months after you send it.'
+  if (retentionCopyOn(input)) {
+    return `${SUGGESTION_BASE} ${rule} The retention job does this about once a day.`
+  }
+  return `${SUGGESTION_BASE} The retention job that applies our suggestion limits is off in production now, so until it is switched on, the email and the suggestion have no fixed deletion date. When it is switched on, we keep your email address for up to 90 days so we can reply, then clear it and keep the note, and we delete each suggestion 24 months after you send it.`
+}
+
+export const SUGGESTION_PRIVACY_PARAGRAPH = suggestionPrivacyParagraph()
 
 export const SHARING_PARAGRAPH =
   'We use Clerk for accounts, Stripe for payments, Beehiiv for the digest when it is connected, Google Analytics for site measurement when it is configured and analytics is allowed, Vercel to host the site and for cookieless analytics, and Turso to store the database. We do not sell personal information.'

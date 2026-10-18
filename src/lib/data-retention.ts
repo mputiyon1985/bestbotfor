@@ -9,6 +9,12 @@ export const RATE_LIMIT_RETENTION_MS = 24 * 60 * 60 * 1000
 /** Click ip_hash is cleared once the row is older than this. The row stays. */
 export const CLICK_HASH_RETENTION_MS = 90 * 24 * 60 * 60 * 1000
 
+/** The optional suggestion email is cleared once the row is older than this (James, Oct 18). The row stays. */
+export const SUGGESTION_EMAIL_RETENTION_MS = 90 * 24 * 60 * 60 * 1000
+
+/** Suggestion rows are deleted once they are older than 24 months (730 days; James, Oct 18). */
+export const SUGGESTION_ROW_RETENTION_MS = 730 * 24 * 60 * 60 * 1000
+
 export const RETENTION_BATCH_SIZE = 500
 export const RETENTION_MAX_BATCHES = 40
 
@@ -37,6 +43,10 @@ export type RetentionReport = {
   resultWindowsDeleted: number
   clickHashesEligible: number
   clickHashesCleared: number
+  suggestionEmailsEligible: number
+  suggestionEmailsCleared: number
+  suggestionsEligible: number
+  suggestionsDeleted: number
   truncated: boolean
 }
 
@@ -79,6 +89,14 @@ export function clickHashCutoff(now: number): number {
   return now - CLICK_HASH_RETENTION_MS
 }
 
+export function suggestionEmailCutoff(now: number): number {
+  return now - SUGGESTION_EMAIL_RETENTION_MS
+}
+
+export function suggestionRowCutoff(now: number): number {
+  return now - SUGGESTION_ROW_RETENTION_MS
+}
+
 function digest(value: string): Buffer {
   return createHash('sha256').update(value).digest()
 }
@@ -110,6 +128,10 @@ export function emptyRetentionReport(enabled: boolean): RetentionReport {
     resultWindowsDeleted: 0,
     clickHashesEligible: 0,
     clickHashesCleared: 0,
+    suggestionEmailsEligible: 0,
+    suggestionEmailsCleared: 0,
+    suggestionsEligible: 0,
+    suggestionsDeleted: 0,
     truncated: false,
   }
 }
