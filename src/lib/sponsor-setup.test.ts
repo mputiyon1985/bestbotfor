@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type Stripe from 'stripe'
-import { SPONSOR_BUSINESS_NAME, SPONSOR_OFFERINGS, SPONSOR_ONE_TIME_NOTICE } from './sponsor-offerings'
-import { ensureSponsorPrice, setupSponsorPrices } from './sponsor-setup'
+import { SPONSOR_BUSINESS_NAME, SPONSOR_FOUNDING_NOTICE, SPONSOR_OFFERINGS, SPONSOR_ONE_TIME_NOTICE } from './sponsor-offerings'
+import { ensureSponsorPrice, ensureSponsorPriceSpec, setupSponsorPrices, sponsorPriceSpecs } from './sponsor-setup'
 
 const testKey = ['sk', 'test', 'example'].join('_')
 
@@ -204,14 +204,15 @@ describe('sponsor price setup', () => {
   })
 
   it('prints only price ids', async () => {
-    const prices = SPONSOR_OFFERINGS.map((offering, index) => ({
+    const prices = sponsorPriceSpecs().map((spec, index) => ({
       id: `price_ready_${index}`,
-      lookup_key: offering.lookupKey,
-      unit_amount: offering.unitAmount,
+      lookup_key: spec.lookupKey,
+      unit_amount: spec.unitAmount,
       currency: 'usd',
       active: true,
+      recurring: spec.interval ? { interval: spec.interval } : null,
     }))
-    const { stripe } = fakeStripe(prices)
+    const { stripe, created } = fakeStripe(prices)
     const lines = await setupSponsorPrices({
       key: testKey,
       env: { STRIPE_ALLOW_LIVE: 'true' },
@@ -221,7 +222,77 @@ describe('sponsor price setup', () => {
       'STRIPE_PRICE_PLACEMENT_WEEKLY=price_ready_0',
       'STRIPE_PRICE_PLACEMENT_MONTHLY=price_ready_1',
       'STRIPE_PRICE_NEWSLETTER_SLOT=price_ready_2',
+      'STRIPE_PRICE_PLACEMENT_SUBSCRIPTION=price_ready_3',
+      'STRIPE_PRICE_FOUNDING_MONTHLY=price_ready_4',
+      'STRIPE_PRICE_FOUNDING_SETUP=price_ready_5',
     ])
+    expect(created).toEqual([])
     expect(lines.join('\n')).not.toContain(testKey)
+  })
+})
+
+describe('sponsor subscription prices', () => {
+  it('creates monthly recurring prices for the subscription and founding offers, and a one-time $99 setup price', async () => {
+    const specs = sponsorPriceSpecs()
+    expect(specs.map((spec) => [spec.priceEnv, spec.lookupKey, spec.unitAmount, spec.interval])).toEqual([
+      ['STRIPE_PRICE_PLACEMENT_WEEKLY', 'sponsor_best_placement_weekly', 9_900, null],
+      ['STRIPE_PRICE_PLACEMENT_MONTHLY', 'sponsor_best_placement_monthly', 29_900, null],
+      ['STRIPE_PRICE_NEWSLETTER_SLOT', 'sponsor_newsletter_issue', 4_900, null],
+      ['STRIPE_PRICE_PLACEMENT_SUBSCRIPTION', 'sponsor_best_placement_monthly_recurring', 29_900, 'month'],
+      ['STRIPE_PRICE_FOUNDING_MONTHLY', 'sponsor_founding_monthly', 29_900, 'month'],
+      ['STRIPE_PRICE_FOUNDING_SETUP', 'sponsor_founding_first_two_weeks', 9_900, null],
+    ])
+    const { stripe, created, products, priceKeys } = fakeStripe([])
+    for (const spec of specs.slice(3)) await ensureSponsorPriceSpec(stripe, spec)
+    expect(created[0]).toMatchObject({
+      unit_amount: 29_900,
+      lookup_key: 'sponsor_best_placement_monthly_recurring',
+      recurring: { interval: 'month', interval_count: 1 },
+    })
+    expect(created[1]).toMatchObject({
+      unit_amount: 29_900,
+      lookup_key: 'sponsor_founding_monthly',
+      recurring: { interval: 'month', interval_count: 1 },
+    })
+    expect(created[2]).toMatchObject({ unit_amount: 9_900, lookup_key: 'sponsor_founding_first_two_weeks' })
+    expect(created[2]).not.toHaveProperty('recurring')
+    expect(priceKeys).toEqual([
+      'sponsor-price-sponsor_best_placement_monthly_recurring-29900-month',
+      'sponsor-price-sponsor_founding_monthly-29900-month',
+      'sponsor-price-sponsor_founding_first_two_weeks-9900-one_time',
+    ])
+    expect(products[1]).toMatchObject({ name: 'BestBotFor', description: `Founding sponsor, monthly. ${SPONSOR_FOUNDING_NOTICE}` })
+    for (const record of [...created, ...products]) {
+      expect(record).not.toHaveProperty('tax_behavior')
+      expect(record).not.toHaveProperty('tax_code')
+    }
+  })
+
+  it('does not reuse a one-time price for a recurring spec, or a weekly price for a monthly spec', async () => {
+    const spec = sponsorPriceSpecs().find((item) => item.priceEnv === 'STRIPE_PRICE_FOUNDING_MONTHLY')
+    if (!spec) throw new Error('missing founding spec')
+    for (const recurring of [null, { interval: 'week' }]) {
+      const { stripe, created } = fakeStripe([
+        {
+          id: 'price_wrong_kind',
+          lookup_key: spec.lookupKey,
+          unit_amount: spec.unitAmount,
+          currency: 'usd',
+          active: true,
+          recurring,
+          product: 'prod_existing',
+        },
+      ])
+      await expect(ensureSponsorPriceSpec(stripe, spec)).resolves.toBe('price_created')
+      expect(created[0]).toMatchObject({ product: 'prod_existing', recurring: { interval: 'month' } })
+    }
+  })
+
+  it('still refuses live keys for every price, including subscriptions', async () => {
+    const { stripe, created } = fakeStripe([])
+    await expect(
+      setupSponsorPrices({ key: ['sk', 'live', 'example'].join('_'), env: { STRIPE_ALLOW_LIVE: 'true' }, createStripe: () => stripe }),
+    ).rejects.toThrow('Refusing to create Stripe prices outside test mode')
+    expect(created).toEqual([])
   })
 })
