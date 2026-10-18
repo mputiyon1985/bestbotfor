@@ -7,6 +7,7 @@ import { ACTION_LIMITS, allowRate } from '@/lib/action-limit'
 import { getDb } from '@/lib/db'
 import { clientIp, rateLimitKey } from '@/lib/ip'
 import { isStripeHostedUrl } from '@/lib/redirect'
+import { SPONSOR_OPENING_SOON, sponsorCheckoutClosed } from '@/lib/sponsor-checkout-gate'
 import { parseSponsorCheckout, sponsorCheckoutParams, sponsorRateLimitMessage } from '@/lib/sponsor-checkout'
 import { claimSponsorSlot, releaseSponsorSlot, SPONSOR_SLOT_TAKEN } from '@/lib/sponsor-availability'
 import { readSponsorCardForm, savePendingSponsorCard, saveSponsorCardForSession } from '@/lib/sponsor-card'
@@ -22,6 +23,8 @@ import { getStripe } from '@/lib/stripe'
 export type SponsorFormState = { status: 'idle' | 'error'; message: string }
 
 export async function sponsorCheckoutAction(_previous: SponsorFormState, formData: FormData): Promise<SponsorFormState> {
+  if (sponsorCheckoutClosed()) return { status: 'error', message: SPONSOR_OPENING_SOON }
+
   const parsed = parseSponsorCheckout(formData)
   if (!parsed.ok) return { status: 'error', message: parsed.message }
 

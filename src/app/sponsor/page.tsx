@@ -1,8 +1,10 @@
 import type { Metadata } from 'next'
 import { taskSeeds } from '@/data/catalog'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { SponsorCheckoutNotice } from '@/components/sponsor-checkout-notice'
 import { SponsorForm } from '@/components/sponsor-form'
 import { pageMetadata } from '@/lib/metadata'
+import { sponsorCheckoutSurface } from '@/lib/sponsor-checkout-gate'
 import { SPONSOR_OFFERINGS, SPONSOR_ONE_TIME_NOTICE, sponsorPriceId, sponsorPriceLabel } from '@/lib/sponsor-offerings'
 import { stripeKeyMode } from '@/lib/stripe'
 
@@ -15,6 +17,7 @@ export const metadata: Metadata = pageMetadata({
 })
 
 export default function SponsorPage() {
+  const surface = sponsorCheckoutSurface()
   const mode = stripeKeyMode()
   const offerings = SPONSOR_OFFERINGS.map((offering) => ({
     id: offering.id,
@@ -22,7 +25,7 @@ export default function SponsorPage() {
     summary: offering.summary,
     priceLabel: sponsorPriceLabel(offering.unitAmount),
     target: offering.target,
-    available: mode !== 'off' && sponsorPriceId(offering.id) !== null,
+    available: surface !== 'closed' && mode !== 'off' && sponsorPriceId(offering.id) !== null,
   }))
   const tasks = taskSeeds.map((task) => ({ slug: task.slug, name: task.name }))
   const week = sponsorPriceLabel(SPONSOR_OFFERINGS[0].unitAmount)
@@ -33,11 +36,7 @@ export default function SponsorPage() {
     <article className="max-w-2xl space-y-6">
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Sponsor', path: '/sponsor' }]} />
       <h1 className="font-bold text-5xl">Sponsor</h1>
-      <p role="note" className="rounded-2xl border border-line bg-mist px-4 py-3 text-sm">
-        {mode === 'live'
-          ? 'Checkout uses Stripe live mode.'
-          : 'Checkout uses Stripe test mode. No real charges occur.'}
-      </p>
+      <SponsorCheckoutNotice surface={surface} />
       <p>
         Buy a featured tool slot on one /best/[task] page, or a sponsor mention in one newsletter issue. Payment happens
         on Stripe’s hosted checkout page. This site does not collect card numbers.
@@ -57,7 +56,7 @@ export default function SponsorPage() {
         These are the current list prices from server configuration. They can be changed there. The form does not send
         an amount. Checkout charges the Stripe price configured on the server.
       </p>
-      <SponsorForm offerings={offerings} tasks={tasks} />
+      {surface === 'closed' ? null : <SponsorForm offerings={offerings} tasks={tasks} />}
     </article>
   )
 }
