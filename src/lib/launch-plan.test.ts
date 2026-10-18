@@ -3,6 +3,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 const plan = readFileSync(path.join(process.cwd(), 'docs/specs/user-ratings-mvp-build-plan.md'), 'utf8')
+const changelog = readFileSync(path.join(process.cwd(), 'CHANGELOG.md'), 'utf8')
 
 describe('ratings launch plan', () => {
   it('matches the shipped flag and records PR #28 as merged', () => {
@@ -47,8 +48,7 @@ describe('ratings launch plan', () => {
     ]) {
       expect(plan).toContain(gate)
     }
-    expect(plan).toContain('**Sponsorship: #51 P1 re-QA.** #51 merged at `cac6b83` (main commit `7c58414`). Sentinel QA\'d it at `a28b245` and later reported that they diffed the merged `cac6b83` and the sponsor code was unchanged. The reviewer\'s posted review on #51 is the PASS at `27f6d7ee`.')
-    expect(plan).not.toContain('**Sponsorship: #51 P1 re-QA.** Closed.')
+    expect(plan).toContain('**Sponsorship: #51 P1 re-QA.** Closed. #51 merged at `cac6b83` (main commit `7c58414`). Sentinel QA\'d it at `a28b245` and later reported that they diffed the merged `cac6b83` and the sponsor code was unchanged. The reviewer\'s posted review on #51 is the PASS at `27f6d7ee`.')
     expect(plan).toContain('**ADMIN_SPONSORS production launch.**')
     expect(plan).toContain('It comes after the A18 Clerk admin test (gate 8).')
     expect(plan).toContain('**Mark\'s OK on #61.** Closed. Mark typed "Merge it" for #61 in James\'s chat at 7:00 PM ET on October 17, 2026. James relayed that message.')
@@ -68,7 +68,10 @@ describe('ratings launch plan', () => {
     expect(plan).toContain('James decided on October 17, 2026, at 7:53 PM ET that BestBotFor uses Beehiiv double opt-in.')
     expect(plan).toContain('No production Beehiiv keys go in until that double opt-in is enabled, concurrent duplicate signups are deduped to a single Beehiiv call, a per-email signup limit exists, and Turnstile is considered.')
     expect(plan).not.toContain('our own confirm step')
-    expect(plan).toContain('**Beehiiv pending backfill.** Production migrations `0020` and `0021` are already applied. The backfill runs only via `--production-launch`, with a dry run first and Mark\'s OK. Open. This gate does not run the backfill.')
+    expect(plan).toContain('**Beehiiv pending backfill.** Production migrations `0020` and `0021` were applied by the deploy prebuild; verified read-only after the f8a6236 deploy. The check read `__drizzle_migrations` (prod-verify of `f8a6236`, deploy `dpl_9ZTPJZi9aesSjDVDraYzB1X3LVNP`). The backfill runs only via `--production-launch`, with a dry run first and Mark\'s OK. Open. This gate does not run the backfill.')
+    expect(plan).not.toContain('Gate 2 is closed')
+    expect(changelog).not.toContain('Gate 2 is closed')
+    expect(changelog).toContain('Gate 2 closes when the A18 PR merges.')
     for (const question of [
       'placement and UTM values sent to Beehiiv',
       'the retention period for newsletter emails',
@@ -91,7 +94,10 @@ describe('ratings launch plan', () => {
     expect(versionTable.indexOf('| v1.2.6 |')).toBeLessThan(versionTable.indexOf('| v1.2.7 |'))
     expect(versionTable.indexOf('| v1.2.7 |')).toBeLessThan(versionTable.indexOf('| v1.2.8 |'))
     expect(versionTable.indexOf('| v1.2.8 |')).toBeLessThan(versionTable.indexOf('| v1.2.9 |'))
+    expect(versionTable.indexOf('| v1.2.9 |')).toBeLessThan(versionTable.indexOf('| v1.2.10 |'))
     const v126 = versionTable.slice(versionTable.indexOf('| v1.2.6 |'), versionTable.indexOf('| v1.2.7 |'))
+    expect(v126).toContain('Gate 2 closes when the A18 PR merges.')
+    expect(v126).not.toContain('Gate 2 is closed')
     expect(v126).toContain('Superseded: do not adopt drizzle-kit\'s migrator until #10 lands.')
     expect(v126).toContain('The current hand-check is the Migrator paragraph through idx 19.')
   })
