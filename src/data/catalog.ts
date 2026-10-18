@@ -690,8 +690,8 @@ export const toolSeeds: ToolSeed[] = [
     slug: 'runway',
     name: 'Runway',
     vendor: 'Runway',
-    url: 'https://runwayml.com',
-    allowedHosts: ['runwayml.com'],
+    url: 'https://runway.com',
+    allowedHosts: ['runway.com'],
     category: 'AI video',
     shortDesc: 'Generative video tools for shots, edits, and motion.',
     longDesc: 'Runway is for making or altering moving images, not for a corporate presenter reading a script. Expect to iterate on the clip. It is a creative tool with a learning curve.',
@@ -718,10 +718,10 @@ export const toolSeeds: ToolSeed[] = [
     longDesc: 'Pictory is a shortcut from text to a social or marketing video. The look is assembled, not filmed. Use a generative video tool when you need original motion.',
     pricingModel: 'freemium',
     priceFromUsd: null,
-    hasFreeTier: true,
+    hasFreeTier: false,
     skillLevel: 'beginner',
     platforms: ['Web'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: '2026-10-18',
     fits: [
       { task: 'video', score: 74, notes: 'Text to a stock-style video for marketing.' },
     ],
@@ -1076,7 +1076,7 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
-  // pricing verified 2026-10-15 at https://developers.openai.com/codex/pricing | budget fit: low | best for: coding, agents, cloud-tasks
+  // pricing verified 2026-10-15 at https://learn.chatgpt.com/docs/pricing (moved from developers.openai.com/codex/pricing, Oct 18) | budget fit: low | best for: coding, agents, cloud-tasks
   tool({
     slug: 'openai-codex',
     name: 'OpenAI Codex',
@@ -1292,13 +1292,13 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
-  // pricing verified 2026-10-15 at https://kilocode.ai/pricing | budget fit: free | best for: coding, open-source
+  // pricing verified 2026-10-15 at https://kilo.ai/pricing (kilocode.ai redirects there, Oct 18) | budget fit: free | best for: coding, open-source
   tool({
     slug: 'kilo-code',
     name: 'Kilo Code',
     vendor: 'Kilo Code',
-    url: 'https://kilocode.ai',
-    allowedHosts: ['kilocode.ai'],
+    url: 'https://kilo.ai',
+    allowedHosts: ['kilo.ai'],
     category: 'Coding assistant',
     shortDesc: 'An open-source coding agent; usage is billed separately from the free app.',
     longDesc: 'A flexible choice if you want an open-source agent with many model options. Model usage costs extra.',
@@ -1700,13 +1700,13 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
-  // pricing verified 2026-10-15 at https://playground.com/pricing | budget fit: free | best for: images, design, graphics
+  // pricing verified 2026-10-15 at https://playgroundai.com/pricing (playground.com redirects there, Oct 18) | budget fit: free | best for: images, design, graphics
   tool({
     slug: 'playground',
     name: 'Playground',
     vendor: 'Playground',
-    url: 'https://playground.com',
-    allowedHosts: ['playground.com'],
+    url: 'https://playgroundai.com',
+    allowedHosts: ['playgroundai.com'],
     category: 'Images',
     shortDesc: 'An AI design tool for images, logos, and social graphics.',
     longDesc: 'An easy free start for casual creation. Free plan has slower generations and limits.',
@@ -1942,7 +1942,7 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
-  // pricing verified 2026-10-15 at https://pika.art/pricing | budget fit: free | best for: video, effects, social
+  // pricing verified 2026-10-18 at https://pika.art/pricing | budget fit: paid (Free tier has 0 credits a month) | best for: video, effects, social
   tool({
     slug: 'pika',
     name: 'Pika',
@@ -1954,10 +1954,10 @@ export const toolSeeds: ToolSeed[] = [
     longDesc: 'Quick fun clips for social posts. The free plan has no monthly credits (packs only).',
     pricingModel: 'freemium',
     priceFromUsd: null,
-    hasFreeTier: true,
+    hasFreeTier: false,
     skillLevel: 'beginner',
     platforms: ['Web', 'iOS'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: '2026-10-18',
     fits: [
       { task: 'video', score: 76, notes: 'Quick fun clips for social posts.' },
     ],
@@ -2197,7 +2197,7 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
-  // pricing verified 2026-10-15 at https://www.resemble.ai/pricing/ | budget fit: free | best for: voice-cloning, deepfake-detection
+  // pricing verified 2026-10-18 at https://www.resemble.ai/pricing | budget fit: paid ($0 Flex tier is pay-as-you-go, no included usage) | best for: voice-cloning, deepfake-detection
   tool({
     slug: 'resemble-ai',
     name: 'Resemble AI',
@@ -2209,13 +2209,12 @@ export const toolSeeds: ToolSeed[] = [
     longDesc: 'Useful when you need both voice AI and detection. Developer-oriented.',
     pricingModel: 'freemium',
     priceFromUsd: null,
-    hasFreeTier: true,
+    hasFreeTier: false,
     skillLevel: 'pro',
     platforms: ['API', 'Web'],
-    lastVerifiedAt: REVIEWED,
-    fits: [
-      { task: 'voice', score: 74, notes: 'Useful when you need both voice AI and detection.' },
-    ],
+    lastVerifiedAt: '2026-10-18',
+    // Forge, Oct 18: now a deepfake-detection product with no included TTS. Off the voice list (see retiredFitSeeds).
+    fits: [],
     affiliate: { ...none, status: 'verify' },
   }),
   // pricing verified 2026-10-15 at https://speechify.com/pricing/ | budget fit: free | best for: text-to-speech, reading
@@ -2261,13 +2260,13 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
-  // pricing verified 2026-10-15 at https://podcastle.ai/pricing | budget fit: free | best for: podcasting, recording, editing
+  // pricing verified 2026-10-15 at https://async.com/pricing (Podcastle is now Async; podcastle.ai redirects there, Oct 18) | budget fit: free | best for: podcasting, recording, editing
   tool({
     slug: 'podcastle',
-    name: 'Podcastle',
-    vendor: 'Podcastle',
-    url: 'https://podcastle.ai',
-    allowedHosts: ['podcastle.ai'],
+    name: 'Async',
+    vendor: 'Async',
+    url: 'https://async.com',
+    allowedHosts: ['async.com'],
     category: 'Voice',
     shortDesc: 'A podcast recording and editing studio with AI voices.',
     longDesc: 'An all-in-one start for podcasters. Free plan has limits.',
@@ -2276,7 +2275,7 @@ export const toolSeeds: ToolSeed[] = [
     hasFreeTier: true,
     skillLevel: 'beginner',
     platforms: ['Web'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: '2026-10-18',
     fits: [
       { task: 'voice', score: 70, notes: 'An all-in-one start for podcasters.' },
       { task: 'video', score: 45, notes: 'The studio is audio first and also handles some video.' },
@@ -3378,4 +3377,14 @@ export const comparePairSeeds: ReadonlyArray<readonly [string, string]> = [
   ['fathom', 'fireflies'],
   ['lovable', 'v0'],
   ['assemblyai', 'deepgram'],
+]
+
+/**
+ * Tool/task fits removed from the catalog. The seed only upserts tool_tasks,
+ * so it deletes these exact pairs (safe to run more than once). Same idea as
+ * drizzle/0004_retire_quiz_fits.sql, without a migration.
+ */
+export const retiredFitSeeds: ReadonlyArray<readonly [tool: string, task: string]> = [
+  // Forge, Oct 18, 2026: Resemble AI is now deepfake detection and watermarking, with no included TTS usage.
+  ['resemble-ai', 'voice'],
 ]
