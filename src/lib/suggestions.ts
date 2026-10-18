@@ -1,7 +1,7 @@
+import { ACTION_LIMITS, allowRate } from '@/lib/action-limit'
 import { suggestions } from '@/lib/db/schema'
 import type { Database } from '@/lib/db/client'
 import { notifySuggestion, type SuggestionNotice } from '@/lib/suggestion-mail'
-import { allowSuggestionRate } from '@/lib/suggestion-rate'
 import { emailSchema } from '@/lib/validation'
 
 export const SUGGESTION_KINDS = ['like', 'add', 'remove'] as const
@@ -18,6 +18,7 @@ const MESSAGE_ERROR = 'Enter a message.'
 const LENGTH_ERROR = 'Keep the message under 2000 characters.'
 const EMAIL_ERROR = 'Enter a valid email address.'
 const LIMIT_ERROR = 'Too many suggestions. Try again in an hour.'
+const UNAVAILABLE_ERROR = 'Suggestions are temporarily unavailable. Try again.'
 
 function isKind(value: string): value is SuggestionKind {
   return (SUGGESTION_KINDS as readonly string[]).includes(value)
@@ -25,7 +26,9 @@ function isKind(value: string): value is SuggestionKind {
 
 /**
  * Stores one private suggestion. A filled honeypot looks successful and writes
- * nothing. The rate key stays in memory. The row has no address and no hash.
+ * nothing. The rate key is the HMAC from the action. `allowRate` writes that
+ * key to `rate_limits` through `consumeRateLimit`. The suggestion row has no
+ * address and no hash.
  */
 export async function submitSuggestion(input: {
   kind: string
@@ -40,7 +43,12 @@ export async function submitSuggestion(input: {
   if (input.honeypot.trim()) return { status: 'success', message: SUGGESTION_SUCCESS }
 
   const now = input.now ?? Date.now()
-  if (!allowSuggestionRate(input.rateKey, now)) return { status: 'error', message: LIMIT_ERROR }
+  const allowed = await allowRate(input.db, input.rateKey, ACTION_LIMITS.suggestion.limit, ACTION_LIMITS.suggestion.windowMs, {
+    onError: 'closed',
+    now,
+  })
+  if (allowed === 'unavailable') return { status: 'error', message: UNAVAILABLE_ERROR }
+  if (allowed === 'limit') return { status: 'error', message: LIMIT_ERROR }
 
   const kind = input.kind.trim()
   if (!isKind(kind)) return { status: 'error', message: KIND_ERROR }

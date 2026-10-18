@@ -5,14 +5,14 @@ import { tmpdir } from 'node:os'
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { createClient } from '@libsql/client'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { LightbulbIcon } from '@/components/lightbulb-icon'
+import { ACTION_LIMITS } from '@/lib/action-limit'
 import { BRAND } from '@/lib/brand'
 import { SUGGESTIONS_DDL, adoptSuggestionsSchema } from '@/lib/db/migrate'
 import { suggestions } from '@/lib/db/schema'
 import { SUGGESTION_PRIVACY_PARAGRAPH } from '@/lib/privacy-copy'
 import { notifySuggestion, SUGGESTION_NOTIFY_EMAIL } from '@/lib/suggestion-mail'
-import { resetSuggestionRates, SUGGESTION_RATE_LIMIT } from '@/lib/suggestion-rate'
 import { SUGGESTION_SUCCESS, submitSuggestion } from '@/lib/suggestions'
 import { createTestDatabase } from '@/test/db'
 import { eq } from 'drizzle-orm'
@@ -23,9 +23,9 @@ afterEach(async () => {
   await Promise.all(directories.splice(0).map((directory) => rm(directory, { recursive: true, force: true })))
 })
 
-beforeEach(() => {
-  resetSuggestionRates()
-})
+function rateRows(rows: ReadonlyArray<Record<string, unknown>>): { key: string; count: number }[] {
+  return rows.map((row) => ({ key: String(row.key), count: Number(row.count) }))
+}
 
 function source(file: string): string {
   return readFileSync(path.join(process.cwd(), file), 'utf8')
@@ -65,8 +65,8 @@ describe('suggestions', () => {
     const columns = await test.db.$client.execute('PRAGMA table_info(suggestions)')
     expect(columns.rows.map((row) => String(row.name))).toEqual(['id', 'kind', 'message', 'email', 'created_at'])
     expect(JSON.stringify(rows)).not.toContain('hash-one')
-    const limits = await test.db.$client.execute('SELECT COUNT(*) AS n FROM rate_limits')
-    expect(Number(limits.rows[0]?.n)).toBe(0)
+    const limits = await test.db.$client.execute('SELECT "key", count FROM rate_limits')
+    expect(rateRows(limits.rows)).toEqual([{ key: 'hash-one', count: 1 }])
     await test.close()
   })
 
@@ -154,13 +154,15 @@ describe('suggestions', () => {
     expect(rows).toHaveLength(1)
     expect(rows[0]?.message).toHaveLength(2000)
     expect(rows[0]?.email).toBeNull()
+    const limits = await test.db.$client.execute('SELECT "key" FROM rate_limits')
+    expect(limits.rows.map((row) => String(row.key))).toEqual(['hash-length'])
     await test.close()
   })
 
-  it('stops after the in-memory limit and does not store the key', async () => {
+  it('writes the HMAC to rate_limits and blocks the 6th submit across calls', async () => {
     const test = await createTestDatabase()
-    const rateKey = '203.0.113.9'
-    for (let index = 0; index < SUGGESTION_RATE_LIMIT; index += 1) {
+    const rateKey = 'suggestion-hmac-not-an-address'
+    for (let index = 0; index < ACTION_LIMITS.suggestion.limit; index += 1) {
       const result = await submitSuggestion({
         kind: 'like',
         message: `Note ${index}`,
@@ -168,10 +170,15 @@ describe('suggestions', () => {
         honeypot: '',
         db: test.db,
         rateKey,
-        now: 100 + index,
+        now: 1_000 + index,
       })
       expect(result.status).toBe('success')
     }
+    const stored = await test.db.$client.execute({
+      sql: 'SELECT "key", count FROM rate_limits WHERE "key" = ?',
+      args: [rateKey],
+    })
+    expect(rateRows(stored.rows)).toEqual([{ key: rateKey, count: ACTION_LIMITS.suggestion.limit }])
     const blocked = await submitSuggestion({
       kind: 'like',
       message: 'One more',
@@ -179,14 +186,24 @@ describe('suggestions', () => {
       honeypot: '',
       db: test.db,
       rateKey,
-      now: 200,
+      now: 2_000,
     })
     expect(blocked).toEqual({ status: 'error', message: 'Too many suggestions. Try again in an hour.' })
+    const again = await submitSuggestion({
+      kind: 'remove',
+      message: 'Still one more',
+      email: '',
+      honeypot: '',
+      db: test.db,
+      rateKey,
+      now: 3_000,
+    })
+    expect(again).toEqual({ status: 'error', message: 'Too many suggestions. Try again in an hour.' })
     const rows = await test.db.select().from(suggestions)
-    expect(rows).toHaveLength(SUGGESTION_RATE_LIMIT)
+    expect(rows).toHaveLength(ACTION_LIMITS.suggestion.limit)
     expect(JSON.stringify(rows)).not.toContain(rateKey)
-    const limits = await test.db.$client.execute('SELECT COUNT(*) AS n FROM rate_limits')
-    expect(Number(limits.rows[0]?.n)).toBe(0)
+    const limits = await test.db.$client.execute('SELECT "key", count FROM rate_limits')
+    expect(rateRows(limits.rows)).toEqual([{ key: rateKey, count: ACTION_LIMITS.suggestion.limit + 2 }])
     await test.close()
   })
 
@@ -228,7 +245,10 @@ describe('suggestions', () => {
     const action = source('src/app/suggest/actions.ts')
     expect(action).toContain("rateLimitKey(clientIp(headerStore), 'suggestion')")
     expect(source('src/lib/suggestions.ts')).not.toContain('clientIp')
-    expect(source('src/lib/suggestions.ts')).not.toContain('rate_limits')
+    expect(source('src/lib/suggestions.ts')).toContain('ACTION_LIMITS.suggestion')
+    expect(source('src/lib/suggestions.ts')).toContain('allowRate')
+    expect(source('src/lib/action-limit.ts')).toContain('consumeRateLimit')
+    expect(existsSync(path.join(process.cwd(), 'src/lib/suggestion-rate.ts'))).toBe(false)
     expect(source('src/app/layout.tsx')).toContain('<SuggestSomethingLink')
     expect(source('src/app/layout.tsx')).toContain('<SuggestionDialog')
     expect(source('src/components/site-footer.tsx')).toContain('<SuggestSomethingLink')
