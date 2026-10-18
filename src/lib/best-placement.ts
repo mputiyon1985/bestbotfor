@@ -26,6 +26,7 @@ export type ActiveBestPlacement = {
   label: typeof SPONSORED_LABEL
   company: string | null
   offering: 'placement_weekly' | 'placement_monthly'
+  sponsorshipId: number
   card: PublicSponsorCard
 }
 
@@ -49,7 +50,7 @@ export function activeBestPlacement(
   now: number,
 ): ActiveBestPlacement | null {
   const matches = rows.filter((row) => {
-    if (row.status !== 'paid' || row.taskSlug !== taskSlug || row.refundedAt != null || !row.card) return false
+    if (typeof row.id !== 'number' || row.status !== 'paid' || row.taskSlug !== taskSlug || row.refundedAt != null || !row.card) return false
     const windowMs = placementWindowMs(row.offering)
     const start = row.paidAt
     if (windowMs == null || start == null || !Number.isFinite(start) || !Number.isFinite(now)) return false
@@ -57,12 +58,13 @@ export function activeBestPlacement(
   })
   matches.sort((left, right) => (right.paidAt ?? 0) - (left.paidAt ?? 0))
   const current = matches[0]
-  if (!current?.card) return null
+  if (!current?.card || typeof current.id !== 'number') return null
   const company = sanitizeSponsorCompany(current.company ?? '')
   return {
     label: SPONSORED_LABEL,
     company: company.length > 0 ? company : null,
     offering: current.offering === 'placement_monthly' ? 'placement_monthly' : 'placement_weekly',
+    sponsorshipId: current.id,
     card: current.card,
   }
 }
