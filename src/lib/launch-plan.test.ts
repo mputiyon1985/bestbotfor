@@ -111,14 +111,101 @@ describe('ratings launch plan', () => {
     expect(versionTable.indexOf('| v1.2.10 |')).toBeLessThan(versionTable.indexOf('| v1.2.11 |'))
     expect(versionTable.indexOf('| v1.2.11 |')).toBeLessThan(versionTable.indexOf('| v1.2.12 |'))
     expect(versionTable.indexOf('| v1.2.12 |')).toBeLessThan(versionTable.indexOf('| v1.2.13 |'))
+    expect(versionTable.indexOf('| v1.2.13 |')).toBeLessThan(versionTable.indexOf('| v1.2.14 |'))
     const v1210 = versionTable.slice(versionTable.indexOf('| v1.2.10 |'), versionTable.indexOf('| v1.2.11 |'))
     expect(v1210).toContain('verified read-only after the f8a6236 deploy (`schema_migrations`, prod-verify of `f8a6236`, deploy `dpl_9ZTPJZi9aesSjDVDraYzB1X3LVNP`)')
     expect(v1210).not.toContain('__drizzle_migrations')
     const v1211 = versionTable.slice(versionTable.indexOf('| v1.2.11 |'), versionTable.indexOf('| v1.2.12 |'))
     expect(v1211).toContain('Gate 12 is Closed.')
-    const v1212 = versionTable.slice(versionTable.indexOf('| v1.2.12 |'), versionTable.indexOf('| v1.2.13 |'))
+    const versionRow = (version: string) => versionTable.split('\n').find((line) => line.startsWith(`| ${version} |`)) ?? ''
+    const v1212 = versionRow('v1.2.12')
     expect(v1212).toContain('Gate 18 is Closed.')
-    const v1213 = versionTable.slice(versionTable.indexOf('| v1.2.13 |'))
+    const v1214 = versionRow('v1.2.14')
+    expect(v1214).toContain('Gate 15 is Closed.')
+    expect(v1214).toContain('Gate 16 is Closed.')
+    expect(v1214).toContain("Tony's Stripe API read-back at 2:31:12 PM ET")
+    expect(v1214).toContain('`we_1URwkHIJUbygfAucFVXA9X0z`')
+    expect(v1214).toContain('`STRIPE_ALLOW_LIVE` is `true` in Production, set after Mark approved go-live on 2026-10-18.')
+    expect(v1214).toContain("James (CEO) OK'd it on 2026-10-18")
+    expect(liveGates).toContain('15. **Sponsorship: live webhook subscribed to refund events.** Closed.')
+    expect(liveGates).toContain('The live endpoint is `POST /api/stripe/webhook`.')
+    const gate15 = liveGates.slice(liveGates.indexOf('15. **Sponsorship: live webhook'), liveGates.indexOf('16. **Sponsorship: refund runbook.**'))
+    expect(gate15).toContain('Evidence dated 2026-10-18')
+    expect(gate15).toContain('the read-back at 2:31:12 PM ET shows live endpoint `we_1URwkHIJUbygfAucFVXA9X0z` pointing at `https://bestbotfor.com/api/stripe/webhook`')
+    expect(gate15).toContain('It is subscribed to 16 events')
+    for (const event of ['charge.refunded', 'refund.created', 'refund.updated', 'invoice.paid', 'invoice.payment_failed', 'charge.dispute.created', 'charge.dispute.updated', 'charge.dispute.closed', 'charge.dispute.funds_withdrawn', 'charge.dispute.funds_reinstated']) {
+      expect(gate15, event).toContain(`\`${event}\``)
+    }
+    expect(gate15).toContain('`STRIPE_ALLOW_LIVE` is `true` in Production only, set after Mark approved go-live on 2026-10-18.')
+    expect(liveGates).toContain('16. **Sponsorship: refund runbook.** Closed. James (CEO) OK\'d it on 2026-10-18: "Gates 15 and 16: ship the docs PR today."')
+    expect(liveGates).toContain('`/admin/sponsors` opens in preview, development, and test when `ADMIN_SPONSORS` is `on`, and returns 404 in production until gate 19.')
+    expect(liveGates).toContain('A status flip alone does not publish a card.')
+    const runbook = readFileSync(path.join(process.cwd(), 'docs/runbooks/sponsor-reject-refund.md'), 'utf8')
+    expect(runbook).toContain('The live endpoint is `POST /api/stripe/webhook`.')
+    for (const event of [
+      'checkout.session.completed',
+      'checkout.session.async_payment_succeeded',
+      'checkout.session.async_payment_failed',
+      'customer.subscription.created',
+      'customer.subscription.updated',
+      'customer.subscription.deleted',
+      'charge.refunded',
+      'refund.created',
+      'refund.updated',
+    ]) {
+      expect(runbook).toContain(`\`${event}\``)
+    }
+    // The runbook has to match the code: the preview queue, the approved snapshot, the two refund records, and the expiry trigger.
+    expect(runbook).toContain('`/admin/sponsors` opens in preview, development, and test when `ADMIN_SPONSORS` is `on`')
+    expect(runbook).toContain('In production the page returns 404 until gate 19')
+    expect(runbook).not.toContain('Do not use that page')
+    expect(runbook).toContain('Find the payment in the Stripe dashboard')
+    expect(runbook).toContain('Mark-approved production write, coordinated by James')
+    for (const column of ['approved_tool_name', 'approved_description', 'approved_url', 'approved_logo_mime', 'approved_logo_bytes', 'approved_content_hash', 'approved_version']) {
+      expect(runbook).toContain(`\`${column}\``)
+    }
+    expect(runbook).toContain('Setting `status` to `approved` on its own does not publish anything.')
+    expect(runbook).toContain('`sponsorship_review_events`')
+    expect(runbook).toContain('The webhook does not touch the card\'s `refund_status` or `sponsorship_refund_events`.')
+    expect(runbook).toContain('only where the row\'s id matches and `refund_status` is `refund_pending`')
+    expect(runbook).toContain('The 7-day expiry has no clock or scheduled job of its own.')
+    expect(runbook).not.toContain('Operators do not open `/admin/sponsors` for that load.')
+    expect(runbook).not.toMatch(/whsec_|we_[A-Za-z0-9]/)
+    expect(runbook).toContain('A blank reason is stored as "Refunded in the Stripe dashboard."')
+    expect(runbook).toContain('The route returns 400 (`live-mode-rejected`) for every live-mode event unless `VERCEL_ENV` is exactly `production` and `STRIPE_ALLOW_LIVE` is exactly `true`.')
+    const paymentLinks = runbook.slice(runbook.indexOf('## Payment Link sales'), runbook.indexOf('## Card rules'))
+    for (const heading of ['### Fulfillment', '### Refunds and cancellations', '### The 6-month price lock', '### Disputes']) {
+      expect(paymentLinks, heading).toContain(heading)
+    }
+    expect(paymentLinks).toContain('`plink_1URylTIJUbygfAuc07cebXfn`')
+    expect(paymentLinks).toContain('`plink_1URyeXIJUbygfAucnLlkSP5u`')
+    expect(paymentLinks).toContain('`best_page`')
+    expect(paymentLinks).toContain('They create no `sponsorships` row')
+    expect(paymentLinks).toContain('`recordSponsorCardReview`')
+    expect(paymentLinks).toContain("needs Mark's OK, via James")
+    // Sentinel re-QA d471dbd: the manual row, the slot check, buyer PII, and the label.
+    for (const field of ['`stripe_checkout_session_id`', '`stripe_payment_intent_id`', '`placement_weekly` or `placement_monthly`', '`status`: `paid`', '`paid_at`', '`task_slug`: the task from `best_page`']) {
+      expect(paymentLinks, field).toContain(field)
+    }
+    expect(paymentLinks).toContain('a dashboard refund of that payment intent sets `refunded_at` and hides the placement automatically')
+    expect(paymentLinks).not.toContain('a Payment Link sale has no such row')
+    expect(paymentLinks).toContain('A Payment Link sale does not reserve the `/best` slot.')
+    expect(paymentLinks).toContain('Also check `sponsorship_slot_claims` for an unexpired `/sponsor` claim on that task')
+    expect(paymentLinks).toContain('A subscription Checkout session has no payment intent of its own, so take the `pi_…` from that period\'s invoice payment')
+    expect(liveGates).toContain("James's condition: gate 16 closes once the fixed runbook passes Sentinel's re-QA, and he merges this PR only on that PASS.")
+    const exportRunbook = readFileSync(path.join(process.cwd(), 'docs/runbooks/newsletter-sponsor-label.md'), 'utf8')
+    expect(exportRunbook).toContain('`.env.export.local`')
+    expect(exportRunbook).toContain('set -a; . ./.env.export.local; set +a')
+    expect(exportRunbook).toContain('turso db tokens create <db> --read-only')
+    expect(paymentLinks).toContain('Refer to a sale only by its Stripe object id (`cs_…`, `pi_…`, or `sub_…`).')
+    expect(paymentLinks).toContain('Never paste the buyer\'s email, name, or address into Slack, chat, tickets, the repo, or the launch plan.')
+    expect(paymentLinks).toContain('That is what gives it the "Sponsored" label on `/best` and puts it under `/disclosure`.')
+    expect(paymentLinks).toContain('Never feature a sponsor by editing catalog data, rankings, or page copy.')
+    expect(paymentLinks).toContain('30 days for `placement_monthly`')
+    expect(paymentLinks).not.toContain('one month for `placement_monthly`')
+    expect(paymentLinks).toContain('both Payment Link sales and `/sponsor` Checkout sales')
+    expect(runbook).toContain('They still write and finish a `stripe_events` idempotency row, but change no sponsorship or membership data.')
+    const v1213 = versionRow('v1.2.13')
     expect(v1213).toContain('Gate 17 is Closed.')
     expect(liveGates).toContain('17. **Sponsorship: newsletter sponsor labels.** Closed on James\'s CEO OK (2026-10-18).')
     expect(liveGates).toContain('`rel="sponsored nofollow"`')
