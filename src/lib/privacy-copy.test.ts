@@ -11,6 +11,8 @@ import {
   PORTAL_RATE_WINDOW_MS,
   RESULT_RATE_WINDOW_MS,
   RESULT_WINDOW_PURGE_INTERVAL_MS,
+  SPONSOR_RATE_WINDOW_MS,
+  SUGGESTION_RATE_WINDOW_MS,
 } from './rate-windows'
 import { PRIVACY_UPDATED, PRIVACY_UPDATED_WITH_RATINGS, RETENTION_ROWS } from './ratings-policy-copy'
 import { newsletterReferringPaths } from './newsletter-source'
@@ -35,6 +37,9 @@ describe('privacy policy facts', () => {
     expect(text).toContain('one hour')
     expect(text).toContain('one minute')
     expect(text).toContain('word unknown')
+    expect(paragraphs.join('\n')).toContain(`The suggestion box uses a ${windowPhrase(SUGGESTION_RATE_WINDOW_MS)} window`)
+    expect(paragraphs.join('\n')).toContain(`sponsor checkout uses a ${windowPhrase(SPONSOR_RATE_WINDOW_MS)} window`)
+    expect(windowPhrase(SUGGESTION_RATE_WINDOW_MS)).toBe('one hour')
     expect(text).toContain('do not delete those rows when the window ends')
     expect(text).toContain('After the window ends, the next request for the same code resets the count')
     expect(text).toContain('stays in the database while the retention job is off')
@@ -95,6 +100,7 @@ describe('privacy policy facts', () => {
     for (const referringPath of newsletterReferringPaths()) expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain(` ${referringPath}`)
     const page = readFileSync(path.join(process.cwd(), 'src/app/privacy/page.tsx'), 'utf8')
     expect(page).toContain('NEWSLETTER_SIGNUP_PARAGRAPH')
+    expect(page).toContain('SUGGESTION_PRIVACY_PARAGRAPH')
     expect(page).not.toContain('Lawyer note')
   })
 
@@ -159,6 +165,9 @@ describe('privacy policy facts', () => {
     expect(clickLogParagraph({ launch: true, purge: 'on', dryRun: '' })).toContain('job is off')
     expect(CLICK_LOG_PARAGRAPH).toBe(clickLogParagraph())
     expect(RETENTION_JOB_PARAGRAPH).toBe(retentionJobParagraph())
+    const suggestionSentence = 'It clears the optional email on a suggestion after 90 days and deletes a suggestion after 24 months.'
+    expect(retentionJobParagraph(false)).toContain(suggestionSentence)
+    expect(retentionJobParagraph(true)).toContain(suggestionSentence)
     expect(RETENTION_ROWS.find((row) => row.data === 'Rate-limit rows')?.kept).toBe(rateLimitRetentionKept())
     expect(PRIVACY_UPDATED).toBe('October 18, 2026')
 

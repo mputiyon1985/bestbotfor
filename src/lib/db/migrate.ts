@@ -145,6 +145,31 @@ export async function adoptSponsorCardSchema(client: Client): Promise<void> {
   await addMissingColumns(client, 'sponsorship_review_events', SPONSOR_REVIEW_ADOPT_COLUMNS)
 }
 
+/**
+ * Exact DDL for `suggestions`. The SQL file and this adopt helper share it.
+ * Additive: missing columns are added, and nothing is dropped or deleted.
+ */
+export const SUGGESTIONS_DDL = `CREATE TABLE IF NOT EXISTS suggestions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind TEXT NOT NULL CHECK (kind IN ('like', 'add', 'remove')),
+  message TEXT NOT NULL CHECK (length(message) BETWEEN 1 AND 2000),
+  email TEXT,
+  created_at INTEGER NOT NULL
+);`
+
+const SUGGESTION_ADOPT_COLUMNS: ReadonlyArray<{ name: string; ddl: string }> = [
+  { name: 'kind', ddl: "TEXT NOT NULL DEFAULT 'like'" },
+  { name: 'message', ddl: "TEXT NOT NULL DEFAULT ''" },
+  { name: 'email', ddl: 'TEXT' },
+  { name: 'created_at', ddl: 'INTEGER NOT NULL DEFAULT 0' },
+]
+
+/** Create `suggestions` when it is missing, then add any column the app expects. */
+export async function adoptSuggestionsSchema(client: Client): Promise<void> {
+  await client.execute(SUGGESTIONS_DDL)
+  await addMissingColumns(client, 'suggestions', SUGGESTION_ADOPT_COLUMNS)
+}
+
 /** Create the parent directory for a file: database. Remote libsql URLs are unchanged. */
 export async function ensureSqliteDirectory(url: string): Promise<void> {
   const filePath = sqliteFilePath(url)
@@ -198,6 +223,7 @@ export async function applyMigrations(url: string, authToken?: string, migration
   // never read, so they are left in place.
   await adoptSponsorshipSchema(client)
   await adoptSponsorCardSchema(client)
+  await adoptSuggestionsSchema(client)
 
   client.close()
 }

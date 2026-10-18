@@ -3,6 +3,7 @@ import { taskSeeds } from '@/data/catalog'
 import { TAGLINE } from '@/lib/site'
 import { BrandLockup } from './brand-lockup'
 import { CookieSettingsButton } from './cookie-settings-button'
+import { SuggestSomethingLink } from './suggest-something'
 
 export function SiteFooter() {
   return (
@@ -39,6 +40,9 @@ export function SiteFooter() {
             <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/newsletter">Newsletter</Link></li>
             <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/pricing">Pricing</Link></li>
             <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline" href="/sponsor">Sponsor</Link></li>
+            <li>
+              <SuggestSomethingLink className="inline-flex min-h-11 scroll-mb-24 items-center gap-2 underline-offset-4 hover:underline" />
+            </li>
           </ul>
         </nav>
       </div>

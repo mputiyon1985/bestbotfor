@@ -7,7 +7,7 @@ import { createClient } from '@libsql/client'
 import { drizzle } from 'drizzle-orm/libsql'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createTestDatabase } from '@/test/db'
-import { clicks, rateLimits } from '@/lib/db/schema'
+import { clicks, rateLimits, suggestions } from '@/lib/db/schema'
 import { DATA_RETENTION_PRODUCTION_LAUNCH } from './retention-flags'
 import {
   CLICK_HASH_RETENTION_MS,
@@ -23,6 +23,8 @@ import {
   retentionLogLine,
   retentionTargetOk,
   type RetentionReport,
+  SUGGESTION_EMAIL_RETENTION_MS,
+  SUGGESTION_ROW_RETENTION_MS,
 } from './data-retention'
 import { consumeRateLimit, consumeResultRateLimit, resetLocalRateLimits } from './rate-limit'
 import { HEAD, handleRetentionCron, runDataRetention } from '@/app/api/cron/data-retention/route'
@@ -235,6 +237,54 @@ describe('data retention job', () => {
       expect(again.resultWindowsDeleted).toBe(0)
       expect(again.clickHashesCleared).toBe(0)
       expect(again.wrote).toBe(false)
+    } finally {
+      await close()
+    }
+  })
+
+  it('clears suggestion emails after 90 days and deletes suggestions after 24 months, never logging their text', async () => {
+    const { db, close } = await createTestDatabase()
+    try {
+      expect(SUGGESTION_EMAIL_RETENTION_MS).toBe(90 * day)
+      expect(SUGGESTION_ROW_RETENTION_MS).toBe(730 * day)
+      await db.insert(suggestions).values([
+        { kind: 'like', message: 'fresh', email: 'fresh@example.com', createdAt: now - day },
+        { kind: 'add', message: 'email edge', email: 'edge@example.com', createdAt: now - SUGGESTION_EMAIL_RETENTION_MS },
+        { kind: 'add', message: 'old email', email: 'old@example.com', createdAt: now - SUGGESTION_EMAIL_RETENTION_MS - 1 },
+        { kind: 'remove', message: 'row edge', email: null, createdAt: now - SUGGESTION_ROW_RETENTION_MS },
+        { kind: 'remove', message: 'ancient', email: 'ancient@example.com', createdAt: now - SUGGESTION_ROW_RETENTION_MS - 1 },
+      ])
+      const dry = await runDataRetention(db, { dryRun: true, now })
+      expect(dry).toMatchObject({ suggestionEmailsEligible: 1, suggestionsEligible: 1, suggestionEmailsCleared: 0, suggestionsDeleted: 0 })
+      expect(await db.select().from(suggestions)).toHaveLength(5)
+      const log = vi.spyOn(console, 'log').mockImplementation(() => {})
+      const report = await runDataRetention(db, { dryRun: false, now, batchSize: 1, maxBatches: 10 })
+      expect(report).toMatchObject({ suggestionEmailsCleared: 1, suggestionsDeleted: 1, truncated: false, wrote: true })
+      const rows = await db.select().from(suggestions)
+      expect(rows.map((row) => [row.message, row.email]).sort()).toEqual(
+        [
+          ['email edge', 'edge@example.com'],
+          ['fresh', 'fresh@example.com'],
+          ['old email', null],
+          ['row edge', null],
+        ].sort(),
+      )
+      expect(JSON.stringify(report)).not.toMatch(/example\.com|ancient|old email/)
+      log.mockRestore()
+      const again = await runDataRetention(db, { dryRun: false, now })
+      expect(again).toMatchObject({ suggestionEmailsCleared: 0, suggestionsDeleted: 0 })
+    } finally {
+      await close()
+    }
+  })
+
+  it('skips only the suggestion purge when the suggestions table is missing', async () => {
+    const { db, close } = await createTestDatabase()
+    try {
+      await db.$client.execute('DROP TABLE suggestions')
+      await db.insert(clicks).values({ toolId: 1, page: '/tools/chatgpt', ts: now - CLICK_HASH_RETENTION_MS - 1, country: 'US', ipHash: oldHash })
+      const report = await runDataRetention(db, { dryRun: false, now })
+      expect(report).toMatchObject({ clickHashesCleared: 1, suggestionsEligible: 0, suggestionsDeleted: 0, suggestionEmailsCleared: 0 })
     } finally {
       await close()
     }

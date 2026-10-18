@@ -14,6 +14,8 @@ import {
   RESULT_RATE_WINDOW_MS,
   SPONSOR_RATE_LIMIT,
   SPONSOR_RATE_WINDOW_MS,
+  SUGGESTION_RATE_LIMIT,
+  SUGGESTION_RATE_WINDOW_MS,
 } from './rate-windows'
 
 export const ACTION_LIMITS = {
@@ -23,6 +25,7 @@ export const ACTION_LIMITS = {
   newsletter: { limit: NEWSLETTER_RATE_LIMIT, windowMs: NEWSLETTER_RATE_WINDOW_MS },
   go: { limit: GO_RATE_LIMIT, windowMs: GO_RATE_WINDOW_MS },
   sponsor: { limit: SPONSOR_RATE_LIMIT, windowMs: SPONSOR_RATE_WINDOW_MS },
+  suggestion: { limit: SUGGESTION_RATE_LIMIT, windowMs: SUGGESTION_RATE_WINDOW_MS },
 } as const
 
 export type RateLimitOnError = 'open' | 'closed'

@@ -141,6 +141,13 @@
       "when": 1792191000000,
       "tag": "0021_subscriber_beehiiv_status",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1792192000000,
+      "tag": "0022_suggestions",
+      "breakpoints": true
     }
   ]
 }

@@ -5,6 +5,8 @@ import {
   RETENTION_BATCH_SIZE,
   RETENTION_MAX_BATCHES,
   clickHashCutoff,
+  suggestionEmailCutoff,
+  suggestionRowCutoff,
   decideRetentionRequest,
   rateLimitCutoff,
   resultWindowCutoff,
@@ -45,6 +47,16 @@ async function retentionSchemaReady(client: Client): Promise<boolean> {
   return true
 }
 
+/**
+ * The suggestions table ships with #86. If it is missing, only the suggestion
+ * purge is skipped; the other deletions still run.
+ */
+async function suggestionsSchemaReady(client: Client): Promise<boolean> {
+  const result = await client.execute('PRAGMA table_info(suggestions)')
+  const present = new Set(result.rows.map((row) => String(row.name)))
+  return ['id', 'email', 'created_at'].every((column) => present.has(column))
+}
+
 function countsOnly(dryRun: boolean, counts?: Partial<RetentionReport>): RetentionReport {
   return {
     event: 'data_retention',
@@ -57,6 +69,10 @@ function countsOnly(dryRun: boolean, counts?: Partial<RetentionReport>): Retenti
     resultWindowsDeleted: 0,
     clickHashesEligible: counts?.clickHashesEligible ?? 0,
     clickHashesCleared: 0,
+    suggestionEmailsEligible: counts?.suggestionEmailsEligible ?? 0,
+    suggestionEmailsCleared: 0,
+    suggestionsEligible: counts?.suggestionsEligible ?? 0,
+    suggestionsDeleted: 0,
     truncated: false,
   }
 }
@@ -138,6 +154,40 @@ async function clearOldClickHashes(
   return cleared
 }
 
+/** Deletes suggestion rows older than 24 months. The message and email are never selected. */
+async function deleteOldSuggestions(client: Client, cutoff: number, batchSize: number, maxBatches: number): Promise<number> {
+  let deleted = 0
+  for (let batch = 0; batch < maxBatches; batch += 1) {
+    const result = await client.execute({
+      sql: `DELETE FROM suggestions WHERE id IN (
+        SELECT id FROM suggestions WHERE created_at < ? LIMIT ?
+      )`,
+      args: [cutoff, batchSize],
+    })
+    const affected = countOf(result.rowsAffected)
+    deleted += affected
+    if (affected < batchSize) break
+  }
+  return deleted
+}
+
+/** Clears the optional email on suggestions older than 90 days and keeps the row. */
+async function clearOldSuggestionEmails(client: Client, cutoff: number, batchSize: number, maxBatches: number): Promise<number> {
+  let cleared = 0
+  for (let batch = 0; batch < maxBatches; batch += 1) {
+    const result = await client.execute({
+      sql: `UPDATE suggestions SET email = NULL WHERE id IN (
+        SELECT id FROM suggestions WHERE created_at < ? AND email IS NOT NULL LIMIT ?
+      )`,
+      args: [cutoff, batchSize],
+    })
+    const affected = countOf(result.rowsAffected)
+    cleared += affected
+    if (affected < batchSize) break
+  }
+  return cleared
+}
+
 export async function runDataRetention(
   db: RetentionClient,
   options: { dryRun: boolean; now: number; batchSize?: number; maxBatches?: number; url?: string; vercelEnv?: string },
@@ -167,7 +217,24 @@ export async function runDataRetention(
     'SELECT COUNT(*) AS n FROM clicks WHERE ts < ? AND ip_hash IS NOT NULL',
     clickCutoff,
   )
-  const counted = { rateLimitsEligible, resultWindowsEligible, clickHashesEligible }
+  const suggestionsReady = await suggestionsSchemaReady(client)
+  const rowCutoff = suggestionRowCutoff(options.now)
+  const emailCutoff = suggestionEmailCutoff(options.now)
+  const suggestionsEligible = suggestionsReady
+    ? await countRows(client, 'SELECT COUNT(*) AS n FROM suggestions WHERE created_at < ?', rowCutoff)
+    : 0
+  // Rows about to be deleted are not counted again as emails to clear.
+  const suggestionEmailsEligible = suggestionsReady
+    ? countOf(
+        (
+          await client.execute({
+            sql: 'SELECT COUNT(*) AS n FROM suggestions WHERE created_at < ? AND created_at >= ? AND email IS NOT NULL',
+            args: [emailCutoff, rowCutoff],
+          })
+        ).rows[0]?.n,
+      )
+    : 0
+  const counted = { rateLimitsEligible, resultWindowsEligible, clickHashesEligible, suggestionEmailsEligible, suggestionsEligible }
   if (options.dryRun) return countsOnly(true, counted)
   if (!retentionTargetOk({ url: options.url, protocol: client.protocol, vercelEnv: options.vercelEnv })) {
     console.error('data retention guard refused', 'target')
@@ -176,21 +243,31 @@ export async function runDataRetention(
   const rateLimitsDeleted = await deleteExpiredRateLimits(client, rateCutoff, batchSize, maxBatches)
   const resultWindowsDeleted = await deleteExpiredResultWindows(client, windowCutoff, batchSize, maxBatches)
   const clickHashesCleared = await clearOldClickHashes(client, clickCutoff, batchSize, maxBatches)
+  const suggestionsDeleted = suggestionsReady ? await deleteOldSuggestions(client, rowCutoff, batchSize, maxBatches) : 0
+  const suggestionEmailsCleared = suggestionsReady
+    ? await clearOldSuggestionEmails(client, emailCutoff, batchSize, maxBatches)
+    : 0
   return {
     event: 'data_retention',
     enabled: true,
     dryRun: false,
-    wrote: rateLimitsDeleted + resultWindowsDeleted + clickHashesCleared > 0,
+    wrote: rateLimitsDeleted + resultWindowsDeleted + clickHashesCleared + suggestionsDeleted + suggestionEmailsCleared > 0,
     rateLimitsEligible,
     rateLimitsDeleted,
     resultWindowsEligible,
     resultWindowsDeleted,
     clickHashesEligible,
     clickHashesCleared,
+    suggestionEmailsEligible,
+    suggestionEmailsCleared,
+    suggestionsEligible,
+    suggestionsDeleted,
     truncated:
       rateLimitsDeleted < rateLimitsEligible ||
       resultWindowsDeleted < resultWindowsEligible ||
-      clickHashesCleared < clickHashesEligible,
+      clickHashesCleared < clickHashesEligible ||
+      suggestionsDeleted < suggestionsEligible ||
+      suggestionEmailsCleared < suggestionEmailsEligible,
   }
 }
 
