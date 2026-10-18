@@ -16,6 +16,8 @@ The live endpoint is `POST /api/stripe/webhook`. The route is `src/app/api/strip
 - `refund.created`
 - `refund.updated`
 
+The route returns 400 (`live-mode-rejected`) for every live-mode event unless `STRIPE_ALLOW_LIVE` is exactly `true` in that environment. Events the handler does not list, such as `invoice.paid`, `invoice.payment_failed`, and the `charge.dispute.*` events, are logged with `console.info` and answered 200. They change nothing in the database.
+
 This runbook does not name an endpoint id or a signing secret. The repo shows which events the handler accepts. Which events the live Stripe endpoint is subscribed to is set in the Stripe dashboard.
 
 A succeeded refund, including a partial refund, sets `sponsorships.refunded_at` and hides the placement. That happens for `charge.refunded` when `refunded` is true or `amount_refunded` is above 0, and for `refund.created` or `refund.updated` only when the refund `status` is `succeeded`. A failed refund does not set it. `refunded_at` is set once. The webhook does not touch the card's `refund_status` or `sponsorship_refund_events`. See "Recording the refund".
@@ -60,8 +62,38 @@ Recording the refund is a separate write, on the card, not on `sponsorships`. It
 - Update `sponsorship_creatives` to `refund_status = 'refunded'` only where the row's id matches and `refund_status` is `refund_pending`.
 - If that update changed a row, insert one `sponsorship_refund_events` row with decision `refunded`, the actor, and a reason of 3 to 500 characters.
 - If it changed no row, insert nothing.
+- A blank reason is stored as "Refunded in the Stripe dashboard."
 
 The `refund_pending` condition is what makes a second record do nothing. A free-form insert into `sponsorship_refund_events` has no such guard, so don't write the event without the guarded update. In preview, development, and test, the queue's "mark refunded" button calls `markSponsorRefunded`.
+
+## Payment Link sales
+
+Two live Stripe Payment Links sell sponsor slots outside the app's `/sponsor` checkout:
+
+- **Founding:** `plink_1URylTIJUbygfAuc07cebXfn`. $99 for the first 2 weeks, then $299/mo. Founding price locked for 6 months. Cancel anytime. Capped at 5 completed sales.
+- **Monthly:** `plink_1URyeXIJUbygfAucnLlkSP5u`. $299/mo.
+
+Both ask for a required `best_page` custom field: the `/best` page the buyer wants. Their metadata has no `kind=sponsorship`, so the webhook does not treat them as sponsorships. They create no `sponsorships` row, no card, and no placement. Their subscription events upsert a row in the membership `subscriptions` table with no `clerk_user_id`. Membership checks look rows up by user id, so that row grants nothing.
+
+### Fulfillment
+
+1. **The alert.** The payment watch reports a new completed Checkout session, charge, or invoice on the live account. That is James's check of the Stripe account, not an app feature. Open the payment in the Stripe dashboard and confirm it succeeded and which link it came from.
+2. **The page.** Read the `best_page` custom field on the Checkout session. Confirm it names a real `/best/[task]` page. If it does not, ask the buyer before publishing anything.
+3. **The card.** Get the tool card (name, description, https URL, logo) from the buyer. The same card rules apply as for `/sponsor` sales.
+4. **Publishing.** The `/best` placement shows only a `paid` `sponsorships` row for that task, with no `refunded_at`, inside its window, and with an approved card. The window is 7 days for `placement_weekly` and one month for `placement_monthly`, both starting at `paid_at`. A Payment Link sale has none of that, so publishing needs Mark's OK, via James, for the production data write. That write creates the `sponsorships` row and the pending card, then approves the card through the same guarded path as `recordSponsorCardReview`: copy the pending card into the `approved_*` columns and insert the `sponsorship_review_events` row. A status flip alone does not publish.
+5. **Windows.** The app has no 2-week window for the Founding first period, and no renewal for later months. Each paid period needs its own decision and write, approved the same way. Agree the exact rows with James before writing.
+
+### Refunds and cancellations
+
+Refund or cancel in the Stripe dashboard. The refund webhook matches `sponsorships` by payment intent, and a Payment Link sale has no such row, so the webhook does not hide anything. If a placement was published for the sale, removing it is a Mark-approved production write, coordinated by James, on the row that write created. A cancelled subscription stops future invoices only. The current period's placement stays up until its window ends, unless it is removed.
+
+### The 6-month price lock
+
+Stripe does not enforce the Founding lock. The subscription stays on the $299 price, and nothing in the app or in Stripe changes it after 6 months. Keep that price for 6 months from the first payment, and do not change it by hand. Any price change after that is a separate decision.
+
+### Disputes
+
+`charge.dispute.*` events reach the webhook, which logs them and changes nothing. Handle the dispute in the Stripe dashboard: respond with the evidence (the Checkout session, the `best_page` value, the published placement, and its dates). If the placement should come down while the dispute is open, that is a Mark-approved production write, coordinated by James.
 
 ## Card rules
 
