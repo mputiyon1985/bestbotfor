@@ -1,5 +1,6 @@
 /**
- * Live billing stays off unless STRIPE_ALLOW_LIVE is the exact string "true".
+ * Live billing stays off unless VERCEL_ENV is exactly "production" and
+ * STRIPE_ALLOW_LIVE is the exact string "true". Neither value is trimmed.
  * Going live needs Mark's written approval. The setup script ignores that flag
  * and still refuses every live key.
  */
@@ -21,10 +22,10 @@ export function isTestSecretKey(key: string): boolean {
 type EnvFlag = Record<string, string | undefined>
 
 export function liveModeAllowed(env: EnvFlag = process.env): boolean {
-  return env.STRIPE_ALLOW_LIVE === 'true'
+  return env.VERCEL_ENV === 'production' && env.STRIPE_ALLOW_LIVE === 'true'
 }
 
-/** Secret keys that may call the Stripe API. Live keys need the explicit flag. */
+/** Secret keys that may call the Stripe API. Live keys need production and the explicit flag. */
 export function secretKeyAllowed(key: string, env: EnvFlag = process.env): boolean {
   if (isLiveSecretKey(key)) return liveModeAllowed(env)
   return isTestSecretKey(key)
