@@ -112,8 +112,11 @@ export const FOUNDING_LINK_KEY_PREFIX = 'founding_link:'
  * Founding spots in use. There is one shared cap of 5 across the app offer and
  * the founding Payment Link:
  * - every paid, unrefunded founding_sponsor row (a canceled one still counts);
- * - every founding Payment Link sale with at least one paid, unrefunded manual
- *   row, counted once per Checkout session however many periods it has;
+ * - every founding Payment Link sale whose first-period row
+ *   (`founding_link:<cs_…>`, no `:<in_…>` suffix) is paid and unrefunded. Renewal
+ *   rows never count on their own, so a renewal written after the first period
+ *   was refunded does not bring the sale back. The key is matched trimmed and
+ *   case-insensitively, and LIKE's `_` also accepts `founding-link:`;
  * - founding checkout holds younger than the Checkout expiry, unless the
  *   task's paid founding row came from that hold (paid_at at or after the
  *   hold's claimed_at), so a paid row and its own hold count once. A paid row
@@ -121,18 +124,18 @@ export const FOUNDING_LINK_KEY_PREFIX = 'founding_link:'
  *   does not cancel out a new hold. The hold on excludeTask is left out,
  *   because a new claim on that task replaces it.
  */
-const FOUNDING_LINK_SALE_SQL = `CASE
-  WHEN instr(substr(stripe_checkout_session_id, ${FOUNDING_LINK_KEY_PREFIX.length + 1}), ':') > 0
-  THEN substr(stripe_checkout_session_id, ${FOUNDING_LINK_KEY_PREFIX.length + 1},
-    instr(substr(stripe_checkout_session_id, ${FOUNDING_LINK_KEY_PREFIX.length + 1}), ':') - 1)
-  ELSE substr(stripe_checkout_session_id, ${FOUNDING_LINK_KEY_PREFIX.length + 1})
-END`
+/** The manual row key, normalized: trimmed and lowercased. */
+const FOUNDING_LINK_KEY_SQL = 'lower(trim(stripe_checkout_session_id))'
+/** The part after the prefix: `<cs_…>` for a first-period row, `<cs_…>:<in_…>` for a renewal. */
+const FOUNDING_LINK_REST_SQL = `substr(${FOUNDING_LINK_KEY_SQL}, ${FOUNDING_LINK_KEY_PREFIX.length + 1})`
 
 const FOUNDING_TAKEN_SQL = `
   (SELECT count(*) FROM sponsorships
     WHERE offering = 'founding_sponsor' AND status = 'paid' AND refunded_at IS NULL)
-  + (SELECT count(DISTINCT ${FOUNDING_LINK_SALE_SQL}) FROM sponsorships
-    WHERE substr(stripe_checkout_session_id, 1, ${FOUNDING_LINK_KEY_PREFIX.length}) = '${FOUNDING_LINK_KEY_PREFIX}'
+  + (SELECT count(*) FROM sponsorships
+    WHERE ${FOUNDING_LINK_KEY_SQL} LIKE '${FOUNDING_LINK_KEY_PREFIX}%'
+      AND ${FOUNDING_LINK_REST_SQL} != ''
+      AND instr(${FOUNDING_LINK_REST_SQL}, ':') = 0
       AND offering IN ('placement_weekly', 'placement_monthly')
       AND status = 'paid' AND refunded_at IS NULL)
   + (SELECT count(*) FROM sponsorship_slot_claims AS hold
