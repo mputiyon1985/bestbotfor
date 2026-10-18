@@ -182,6 +182,21 @@ describe('ratings launch plan', () => {
     expect(paymentLinks).toContain('They create no `sponsorships` row')
     expect(paymentLinks).toContain('`recordSponsorCardReview`')
     expect(paymentLinks).toContain("needs Mark's OK, via James")
+    // Sentinel re-QA d471dbd: the manual row, the slot check, buyer PII, and the label.
+    for (const field of ['`stripe_checkout_session_id`', '`stripe_payment_intent_id`', '`placement_weekly` or `placement_monthly`', '`status`: `paid`', '`paid_at`', '`task_slug`: the task from `best_page`']) {
+      expect(paymentLinks, field).toContain(field)
+    }
+    expect(paymentLinks).toContain('a dashboard refund of that payment intent sets `refunded_at` and hides the placement automatically')
+    expect(paymentLinks).not.toContain('a Payment Link sale has no such row')
+    expect(paymentLinks).toContain('A Payment Link sale does not reserve the `/best` slot.')
+    expect(paymentLinks).toContain('Refer to a sale only by its Stripe object id (`cs_…`, `pi_…`, or `sub_…`).')
+    expect(paymentLinks).toContain('Never paste the buyer\'s email, name, or address into Slack, chat, tickets, the repo, or the launch plan.')
+    expect(paymentLinks).toContain('That is what gives it the "Sponsored" label on `/best` and puts it under `/disclosure`.')
+    expect(paymentLinks).toContain('Never feature a sponsor by editing catalog data, rankings, or page copy.')
+    expect(paymentLinks).toContain('30 days for `placement_monthly`')
+    expect(paymentLinks).not.toContain('one month for `placement_monthly`')
+    expect(paymentLinks).toContain('both Payment Link sales and `/sponsor` Checkout sales')
+    expect(runbook).toContain('They still write and finish a `stripe_events` idempotency row, but change no sponsorship or membership data.')
     expect(v1212).toContain('Mark (via James) dropped the lawyer requirement at 7:44 AM ET on October 18, 2026.')
     expect(v1212).toContain('Sponsor wording gets internal review only.')
     expect(changelog).not.toContain('needs lawyer review before merge')

@@ -16,7 +16,7 @@ The live endpoint is `POST /api/stripe/webhook`. The route is `src/app/api/strip
 - `refund.created`
 - `refund.updated`
 
-The route returns 400 (`live-mode-rejected`) for every live-mode event unless `STRIPE_ALLOW_LIVE` is exactly `true` in that environment. Events the handler does not list, such as `invoice.paid`, `invoice.payment_failed`, and the `charge.dispute.*` events, are logged with `console.info` and answered 200. They change nothing in the database.
+The route returns 400 (`live-mode-rejected`) for every live-mode event unless `STRIPE_ALLOW_LIVE` is exactly `true` in that environment. Events the handler does not list, such as `invoice.paid`, `invoice.payment_failed`, and the `charge.dispute.*` events, are logged with `console.info` and answered 200. They still write and finish a `stripe_events` idempotency row, but change no sponsorship or membership data.
 
 This runbook does not name an endpoint id or a signing secret. The repo shows which events the handler accepts. Which events the live Stripe endpoint is subscribed to is set in the Stripe dashboard.
 
@@ -75,17 +75,32 @@ Two live Stripe Payment Links sell sponsor slots outside the app's `/sponsor` ch
 
 Both ask for a required `best_page` custom field: the `/best` page the buyer wants. Their metadata has no `kind=sponsorship`, so the webhook does not treat them as sponsorships. They create no `sponsorships` row, no card, and no placement. Their subscription events upsert a row in the membership `subscriptions` table with no `clerk_user_id`. Membership checks look rows up by user id, so that row grants nothing.
 
+### Buyer details
+
+Both links collect the buyer's email, name, and a required billing address. Refer to a sale only by its Stripe object id (`cs_…`, `pi_…`, or `sub_…`). Never paste the buyer's email, name, or address into Slack, chat, tickets, the repo, or the launch plan. Contact the buyer from the Stripe customer record. Store only what the `sponsorships` row below needs, and leave its `email` and `company` columns empty.
+
 ### Fulfillment
 
 1. **The alert.** The payment watch reports a new completed Checkout session, charge, or invoice on the live account. That is James's check of the Stripe account, not an app feature. Open the payment in the Stripe dashboard and confirm it succeeded and which link it came from.
 2. **The page.** Read the `best_page` custom field on the Checkout session. Confirm it names a real `/best/[task]` page. If it does not, ask the buyer before publishing anything.
-3. **The card.** Get the tool card (name, description, https URL, logo) from the buyer. The same card rules apply as for `/sponsor` sales.
-4. **Publishing.** The `/best` placement shows only a `paid` `sponsorships` row for that task, with no `refunded_at`, inside its window, and with an approved card. The window is 7 days for `placement_weekly` and one month for `placement_monthly`, both starting at `paid_at`. A Payment Link sale has none of that, so publishing needs Mark's OK, via James, for the production data write. That write creates the `sponsorships` row and the pending card, then approves the card through the same guarded path as `recordSponsorCardReview`: copy the pending card into the `approved_*` columns and insert the `sponsorship_review_events` row. A status flip alone does not publish.
-5. **Windows.** The app has no 2-week window for the Founding first period, and no renewal for later months. Each paid period needs its own decision and write, approved the same way. Agree the exact rows with James before writing.
+3. **The slot.** A Payment Link sale does not reserve the `/best` slot. Until the row in step 5 exists, `/sponsor` Checkout can still sell the same page, and the page shows only the newest paid placement, so one paying sponsor would get nothing. Before confirming the sale, check that the requested page has no `paid` `sponsorships` row without `refunded_at` whose window is in or overlaps the new window. If it is taken, tell the buyer and offer another page or later dates. Once the row in step 5 exists, it blocks `/sponsor` claims for that page in that window.
+4. **The card.** Get the tool card (name, description, https URL, logo) from the buyer. The same card rules apply as for `/sponsor` sales.
+5. **Publishing.** The `/best` placement shows only a `paid` `sponsorships` row for that task, with no `refunded_at`, inside its window, and with an approved card. The window is 7 days for `placement_weekly` and 30 days for `placement_monthly`, both starting at `paid_at`. A Payment Link sale has none of that, so publishing needs Mark's OK, via James, for the production data write. That write creates the `sponsorships` row and the pending card, then approves the card through the same guarded path as `recordSponsorCardReview`: copy the pending card into the `approved_*` columns and insert the `sponsorship_review_events` row. A status flip alone does not publish. The row has:
+   - `stripe_checkout_session_id`: the sale's `cs_…` id for the first period. The column is unique, so each later period needs its own unique key (for example `<cs_…>:<invoice id>`).
+   - `stripe_payment_intent_id`: the payment intent of that period's payment.
+   - `offering`: `placement_weekly` or `placement_monthly`.
+   - `status`: `paid`.
+   - `paid_at`: the start of the window, normally the time of that period's payment. It is never moved later.
+   - `task_slug`: the task from `best_page`.
+6. **Windows.** The app has no 2-week window for the Founding first period, and no renewal for later months. A monthly Stripe period is a calendar month, while the app window is 30 days, so a 31-day month can leave a 1-day gap. Each paid period needs its own decision and write, approved the same way, with its window starting at that invoice's payment. Agree the exact rows with James before writing.
+
+### Sponsored label and disclosure
+
+A Payment Link placement is published only through the `sponsorships` row and an approved card. That is what gives it the "Sponsored" label on `/best` and puts it under `/disclosure`. Never feature a sponsor by editing catalog data, rankings, or page copy. That would be an unlabeled ad. Payment never buys rank.
 
 ### Refunds and cancellations
 
-Refund or cancel in the Stripe dashboard. The refund webhook matches `sponsorships` by payment intent, and a Payment Link sale has no such row, so the webhook does not hide anything. If a placement was published for the sale, removing it is a Mark-approved production write, coordinated by James, on the row that write created. A cancelled subscription stops future invoices only. The current period's placement stays up until its window ends, unless it is removed.
+Refund or cancel in the Stripe dashboard. The refund webhook matches `sponsorships` by payment intent. When the row from Fulfillment step 5 carries the refunded payment's payment intent, a dashboard refund of that payment intent sets `refunded_at` and hides the placement automatically. If there is no row for the period, or it carries a different payment intent, the webhook hides nothing; removing a published placement is then a Mark-approved production write, coordinated by James, on the row that write created. A cancelled subscription stops future invoices only. The current period's placement stays up until its window ends, unless it is refunded or removed.
 
 ### The 6-month price lock
 
@@ -93,7 +108,7 @@ Stripe does not enforce the Founding lock. The subscription stays on the $299 pr
 
 ### Disputes
 
-`charge.dispute.*` events reach the webhook, which logs them and changes nothing. Handle the dispute in the Stripe dashboard: respond with the evidence (the Checkout session, the `best_page` value, the published placement, and its dates). If the placement should come down while the dispute is open, that is a Mark-approved production write, coordinated by James.
+This applies to every sponsor sale, both Payment Link sales and `/sponsor` Checkout sales. `charge.dispute.*` events reach the webhook, which logs them and changes nothing in the app. Handle the dispute in the Stripe dashboard: respond with the evidence (the Checkout session, the `best_page` value or the `/sponsor` task, the published placement, and its dates). If the placement should come down while the dispute is open, that is a Mark-approved production write, coordinated by James.
 
 ## Card rules
 
