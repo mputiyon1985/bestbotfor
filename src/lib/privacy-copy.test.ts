@@ -80,7 +80,7 @@ describe('privacy policy facts', () => {
 
   it('says a newsletter signup gets a confirmation email before the address is subscribed', () => {
     expect(NEWSLETTER_SIGNUP_PARAGRAPH).toBe(
-      'If you join the newsletter, we store your email address. When our digest is connected, we also send that email address to Beehiiv so they can deliver it. You get a confirmation email first (double opt-in). You are subscribed only after you confirm that message. We do not ask for your name on the form.',
+      'If you join the newsletter, we store your email address. Before the digest is connected to Beehiiv, we keep that address as a pending signup and you are not subscribed yet. When the digest is connected, we send the address to Beehiiv, including an address we stored while it was pending. You get a confirmation email first (double opt-in). You are subscribed only after you confirm that message. We do not ask for your name on the form.',
     )
     const page = readFileSync(path.join(process.cwd(), 'src/app/privacy/page.tsx'), 'utf8')
     expect(page).toContain('NEWSLETTER_SIGNUP_PARAGRAPH')

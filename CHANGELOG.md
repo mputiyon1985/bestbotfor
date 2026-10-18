@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+- Merged main `f8a6236`. A hand-check of `drizzle/meta/_journal.json` matches the SQL files through `0021` at idx 19. Global Privacy Control gating and `ACTION_LIMITS` are unchanged.
+- The privacy policy says a newsletter address stored before Beehiiv is connected stays a pending signup and is not subscribed yet. When the digest is connected, that address is sent to Beehiiv. A confirmation email (double opt-in) still comes before the address is subscribed. This policy text needs lawyer review before merge.
 - Merged main `1dc745a` (the sponsor stack). A hand-check of `drizzle/meta/_journal.json` against the SQL files matches: 17 tags, idx 0 through 16, one file per tag. `drizzle/0009_sponsorships.sql` is on disk. There is no `0010` file or journal row. Sponsor checkout uses the shared `ACTION_LIMITS`, including the existing newsletter, visit, quiz, checkout, and portal windows. Global Privacy Control gating is unchanged. This policy text needs lawyer review before merge.
 - The privacy policy says a newsletter signup gets a confirmation email (double opt-in) before the address is subscribed. James decided on October 17, 2026, at 7:53 PM ET that BestBotFor uses Beehiiv double opt-in. This policy text needs lawyer review before merge.
 - The privacy-page comment no longer says the launch pull request sets the retention constant and both environment variables together. `DATA_RETENTION_PRODUCTION_LAUNCH` is a code constant. That pull request sets it to true and nothing else. The first production run leaves dry-run on or unset. A later step sets dry-run to off. The page still says the job is on only when the constant is true, purge is exactly `on`, and dry-run is exactly `off`.
