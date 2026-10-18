@@ -64,6 +64,17 @@ describe('isUnsafeCatalogPath', () => {
     expect(isUnsafeCatalogPath('/best/coding/extra')).toBe(true)
   })
 
+  it('lets /best/<slug>/free through and rejects anything unsafe around it', () => {
+    expect(isUnsafeCatalogPath('/best/coding/free')).toBe(false)
+    expect(isUnsafeCatalogPath('/best/coding/free/')).toBe(false)
+    expect(isUnsafeCatalogPath('/best/%2e%2e/free')).toBe(true)
+    expect(isUnsafeCatalogPath('/best/Coding/free')).toBe(true)
+    expect(isUnsafeCatalogPath('/best/coding/free/extra')).toBe(true)
+    expect(isUnsafeCatalogPath('/best/coding/paid')).toBe(true)
+    expect(isUnsafeCatalogPath('/tools/coding/free')).toBe(true)
+    expect(isUnsafeCatalogPath('/go/coding/free')).toBe(true)
+  })
+
   it('reads an absolute URL without letting the parser collapse dot segments', () => {
     expect(isUnsafeCatalogPath('http://127.0.0.1:3000/go/%2e%2e')).toBe(true)
     expect(isUnsafeCatalogPath('https://bestbotfor.com/best/%2e%2e')).toBe(true)
