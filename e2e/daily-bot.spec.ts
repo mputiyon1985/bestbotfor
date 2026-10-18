@@ -36,7 +36,7 @@ test('a quiz result shows the Daily Bot under the pick and a free-account prompt
   await expect(region).toHaveCount(1)
   await expectBelow(page.getByRole('heading', { level: 1 }), region)
   await expectBelow(region, page.getByRole('heading', { name: 'Alternatives' }))
-  const link = page.getByRole('link', { name: 'Create a free account to keep up with new tools' })
+  const link = page.getByRole('link', { name: 'Save this pick: free account' })
   await expect(link).toHaveAttribute('href', /\/sign-up\?redirect_url=/)
   await link.click()
   await expect(page).toHaveURL(/\/sign-up\?redirect_url=/)
@@ -67,7 +67,7 @@ test('a compare page ends with the Daily Bot', async ({ page }) => {
   await expectBelow(page.getByRole('heading', { name: /deep dive/ }), region)
 })
 
-test('newsletter_signup waits for analytics consent and does not include the email', async ({ page }) => {
+test('a pending signup does not fire newsletter_signup', async ({ page }) => {
   await page.addInitScript(() => {
     const analyticsWindow = window as AnalyticsWindow
     analyticsWindow.__gaEvents = []
@@ -85,19 +85,16 @@ test('newsletter_signup waits for analytics consent and does not include the ema
   const email = `daily-bot-${Date.now()}@example.com`
   await page.getByLabel('Email address').fill(email)
   await page.getByRole('button', { name: 'Get the daily digest' }).click()
-  await expect(page.getByRole('status')).toHaveText("Thanks. You're on the list.")
+  await expect(page.getByRole('status')).toHaveText("You'll get a confirmation email when The Daily Bot launches.")
 
   const before = await page.evaluate(() => (window as AnalyticsWindow).__gaEvents ?? [])
   expect(before.filter((entry) => entry[1] === 'newsletter_signup')).toEqual([])
 
   await page.getByRole('button', { name: 'Accept analytics' }).click()
-  await expect.poll(async () => {
-    const events = await page.evaluate(() => (window as AnalyticsWindow).__gaEvents ?? [])
-    return events.filter((entry) => entry[1] === 'newsletter_signup').length
-  }).toBe(1)
+  await expect(page.getByRole('button', { name: 'Accept analytics' })).toHaveCount(0)
 
   const after = await page.evaluate(() => (window as AnalyticsWindow).__gaEvents ?? [])
   const signup = after.filter((entry) => entry[1] === 'newsletter_signup')
-  expect(JSON.stringify(signup)).not.toContain(email)
-  expect(JSON.stringify(signup)).not.toContain('@')
+  expect(signup).toEqual([])
+  expect(JSON.stringify(after)).not.toContain(email)
 })

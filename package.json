@@ -17,6 +17,7 @@
     "test:e2e": "playwright test",
     "db:migrate": "tsx scripts/migrate.ts",
     "db:seed": "tsx scripts/seed.ts",
+    "backfill:beehiiv": "tsx scripts/backfill-beehiiv-subscribers.ts",
     "check:stripe-keys": "tsx scripts/check-no-live-stripe-keys.ts",
     "check:gitleaks": "tsx scripts/check-gitleaks.ts",
     "check:bundle": "tsx scripts/check-client-bundle.ts",

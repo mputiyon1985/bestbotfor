@@ -5,6 +5,8 @@ const ALLOWED = new Set([
   'src/lib/rate-limit.ts',
   'src/lib/db/client.ts',
   'src/lib/newsletter.ts',
+  // Pending Beehiiv backfill claims a row before the call, then marks it synced.
+  'src/lib/newsletter-backfill.ts',
   'src/lib/stripe-webhook.ts',
   // Sponsor tool cards, their review audit log, and the checkout slot claim.
   'src/lib/sponsor-card.ts',
@@ -12,6 +14,7 @@ const ALLOWED = new Set([
   // Daily placement impression and Sponsored-card click totals. No visitor identifier.
   'src/lib/sponsor-impressions.ts',
   'src/lib/members.ts',
+  'src/lib/pick-save.ts',
   'src/app/go/[slug]/route.ts',
   'src/lib/db/migrate.ts',
   'scripts/seed.ts',
@@ -23,6 +26,7 @@ const ALLOWED = new Set([
   // 0009 is reviewed DDL for stripe_events and sponsorships.
   'drizzle/0009_sponsorships.sql',
   'drizzle/0011_user_reviews.sql',
+  'drizzle/0019_subscriber_status.sql',
   // Daily retention cron. Deletes rate_limits rows whose reset_at is more
   // than 24 hours old, including rows left under a previous HMAC key, and
   // result_rate_windows rows whose expires_at is more than 24 hours old.

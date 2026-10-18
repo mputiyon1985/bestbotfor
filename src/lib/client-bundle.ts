@@ -16,6 +16,7 @@ export const CLIENT_BUNDLE_FORBIDDEN = [
   'libsql://',
   'TURSO_AUTH_TOKEN',
   '@libsql/client',
+  'BEEHIIV_API_KEY',
   'STRIPE_SECRET_KEY',
   'STRIPE_WEBHOOK_SECRET',
   'STRIPE_ALLOW_LIVE',
