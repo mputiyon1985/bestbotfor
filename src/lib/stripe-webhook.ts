@@ -1,4 +1,4 @@
-import { and, eq, isNull, lte, ne, or, sql } from 'drizzle-orm'
+import { and, eq, isNotNull, isNull, lte, ne, or, sql } from 'drizzle-orm'
 import type Stripe from 'stripe'
 import { z } from 'zod'
 import type { Database } from './db'
@@ -544,17 +544,29 @@ function invoiceSubscriptionId(invoice: z.infer<typeof invoiceSchema>): string |
  * An invoice for a subscription with no sponsor row (a membership, or a
  * sponsor checkout whose completed event has not been processed yet) changes
  * nothing; the checkout handler re-reads the Subscription when it runs.
+ *
+ * Both are safe out of order:
+ * - A canceled row is final. A later invoice.paid does not move paid_through,
+ *   and a scheduled cancel caps paid_through at cancel_at.
+ * - invoice.paid clears a failure only when the paid event is at least as new
+ *   as the failure (payment_failed_at is the failed event's created time).
+ * - invoice.payment_failed is ignored when its period already ends on or
+ *   before paid_through (a newer invoice.paid already paid that period), or
+ *   when it is older than the failure already recorded.
  */
 async function applySponsorInvoice(db: Database, event: Stripe.Event, now: number): Promise<void> {
   const parsed = invoiceSchema.safeParse(event.data?.object)
   if (!parsed.success) throw new Error('invoice payload failed validation')
   const subscriptionId = invoiceSubscriptionId(parsed.data)
   if (!subscriptionId) return
+  const eventAt = secondsToMs(event.created) ?? now
+  const ends = (parsed.data.lines?.data ?? [])
+    .map((line) => secondsToMs(line.period?.end))
+    .filter((value): value is number => value != null)
+  const periodEnd = ends.length > 0 ? Math.max(...ends) : null
+  const notCanceled = or(isNull(sponsorships.subscriptionStatus), ne(sponsorships.subscriptionStatus, 'canceled'))
   if (event.type === 'invoice.paid') {
-    const ends = (parsed.data.lines?.data ?? [])
-      .map((line) => secondsToMs(line.period?.end))
-      .filter((value): value is number => value != null)
-    const periodEnd = ends.length > 0 ? Math.max(...ends) : null
+    const failureIsOlder = sql`(${sponsorships.paymentFailedAt} IS NULL OR ${sponsorships.paymentFailedAt} <= ${eventAt})`
     await db
       .update(sponsorships)
       .set({
@@ -565,29 +577,39 @@ async function applySponsorInvoice(db: Database, event: Stripe.Event, now: numbe
             ? sql`${sponsorships.paidThrough}`
             : sql`CASE
                 WHEN ${sponsorships.paidThrough} IS NULL THEN ${periodEnd}
+                WHEN ${sponsorships.cancelAt} IS NOT NULL THEN
+                  max(${sponsorships.paidThrough}, min(${periodEnd}, ${sponsorships.cancelAt}))
                 ELSE max(${sponsorships.paidThrough}, ${periodEnd})
               END`,
-        paymentFailedAt: null,
+        paymentFailedAt: sql`CASE WHEN ${failureIsOlder} THEN NULL ELSE ${sponsorships.paymentFailedAt} END`,
         subscriptionStatus: sql`CASE
-          WHEN ${sponsorships.subscriptionStatus} = 'past_due' THEN 'active'
+          WHEN ${sponsorships.subscriptionStatus} = 'past_due' AND ${failureIsOlder} THEN 'active'
           ELSE ${sponsorships.subscriptionStatus}
         END`,
         updatedAt: now,
       })
-      .where(and(eq(sponsorships.stripeSubscriptionId, subscriptionId), ne(sponsorships.status, 'failed')))
+      .where(and(eq(sponsorships.stripeSubscriptionId, subscriptionId), ne(sponsorships.status, 'failed'), notCanceled))
     return
+  }
+  const conditions = [
+    eq(sponsorships.stripeSubscriptionId, subscriptionId),
+    notCanceled,
+    or(isNull(sponsorships.paymentFailedAt), lte(sponsorships.paymentFailedAt, eventAt)),
+  ]
+  if (periodEnd != null) {
+    conditions.push(sql`(${sponsorships.paidThrough} IS NULL OR ${sponsorships.paidThrough} < ${periodEnd})`)
   }
   await db
     .update(sponsorships)
     .set({
-      paymentFailedAt: now,
+      paymentFailedAt: eventAt,
       subscriptionStatus: sql`CASE
         WHEN ${sponsorships.subscriptionStatus} IN ('active', 'trialing') THEN 'past_due'
         ELSE ${sponsorships.subscriptionStatus}
       END`,
       updatedAt: now,
     })
-    .where(eq(sponsorships.stripeSubscriptionId, subscriptionId))
+    .where(and(...conditions))
 }
 
 const sponsorSubscriptionSchema = z.object({
@@ -684,18 +706,107 @@ function refundHidesPlacement(type: string, record: Record<string, unknown>): bo
   return type.startsWith('refund.') && record.status === 'succeeded'
 }
 
-/** A succeeded refund or charge.refunded stops the placement. refunded_at is set once. */
-async function applySponsorshipRefund(db: Database, event: Stripe.Event, now: number): Promise<void> {
+function stripeObjectId(value: unknown): string | null {
+  if (typeof value === 'string') return value || null
+  if (!value || typeof value !== 'object' || !('id' in value)) return null
+  const id = (value as { id?: unknown }).id
+  return typeof id === 'string' && id ? id : null
+}
+
+/**
+ * The sponsor subscription a refunded payment belongs to. Subscription
+ * checkouts store no payment intent (Checkout returns null for
+ * mode=subscription), so the refund is traced through the invoice that the
+ * payment paid: a legacy charge.invoice field, else the InvoicePayment for the
+ * payment intent, then the invoice's parent subscription.
+ */
+async function refundSubscriptionId(stripe: Stripe, record: Record<string, unknown>, intent: string | null): Promise<string | null> {
+  let invoice: unknown = record.invoice ?? null
+  if (!stripeObjectId(invoice) && intent) {
+    const payments = await stripe.invoicePayments.list({
+      payment: { type: 'payment_intent', payment_intent: intent },
+      limit: 1,
+      expand: ['data.invoice'],
+    })
+    invoice = payments.data[0]?.invoice ?? null
+  }
+  const invoiceId = stripeObjectId(invoice)
+  if (!invoiceId) return null
+  const full =
+    invoice && typeof invoice === 'object' && 'parent' in invoice ? invoice : await stripe.invoices.retrieve(invoiceId)
+  const parsed = invoiceSchema.safeParse(full)
+  return parsed.success ? invoiceSubscriptionId(parsed.data) : null
+}
+
+/** The customer on a refunded charge. A Refund only names its charge, so that is read when needed. */
+async function refundCustomerId(stripe: Stripe, record: Record<string, unknown>): Promise<string | null> {
+  const direct = stripeObjectId(record.customer)
+  if (direct) return direct
+  const chargeId = typeof record.charge === 'string' ? record.charge : null
+  if (!chargeId) return null
+  const charge = await stripe.charges.retrieve(chargeId)
+  return stripeObjectId(charge.customer)
+}
+
+/**
+ * A succeeded refund or charge.refunded stops the placement. refunded_at is set once.
+ * One-time sponsorships match on the payment intent. A subscription row
+ * matches on the subscription the refunded invoice belongs to. When no
+ * invoice can be found, a customer with exactly one unrefunded sponsor
+ * subscription and no membership is matched on the customer id; anything
+ * less certain changes nothing.
+ */
+async function applySponsorshipRefund(db: Database, stripe: Stripe, event: Stripe.Event, now: number): Promise<void> {
   const object = event.data?.object
   if (!object || typeof object !== 'object') throw new Error('refund payload failed validation')
   const record = object as unknown as Record<string, unknown>
   if (!refundHidesPlacement(event.type, record)) return
   const intent = paymentIntentId(record.payment_intent)
-  if (!intent) return
+  if (intent) {
+    const direct = await db
+      .update(sponsorships)
+      .set({ refundedAt: now, updatedAt: now })
+      .where(and(eq(sponsorships.stripePaymentIntentId, intent), isNull(sponsorships.refundedAt)))
+      .returning({ id: sponsorships.id })
+    if (direct.length > 0) return
+    const known = await db
+      .select({ id: sponsorships.id })
+      .from(sponsorships)
+      .where(eq(sponsorships.stripePaymentIntentId, intent))
+      .limit(1)
+    if (known.length > 0) return
+  }
+  const subscriptionId = await refundSubscriptionId(stripe, record, intent)
+  if (subscriptionId) {
+    await db
+      .update(sponsorships)
+      .set({ refundedAt: now, updatedAt: now })
+      .where(and(eq(sponsorships.stripeSubscriptionId, subscriptionId), isNull(sponsorships.refundedAt)))
+    return
+  }
+  const customerId = await refundCustomerId(stripe, record)
+  if (!customerId) return
+  const membership = await db
+    .select({ id: subscriptions.stripeSubscriptionId })
+    .from(subscriptions)
+    .where(eq(subscriptions.stripeCustomerId, customerId))
+    .limit(1)
+  if (membership.length > 0) return
+  const candidates = await db
+    .select({ id: sponsorships.id })
+    .from(sponsorships)
+    .where(
+      and(
+        eq(sponsorships.stripeCustomerId, customerId),
+        isNotNull(sponsorships.stripeSubscriptionId),
+        isNull(sponsorships.refundedAt),
+      ),
+    )
+  if (candidates.length !== 1 || !candidates[0]) return
   await db
     .update(sponsorships)
     .set({ refundedAt: now, updatedAt: now })
-    .where(and(eq(sponsorships.stripePaymentIntentId, intent), isNull(sponsorships.refundedAt)))
+    .where(and(eq(sponsorships.id, candidates[0].id), isNull(sponsorships.refundedAt)))
 }
 
 async function applyEvent(db: Database, stripe: Stripe, event: Stripe.Event, now?: number): Promise<void> {
@@ -705,7 +816,7 @@ async function applyEvent(db: Database, stripe: Stripe, event: Stripe.Event, now
   }
 
   if (event.type === 'charge.refunded' || event.type.startsWith('refund.')) {
-    await applySponsorshipRefund(db, event, now ?? Date.now())
+    await applySponsorshipRefund(db, stripe, event, now ?? Date.now())
     return
   }
 

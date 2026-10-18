@@ -467,6 +467,13 @@ type StubState = {
   lineItems: Array<{ price: string; quantity: number }>
   subscription: Record<string, unknown>
   sessionSubscription?: string | null
+  /** Invoice id each payment intent paid (InvoicePayment lookup). */
+  invoiceByIntent?: Record<string, string>
+  /** Subscription each invoice belongs to. */
+  invoiceSubscription?: Record<string, string>
+  /** Customer on each charge. */
+  chargeCustomer?: Record<string, string>
+  calls?: string[]
 }
 
 function webhookStripe(events: Stripe.Event[], state: StubState): Stripe {
@@ -493,6 +500,29 @@ function webhookStripe(events: Stripe.Event[], state: StubState): Stripe {
     subscriptions: {
       async retrieve(id: string) {
         return { id, ...state.subscription }
+      },
+    },
+    invoicePayments: {
+      async list(params: { payment?: { type: string; payment_intent?: string }; expand?: string[] }) {
+        state.calls?.push(`invoicePayments.list:${params.payment?.payment_intent}`)
+        const invoice = params.payment?.payment_intent ? state.invoiceByIntent?.[params.payment.payment_intent] : undefined
+        return { data: invoice ? [{ id: `inpay_${invoice}`, invoice }] : [] }
+      },
+    },
+    invoices: {
+      async retrieve(id: string) {
+        state.calls?.push(`invoices.retrieve:${id}`)
+        const subscription = state.invoiceSubscription?.[id]
+        return {
+          id,
+          parent: subscription ? { type: 'subscription_details', subscription_details: { subscription } } : null,
+        }
+      },
+    },
+    charges: {
+      async retrieve(id: string) {
+        state.calls?.push(`charges.retrieve:${id}`)
+        return { id, customer: state.chargeCustomer?.[id] ?? null }
       },
     },
   } as unknown as Stripe
@@ -899,5 +929,220 @@ describe('sponsor subscription webhook', () => {
     })
     expect(result).toEqual({ status: 400, body: { error: 'live-mode-rejected' } })
     await close()
+  })
+
+  function refundEvent(id: string, type: 'charge.refunded' | 'refund.updated', object: Record<string, unknown>): Stripe.Event {
+    return { id, type, created: T0S + 86_400, livemode: false, data: { object } } as unknown as Stripe.Event
+  }
+
+  it('sets refunded_at on a subscription sponsorship through the refunded invoice, via the real handler', async () => {
+    const { db, close } = await createTestDatabase()
+    const completed = checkoutCompleted('evt_refund_checkout')
+    const chargeRefund = refundEvent('evt_charge_refunded', 'charge.refunded', {
+      id: 'ch_first',
+      object: 'charge',
+      refunded: true,
+      amount_refunded: 9_900,
+      payment_intent: 'pi_first_invoice',
+      customer: 'cus_sponsor',
+    })
+    const calls: string[] = []
+    const stripe = webhookStripe([completed, chargeRefund], {
+      lineItems: foundingLines,
+      subscription: foundingSubscription(),
+      invoiceByIntent: { pi_first_invoice: 'in_first' },
+      invoiceSubscription: { in_first: 'sub_sponsor' },
+      calls,
+    })
+    await send(db, stripe, completed, T0)
+    let row = (await db.select().from(sponsorships))[0]
+    // Checkout stores no payment intent for mode=subscription.
+    expect(row?.stripePaymentIntentId).toBeNull()
+    expect(row && placementActiveAt(row, T0 + DAY)).toBe(true)
+
+    expect(await send(db, stripe, chargeRefund, T0 + DAY)).toEqual({ status: 200, body: { received: true } })
+    row = (await db.select().from(sponsorships))[0]
+    expect(row?.refundedAt).toBe(T0 + DAY)
+    expect(calls).toEqual(['invoicePayments.list:pi_first_invoice', 'invoices.retrieve:in_first'])
+    expect(await activeBestPlacementForTask(db, 'coding', T0 + DAY + 1)).toBeNull()
+    await close()
+  })
+
+  it('matches a refund.updated on the refund charge customer when no invoice is found, and only for one sponsor subscription', async () => {
+    const { db, close } = await createTestDatabase()
+    const completed = checkoutCompleted('evt_refund_checkout_2')
+    const refund = refundEvent('evt_refund_updated', 'refund.updated', {
+      id: 're_1',
+      object: 'refund',
+      status: 'succeeded',
+      charge: 'ch_no_invoice',
+      payment_intent: 'pi_no_invoice',
+    })
+    const stripe = webhookStripe([completed, refund], {
+      lineItems: foundingLines,
+      subscription: foundingSubscription(),
+      chargeCustomer: { ch_no_invoice: 'cus_sponsor' },
+    })
+    await send(db, stripe, completed, T0)
+    expect(await send(db, stripe, refund, T0 + DAY)).toEqual({ status: 200, body: { received: true } })
+    expect((await db.select().from(sponsorships))[0]?.refundedAt).toBe(T0 + DAY)
+    await close()
+  })
+
+  it('does not guess a refund on the customer when it also has a membership, or when the invoice is another subscription', async () => {
+    const { db, close } = await createTestDatabase()
+    const completed = checkoutCompleted('evt_refund_checkout_3')
+    const membershipRefund = refundEvent('evt_membership_refund', 'charge.refunded', {
+      id: 'ch_membership',
+      refunded: true,
+      amount_refunded: 1_000,
+      payment_intent: 'pi_membership',
+      customer: 'cus_sponsor',
+    })
+    const unknownRefund = refundEvent('evt_unknown_refund', 'charge.refunded', {
+      id: 'ch_unknown',
+      refunded: true,
+      amount_refunded: 1_000,
+      payment_intent: 'pi_unknown',
+      customer: 'cus_sponsor',
+    })
+    const stripe = webhookStripe([completed, membershipRefund, unknownRefund], {
+      lineItems: foundingLines,
+      subscription: foundingSubscription(),
+      invoiceByIntent: { pi_membership: 'in_membership' },
+      invoiceSubscription: { in_membership: 'sub_membership' },
+    })
+    await send(db, stripe, completed, T0)
+    await send(db, stripe, membershipRefund, T0 + DAY)
+    expect((await db.select().from(sponsorships))[0]?.refundedAt).toBeNull()
+
+    await db.insert(subscriptions).values({
+      stripeSubscriptionId: 'sub_membership',
+      stripeCustomerId: 'cus_sponsor',
+      status: 'active',
+      createdAt: T0,
+      updatedAt: T0,
+    } as typeof subscriptions.$inferInsert)
+    await send(db, stripe, unknownRefund, T0 + DAY + 1)
+    expect((await db.select().from(sponsorships))[0]?.refundedAt).toBeNull()
+    await close()
+  })
+
+  it('keeps a one-time refund on its payment intent without calling Stripe', async () => {
+    const { db, close } = await createTestDatabase()
+    await db.insert(sponsorships).values({
+      stripeCheckoutSessionId: 'cs_one_time',
+      stripePaymentIntentId: 'pi_one_time',
+      stripeCustomerId: 'cus_sponsor',
+      offering: 'placement_weekly',
+      status: 'paid',
+      paidAt: T0,
+      email: 'sponsor@example.com',
+      taskSlug: 'coding',
+      createdAt: T0,
+      updatedAt: T0,
+    } as typeof sponsorships.$inferInsert)
+    const refund = refundEvent('evt_one_time_refund', 'charge.refunded', {
+      id: 'ch_one_time',
+      refunded: true,
+      amount_refunded: 9_900,
+      payment_intent: 'pi_one_time',
+      customer: 'cus_sponsor',
+    })
+    const calls: string[] = []
+    const stripe = webhookStripe([refund], { lineItems: [], subscription: {}, calls })
+    await send(db, stripe, refund, T0 + DAY)
+    expect((await db.select().from(sponsorships))[0]?.refundedAt).toBe(T0 + DAY)
+    expect(calls).toEqual([])
+    await close()
+  })
+
+  it('does not move paid_through after a delete or past a scheduled cancel when invoice.paid arrives late', async () => {
+    const { db, close } = await createTestDatabase()
+    const completed = checkoutCompleted('evt_ooo_checkout')
+    const deleted = subscriptionChange('evt_ooo_deleted', 'customer.subscription.deleted', T0S + 2 * 86_400, {
+      status: 'canceled',
+      canceled_at: T0S + 2 * 86_400,
+      ended_at: T0S + 2 * 86_400,
+    })
+    const latePaid = invoiceEvent('evt_ooo_late_paid', 'invoice.paid', RENEW_END_S, TRIAL_END_S)
+    const lateFailed = invoiceEvent('evt_ooo_late_failed', 'invoice.payment_failed', RENEW_END_S, TRIAL_END_S)
+    const stripe = webhookStripe([completed, deleted, latePaid, lateFailed], {
+      lineItems: foundingLines,
+      subscription: foundingSubscription(),
+    })
+    await send(db, stripe, completed, T0)
+    await send(db, stripe, deleted, T0 + 2 * DAY)
+    await send(db, stripe, latePaid, T0 + 3 * DAY)
+    await send(db, stripe, lateFailed, T0 + 3 * DAY + 1)
+    let row = (await db.select().from(sponsorships))[0]
+    expect(row).toMatchObject({
+      subscriptionStatus: 'canceled',
+      paidThrough: (T0S + 2 * 86_400) * 1000,
+      paymentFailedAt: null,
+    })
+    expect(row && placementActiveAt(row, T0 + 3 * DAY)).toBe(false)
+    await close()
+
+    const second = await createTestDatabase()
+    const completed2 = checkoutCompleted('evt_ooo_checkout_2')
+    const scheduled = subscriptionChange('evt_ooo_sched', 'customer.subscription.updated', T0S + 86_400, {
+      cancel_at_period_end: true,
+      cancel_at: TRIAL_END_S,
+    })
+    const paidAfterSchedule = invoiceEvent('evt_ooo_paid_after_sched', 'invoice.paid', RENEW_END_S, T0S + 2 * 86_400)
+    const stripe2 = webhookStripe([completed2, scheduled, paidAfterSchedule], {
+      lineItems: foundingLines,
+      subscription: foundingSubscription(),
+    })
+    await send(second.db, stripe2, completed2, T0)
+    await send(second.db, stripe2, scheduled, T0 + DAY)
+    await send(second.db, stripe2, paidAfterSchedule, T0 + 2 * DAY)
+    row = (await second.db.select().from(sponsorships))[0]
+    expect(row?.paidThrough).toBe(TRIAL_END_S * 1000)
+    await second.close()
+  })
+
+  it('ignores a stale invoice.payment_failed after a newer invoice.paid, and a stale invoice.paid does not clear a newer failure', async () => {
+    const { db, close } = await createTestDatabase()
+    const completed = checkoutCompleted('evt_ooo2_checkout')
+    // Renewal for the period ending RENEW_END: it failed first, then the retry paid. Delivered in reverse.
+    const retryPaid = invoiceEvent('evt_ooo2_paid', 'invoice.paid', RENEW_END_S, TRIAL_END_S + 86_400)
+    const staleFailed = invoiceEvent('evt_ooo2_failed', 'invoice.payment_failed', RENEW_END_S, TRIAL_END_S)
+    const stripe = webhookStripe([completed, retryPaid, staleFailed], {
+      lineItems: foundingLines,
+      subscription: foundingSubscription({ status: 'active' }),
+    })
+    await send(db, stripe, completed, T0)
+    await send(db, stripe, retryPaid, (TRIAL_END_S + 86_400) * 1000)
+    await send(db, stripe, staleFailed, (TRIAL_END_S + 86_400) * 1000 + 5)
+    let row = (await db.select().from(sponsorships))[0]
+    expect(row).toMatchObject({ subscriptionStatus: 'active', paymentFailedAt: null, paidThrough: RENEW_END_S * 1000 })
+    expect(row && placementActiveAt(row, RENEW_END_S * 1000 + 1)).toBe(true)
+    await close()
+
+    // The next period fails, then an older paid event for the previous period is delivered late.
+    const second = await createTestDatabase()
+    const completed2 = checkoutCompleted('evt_ooo3_checkout')
+    const paid1 = invoiceEvent('evt_ooo3_paid1', 'invoice.paid', RENEW_END_S, TRIAL_END_S)
+    const failed2 = invoiceEvent('evt_ooo3_failed2', 'invoice.payment_failed', RENEW_END_S + 30 * 86_400, RENEW_END_S)
+    const stalePaid1 = invoiceEvent('evt_ooo3_paid1_replay', 'invoice.paid', RENEW_END_S, TRIAL_END_S + 60)
+    const olderFailed = invoiceEvent('evt_ooo3_older_failed', 'invoice.payment_failed', RENEW_END_S + 30 * 86_400, RENEW_END_S - 60)
+    const stripe2 = webhookStripe([completed2, paid1, failed2, stalePaid1, olderFailed], {
+      lineItems: foundingLines,
+      subscription: foundingSubscription({ status: 'active' }),
+    })
+    await send(second.db, stripe2, completed2, T0)
+    await send(second.db, stripe2, paid1, TRIAL_END_S * 1000)
+    await send(second.db, stripe2, failed2, RENEW_END_S * 1000)
+    await send(second.db, stripe2, stalePaid1, RENEW_END_S * 1000 + 10)
+    await send(second.db, stripe2, olderFailed, RENEW_END_S * 1000 + 20)
+    row = (await second.db.select().from(sponsorships))[0]
+    expect(row).toMatchObject({
+      subscriptionStatus: 'past_due',
+      paymentFailedAt: RENEW_END_S * 1000,
+      paidThrough: RENEW_END_S * 1000,
+    })
+    await second.close()
   })
 })
