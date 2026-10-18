@@ -227,16 +227,54 @@ describe('suggestions', () => {
 
   it('rejects a message of only invisible or whitespace characters, without using the limit', async () => {
     const test = await createTestDatabase()
-    for (const message of ['\u200b\u200b', '\u200b \u2060\ufeff', '\u00a0\u3000\t\n', '\u0000\u0001', '\u202e\u2066', '\u3164\u2800']) {
+    for (const message of [
+      '\u200b\u200b',
+      '\u200b \u2060\ufeff',
+      '\u00a0\u3000\t\n',
+      '\u0000\u0001',
+      '\u202e\u2066',
+      '\u3164\u2800',
+      '\u0301\u0301',
+      '\ufe0f',
+      ' \u0301\ufe0f\ufe0e ',
+      '\u{E0100}\u{E01EF}',
+      '\u20dd\u0489',
+    ]) {
       expect(hasVisibleText(cleanSuggestionMessage(message))).toBe(false)
       const result = await submitSuggestion({ kind: 'like', message, email: '', honeypot: '', db: test.db, rateKey: 'hash-blank', now: 60 })
       expect(result).toEqual({ status: 'error', field: 'message', message: 'Enter a message.' })
     }
     expect(hasVisibleText('e\u0301')).toBe(true)
     expect(hasVisibleText('\u{1F600}')).toBe(true)
+    expect(hasVisibleText('\u2764\ufe0f')).toBe(true)
+    expect(hasVisibleText('7')).toBe(true)
+    expect(hasVisibleText('?')).toBe(true)
+    expect(hasVisibleText('\u0301a')).toBe(true)
     expect(await test.db.select().from(suggestions)).toEqual([])
     const limits = await test.db.$client.execute('SELECT "key" FROM rate_limits')
     expect(limits.rows).toHaveLength(0)
+    await test.close()
+  })
+
+  it('fails closed when the rate limiter throws: unavailable error and no row', async () => {
+    const test = await createTestDatabase()
+    await test.db.$client.execute('DROP TABLE rate_limits')
+    const notify = vi.fn(notifySuggestion)
+    const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const result = await submitSuggestion({
+      kind: 'add',
+      message: 'Valid note while the limiter is down',
+      email: 'reader@example.com',
+      honeypot: '',
+      db: test.db,
+      rateKey: 'hash-limiter-down',
+      now: 300,
+      notify,
+    })
+    errors.mockRestore()
+    expect(result).toEqual({ status: 'error', message: 'Suggestions are temporarily unavailable. Try again.' })
+    expect(await test.db.select().from(suggestions)).toEqual([])
+    expect(notify).not.toHaveBeenCalled()
     await test.close()
   })
 
@@ -304,10 +342,21 @@ describe('suggestions', () => {
     expect(SUGGESTION_PRIVACY_PARAGRAPH).toContain(
       'If you suggest something, we store the feedback (whether you like something, want something added, or want something removed, and the message) and we store your email address only when you choose to include it.',
     )
-    expect(SUGGESTION_PRIVACY_PARAGRAPH).toContain('We keep your email address for up to 90 days so we can reply, then clear it and keep the note.')
-    expect(SUGGESTION_PRIVACY_PARAGRAPH).toContain('We delete each suggestion 24 months after you send it.')
-    expect(SUGGESTION_PRIVACY_PARAGRAPH).toContain('do not send it to an email provider')
-    expect(SUGGESTION_PRIVACY_PARAGRAPH).toContain('It is off in production now')
+    const off = SUGGESTION_PRIVACY_PARAGRAPH
+    const offState =
+      'The retention job that applies our suggestion limits is off in production now, so until it is switched on, the email and the suggestion have no fixed deletion date.'
+    expect(off).toContain(offState)
+    expect(off).toContain(
+      'When it is switched on, we keep your email address for up to 90 days so we can reply, then clear it and keep the note, and we delete each suggestion 24 months after you send it.',
+    )
+    expect(off.indexOf(offState)).toBeLessThan(off.indexOf('90 days'))
+    expect(off).toContain('we do not add it to the newsletter or send it to Beehiiv.')
+    expect(off).not.toContain('email provider')
+    const on = suggestionPrivacyParagraph(true)
+    expect(on).toContain('We keep your email address for up to 90 days so we can reply, then clear it and keep the note.')
+    expect(on).toContain('We delete each suggestion 24 months after you send it.')
+    expect(on).toContain('we do not add it to the newsletter or send it to Beehiiv.')
+    expect(on).not.toContain('no fixed deletion date')
     expect(suggestionPrivacyParagraph(true)).toContain('The retention job does this about once a day.')
     expect(suggestionPrivacyParagraph(true)).not.toContain('off in production')
     expect(notifySuggestion({ id: 1, kind: 'like' })).toEqual({

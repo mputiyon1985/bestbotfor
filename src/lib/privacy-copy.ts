@@ -121,7 +121,7 @@ export const NEWSLETTER_SIGNUP_PARAGRAPH =
   'If you join the newsletter, we store your email address. Before the digest is connected to Beehiiv, we keep that address as a pending signup and you are not subscribed yet. When the digest is connected, we send that email address to Beehiiv, including an address we stored while it was pending. We also send utm_source set to bestbotfor, utm_medium set to website, and referring_site set to the absolute URL of the page that offered the form. That page is one of /, /result, /best, /compare, /newsletter, /ai-loadout, /guides/how-to-choose-an-ai-tool, /alternatives/chatgpt, /alternatives/midjourney, /alternatives/zapier, /alternatives/cursor, or /alternatives/elevenlabs. You get a confirmation email first (double opt-in). You are subscribed only after you confirm that message. We do not ask for your name on the form. We keep your email address and signup record while you are subscribed. After you unsubscribe, we keep that row so we do not email you again. It holds your email, the unsubscribe status, when it was created, where it was sent, and the Beehiiv id when we have one. Beehiiv keeps its own record. We do not delete that row on a schedule. If you ask us to delete it, we delete our copy within 30 days. If you unsubscribe, we honor that. The signup form does not turn it back on. The only way back is your own resubscribe link.'
 
 const SUGGESTION_BASE =
-  'If you suggest something, we store the feedback (whether you like something, want something added, or want something removed, and the message) and we store your email address only when you choose to include it. We use that email only to reply to you, and we do not send it to an email provider.'
+  'If you suggest something, we store the feedback (whether you like something, want something added, or want something removed, and the message) and we store your email address only when you choose to include it. We use that email only to reply to you, and we do not add it to the newsletter or send it to Beehiiv.'
 
 /** Retention for suggestions (James, Oct 18): email cleared after 90 days, row deleted after 24 months. */
 export function suggestionPrivacyParagraph(input: RetentionCopyInput = {}): string {
@@ -129,7 +129,7 @@ export function suggestionPrivacyParagraph(input: RetentionCopyInput = {}): stri
   if (retentionCopyOn(input)) {
     return `${SUGGESTION_BASE} ${rule} The retention job does this about once a day.`
   }
-  return `${SUGGESTION_BASE} ${rule} The retention job applies these limits. It is off in production now, so until it is switched on, the email and the suggestion have no fixed deletion date.`
+  return `${SUGGESTION_BASE} The retention job that applies our suggestion limits is off in production now, so until it is switched on, the email and the suggestion have no fixed deletion date. When it is switched on, we keep your email address for up to 90 days so we can reply, then clear it and keep the note, and we delete each suggestion 24 months after you send it.`
 }
 
 export const SUGGESTION_PRIVACY_PARAGRAPH = suggestionPrivacyParagraph()

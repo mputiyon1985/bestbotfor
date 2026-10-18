@@ -165,6 +165,9 @@ describe('privacy policy facts', () => {
     expect(clickLogParagraph({ launch: true, purge: 'on', dryRun: '' })).toContain('job is off')
     expect(CLICK_LOG_PARAGRAPH).toBe(clickLogParagraph())
     expect(RETENTION_JOB_PARAGRAPH).toBe(retentionJobParagraph())
+    const suggestionSentence = 'It clears the optional email on a suggestion after 90 days and deletes a suggestion after 24 months.'
+    expect(retentionJobParagraph(false)).toContain(suggestionSentence)
+    expect(retentionJobParagraph(true)).toContain(suggestionSentence)
     expect(RETENTION_ROWS.find((row) => row.data === 'Rate-limit rows')?.kept).toBe(rateLimitRetentionKept())
     expect(PRIVACY_UPDATED).toBe('October 18, 2026')
 

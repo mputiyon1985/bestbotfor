@@ -36,9 +36,16 @@ export function cleanSuggestionMessage(value: string): string {
     .trim()
 }
 
-/** True when the text has at least one character that is not whitespace or invisible (format, control, or blank). */
+const BLANK_FILLERS = /[\u115f\u1160\u3164\uffa0\u2800]/gu
+
+/**
+ * True when the text has at least one letter, number, symbol, or punctuation
+ * character that is not a blank filler (Hangul fillers, braille blank).
+ * Whitespace, format and control characters, combining marks, and variation
+ * selectors alone do not count.
+ */
 export function hasVisibleText(value: string): boolean {
-  return /[^\s\p{Cf}\p{Cc}\p{Zs}\u115f\u1160\u3164\uffa0\u2800]/u.test(value)
+  return /[\p{L}\p{N}\p{S}\p{P}]/u.test(value.replace(BLANK_FILLERS, ''))
 }
 
 function isKind(value: string): value is SuggestionKind {
