@@ -10,11 +10,17 @@ import { stripeKeyMode } from '@/lib/stripe'
 
 export const dynamic = 'force-dynamic'
 
-export const metadata: Metadata = pageMetadata({
-  title: 'Sponsor',
-  description: 'Sponsor a featured tool slot on a BestBotFor guide, or a slot in the newsletter. Checkout is Stripe’s hosted page.',
-  path: '/sponsor',
-})
+const SPONSOR_META_OFFER = 'Sponsor a featured tool slot on a BestBotFor guide, or a slot in the newsletter.'
+
+export function generateMetadata(): Metadata {
+  const surface = sponsorCheckoutSurface()
+  const description = surface === 'closed' ? SPONSOR_META_OFFER : `${SPONSOR_META_OFFER} Checkout is Stripe’s hosted page.`
+  return pageMetadata({
+    title: 'Sponsor',
+    description,
+    path: '/sponsor',
+  })
+}
 
 export default function SponsorPage() {
   const surface = sponsorCheckoutSurface()
@@ -38,8 +44,8 @@ export default function SponsorPage() {
       <h1 className="font-bold text-5xl">Sponsor</h1>
       <SponsorCheckoutNotice surface={surface} />
       <p>
-        Buy a featured tool slot on one /best/[task] page, or a sponsor mention in one newsletter issue. Payment happens
-        on Stripe’s hosted checkout page. This site does not collect card numbers.
+        Buy a featured tool slot on one /best/[task] page, or a sponsor mention in one newsletter issue.
+        {surface === 'closed' ? null : ' Payment happens on Stripe’s hosted checkout page. This site does not collect card numbers.'}
       </p>
       <ul className="list-disc space-y-2 pl-5">
         <li>
@@ -53,8 +59,8 @@ export default function SponsorPage() {
         </li>
       </ul>
       <p className="text-sm text-muted">
-        These are the current list prices from server configuration. They can be changed there. The form does not send
-        an amount. Checkout charges the Stripe price configured on the server.
+        These are the current list prices from server configuration. They can be changed there.
+        {surface === 'closed' ? null : ' The form does not send an amount. Checkout charges the Stripe price configured on the server.'}
       </p>
       {surface === 'closed' ? null : <SponsorForm offerings={offerings} tasks={tasks} />}
     </article>
