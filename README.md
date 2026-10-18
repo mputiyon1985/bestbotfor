@@ -33,7 +33,10 @@ npm run dev
 | `IP_HASH_SALT` | Optional. Not a click-log salt. At least 16 characters, it can be the HKDF source when `RATE_LIMIT_HMAC_SECRET` is unset or shorter than 16 characters |
 | `RATE_LIMIT_HMAC_SECRET` | HMAC key for rate-limit bucket ids. Click-log IP hashes use an HKDF-SHA256 subkey of this secret, info `bestbotfor/click-ip/v1`. Production (`VERCEL_ENV=production`) requires at least 32 bytes, at build and at boot. Elsewhere, shorter than 16 characters, it is ignored. When unset or too short, HKDF-SHA256 derives both keys from another server secret of at least 16 characters, and a warning is logged. The value is not logged. Changing it starts new windows and new click hashes |
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | Clerk. Both must be set or accounts stay off |
-| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID` | Stripe test mode. All three are required before billing turns on |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID` | Stripe test mode for membership. All three are required before membership billing turns on |
+| `STRIPE_PRICE_PLACEMENT_WEEKLY`, `STRIPE_PRICE_PLACEMENT_MONTHLY`, `STRIPE_PRICE_NEWSLETTER_SLOT` | One-time sponsor Checkout price ids. Defaults are $99 per week, $299 per month, and $49 per newsletter issue |
+| `STRIPE_ALLOW_LIVE` | Default `false`. Live secret keys are refused unless this is the exact value `true`. Going live needs Mark's written approval |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Unused. Hosted Checkout does not send it to the browser |
 | `BEEHIIV_API_KEY`, `BEEHIIV_PUBLICATION_ID` | Optional. Unset stores newsletter emails locally |
 | `NEXT_PUBLIC_GA_ID` | Optional GA4 measurement ID. gtag.js loads only after the visitor accepts |
 | `GOOGLE_SITE_VERIFICATION` | Optional Search Console token |
@@ -45,7 +48,9 @@ npm run dev
 | `REVIEW_IP_HMAC_KEY_ID_PREVIOUS` | Previous key id, same format as `REVIEW_IP_HMAC_KEY_ID`, and different from it. Refused when the previous secret is unset |
 | `BBF_E2E_HOOKS` | E2E only. `1` fails the build when `VERCEL=1` or `VERCEL_ENV=production`. A local build may set it; `next build` sets `NODE_ENV=production` and that does not refuse the hooks |
 
-Stripe billing accepts a test secret key only. CI fails if a live-mode Stripe key prefix appears anywhere in the tree. The webhook rejects live-mode events. Point Stripe’s test webhook at `/api/stripe/webhook`.
+Stripe billing accepts a test secret key only, unless `STRIPE_ALLOW_LIVE` is set to true after Mark's written approval. CI fails if a live-mode Stripe key prefix, a webhook signing secret, or that flag committed as enabled appears anywhere in the tree. The webhook rejects live-mode events while that flag is off. Point Stripe’s test webhook at `/api/stripe/webhook`.
+
+Sponsor slots are one-time Checkout payments on `/sponsor`: a featured tool slot on a `/best/[task]` page ($99 for a week or $299 for a month) and a newsletter issue ($49). Those are 9900, 29900, and 4900 cents. None of the Prices use a Stripe recurring interval, because Checkout is a single payment rather than a subscription. The sponsor page states “One-time payment, no auto-renewal.” beside each option, and Checkout repeats that line under the pay button. The Stripe product name and the card statement suffix are BestBotFor. List prices live in `src/lib/sponsor-offerings.ts`. Checkout charges the price id from the environment, not a number from the browser. These placements are advertising, so Checkout disables Managed Payments and leaves automatic tax unset. This business stays the merchant of record. After the test secret key is set, `npm run stripe:setup-test` creates those products in test mode, without a Managed Payments tax code, and prints only the price ids. A lookup key that already points at a matching one-time Price is kept, and that Product’s name and statement descriptor are updated to BestBotFor. The Price-create idempotency key includes `one_time`. The script refuses live keys even if the live flag is on. Do not run it against live mode.
 
 `/go/[slug]` redirects to the official URL stored for that tool only when the host is on the reviewed list in the seed. It ignores query strings and affiliate URLs. A rate-limit or catalog timeout still redirects; the click row is written after the response.
 
@@ -63,6 +68,7 @@ npm run check:db-writes
 npm run check:members
 npm run build
 npm run test:e2e
+npm run stripe:setup-test
 ```
 
 End-to-end tests build the production server themselves through Playwright. Set `TURSO_DATABASE_URL=file:./data/e2e.db` and `NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000` if you run them outside CI.

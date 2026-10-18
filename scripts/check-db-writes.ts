@@ -14,6 +14,9 @@ const ALLOWED = new Set([
   'scripts/a2-catalog-corrections.ts',
   'drizzle/0004_retire_quiz_fits.sql',
   'drizzle/0007_drop_non_forge_scores.sql',
+  // Sponsorship rows are inserted from src/lib/stripe-webhook.ts.
+  // 0009 is reviewed DDL for stripe_events and sponsorships.
+  'drizzle/0009_sponsorships.sql',
   'drizzle/0011_user_reviews.sql',
   // Daily retention cron. Deletes rate_limits rows whose reset_at is more
   // than 24 hours old, including rows left under a previous HMAC key, and
