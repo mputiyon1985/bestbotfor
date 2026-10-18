@@ -7,7 +7,10 @@ import { DailyBotCapture } from '@/components/daily-bot-capture'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
+import { SponsoredPlacement } from '@/components/sponsored-placement'
+import { activeBestPlacementForTask } from '@/lib/best-placement'
 import { getTask, listTaskCandidates } from '@/lib/catalog'
+import { getDb } from '@/lib/db'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
 import { breadcrumbJsonLd, faqJsonLd, itemListJsonLd } from '@/lib/jsonld'
 import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
@@ -44,7 +47,11 @@ export async function generateMetadata({ params }: { params: Promise<{ task: str
 export default async function BestPage({ params }: { params: Promise<{ task: string }> }) {
   const { task: slug } = await params
   if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) notFound()
-  const [loaded, headerStore] = await Promise.all([listTaskCandidates(slug), headers()])
+  const [loaded, headerStore, placement] = await Promise.all([
+    listTaskCandidates(slug),
+    headers(),
+    activeBestPlacementForTask(getDb(), slug),
+  ])
   const task = loaded?.task
   const ranked = loaded?.tools ?? []
   const top = ranked[0]
@@ -91,6 +98,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
           Visit {top.name}
         </OutboundLink>
       </p>
+      <SponsoredPlacement placement={placement} />
       <div className="min-w-0 space-y-4">
         <p id="fit-legend" className="text-sm text-muted">{BEST_GUIDE_FIT_LEGEND}</p>
         <ul aria-label={listLabel} className="grid gap-3 md:hidden">

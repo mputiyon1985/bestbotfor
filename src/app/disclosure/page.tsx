@@ -4,12 +4,14 @@ import { LawyerReviewNotice } from '@/components/lawyer-review-notice'
 import { userRatingsEnabled } from '@/lib/flags'
 import { pageMetadata } from '@/lib/metadata'
 import { DISCLOSURE_ADVERTISER_PARAGRAPH } from '@/lib/ratings-policy-copy'
+import { SPONSORSHIP_DISCLOSURE } from '@/lib/sponsorship-disclosure'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Affiliate disclosure',
-  description: 'How BestBotFor handles affiliate links, commissions, and recommendations.',
+  description:
+    'How BestBotFor handles affiliate links, paid featured placements, newsletter sponsorships, and recommendations.',
   path: '/disclosure',
 })
 
@@ -33,6 +35,7 @@ export default function DisclosurePage() {
         we do not invent one.
       </p>
       <p>Recommendations are opinions based on the catalog, not a promise that a tool will work for your project.</p>
+      <p>{SPONSORSHIP_DISCLOSURE}</p>
       <p>Tool logos and icons are trademarks of their owners. They are used on BestBotFor for identification only and do not imply endorsement.</p>
       {ratings ? (
         <>
