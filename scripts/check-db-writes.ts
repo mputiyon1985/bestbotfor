@@ -12,6 +12,7 @@ const ALLOWED = new Set([
   // Daily placement impression and Sponsored-card click totals. No visitor identifier.
   'src/lib/sponsor-impressions.ts',
   'src/lib/members.ts',
+  'src/lib/pick-save.ts',
   'src/app/go/[slug]/route.ts',
   'src/lib/db/migrate.ts',
   'scripts/seed.ts',

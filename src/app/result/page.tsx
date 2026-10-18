@@ -4,6 +4,7 @@ import { cache } from 'react'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { DailyBotCapture } from '@/components/daily-bot-capture'
+import { PickCapNotice } from '@/components/pick-cap-notice'
 import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
@@ -19,8 +20,9 @@ import { getDb } from '@/lib/db'
 import { budgetLabel, budgetPhrase, fewStrongOptionsLabel, overBudgetLabel, priceLabel, skillLabel, skillPhrase } from '@/lib/format'
 import { QUIZ_ALTERNATIVE_COUNT } from '@/lib/scoring'
 import { breadcrumbJsonLd } from '@/lib/jsonld'
-import { memberAccess } from '@/lib/members'
+import { currentClerkUserId, memberAccess } from '@/lib/members'
 import { pageMetadata } from '@/lib/metadata'
+import { FREE_ACCOUNT_PROMPT, pickSaverFromAccess } from '@/lib/pick-save'
 import { savePickSignUpHref } from '@/lib/save-pick-prompt'
 import { absoluteUrl } from '@/lib/site'
 import { firstString, quizSchema, type QuizAnswers } from '@/lib/validation'
@@ -159,6 +161,8 @@ export default async function ResultPage({
     )
   }
   const access = await memberAccess()
+  const saveAccess = pickSaverFromAccess(access, access.allowed ? null : await currentClerkUserId())
+  const saveLimited = firstString(params.save) === 'limit'
   const sharePath = `/result?${new URLSearchParams(answers).toString()}`
   const crumbs = [
     { name: 'Home', path: '/' },
@@ -195,7 +199,8 @@ export default async function ResultPage({
         </Link>
       </div>
 
-      {access.allowed ? (
+      {saveLimited ? <PickCapNotice /> : null}
+      {saveAccess.ok ? (
         <form action={savePickAction} className="flex flex-wrap items-center gap-3">
           <input type="hidden" name="task" value={answers.task} />
           <input type="hidden" name="budget" value={answers.budget} />
@@ -204,18 +209,11 @@ export default async function ResultPage({
             Save this pick
           </button>
         </form>
-      ) : access.reason === 'unauthenticated' ? (
+      ) : (
         <p>
           <Link href={savePickSignUpHref(sharePath)} className="inline-flex min-h-11 items-center font-semibold underline">
-            Create a free account to keep up with new tools
+            {FREE_ACCOUNT_PROMPT}
           </Link>
-        </p>
-      ) : (
-        <p className="text-sm text-muted">
-          <Link href="/pricing" className="font-semibold underline">
-            Members
-          </Link>{' '}
-          can save this pick.
         </p>
       )}
 
