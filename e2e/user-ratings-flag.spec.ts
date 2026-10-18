@@ -67,7 +67,7 @@ test('privacy, terms, and disclosure omit the ratings draft while the flag is of
     }
   }
   const privacy = await (await request.get('/privacy')).text()
-  expect(privacy).toContain('It was last updated on October 17, 2026.')
+  expect(privacy).toContain('It was last updated on October 18, 2026.')
   expect(privacy).not.toContain('ratings and reviews section')
   const terms = await (await request.get('/terms')).text()
   expect(terms).toContain('Last updated October 15, 2026.')

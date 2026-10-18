@@ -4,13 +4,14 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { LawyerReviewNotice } from '@/components/lawyer-review-notice'
 import { userRatingsEnabled } from '@/lib/flags'
 import { pageMetadata } from '@/lib/metadata'
+import { CLICK_LOG_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, NEWSLETTER_SIGNUP_PARAGRAPH, rateLimitPrivacyParagraphs, RETENTION_JOB_PARAGRAPH, SHARING_PARAGRAPH, TURSO_BACKUP_PARAGRAPH } from '@/lib/privacy-copy'
 import { PRIVACY_RATINGS_PARAGRAPHS, PRIVACY_UPDATED, PRIVACY_UPDATED_WITH_RATINGS, RETENTION_ROWS } from '@/lib/ratings-policy-copy'
 
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = pageMetadata({
   title: 'Privacy policy',
-  description: 'How BestBotFor handles analytics, cookies, Clerk, Stripe, Beehiiv, and the data we store.',
+  description: 'How BestBotFor handles analytics, cookies, Clerk, Stripe, Beehiiv, Google Analytics, Vercel, Turso, and the data we store.',
   path: '/privacy',
 })
 
@@ -26,10 +27,7 @@ export default function PrivacyPage() {
           : `This policy covers bestbotfor.com, a United States site. It was last updated on ${PRIVACY_UPDATED}.`}
       </p>
       <h2 className="font-semibold text-3xl">What we collect</h2>
-      <p>
-        If you join the newsletter, we store your email address. When our digest is connected, we also send that email
-        address to Beehiiv so they can deliver it. We do not ask for your name on the form.
-      </p>
+      <p>{NEWSLETTER_SIGNUP_PARAGRAPH}</p>
       <p>
         If you create an account, Clerk handles sign-in. Clerk receives the details you give them, such as your email,
         and sets an httpOnly session cookie. We store your Clerk user id with a saved pick or a subscription, not a copy
@@ -40,16 +38,18 @@ export default function PrivacyPage() {
         customer id, subscription id, price id, and status so we know whether membership is active. Use Stripe test
         cards only while this site is in test mode.
       </p>
-      <p>
-        When you use a “Visit” button, we log the tool, the time, the page path on our site if the referrer is ours,
-        and a country code when the host provides one. We store a keyed hash of the IP address. We never store the raw
-        IP address.
-      </p>
+      <p>{CLICK_LOG_PARAGRAPH}</p>
+      <h2 className="font-semibold text-3xl">Rate limits</h2>
+      {rateLimitPrivacyParagraphs().map((paragraph) => (
+        <p key={paragraph}>{paragraph}</p>
+      ))}
+      <p>{RETENTION_JOB_PARAGRAPH}</p>
       <h2 className="font-semibold text-3xl">Cookies and analytics</h2>
       <p>
         Analytics cookies are off until you accept the banner. That choice is stored in a first-party cookie named
         bbf_consent. It is a preference cookie, not an advertising cookie.
       </p>
+      <p>{GPC_PRIVACY_PARAGRAPH}</p>
       <p>
         If Google Analytics 4 is configured, we load it with Google Consent Mode. The default is denied. If you accept,
         we grant analytics storage only. We do not grant ad storage. We do not send your email, your name, or the text
@@ -60,13 +60,12 @@ export default function PrivacyPage() {
       <p>Vercel Analytics is cookieless and does not receive your email or name.</p>
       <p>Clerk and Stripe may set cookies that are required for sign-in and checkout. Those are not advertising cookies.</p>
       <h2 className="font-semibold text-3xl">Sharing</h2>
-      <p>
-        We use Clerk for accounts, Stripe for payments, Beehiiv for the digest when it is connected, and Vercel to host
-        the site. We do not sell personal information.
-      </p>
+      <p>{SHARING_PARAGRAPH}</p>
+      <p>{TURSO_BACKUP_PARAGRAPH}</p>
       <h2 className="font-semibold text-3xl">Your choices</h2>
       <p>
-        You can reject analytics on the banner. You can ask us to delete a newsletter address or a saved pick by emailing
+        You can reject analytics on the banner. Global Privacy Control, described above, also opts you out of analytics.
+        You can ask us to delete a newsletter address or a saved pick by emailing
         privacy@bestbotfor.com. Account deletion is also available from the Clerk account button when sign-in is enabled.
         Stripe’s billing portal is where you manage a subscription.
       </p>
