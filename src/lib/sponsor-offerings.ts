@@ -21,6 +21,9 @@ export const SPONSOR_BUSINESS_NAME = 'BestBotFor'
 /** Shown beside each sponsor option and on the Checkout pay button. */
 export const SPONSOR_ONE_TIME_NOTICE = 'One-time payment, no auto-renewal.'
 
+/** Shown on /sponsor next to the company field. The name is published on the guide. */
+export const SPONSOR_COMPANY_PUBLISHED = 'Your company name is published with a Sponsored label.'
+
 /**
  * Stable label for this Checkout flow. A retried sponsor form must send the
  * same value, or Stripe rejects the reused idempotency key.

@@ -8,7 +8,7 @@ import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
 import { SponsoredPlacement } from '@/components/sponsored-placement'
-import { activeBestPlacementForTask } from '@/lib/best-placement'
+import { readActiveBestPlacement } from '@/lib/best-placement'
 import { getTask, listTaskCandidates } from '@/lib/catalog'
 import { getDb } from '@/lib/db'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
@@ -50,7 +50,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
   const [loaded, headerStore, placement] = await Promise.all([
     listTaskCandidates(slug),
     headers(),
-    activeBestPlacementForTask(getDb(), slug),
+    readActiveBestPlacement(() => getDb(), slug),
   ])
   const task = loaded?.task
   const ranked = loaded?.tools ?? []

@@ -2,7 +2,7 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { sponsorCheckoutAction, type SponsorFormState } from '@/app/sponsor/actions'
-import { SPONSOR_ONE_TIME_NOTICE } from '@/lib/sponsor-offerings'
+import { SPONSOR_COMPANY_PUBLISHED, SPONSOR_ONE_TIME_NOTICE } from '@/lib/sponsor-offerings'
 
 export type SponsorFormOffering = {
   id: string
@@ -86,8 +86,12 @@ export function SponsorForm({ offerings, tasks }: { offerings: SponsorFormOfferi
           autoComplete="organization"
           required
           maxLength={120}
+          aria-describedby="sponsor-company-published"
           className="mt-2 min-h-12 w-full rounded-xl border border-line bg-card px-3"
         />
+        <p id="sponsor-company-published" className="mt-1 text-sm text-muted">
+          {SPONSOR_COMPANY_PUBLISHED}
+        </p>
       </div>
 
       <div>

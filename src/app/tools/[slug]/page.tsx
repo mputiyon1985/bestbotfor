@@ -74,7 +74,7 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
       </p>
       <p className="text-sm text-muted">
         This button opens {tool.vendor}’s site. The address is the official URL in our catalog, not an affiliate link.{' '}
-        <Link href="/disclosure" className="underline">Affiliate disclosure</Link>.
+        <Link href="/disclosure" className="underline">Disclosures</Link>.
       </p>
       {tool.affiliate.commissionNote ? (
         <p className="text-sm text-muted">Program note, copied from the vendor’s page: {tool.affiliate.commissionNote}</p>

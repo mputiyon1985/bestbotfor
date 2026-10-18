@@ -9,7 +9,7 @@ import { SPONSORSHIP_DISCLOSURE } from '@/lib/sponsorship-disclosure'
 export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = pageMetadata({
-  title: 'Affiliate disclosure',
+  title: 'Disclosures',
   description:
     'How BestBotFor handles affiliate links, paid featured placements, newsletter sponsorships, and recommendations.',
   path: '/disclosure',
@@ -19,8 +19,8 @@ export default function DisclosurePage() {
   const ratings = userRatingsEnabled()
   return (
     <article className="max-w-2xl space-y-4">
-      <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Affiliate disclosure', path: '/disclosure' }]} />
-      <h1 className="font-bold text-5xl">Affiliate disclosure</h1>
+      <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Disclosures', path: '/disclosure' }]} />
+      <h1 className="font-bold text-5xl">Disclosures</h1>
       <p>
         BestBotFor may earn money if we later join an affiliate or referral program and you buy through a link we
         control. That relationship would not change the editorial rank.
