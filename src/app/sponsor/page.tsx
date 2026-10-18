@@ -3,8 +3,9 @@ import { taskSeeds } from '@/data/catalog'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { SponsorCheckoutNotice } from '@/components/sponsor-checkout-notice'
 import { SponsorForm } from '@/components/sponsor-form'
+import { SponsorPaymentLinks } from '@/components/sponsor-payment-links'
 import { pageMetadata } from '@/lib/metadata'
-import { sponsorCheckoutSurface } from '@/lib/sponsor-checkout-gate'
+import { SPONSOR_CONTACT_EMAIL, SPONSOR_CONTACT_MAILTO, sponsorCheckoutSurface } from '@/lib/sponsor-checkout-gate'
 import {
   FOUNDING_SPONSOR_CAP,
   SPONSOR_FOUNDING_NOTICE,
@@ -81,9 +82,19 @@ export default function SponsorPage() {
         </li>
       </ul>
       <p className="text-sm text-muted">
-        These are the current list prices from server configuration. They can be changed there.
+        The prices above, one-time and subscription, are the current list prices from server configuration. They can be changed there.
+        {surface === 'live' ? ' The Payment Links below are separate Stripe links with their own prices set in Stripe.' : null}
         {surface === 'closed' ? null : ' The form does not send an amount. Checkout charges the Stripe price configured on the server.'}
       </p>
+      {surface === 'live' ? <SponsorPaymentLinks /> : null}
+      {surface === 'live' ? (
+        <p>
+          Questions or custom deals?{' '}
+          <a className="inline-flex min-h-11 items-center font-semibold underline" href={SPONSOR_CONTACT_MAILTO}>
+            {SPONSOR_CONTACT_EMAIL}
+          </a>
+        </p>
+      ) : null}
       {surface === 'closed' ? null : <SponsorForm offerings={offerings} tasks={tasks} />}
     </article>
   )

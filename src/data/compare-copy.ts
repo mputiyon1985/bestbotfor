@@ -347,7 +347,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
       { label: 'Skill level', kind: 'text', a: 'Beginner', b: 'Intermediate', source: 'BestBotFor catalog' },
     ],
     secondaryNote: COMPARE_SECONDARY_NOTE,
-    cta: 'New AI video models ship every few weeks. Get **The Daily Bot** for the ones worth trying, in a 5-minute read.',
+    cta: 'New AI video models ship every few weeks. Get **The Daily Bot** for the ones worth trying.',
     sources: [
       '[7] Descript pricing: https://www.descript.com/pricing (vendor, checked Oct 17, 2026)',
       '[8] Runway pricing: https://runwayml.com/pricing (vendor, checked Oct 17, 2026)',

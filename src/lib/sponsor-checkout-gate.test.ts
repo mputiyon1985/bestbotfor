@@ -165,7 +165,8 @@ describe('production sponsor page', () => {
     expect(html).toContain('Featured placement: $99 for one week.')
     expect(html).toContain('Featured placement: $299 for one month.')
     expect(html).toContain('Newsletter sponsor slot: $49 per issue.')
-    expect(html).toContain('These are the current list prices from server configuration.')
+    expect(html).toContain('The prices above, one-time and subscription, are the current list prices from server configuration.')
+    expect(html).not.toContain('The Payment Links below')
     expect(html).not.toContain('Payment happens on Stripe’s hosted checkout page.')
     expect(html).not.toContain('This site does not collect card numbers.')
     expect(html).not.toContain('The form does not send an amount.')
@@ -183,6 +184,8 @@ describe('production sponsor page', () => {
     process.env.STRIPE_PRICE_PLACEMENT_WEEKLY = 'price_week'
     const html = pageHtml()
     expect(html).toContain('Checkout uses Stripe live mode.')
+    expect(html).toContain('The prices above, one-time and subscription, are the current list prices from server configuration.')
+    expect(html).toContain('The Payment Links below are separate Stripe links with their own prices set in Stripe.')
     expect(html).toContain('Continue to checkout')
     expect(html).toContain('Payment happens on Stripe’s hosted checkout page.')
     expect(html).toContain('The form does not send an amount.')
