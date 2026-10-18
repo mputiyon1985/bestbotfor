@@ -4,7 +4,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { LawyerReviewNotice } from '@/components/lawyer-review-notice'
 import { userRatingsEnabled } from '@/lib/flags'
 import { pageMetadata } from '@/lib/metadata'
-import { CLICK_LOG_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, rateLimitPrivacyParagraphs, RETENTION_JOB_PARAGRAPH, SHARING_PARAGRAPH, TURSO_BACKUP_PARAGRAPH } from '@/lib/privacy-copy'
+import { CLICK_LOG_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, NEWSLETTER_SIGNUP_PARAGRAPH, rateLimitPrivacyParagraphs, RETENTION_JOB_PARAGRAPH, SHARING_PARAGRAPH, TURSO_BACKUP_PARAGRAPH } from '@/lib/privacy-copy'
 import { PRIVACY_RATINGS_PARAGRAPHS, PRIVACY_UPDATED, PRIVACY_UPDATED_WITH_RATINGS, RETENTION_ROWS } from '@/lib/ratings-policy-copy'
 
 export const dynamic = 'force-dynamic'
@@ -27,10 +27,7 @@ export default function PrivacyPage() {
           : `This policy covers bestbotfor.com, a United States site. It was last updated on ${PRIVACY_UPDATED}.`}
       </p>
       <h2 className="font-semibold text-3xl">What we collect</h2>
-      <p>
-        If you join the newsletter, we store your email address. When our digest is connected, we also send that email
-        address to Beehiiv so they can deliver it. We do not ask for your name on the form.
-      </p>
+      <p>{NEWSLETTER_SIGNUP_PARAGRAPH}</p>
       <p>
         If you create an account, Clerk handles sign-in. Clerk receives the details you give them, such as your email,
         and sets an httpOnly session cookie. We store your Clerk user id with a saved pick or a subscription, not a copy

@@ -3,7 +3,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { CLICK_HASH_RETENTION_MS, RATE_LIMIT_RETENTION_MS } from './data-retention'
 import { OG_RATE_WINDOW_MS } from './og'
-import { CLICK_LOG_PARAGRAPH, clickLogParagraph, GPC_PRIVACY_PARAGRAPH, rateLimitPrivacyParagraphs, rateLimitRetentionKept, RETENTION_JOB_PARAGRAPH, retentionCopyOn, retentionJobParagraph, SHARING_PARAGRAPH, TURSO_BACKUP_PARAGRAPH, windowPhrase } from './privacy-copy'
+import { CLICK_LOG_PARAGRAPH, clickLogParagraph, GPC_PRIVACY_PARAGRAPH, NEWSLETTER_SIGNUP_PARAGRAPH, rateLimitPrivacyParagraphs, rateLimitRetentionKept, RETENTION_JOB_PARAGRAPH, retentionCopyOn, retentionJobParagraph, SHARING_PARAGRAPH, TURSO_BACKUP_PARAGRAPH, windowPhrase } from './privacy-copy'
 import {
   CHECKOUT_RATE_WINDOW_MS,
   GO_RATE_WINDOW_MS,
@@ -76,6 +76,15 @@ describe('privacy policy facts', () => {
     expect(GPC_PRIVACY_PARAGRAPH).toContain('does not override the signal')
     expect(GPC_PRIVACY_PARAGRAPH).toContain('do not load Vercel Analytics')
     expect(GPC_PRIVACY_PARAGRAPH).toContain('do not send Vercel Analytics events')
+  })
+
+  it('says a newsletter signup gets a confirmation email before the address is subscribed', () => {
+    expect(NEWSLETTER_SIGNUP_PARAGRAPH).toBe(
+      'If you join the newsletter, we store your email address. When our digest is connected, we also send that email address to Beehiiv so they can deliver it. You get a confirmation email first (double opt-in). You are subscribed only after you confirm that message. We do not ask for your name on the form.',
+    )
+    const page = readFileSync(path.join(process.cwd(), 'src/app/privacy/page.tsx'), 'utf8')
+    expect(page).toContain('NEWSLETTER_SIGNUP_PARAGRAPH')
+    expect(page).not.toContain('Lawyer note')
   })
 
   it('names the processors the site code actually calls, including Turso', () => {

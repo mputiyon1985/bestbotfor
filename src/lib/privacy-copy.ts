@@ -115,6 +115,9 @@ export function rateLimitPrivacyParagraphs(input: RetentionCopyInput = {}): stri
   ]
 }
 
+export const NEWSLETTER_SIGNUP_PARAGRAPH =
+  'If you join the newsletter, we store your email address. When our digest is connected, we also send that email address to Beehiiv so they can deliver it. You get a confirmation email first (double opt-in). You are subscribed only after you confirm that message. We do not ask for your name on the form.'
+
 export const SHARING_PARAGRAPH =
   'We use Clerk for accounts, Stripe for payments, Beehiiv for the digest when it is connected, Google Analytics for site measurement when it is configured and analytics is allowed, Vercel to host the site and for cookieless analytics, and Turso to store the database. We do not sell personal information.'
 
