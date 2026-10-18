@@ -35,7 +35,7 @@ npm run dev
 | `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY` | Clerk. Both must be set or accounts stay off |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_ID` | Stripe test mode for membership. All three are required before membership billing turns on |
 | `STRIPE_PRICE_PLACEMENT_WEEKLY`, `STRIPE_PRICE_PLACEMENT_MONTHLY`, `STRIPE_PRICE_NEWSLETTER_SLOT` | One-time sponsor Checkout price ids. Defaults are $99 per week, $299 per month, and $49 per newsletter issue |
-| `STRIPE_ALLOW_LIVE` | Default `false`. Live secret keys are refused unless this is the exact value `true`. Going live needs Mark's written approval |
+| `STRIPE_ALLOW_LIVE` | Default `false`. Live secret keys are refused unless this is the exact value `true`. Live `/sponsor` checkout also needs `VERCEL_ENV` exactly `production` and a live-mode key. Going live needs Mark's written approval |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Unused. Hosted Checkout does not send it to the browser |
 | `BEEHIIV_API_KEY`, `BEEHIIV_PUBLICATION_ID` | Optional. Unset stores newsletter emails locally |
 | `NEXT_PUBLIC_GA_ID` | Optional GA4 measurement ID. gtag.js loads only after the visitor accepts |
