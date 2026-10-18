@@ -1028,6 +1028,62 @@ describe('sponsor subscription webhook', () => {
     await close()
   })
 
+  it('does not fall back to the customer when the refunded invoice has no subscription', async () => {
+    const { db, close } = await createTestDatabase()
+    const completed = checkoutCompleted('evt_refund_checkout_4')
+    // A one-off invoice for the same customer: found, but not a subscription invoice.
+    const refund = refundEvent('evt_one_off_invoice_refund', 'charge.refunded', {
+      id: 'ch_one_off_invoice',
+      refunded: true,
+      amount_refunded: 5_000,
+      payment_intent: 'pi_one_off_invoice',
+      customer: 'cus_sponsor',
+    })
+    const calls: string[] = []
+    const stripe = webhookStripe([completed, refund], {
+      lineItems: foundingLines,
+      subscription: foundingSubscription(),
+      invoiceByIntent: { pi_one_off_invoice: 'in_one_off' },
+      calls,
+    })
+    await send(db, stripe, completed, T0)
+    // Exactly one unrefunded sponsor subscription for the customer, and no membership.
+    expect(await db.select().from(subscriptions)).toEqual([])
+    expect(await send(db, stripe, refund, T0 + DAY)).toEqual({ status: 200, body: { received: true } })
+    const row = (await db.select().from(sponsorships))[0]
+    expect(row).toMatchObject({ refundedAt: null, updatedAt: T0 })
+    expect(calls).toEqual(['invoicePayments.list:pi_one_off_invoice', 'invoices.retrieve:in_one_off'])
+    expect(row && placementActiveAt(row, T0 + DAY + 1)).toBe(true)
+    await close()
+  })
+
+  it('does not guess between two sponsor subscriptions on the customer fallback', async () => {
+    const { db, close } = await createTestDatabase()
+    const first = checkoutCompleted('evt_two_subs_1')
+    const second = checkoutCompleted('evt_two_subs_2', { id: 'cs_test_second', subscription: 'sub_sponsor_2' })
+    const refund = refundEvent('evt_two_subs_refund', 'charge.refunded', {
+      id: 'ch_two_subs',
+      refunded: true,
+      amount_refunded: 9_900,
+      payment_intent: 'pi_two_subs',
+      customer: 'cus_sponsor',
+    })
+    const stripe1 = webhookStripe([first, refund], { lineItems: foundingLines, subscription: foundingSubscription() })
+    const stripe2 = webhookStripe([second], {
+      lineItems: foundingLines,
+      subscription: foundingSubscription({ metadata: { kind: 'sponsorship', offering: 'founding_sponsor', task_slug: 'images' } }),
+      sessionSubscription: 'sub_sponsor_2',
+    })
+    await send(db, stripe1, first, T0)
+    await send(db, stripe2, second, T0 + 1)
+    const before = await db.select().from(sponsorships)
+    expect(before.filter((row) => row.stripeCustomerId === 'cus_sponsor' && row.stripeSubscriptionId)).toHaveLength(2)
+    await send(db, stripe1, refund, T0 + DAY)
+    const after = await db.select().from(sponsorships)
+    expect(after.map((row) => row.refundedAt)).toEqual([null, null])
+    await close()
+  })
+
   it('keeps a one-time refund on its payment intent without calling Stripe', async () => {
     const { db, close } = await createTestDatabase()
     await db.insert(sponsorships).values({
@@ -1101,6 +1157,20 @@ describe('sponsor subscription webhook', () => {
     row = (await second.db.select().from(sponsorships))[0]
     expect(row?.paidThrough).toBe(TRIAL_END_S * 1000)
     await second.close()
+  })
+
+  it('caps a first paid_through at a scheduled cancel when paid_through was still empty', async () => {
+    const { db, close } = await createTestDatabase()
+    const completed = checkoutCompleted('evt_null_cap_checkout')
+    const paid = invoiceEvent('evt_null_cap_paid', 'invoice.paid', RENEW_END_S, T0S + 2 * 86_400)
+    const stripe = webhookStripe([completed, paid], { lineItems: foundingLines, subscription: foundingSubscription() })
+    await send(db, stripe, completed, T0)
+    // A row with a scheduled cancel and no paid_through yet.
+    await db.update(sponsorships).set({ paidThrough: null, cancelAt: TRIAL_END_S * 1000 })
+    await send(db, stripe, paid, T0 + 2 * DAY)
+    const row = (await db.select().from(sponsorships))[0]
+    expect(row?.paidThrough).toBe(TRIAL_END_S * 1000)
+    await close()
   })
 
   it('ignores a stale invoice.payment_failed after a newer invoice.paid, and a stale invoice.paid does not clear a newer failure', async () => {

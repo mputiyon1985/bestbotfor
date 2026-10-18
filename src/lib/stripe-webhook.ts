@@ -576,6 +576,8 @@ async function applySponsorInvoice(db: Database, event: Stripe.Event, now: numbe
           periodEnd == null
             ? sql`${sponsorships.paidThrough}`
             : sql`CASE
+                WHEN ${sponsorships.paidThrough} IS NULL AND ${sponsorships.cancelAt} IS NOT NULL THEN
+                  min(${periodEnd}, ${sponsorships.cancelAt})
                 WHEN ${sponsorships.paidThrough} IS NULL THEN ${periodEnd}
                 WHEN ${sponsorships.cancelAt} IS NOT NULL THEN
                   max(${sponsorships.paidThrough}, min(${periodEnd}, ${sponsorships.cancelAt}))
@@ -714,13 +716,26 @@ function stripeObjectId(value: unknown): string | null {
 }
 
 /**
- * The sponsor subscription a refunded payment belongs to. Subscription
- * checkouts store no payment intent (Checkout returns null for
- * mode=subscription), so the refund is traced through the invoice that the
- * payment paid: a legacy charge.invoice field, else the InvoicePayment for the
- * payment intent, then the invoice's parent subscription.
+ * Where a refunded payment's invoice leads. Subscription checkouts store no
+ * payment intent (Checkout returns null for mode=subscription), so the refund
+ * is traced through the invoice that the payment paid: a legacy
+ * charge.invoice field, else the InvoicePayment for the payment intent, then
+ * the invoice's parent subscription.
+ * - `no_invoice`: no invoice was found, so the customer fallback may run.
+ * - `invoice_without_subscription`: an invoice was found but it is not a
+ *   subscription invoice, so nothing changes.
+ * - `subscription`: the invoice's subscription id.
  */
-async function refundSubscriptionId(stripe: Stripe, record: Record<string, unknown>, intent: string | null): Promise<string | null> {
+type RefundInvoiceMatch =
+  | { kind: 'no_invoice' }
+  | { kind: 'invoice_without_subscription'; invoiceId: string }
+  | { kind: 'subscription'; invoiceId: string; subscriptionId: string }
+
+async function refundSubscriptionId(
+  stripe: Stripe,
+  record: Record<string, unknown>,
+  intent: string | null,
+): Promise<RefundInvoiceMatch> {
   let invoice: unknown = record.invoice ?? null
   if (!stripeObjectId(invoice) && intent) {
     const payments = await stripe.invoicePayments.list({
@@ -731,11 +746,14 @@ async function refundSubscriptionId(stripe: Stripe, record: Record<string, unkno
     invoice = payments.data[0]?.invoice ?? null
   }
   const invoiceId = stripeObjectId(invoice)
-  if (!invoiceId) return null
+  if (!invoiceId) return { kind: 'no_invoice' }
   const full =
     invoice && typeof invoice === 'object' && 'parent' in invoice ? invoice : await stripe.invoices.retrieve(invoiceId)
   const parsed = invoiceSchema.safeParse(full)
-  return parsed.success ? invoiceSubscriptionId(parsed.data) : null
+  const subscriptionId = parsed.success ? invoiceSubscriptionId(parsed.data) : null
+  return subscriptionId
+    ? { kind: 'subscription', invoiceId, subscriptionId }
+    : { kind: 'invoice_without_subscription', invoiceId }
 }
 
 /** The customer on a refunded charge. A Refund only names its charge, so that is read when needed. */
@@ -751,8 +769,9 @@ async function refundCustomerId(stripe: Stripe, record: Record<string, unknown>)
 /**
  * A succeeded refund or charge.refunded stops the placement. refunded_at is set once.
  * One-time sponsorships match on the payment intent. A subscription row
- * matches on the subscription the refunded invoice belongs to. When no
- * invoice can be found, a customer with exactly one unrefunded sponsor
+ * matches on the subscription the refunded invoice belongs to. An invoice
+ * with no subscription changes nothing. Only when no invoice is found at all,
+ * a customer with exactly one unrefunded sponsor
  * subscription and no membership is matched on the customer id; anything
  * less certain changes nothing.
  */
@@ -776,14 +795,18 @@ async function applySponsorshipRefund(db: Database, stripe: Stripe, event: Strip
       .limit(1)
     if (known.length > 0) return
   }
-  const subscriptionId = await refundSubscriptionId(stripe, record, intent)
-  if (subscriptionId) {
+  const match = await refundSubscriptionId(stripe, record, intent)
+  if (match.kind === 'subscription') {
     await db
       .update(sponsorships)
       .set({ refundedAt: now, updatedAt: now })
-      .where(and(eq(sponsorships.stripeSubscriptionId, subscriptionId), isNull(sponsorships.refundedAt)))
+      .where(and(eq(sponsorships.stripeSubscriptionId, match.subscriptionId), isNull(sponsorships.refundedAt)))
     return
   }
+  // An invoice that is not a subscription invoice is not a sponsor
+  // subscription payment. Only a refund with no invoice at all may fall back
+  // to the customer.
+  if (match.kind !== 'no_invoice') return
   const customerId = await refundCustomerId(stripe, record)
   if (!customerId) return
   const membership = await db
