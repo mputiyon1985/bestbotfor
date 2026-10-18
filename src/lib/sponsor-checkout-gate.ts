@@ -12,8 +12,9 @@ export type SponsorCheckoutSurface = 'live' | 'test' | 'closed'
 type SponsorCheckoutEnv = Record<string, string | undefined>
 
 /**
- * Live billing is on only when STRIPE_ALLOW_LIVE is exactly "true" and the
- * secret key uses a live prefix. Anything else is off.
+ * Live billing is on only when VERCEL_ENV is exactly "production",
+ * STRIPE_ALLOW_LIVE is exactly "true", and the secret key uses a live prefix.
+ * Anything else is off. Outside production, a live key is not live billing.
  */
 export function sponsorLiveBilling(env: SponsorCheckoutEnv = process.env): boolean {
   const key = env.STRIPE_SECRET_KEY?.trim() ?? ''

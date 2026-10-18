@@ -58,11 +58,12 @@ function env(overrides: Record<string, string | undefined>): Record<string, stri
 }
 
 describe('sponsor checkout surface', () => {
-  it('is live only when the flag is exactly true and the key is sk_live or rk_live', () => {
+  it('is live only in production when the flag is exactly true and the key is a live secret', () => {
     expect(sponsorLiveBilling(env({ STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }))).toBe(true)
     expect(sponsorLiveBilling(env({ STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: restrictedLiveKey }))).toBe(true)
     expect(sponsorCheckoutSurface(env({ STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }))).toBe('live')
-    expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'preview', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: restrictedLiveKey }))).toBe('live')
+    expect(sponsorLiveBilling(env({ VERCEL_ENV: 'preview', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: restrictedLiveKey }))).toBe(false)
+    expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'preview', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: restrictedLiveKey }))).toBe('test')
 
     for (const flag of [undefined, 'false', 'TRUE', 'True', ' true', 'true ', 'yes', '1']) {
       expect(sponsorCheckoutSurface(env({ STRIPE_ALLOW_LIVE: flag, STRIPE_SECRET_KEY: liveKey })), flag).toBe('closed')
@@ -86,7 +87,8 @@ describe('sponsor checkout surface', () => {
     expect(
       sponsorCheckoutSurface(env({ VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: testKey, SPONSOR_PUBLIC_CHECKOUT: '1' })),
     ).toBe('closed')
-    expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'preview-branch', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }))).toBe('live')
+    expect(sponsorLiveBilling(env({ VERCEL_ENV: 'preview-branch', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }))).toBe(false)
+    expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'preview-branch', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }))).toBe('closed')
   })
 })
 
