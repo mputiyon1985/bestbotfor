@@ -30,6 +30,7 @@ test.describe('alternatives pages', () => {
       }
       await expect(page.locator(`a[href="/best/${spec.task}"]`).first()).toBeVisible()
       await expect(page.getByText('Sponsored', { exact: true })).toHaveCount(0)
+      await expect(page.locator(`input[name="source"][value="alternatives-${spec.tool}"]`)).toHaveCount(1)
     })
   }
 

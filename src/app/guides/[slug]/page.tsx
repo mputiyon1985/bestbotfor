@@ -104,7 +104,7 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
       <p className="text-sm text-muted">
         Want every pick on one page? <Link className="underline" href={LOADOUT_PATH}>Get the AI Loadout</Link>.
       </p>
-      <DailyBotCapture source="best" />
+      <DailyBotCapture source="guides" />
     </article>
   )
 }

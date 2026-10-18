@@ -20,6 +20,7 @@ import {
   rankAlternatives,
 } from '@/lib/alternatives'
 import { listTaskCandidates } from '@/lib/catalog'
+import { alternativesNewsletterSource } from '@/lib/newsletter-source'
 import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
 import { bestGuideHeading } from '@/lib/descriptions'
 import { budgetLabel, priceLabel, skillLabel } from '@/lib/format'
@@ -73,6 +74,7 @@ export default async function AlternativesPage({ params, searchParams }: Props) 
   const pairs = comparePairsFor(subject.slug)
   const names = new Map(candidates.map((tool) => [tool.slug, tool.name]))
   const reasons = subject.cons.slice(0, SWITCH_REASON_COUNT)
+  const newsletterSource = alternativesNewsletterSource(subject.slug)
   return (
     <article className="space-y-8">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
@@ -164,7 +166,7 @@ export default async function AlternativesPage({ params, searchParams }: Props) 
       <p className="text-sm text-muted">
         Want this personalized? <Link className="underline" href="/">Answer 3 questions</Link> and get your pick in 30 seconds. Payment never buys a higher rank.
       </p>
-      <DailyBotCapture source="best" />
+      {newsletterSource ? <DailyBotCapture source={newsletterSource} /> : null}
     </article>
   )
 }

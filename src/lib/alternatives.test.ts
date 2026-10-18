@@ -15,6 +15,8 @@ import {
   rankAlternatives,
 } from './alternatives'
 import { listMatches } from './matches'
+import { ALTERNATIVES_NEWSLETTER_TOOLS, alternativesNewsletterSource, newsletterReferringPath } from './newsletter-source'
+import { NEWSLETTER_SIGNUP_PARAGRAPH } from './privacy-copy'
 import { toolsForTask } from './recommend'
 import { MIN_QUIZ_FIT_SCORE } from './scoring'
 import { SEO_DESCRIPTION_MAX, SEO_TITLE_MAX } from './seo-pages'
@@ -78,6 +80,19 @@ describe('alternatives pages', () => {
     expect(parseAlternativeBudget(['free', 'low'])).toBeNull()
     expect(alternativesBudgetPath('chatgpt', 'any')).toBe('/alternatives/chatgpt')
     expect(alternativesBudgetPath('chatgpt', 'free')).toBe('/alternatives/chatgpt?budget=free')
+  })
+
+  it('gives every page its own newsletter source, named in the privacy policy', () => {
+    for (const page of ALTERNATIVE_PAGES) {
+      const source = alternativesNewsletterSource(page.tool)
+      expect(source, page.tool).not.toBeNull()
+      expect(newsletterReferringPath(source!)).toBe(`/alternatives/${page.tool}`)
+      expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain(`/alternatives/${page.tool}`)
+    }
+    expect(ALTERNATIVES_NEWSLETTER_TOOLS).toEqual(ALTERNATIVE_PAGES.map((page) => page.tool))
+    const template = source('src/app/alternatives/[tool]/page.tsx')
+    expect(template).toContain('alternativesNewsletterSource(subject.slug)')
+    expect(template).not.toContain('source="best"')
   })
 
   it('finds compare pairs that include the tool', () => {
