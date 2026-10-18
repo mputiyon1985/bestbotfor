@@ -7,6 +7,7 @@ import path from 'node:path'
 import { promisify } from 'node:util'
 import { createClient } from '@libsql/client'
 import { describe, expect, it } from 'vitest'
+import { unsafeRealFetch } from '@/test/block-outbound'
 import { configureFileDatabase, createLibsqlClient } from './db/client'
 
 const execFileAsync = promisify(execFile)
@@ -26,7 +27,7 @@ async function sqldBinary(): Promise<string> {
   await mkdir(root, { recursive: true })
   const archive = path.join(root, 'sqld.tar.xz')
   const url = `https://github.com/tursodatabase/libsql/releases/download/${SQLD_VERSION}/${triple}.tar.xz`
-  const response = await fetch(url)
+  const response = await unsafeRealFetch(url)
   if (!response.ok) throw new Error(`sqld download failed: ${response.status}`)
   await writeFile(archive, Buffer.from(await response.arrayBuffer()))
   await execFileAsync('tar', ['-xJf', archive, '-C', root])

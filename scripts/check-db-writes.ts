@@ -5,6 +5,8 @@ const ALLOWED = new Set([
   'src/lib/rate-limit.ts',
   'src/lib/db/client.ts',
   'src/lib/newsletter.ts',
+  // Pending Beehiiv backfill claims a row before the call, then marks it synced.
+  'src/lib/newsletter-backfill.ts',
   'src/lib/stripe-webhook.ts',
   // Sponsor tool cards, their review audit log, and the checkout slot claim.
   'src/lib/sponsor-card.ts',
