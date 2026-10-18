@@ -7,13 +7,16 @@
   - A production approval does what `recordSponsorCardReview` does; a status flip alone does not publish a card.
   - The webhook's `refunded_at` and the guarded `markSponsorRefunded` write are separate. A blank reason is stored as "Refunded in the Stripe dashboard."
   - The 7-day `refund_pending` change runs only when the queue or a resubmission loads.
-  - Live events get 400 unless `STRIPE_ALLOW_LIVE` is `true`.
+  - Live events get 400 unless `VERCEL_ENV` is `production` and `STRIPE_ALLOW_LIVE` is `true`.
   - A new "Payment Link sales" section covers the Founding and Monthly links: manual fulfillment, refunds and cancellations, the 6-month price lock done by hand, and disputes.
     - It lists the fields of the manual `sponsorships` row (a unique session key per period, that period's payment intent, the weekly or monthly offering, `paid`, `paid_at`, and the task from `best_page`). A dashboard refund of that payment intent then hides the placement automatically.
     - Before a sale is confirmed, the page must have no paid placement in that window, because a Payment Link sale does not reserve the slot.
     - Sales are referred to by Stripe object id only, never by buyer email, name, or address.
     - Placements publish only through the row and an approved card, so they carry the Sponsored label and fall under `/disclosure`. Catalog or copy edits never feature a sponsor.
     - The monthly window is 30 days. Unhandled events still write a `stripe_events` row. Disputes cover `/sponsor` sales too.
+    - The slot check also looks for an unexpired 24-hour `/sponsor` slot claim on the task. A subscription period's payment intent comes from its invoice payment.
+  - The live-mode line says live events get 400 unless `VERCEL_ENV` is exactly `production` and `STRIPE_ALLOW_LIVE` is exactly `true`. Gate 16 records James's condition: it closes on Sentinel's re-QA PASS, and he merges only on that PASS.
+  - The newsletter export runbook names `.env.export.local` (covered by `.env.*.local` in `.gitignore`), shows `set -a; . ./.env.export.local; set +a`, and creates the token with `turso db tokens create <db> --read-only`.
 
   Launch-plan row v1.2.14 (v1.2.13 is #78's).
 - The newsletter sponsor runbook now says the sponsor's copy goes under the Sponsored label and the sponsor's link goes under that copy, with `rel="sponsored nofollow"`. A production run of `npm run export:newsletter-sponsor` uses a read-only token only. Gate 17 stays closed on James's CEO OK (2026-10-18).

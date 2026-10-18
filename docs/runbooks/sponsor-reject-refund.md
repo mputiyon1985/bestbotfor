@@ -16,7 +16,7 @@ The live endpoint is `POST /api/stripe/webhook`. The route is `src/app/api/strip
 - `refund.created`
 - `refund.updated`
 
-The route returns 400 (`live-mode-rejected`) for every live-mode event unless `STRIPE_ALLOW_LIVE` is exactly `true` in that environment. Events the handler does not list, such as `invoice.paid`, `invoice.payment_failed`, and the `charge.dispute.*` events, are logged with `console.info` and answered 200. They still write and finish a `stripe_events` idempotency row, but change no sponsorship or membership data.
+The route returns 400 (`live-mode-rejected`) for every live-mode event unless `VERCEL_ENV` is exactly `production` and `STRIPE_ALLOW_LIVE` is exactly `true`. Events the handler does not list, such as `invoice.paid`, `invoice.payment_failed`, and the `charge.dispute.*` events, are logged with `console.info` and answered 200. They still write and finish a `stripe_events` idempotency row, but change no sponsorship or membership data.
 
 This runbook does not name an endpoint id or a signing secret. The repo shows which events the handler accepts. Which events the live Stripe endpoint is subscribed to is set in the Stripe dashboard.
 
@@ -83,11 +83,11 @@ Both links collect the buyer's email, name, and a required billing address. Refe
 
 1. **The alert.** The payment watch reports a new completed Checkout session, charge, or invoice on the live account. That is James's check of the Stripe account, not an app feature. Open the payment in the Stripe dashboard and confirm it succeeded and which link it came from.
 2. **The page.** Read the `best_page` custom field on the Checkout session. Confirm it names a real `/best/[task]` page. If it does not, ask the buyer before publishing anything.
-3. **The slot.** A Payment Link sale does not reserve the `/best` slot. Until the row in step 5 exists, `/sponsor` Checkout can still sell the same page, and the page shows only the newest paid placement, so one paying sponsor would get nothing. Before confirming the sale, check that the requested page has no `paid` `sponsorships` row without `refunded_at` whose window is in or overlaps the new window. If it is taken, tell the buyer and offer another page or later dates. Once the row in step 5 exists, it blocks `/sponsor` claims for that page in that window.
+3. **The slot.** A Payment Link sale does not reserve the `/best` slot. Until the row in step 5 exists, `/sponsor` Checkout can still sell the same page, and the page shows only the newest paid placement, so one paying sponsor would get nothing. Before confirming the sale, check that the requested page has no `paid` `sponsorships` row without `refunded_at` whose window is in or overlaps the new window. Also check `sponsorship_slot_claims` for an unexpired `/sponsor` claim on that task: a row whose `claimed_at` is less than 24 hours old means a `/sponsor` Checkout for that page may still complete. If either is taken, tell the buyer and offer another page or later dates. Once the row in step 5 exists, it blocks `/sponsor` claims for that page in that window.
 4. **The card.** Get the tool card (name, description, https URL, logo) from the buyer. The same card rules apply as for `/sponsor` sales.
 5. **Publishing.** The `/best` placement shows only a `paid` `sponsorships` row for that task, with no `refunded_at`, inside its window, and with an approved card. The window is 7 days for `placement_weekly` and 30 days for `placement_monthly`, both starting at `paid_at`. A Payment Link sale has none of that, so publishing needs Mark's OK, via James, for the production data write. That write creates the `sponsorships` row and the pending card, then approves the card through the same guarded path as `recordSponsorCardReview`: copy the pending card into the `approved_*` columns and insert the `sponsorship_review_events` row. A status flip alone does not publish. The row has:
    - `stripe_checkout_session_id`: the sale's `cs_…` id for the first period. The column is unique, so each later period needs its own unique key (for example `<cs_…>:<invoice id>`).
-   - `stripe_payment_intent_id`: the payment intent of that period's payment.
+   - `stripe_payment_intent_id`: the payment intent of that period's payment. A subscription Checkout session has no payment intent of its own, so take the `pi_…` from that period's invoice payment in the Stripe dashboard.
    - `offering`: `placement_weekly` or `placement_monthly`.
    - `status`: `paid`.
    - `paid_at`: the start of the window, normally the time of that period's payment. It is never moved later.
