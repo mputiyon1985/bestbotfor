@@ -10,11 +10,17 @@ import { stripeKeyMode } from '@/lib/stripe'
 
 export const dynamic = 'force-dynamic'
 
-export const metadata: Metadata = pageMetadata({
-  title: 'Sponsor',
-  description: 'Sponsor a featured tool slot on a BestBotFor guide, or a slot in the newsletter. Checkout is Stripe’s hosted page.',
-  path: '/sponsor',
-})
+const SPONSOR_META_OFFER = 'Sponsor a featured tool slot on a BestBotFor guide, or a slot in the newsletter.'
+
+export function generateMetadata(): Metadata {
+  const surface = sponsorCheckoutSurface()
+  const description = surface === 'closed' ? SPONSOR_META_OFFER : `${SPONSOR_META_OFFER} Checkout is Stripe’s hosted page.`
+  return pageMetadata({
+    title: 'Sponsor',
+    description,
+    path: '/sponsor',
+  })
+}
 
 export default function SponsorPage() {
   const surface = sponsorCheckoutSurface()

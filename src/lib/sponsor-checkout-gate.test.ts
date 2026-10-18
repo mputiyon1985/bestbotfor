@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it } from 'vitest'
 import { POST } from '@/app/api/sponsor/checkout/route'
 import { sponsorCheckoutAction } from '@/app/sponsor/actions'
-import SponsorPage from '@/app/sponsor/page'
+import SponsorPage, { generateMetadata } from '@/app/sponsor/page'
 import { resetStripeCache } from '@/lib/stripe'
 import {
   SPONSOR_CONTACT_MAILTO,
@@ -89,6 +89,18 @@ describe('sponsor checkout surface', () => {
   })
 })
 
+const CHECKOUT_META = 'Checkout is Stripe’s hosted page.'
+
+function expectSponsorMetadata(closed: boolean) {
+  const metadata = generateMetadata()
+  const description = metadata.description
+  expect(description).toContain('Sponsor a featured tool slot on a BestBotFor guide, or a slot in the newsletter.')
+  expect(metadata.openGraph?.description).toBe(description)
+  expect(metadata.twitter && 'description' in metadata.twitter ? metadata.twitter.description : undefined).toBe(description)
+  if (closed) expect(description).not.toContain(CHECKOUT_META)
+  else expect(description).toContain(CHECKOUT_META)
+}
+
 describe('production sponsor page', () => {
   function pageHtml(): string {
     resetStripeCache()
@@ -117,6 +129,7 @@ describe('production sponsor page', () => {
     expect(html).not.toContain('Stripe test mode')
     expect(html).not.toContain('Continue to checkout')
     expect(html).not.toContain('role="note"')
+    expectSponsorMetadata(true)
   })
 
   it('shows live checkout on production once live billing is on', () => {
@@ -133,6 +146,7 @@ describe('production sponsor page', () => {
     expect(html).toContain('Featured placement: $99 for one week.')
     expect(html).not.toContain(SPONSOR_OPENING_SOON)
     expect(html).not.toContain('Stripe test mode')
+    expectSponsorMetadata(false)
   })
 
   it('stays closed for unset production, a blank env, a padded production value, and an unknown name', () => {
@@ -155,6 +169,7 @@ describe('production sponsor page', () => {
       expect(html, JSON.stringify(item)).not.toContain('Payment happens on Stripe’s hosted checkout page.')
       expect(html, JSON.stringify(item)).not.toContain('The form does not send an amount.')
       expect(POST().status, JSON.stringify(item)).toBe(503)
+      expectSponsorMetadata(true)
     }
   })
 
@@ -171,6 +186,7 @@ describe('production sponsor page', () => {
       expect(html, vercelEnv).toContain('Checkout charges the Stripe price configured on the server.')
       expect(html, vercelEnv).toContain('Buy a featured tool slot on one /best/[task] page, or a sponsor mention in one newsletter issue.')
       expect(html, vercelEnv).not.toContain(SPONSOR_OPENING_SOON)
+      expectSponsorMetadata(false)
     }
   })
 })
