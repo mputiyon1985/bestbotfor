@@ -133,6 +133,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
       {
         label: 'Paid from',
         kind: 'text',
+        // Standard list prices only. Nova left off the time-limited first-month promos so this cell does not go stale.
         a: 'Starter $6/mo; Creator $22/mo',
         b: 'Studio Creator $29/mo, or $19/mo billed yearly',
         source: '[1]; [2]',
@@ -199,8 +200,8 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
         label: 'Paid from',
         kind: 'text',
         a: 'Starter €20/mo billed yearly; Pro €50/mo billed yearly',
-        b: 'Core $12/mo billed yearly, or $16 monthly (10,000 credits). Pro $21/mo billed yearly, or $28 monthly. Teams $38/mo billed yearly, or $51 monthly [S]',
-        source: '[3]; [S2]',
+        b: 'Core $9/mo. Pro $16/mo. Team $29/mo. Each starts at 10,000 credits',
+        source: '[3]; [4]',
       },
       {
         label: 'How you pay',
@@ -215,8 +216,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
     cta: 'Automation pricing shifts often (Make moved to credits on Aug 27). Get **The Daily Bot** for AI tool and pricing changes in plain English.',
     sources: [
       '[3] n8n pricing: https://n8n.io/pricing/ (vendor, checked Oct 17, 2026)',
-      '[4] Make pricing (FAQ: credits, free plan): https://www.make.com/en/pricing (vendor, checked Oct 18, 2026)',
-      '[S2] Make plan prices (secondary: plan cards render client-side): https://meetalog.com/make-com-pricing/ ; https://www.mainsum.com/make-vs-n8n/ (third party, prices re-checked Oct 18, 2026)',
+      '[4] Make pricing: https://www.make.com/en/pricing (vendor, checked Oct 18, 2026). Plan prices read on https://www.make.com/en/compare/make-vs-zapier (vendor, checked Oct 18, 2026)',
       catalogSource,
     ],
     ranking: { href: '/best/automation', label: 'See the full Automation ranking' },
@@ -512,7 +512,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
         label: 'Paid from',
         kind: 'text',
         a: 'Pro $25/mo (100 credits) or $21/mo billed yearly',
-        b: 'Plus $30 (shown reduced from $90)',
+        b: 'Plus $30 per user (shown reduced from $90)',
         source: '[12a]; [13]',
       },
       {

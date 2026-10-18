@@ -177,7 +177,7 @@ describe('curated compare copy', () => {
 
     expect(cell(voice.view, 'Free plan').b).not.toContain('[S]')
     expect(cell(voice.view, 'Paid from').b).not.toContain('[S]')
-    expect(cell(automation.view, 'Paid from').b).toContain('[S]')
+    expect(cell(automation.view, 'Paid from').b).not.toContain('[S]')
     for (const rendered of [voice, automation]) {
       const faqs = compareFaqs({
         nameA: rendered.view.nameA,
@@ -279,11 +279,15 @@ describe('curated compare copy', () => {
     expect(makeView.pickB.join(' ')).toContain('3,500+ apps')
     expect(makeView.pickB.join(' ')).not.toContain('1,000+ app integrations')
     const make = cell(makeView, 'Paid from').b
-    expect(make).toContain('Core $12/mo billed yearly, or $16 monthly')
-    expect(make).toContain('Pro $21/mo billed yearly, or $28 monthly')
-    expect(make).toContain('Teams $38/mo billed yearly, or $51 monthly')
-    expect(make).not.toContain('$9/mo')
+    expect(make).toBe('Core $9/mo. Pro $16/mo. Team $29/mo. Each starts at 10,000 credits')
+    expect(make).not.toContain('[S]')
     expect(make).not.toContain('10.59')
+    const makeCopy = compareCopy.find((entry) => entry.slug === 'n8n-vs-make')
+    expect(makeCopy?.sources.join('\n')).toContain('https://www.make.com/en/pricing')
+    expect(makeCopy?.sources.join('\n')).toContain('https://www.make.com/en/compare/make-vs-zapier')
+    expect(makeCopy?.sources.join('\n')).not.toContain('meetalog')
+    expect(makeCopy?.sources.join('\n')).not.toContain('mainsum')
+    expect(makeCopy?.checkedLine).toBe(`Last checked Oct 17, 2026. ${CHECKED_TAIL}`)
 
     const murf = cell(viewFor('elevenlabs-vs-murf').view, 'Paid from').b
     expect(murf).toContain('$29/mo')
@@ -293,7 +297,7 @@ describe('curated compare copy', () => {
     expect(cell(builders, 'Paid from').a).toContain('Pro $25/mo')
     expect(cell(builders, 'Paid from').a).toContain('$21/mo billed yearly')
     expect(cell(builders, 'Business tier').a).toBe('Business $50/mo, or $42/mo billed yearly')
-    expect(cell(builders, 'Paid from').b).toBe('Plus $30 (shown reduced from $90)')
+    expect(cell(builders, 'Paid from').b).toBe('Plus $30 per user (shown reduced from $90)')
     expect(cell(builders, 'Business tier').b).not.toContain('$90')
 
     expect(cell(viewFor('heygen-vs-synthesia').view, 'Paid from').b).toBe('Starter $29/mo billed monthly')
@@ -303,6 +307,9 @@ describe('curated compare copy', () => {
     const copy = compareCopy.find((entry) => entry.slug === 'elevenlabs-vs-murf')
     expect(copy?.sources.join('\n')).not.toContain('[S')
     expect(copy?.sources.join('\n')).not.toContain('third party')
+    expect(readFileSync(path.join(process.cwd(), 'src/data/compare-copy.ts'), 'utf8')).toContain(
+      'Standard list prices only. Nova left off the time-limited first-month promos so this cell does not go stale.',
+    )
     for (const day of ['2026-10-17', '2026-10-18', '2026-10-19']) {
       const view = viewFor('elevenlabs-vs-murf', day).view
       expect(cell(view, 'Paid from').a).toBe('Starter $6/mo; Creator $22/mo')
