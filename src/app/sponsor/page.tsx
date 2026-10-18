@@ -54,6 +54,9 @@ export default function SponsorPage() {
   const foundingOffering = sponsorOffering('founding_sponsor')
   const subscription = subscriptionOffering ? sponsorOfferingPriceLabel(subscriptionOffering) : ''
   const founding = foundingOffering ? sponsorOfferingPriceLabel(foundingOffering) : ''
+  // Go-live gate: once the in-app founding Prices are set, the founding Payment
+  // Link is hidden so both founding offers never show together (shared cap of 5).
+  const inAppFounding = sponsorOfferingConfigured('founding_sponsor')
 
   return (
     <article className="max-w-2xl space-y-6">
@@ -85,7 +88,7 @@ export default function SponsorPage() {
         The one-time prices above are the current list prices from server configuration. They can be changed there.
         {surface === 'closed' ? null : ' The form does not send an amount. Checkout charges the Stripe price configured on the server.'}
       </p>
-      {surface === 'live' ? <SponsorPaymentLinks /> : null}
+      {surface === 'live' ? <SponsorPaymentLinks hideFounding={inAppFounding} /> : null}
       {surface === 'live' ? (
         <p>
           Questions or custom deals?{' '}
