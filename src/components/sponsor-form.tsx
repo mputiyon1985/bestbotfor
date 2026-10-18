@@ -2,13 +2,20 @@
 
 import { useActionState, useEffect, useState } from 'react'
 import { sponsorCheckoutAction, type SponsorFormState } from '@/app/sponsor/actions'
-import { SPONSOR_COMPANY_PUBLISHED, SPONSOR_LOGO_HINT, SPONSOR_ONE_TIME_NOTICE, SPONSOR_REVIEW_NOTICE } from '@/lib/sponsor-offerings'
+import {
+  SPONSOR_COMPANY_PUBLISHED,
+  SPONSOR_LOGO_HINT,
+  SPONSOR_REVIEW_NOTICE,
+  SPONSOR_TASK_FIELD_LABEL,
+} from '@/lib/sponsor-offerings'
 
 export type SponsorFormOffering = {
   id: string
   title: string
   summary: string
   priceLabel: string
+  /** One-time or renewal terms shown under the option. */
+  notice: string
   target: 'task' | 'issue_date'
   available: boolean
 }
@@ -49,7 +56,7 @@ export function SponsorForm({ offerings, tasks }: { offerings: SponsorFormOfferi
                 {offering.title} · {offering.priceLabel}
               </span>
               <span className="mt-1 block text-sm text-muted">{offering.summary}</span>
-              <span className="mt-1 block text-sm">{SPONSOR_ONE_TIME_NOTICE}</span>
+              <span className="mt-1 block text-sm">{offering.notice}</span>
               {offering.available ? null : (
                 <span className="mt-1 block text-sm">Checkout for this slot is not configured yet.</span>
               )}
@@ -96,7 +103,7 @@ export function SponsorForm({ offerings, tasks }: { offerings: SponsorFormOfferi
 
       <div>
         <label htmlFor="sponsor-task" className="font-semibold">
-          Task page
+          {SPONSOR_TASK_FIELD_LABEL}
         </label>
         <select
           id="sponsor-task"
@@ -112,7 +119,7 @@ export function SponsorForm({ offerings, tasks }: { offerings: SponsorFormOfferi
             </option>
           ))}
         </select>
-        <p className="mt-1 text-sm text-muted">Required for a featured placement.</p>
+        <p className="mt-1 text-sm text-muted">Required for every featured placement, including the subscriptions.</p>
       </div>
 
       <div>

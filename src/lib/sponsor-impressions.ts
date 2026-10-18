@@ -3,7 +3,7 @@ import { and, desc, eq, inArray, sql } from 'drizzle-orm'
 import type { Database } from './db/client'
 import { sponsorshipCreatives, sponsorshipDailyCounts, sponsorships } from './db/schema'
 import { withDeadline } from './deadline'
-import { placementWindowMs } from './best-placement'
+import { placementActiveAt } from './best-placement'
 import { parseSponsorHttpsUrl } from './sponsor-card'
 import { sanitizeSponsorCompany } from './sponsor-company'
 
@@ -169,6 +169,10 @@ export async function approvedSponsorRedirectUrl(db: Database, placementId: numb
       status: sponsorships.status,
       paidAt: sponsorships.paidAt,
       refundedAt: sponsorships.refundedAt,
+      paidThrough: sponsorships.paidThrough,
+      subscriptionStatus: sponsorships.subscriptionStatus,
+      cancelAt: sponsorships.cancelAt,
+      canceledAt: sponsorships.canceledAt,
       approvedUrl: sponsorshipCreatives.approvedUrl,
       creativeStatus: sponsorshipCreatives.status,
     })
@@ -181,9 +185,7 @@ export async function approvedSponsorRedirectUrl(db: Database, placementId: numb
     .orderBy(desc(sponsorshipCreatives.updatedAt))
   const row = rows[0]
   if (!row || row.status !== 'paid' || row.refundedAt != null || row.creativeStatus !== 'approved') return null
-  const windowMs = placementWindowMs(row.offering)
-  const start = row.paidAt
-  if (windowMs == null || start == null || now < start || now >= start + windowMs) return null
+  if (!placementActiveAt(row, now)) return null
   if (!row.approvedUrl) return null
   return parseSponsorHttpsUrl(row.approvedUrl)
 }

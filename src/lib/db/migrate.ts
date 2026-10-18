@@ -48,6 +48,15 @@ const SPONSORSHIP_ADOPT_COLUMNS: ReadonlyArray<{ name: string; ddl: string }> = 
   { name: 'updated_at', ddl: 'INTEGER NOT NULL DEFAULT 0' },
   { name: 'paid_at', ddl: 'INTEGER' },
   { name: 'refunded_at', ddl: 'INTEGER' },
+  // Sponsor subscriptions (founding_sponsor, placement_subscription). All nullable.
+  { name: 'stripe_subscription_id', ddl: 'TEXT' },
+  { name: 'subscription_status', ddl: 'TEXT' },
+  { name: 'paid_through', ddl: 'INTEGER' },
+  { name: 'price_locked_until', ddl: 'INTEGER' },
+  { name: 'cancel_at', ddl: 'INTEGER' },
+  { name: 'canceled_at', ddl: 'INTEGER' },
+  { name: 'payment_failed_at', ddl: 'INTEGER' },
+  { name: 'subscription_event_at', ddl: 'INTEGER' },
 ]
 
 /**
@@ -73,6 +82,9 @@ export async function adoptSponsorshipSchema(client: Client): Promise<void> {
     addedSession = addedSession || column.name === 'stripe_checkout_session_id'
   }
   await client.execute('CREATE INDEX IF NOT EXISTS sponsorships_status_idx ON sponsorships (status)')
+  await client.execute(
+    'CREATE INDEX IF NOT EXISTS sponsorships_subscription_idx ON sponsorships (stripe_subscription_id)',
+  )
   if (addedSession) {
     await client.execute(
       'CREATE UNIQUE INDEX IF NOT EXISTS sponsorships_stripe_checkout_session_id_unique ON sponsorships (stripe_checkout_session_id)',

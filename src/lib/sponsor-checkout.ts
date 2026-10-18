@@ -6,9 +6,12 @@ import { taskSeeds } from '@/data/catalog'
 import {
   SPONSOR_BUSINESS_NAME,
   SPONSOR_INTEGRATION_IDENTIFIER,
-  SPONSOR_ONE_TIME_NOTICE,
   sponsorOffering,
+  sponsorOfferingNotice,
   sponsorPriceId,
+  sponsorPriceLockMonths,
+  sponsorSetupPriceId,
+  sponsorTrialDays,
   type SponsorOfferingId,
 } from './sponsor-offerings'
 import type { RateLimitDecision } from './action-limit'
@@ -32,6 +35,8 @@ export type SponsorCheckoutInput = {
   taskSlug: string | null
   issueDate: string | null
   priceId: string
+  /** One-time Price billed on the first invoice of a subscription (founding $99). */
+  setupPriceId?: string | null
   requestId: string
   /** Pending tool card stored before Checkout. Newsletter slots leave this unset. */
   creativeId?: string
@@ -70,6 +75,8 @@ export function parseSponsorCheckout(formData: FormData, env: Record<string, str
 
   const priceId = sponsorPriceId(offering.id, env)
   if (!priceId) return { ok: false, message: 'That offering is not available yet.' }
+  const setupPriceId = 'setup' in offering ? sponsorSetupPriceId(offering.id, env) : null
+  if ('setup' in offering && !setupPriceId) return { ok: false, message: 'That offering is not available yet.' }
 
   return {
     ok: true,
@@ -80,6 +87,7 @@ export function parseSponsorCheckout(formData: FormData, env: Record<string, str
       taskSlug,
       issueDate,
       priceId,
+      setupPriceId,
       requestId,
     },
   }
@@ -104,6 +112,15 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
   successUrl: string
   cancelUrl: string
 }): { params: Stripe.Checkout.SessionCreateParams; idempotencyKey: string } {
+  const offering = sponsorOffering(input.offering)
+  if (!offering) throw new Error('unknown sponsor offering')
+  const subscription = offering.billing === 'subscription'
+  const notice = sponsorOfferingNotice(offering)
+  const trialDays = sponsorTrialDays(offering)
+  const lockMonths = sponsorPriceLockMonths(offering)
+  const setupPriceId = subscription && 'setup' in offering ? input.setupPriceId ?? null : null
+  if (subscription && 'setup' in offering && !setupPriceId) throw new Error('setup price is not configured')
+
   const metadata: Record<string, string> = {
     kind: 'sponsorship',
     offering: input.offering,
@@ -114,7 +131,15 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
     price_id: input.priceId,
     creative_id: input.creativeId ?? '',
   }
-  const fingerprintSource = [
+  if (subscription) {
+    metadata.billing = 'subscription'
+    metadata.setup_price_id = setupPriceId ?? ''
+    metadata.trial_days = String(trialDays)
+    metadata.price_lock_months = String(lockMonths)
+  }
+  // One-time offerings keep the original fingerprint fields, so a retried
+  // form keeps the same idempotency key across this change.
+  const fingerprintFields = [
     input.offering,
     input.email,
     input.company,
@@ -125,29 +150,68 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
     input.successUrl,
     input.cancelUrl,
     SPONSOR_BUSINESS_NAME,
-    SPONSOR_ONE_TIME_NOTICE,
-  ].join('\n')
+    notice,
+  ]
+  if (subscription) fingerprintFields.push('subscription', setupPriceId ?? '', String(trialDays), String(lockMonths))
+  const fingerprintSource = fingerprintFields.join('\n')
   const fingerprint = createHash('sha256').update(fingerprintSource).digest('hex').slice(0, 16)
-  return {
-    idempotencyKey: `sponsor-${fingerprint}-${input.requestId}`,
-    params: {
-      mode: 'payment',
-      customer_email: input.email,
-      line_items: [{ price: input.priceId, quantity: 1 }],
-      success_url: input.successUrl,
-      cancel_url: input.cancelUrl,
-      metadata,
-      payment_intent_data: {
+  const idempotencyKey = `sponsor-${fingerprint}-${input.requestId}`
+  const shared = {
+    customer_email: input.email,
+    success_url: input.successUrl,
+    cancel_url: input.cancelUrl,
+    metadata,
+    custom_text: {
+      submit: { message: notice },
+    },
+    integration_identifier: SPONSOR_INTEGRATION_IDENTIFIER,
+    // Advertising placements are not eligible for Managed Payments.
+    // automatic_tax stays unset; this business remains the merchant of record.
+    managed_payments: { enabled: false },
+  } satisfies Partial<Stripe.Checkout.SessionCreateParams>
+
+  if (!subscription) {
+    // Same keys in the same order as before subscriptions, so the encoded
+    // request body of a retried one-time checkout does not change.
+    return {
+      idempotencyKey,
+      params: {
+        mode: 'payment',
+        customer_email: input.email,
+        line_items: [{ price: input.priceId, quantity: 1 }],
+        success_url: input.successUrl,
+        cancel_url: input.cancelUrl,
         metadata,
-        statement_descriptor_suffix: SPONSOR_BUSINESS_NAME,
+        payment_intent_data: {
+          metadata,
+          statement_descriptor_suffix: SPONSOR_BUSINESS_NAME,
+        },
+        custom_text: shared.custom_text,
+        integration_identifier: shared.integration_identifier,
+        managed_payments: shared.managed_payments,
       },
-      custom_text: {
-        submit: { message: SPONSOR_ONE_TIME_NOTICE },
-      },
-      integration_identifier: SPONSOR_INTEGRATION_IDENTIFIER,
-      // Advertising placements are not eligible for Managed Payments.
-      // automatic_tax stays unset; this business remains the merchant of record.
-      managed_payments: { enabled: false },
+    }
+  }
+
+  // Subscription mode. The recurring Price is first; a one-time setup Price
+  // (founding $99) is billed on the first invoice even while the recurring
+  // item is in its trial. The card is always collected, so the subscription
+  // renews after the trial without another step.
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price: input.priceId, quantity: 1 }]
+  if (setupPriceId) lineItems.push({ price: setupPriceId, quantity: 1 })
+  const subscriptionData: Stripe.Checkout.SessionCreateParams.SubscriptionData = {
+    metadata,
+    description: offering.productName,
+  }
+  if (trialDays > 0) subscriptionData.trial_period_days = trialDays
+  return {
+    idempotencyKey,
+    params: {
+      mode: 'subscription',
+      ...shared,
+      line_items: lineItems,
+      payment_method_collection: 'always',
+      subscription_data: subscriptionData,
     },
   }
 }

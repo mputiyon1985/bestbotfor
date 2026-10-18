@@ -2,8 +2,9 @@ import type Stripe from 'stripe'
 import {
   SPONSOR_BUSINESS_NAME,
   SPONSOR_CURRENCY,
+  SPONSOR_FOUNDING_NOTICE,
   SPONSOR_OFFERINGS,
-  SPONSOR_ONE_TIME_NOTICE,
+  sponsorOfferingNotice,
   type SponsorOffering,
 } from './sponsor-offerings'
 import { assertTestSetupKey, STRIPE_API_VERSION } from './stripe-key'
@@ -43,25 +44,73 @@ async function ensureSponsorProductName(stripe: Stripe, product: PriceRecord['pr
   })
 }
 
+/** One Stripe Price the sponsor flow charges. */
+export type SponsorPriceSpec = {
+  offeringId: string
+  lookupKey: string
+  priceEnv: string
+  unitAmount: number
+  productName: string
+  notice: string
+  /** Null for a one-time Price. */
+  interval: 'month' | null
+}
+
+/** The recurring or one-time Price for an offering. */
+export function sponsorPriceSpec(offering: SponsorOffering): SponsorPriceSpec {
+  return {
+    offeringId: offering.id,
+    lookupKey: offering.lookupKey,
+    priceEnv: offering.priceEnv,
+    unitAmount: offering.unitAmount,
+    productName: offering.productName,
+    notice: sponsorOfferingNotice(offering),
+    interval: offering.billing === 'subscription' ? offering.interval : null,
+  }
+}
+
+/** Every Price spec, including the founding one-time $99 setup Price. */
+export function sponsorPriceSpecs(): SponsorPriceSpec[] {
+  const specs: SponsorPriceSpec[] = []
+  for (const offering of SPONSOR_OFFERINGS) {
+    specs.push(sponsorPriceSpec(offering))
+    if ('setup' in offering) {
+      specs.push({
+        offeringId: offering.id,
+        lookupKey: offering.setup.lookupKey,
+        priceEnv: offering.setup.priceEnv,
+        unitAmount: offering.setup.unitAmount,
+        productName: offering.setup.productName,
+        notice: SPONSOR_FOUNDING_NOTICE,
+        interval: null,
+      })
+    }
+  }
+  return specs
+}
+
+function priceMatches(current: PriceRecord, spec: SponsorPriceSpec): boolean {
+  if (current.active === false || current.currency !== SPONSOR_CURRENCY || current.unit_amount !== spec.unitAmount) return false
+  if (spec.interval == null) return !current.recurring
+  return current.recurring?.interval === spec.interval
+}
+
 /**
  * Advertising placements are not eligible for Managed Payments, so products
  * are created without a Managed Payments tax code and prices omit tax_behavior.
  * Checkout disables managed_payments and leaves automatic_tax unset.
+ * A one-time spec only reuses a one-time Price; a monthly spec only reuses a
+ * monthly recurring Price with the same amount.
  */
-export async function ensureSponsorPrice(stripe: Stripe, offering: SponsorOffering): Promise<string> {
-  const existing = await stripe.prices.list({ lookup_keys: [offering.lookupKey], limit: 1 })
+export async function ensureSponsorPriceSpec(stripe: Stripe, spec: SponsorPriceSpec): Promise<string> {
+  const existing = await stripe.prices.list({ lookup_keys: [spec.lookupKey], limit: 1 })
   const current = existing.data[0] as PriceRecord | undefined
-  if (
-    current &&
-    current.active !== false &&
-    current.currency === SPONSOR_CURRENCY &&
-    current.unit_amount === offering.unitAmount &&
-    !current.recurring
-  ) {
+  if (current && priceMatches(current, spec)) {
     await ensureSponsorProductName(stripe, current.product)
     return current.id
   }
 
+  const kind = spec.interval ?? 'one_time'
   const productFromPrice = typeof current?.product === 'string' ? current.product : current?.product?.id
   const productId =
     productFromPrice ??
@@ -69,27 +118,32 @@ export async function ensureSponsorPrice(stripe: Stripe, offering: SponsorOfferi
       await stripe.products.create(
         {
           name: SPONSOR_BUSINESS_NAME,
-          description: `${offering.productName}. ${SPONSOR_ONE_TIME_NOTICE}`,
+          description: `${spec.productName}. ${spec.notice}`,
           statement_descriptor: SPONSOR_BUSINESS_NAME,
-          metadata: { offering: offering.id, lookup_key: offering.lookupKey },
+          metadata: { offering: spec.offeringId, lookup_key: spec.lookupKey },
         },
-        { idempotencyKey: `sponsor-product-${offering.lookupKey}-${SPONSOR_BUSINESS_NAME}-onetime` },
+        { idempotencyKey: `sponsor-product-${spec.lookupKey}-${SPONSOR_BUSINESS_NAME}-${kind === 'one_time' ? 'onetime' : kind}` },
       )
     ).id
 
-  const created = await stripe.prices.create(
-    {
-      product: productId,
-      currency: SPONSOR_CURRENCY,
-      unit_amount: offering.unitAmount,
-      lookup_key: offering.lookupKey,
-      transfer_lookup_key: true,
-      nickname: offering.productName,
-      metadata: { offering: offering.id },
-    },
-    { idempotencyKey: `sponsor-price-${offering.lookupKey}-${offering.unitAmount}-one_time` },
-  )
+  const params: Stripe.PriceCreateParams = {
+    product: productId,
+    currency: SPONSOR_CURRENCY,
+    unit_amount: spec.unitAmount,
+    lookup_key: spec.lookupKey,
+    transfer_lookup_key: true,
+    nickname: spec.productName,
+    metadata: { offering: spec.offeringId },
+  }
+  if (spec.interval) params.recurring = { interval: spec.interval, interval_count: 1 }
+  const created = await stripe.prices.create(params, {
+    idempotencyKey: `sponsor-price-${spec.lookupKey}-${spec.unitAmount}-${kind}`,
+  })
   return created.id
+}
+
+export async function ensureSponsorPrice(stripe: Stripe, offering: SponsorOffering): Promise<string> {
+  return ensureSponsorPriceSpec(stripe, sponsorPriceSpec(offering))
 }
 
 export function formatSponsorPriceLine(envName: string, priceId: string): string {
@@ -112,9 +166,9 @@ export async function setupSponsorPrices(input: {
   assertTestSetupKey(input.key, input.env)
   const stripe = input.createStripe(input.key)
   const lines: string[] = []
-  for (const offering of SPONSOR_OFFERINGS) {
-    const priceId = await ensureSponsorPrice(stripe, offering)
-    lines.push(formatSponsorPriceLine(offering.priceEnv, priceId))
+  for (const spec of sponsorPriceSpecs()) {
+    const priceId = await ensureSponsorPriceSpec(stripe, spec)
+    lines.push(formatSponsorPriceLine(spec.priceEnv, priceId))
   }
   return lines
 }
