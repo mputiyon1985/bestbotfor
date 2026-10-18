@@ -33,7 +33,7 @@ export type SubscriberHold =
   | { kind: 'held'; id: number; created: boolean; claimClock: number; restore: 'pending' | 'unsubscribed' }
   | { kind: 'done' }
   | { kind: 'busy' }
-  | { kind: 'terminal' }
+  | { kind: 'terminal'; beehiivStatus: string }
   | { kind: 'unavailable' }
 
 export type ReconcileResult = {
@@ -53,12 +53,19 @@ type HeldRow = {
   status: string
   destination: string
   syncingStartedAt: number | null
+  beehiivStatus: string | null
+}
+
+/** Callers cannot shrink the in-flight window below one minute. */
+export function stuckAfterFloor(value: number): number {
+  if (!Number.isFinite(value) || value < MIN_STUCK_AFTER_MS) return MIN_STUCK_AFTER_MS
+  return value
 }
 
 /** A missing clock is stale. A claim newer than the threshold is still in flight. */
 export function isSyncingStale(startedAt: number | null, now: number, staleAfterMs = SYNCING_STALE_AFTER_MS): boolean {
   if (startedAt === null) return true
-  return now - startedAt >= staleAfterMs
+  return now - startedAt >= stuckAfterFloor(staleAfterMs)
 }
 
 /** `--stuck-after-ms` overrides the default. Omitted uses fifteen minutes. Values under one minute are refused. */
@@ -79,14 +86,13 @@ export function readStuckAfterMs(argv: readonly string[], fallback = SYNCING_STA
 
 /**
  * `pending` is Beehiiv's double opt-in wait. `validating` means the address is being checked.
- * Both are already in Beehiiv. `invalid`, `paused`, and `needs_attention` are terminal.
+ * Both are already in Beehiiv. Every other found status, including an empty one, is terminal.
  */
-export function beehiivFoundAction(status: string): 'sync' | 'opt_out' | 'terminal' | 'leave' {
+export function beehiivFoundAction(status: string): 'sync' | 'opt_out' | 'terminal' {
   const value = status.trim().toLowerCase()
   if (value === 'active' || value === 'validating' || value === 'pending') return 'sync'
   if (value === 'inactive' || value === 'unsubscribed') return 'opt_out'
-  if (value === 'invalid' || value === 'paused' || value === 'needs_attention') return 'terminal'
-  return 'leave'
+  return 'terminal'
 }
 
 /**
@@ -263,8 +269,8 @@ export async function releaseSubscriberHold(
   return released.length === 1
 }
 
-function holdFromStatus(status: string | undefined): SubscriberHold {
-  if (status === FAILED_SUBSCRIBER_STATUS) return { kind: 'terminal' }
+function holdFromStatus(status: string | undefined, beehiivStatus: string | null | undefined): SubscriberHold {
+  if (status === FAILED_SUBSCRIBER_STATUS) return { kind: 'terminal', beehiivStatus: beehiivStatus ?? '' }
   return { kind: 'busy' }
 }
 
@@ -273,7 +279,7 @@ async function claimOrDone(db: Database, id: number, now: number): Promise<Subsc
   if (claimed) return { kind: 'held', id, created: false, claimClock: now, restore: 'pending' }
   const again = await db.select().from(subscribers).where(eq(subscribers.id, id)).limit(1)
   if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS && again[0].destination === 'beehiiv') return { kind: 'done' }
-  return holdFromStatus(again[0]?.status)
+  return holdFromStatus(again[0]?.status, again[0]?.beehiivStatus)
 }
 
 async function claimUnsubscribedOrBusy(db: Database, id: number, now: number): Promise<SubscriberHold> {
@@ -285,7 +291,7 @@ async function claimUnsubscribedOrBusy(db: Database, id: number, now: number): P
 async function syncedOrBusy(db: Database, id: number): Promise<SubscriberHold> {
   const again = await db.select().from(subscribers).where(eq(subscribers.id, id)).limit(1)
   if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS && again[0].destination === 'beehiiv') return { kind: 'done' }
-  return holdFromStatus(again[0]?.status)
+  return holdFromStatus(again[0]?.status, again[0]?.beehiivStatus)
 }
 
 async function holdExisting(
@@ -295,7 +301,7 @@ async function holdExisting(
   fetchImpl?: typeof fetch,
 ): Promise<SubscriberHold> {
   if (row.status === SYNCED_SUBSCRIBER_STATUS && row.destination === 'beehiiv') return { kind: 'done' }
-  if (row.status === FAILED_SUBSCRIBER_STATUS) return { kind: 'terminal' }
+  if (row.status === FAILED_SUBSCRIBER_STATUS) return { kind: 'terminal', beehiivStatus: row.beehiivStatus ?? '' }
   if (row.status === UNSUBSCRIBED_SUBSCRIBER_STATUS) return claimUnsubscribedOrBusy(db, row.id, now)
   if (row.status === SYNCING_SUBSCRIBER_STATUS) {
     if (!isSyncingStale(row.syncingStartedAt, now)) return { kind: 'busy' }
@@ -312,10 +318,9 @@ async function holdExisting(
       }
       if (action === 'terminal') {
         const noted = await noteSubscriberTerminal(db, row.id, lookup.id, lookup.status, observedClock)
-        if (noted) return { kind: 'terminal' }
+        if (noted) return { kind: 'terminal', beehiivStatus: lookup.status.trim().toLowerCase() }
         return syncedOrBusy(db, row.id)
       }
-      if (action === 'leave') return { kind: 'unavailable' }
       const saved = await finishSubscriberSync(db, row.id, lookup.id, observedClock)
       if (saved) return { kind: 'done' }
       return syncedOrBusy(db, row.id)
@@ -327,7 +332,7 @@ async function holdExisting(
     }
     return { kind: 'unavailable' }
   }
-  if (row.status !== PENDING_SUBSCRIBER_STATUS) return holdFromStatus(row.status)
+  if (row.status !== PENDING_SUBSCRIBER_STATUS) return holdFromStatus(row.status, row.beehiivStatus)
   return claimOrDone(db, row.id, now)
 }
 
@@ -451,8 +456,9 @@ export async function backfillPendingSubscribers(input: {
  * Looks up each stale syncing row by email. `active`, `validating`, and `pending`
  * (double opt-in waiting) are marked synced and are not posted. `inactive` and
  * `unsubscribed` are recorded as unsubscribed and are not posted. `invalid`, `paused`,
- * and `needs_attention` are parked as `failed` with Beehiiv's status stored. A missing
- * address returns to pending. Dry-run counts rows and does not read email addresses.
+ * `needs_attention`, and any other or empty status are parked as `failed` with Beehiiv's
+ * status stored. A missing address returns to pending. Dry-run counts rows and does not
+ * read email addresses.
  */
 export async function reconcileStuckSubscribers(input: {
   db: Database
@@ -462,7 +468,7 @@ export async function reconcileStuckSubscribers(input: {
   fetchImpl?: typeof fetch
 }): Promise<ReconcileResult> {
   const now = input.now ?? Date.now()
-  const staleAfterMs = input.staleAfterMs ?? SYNCING_STALE_AFTER_MS
+  const staleAfterMs = stuckAfterFloor(input.staleAfterMs ?? SYNCING_STALE_AFTER_MS)
   const staleFilter = staleSyncingFilter(now, staleAfterMs)
   if (!input.apply) {
     return {
@@ -499,10 +505,6 @@ export async function reconcileStuckSubscribers(input: {
     const lookup = await lookupBeehiivSubscriptionByEmail({ email: row.email, fetchImpl: input.fetchImpl })
     if (lookup.outcome === 'found') {
       const action = beehiivFoundAction(lookup.status)
-      if (action === 'leave') {
-        failed += 1
-        continue
-      }
       if (action === 'terminal') {
         const noted = await noteSubscriberTerminal(input.db, row.id, lookup.id, lookup.status, observedClock)
         if (noted) {

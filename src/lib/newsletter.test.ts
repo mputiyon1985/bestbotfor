@@ -14,6 +14,7 @@ import {
   SYNCED_SUBSCRIBER_STATUS,
   SYNCED_SUCCESS,
   SYNCING_STALE_AFTER_MS,
+  ADD_FAILED,
   FAILED_NOTICE,
   FAILED_SUBSCRIBER_STATUS,
   SYNCING_SUBSCRIBER_STATUS,
@@ -23,6 +24,7 @@ import {
   countSyncedSubscribers,
   newsletterBackfillAllowed,
   readStuckAfterMs,
+  isSyncingStale,
   reconcileStuckSubscribers,
   subscribeToNewsletter,
 } from './newsletter'
@@ -1056,6 +1058,8 @@ describe('subscribeToNewsletter', () => {
     expect(readStuckAfterMs(['--stuck-after-ms=120000'])).toBe(120_000)
     expect(() => readStuckAfterMs(['--stuck-after-ms', '0'])).toThrow(/positive/)
     expect(() => readStuckAfterMs(['--stuck-after-ms', '59999'])).toThrow(/at least 60000/)
+    expect(isSyncingStale(1_000, 2_000, 1)).toBe(false)
+    expect(isSyncingStale(1_000, 1_000 + 60_000, 1)).toBe(true)
   })
 
   it('stamps each backfill claim when that row is claimed', async () => {
@@ -1134,7 +1138,8 @@ describe('subscribeToNewsletter', () => {
     expect(beehiivFoundAction('invalid')).toBe('terminal')
     expect(beehiivFoundAction('paused')).toBe('terminal')
     expect(beehiivFoundAction('needs_attention')).toBe('terminal')
-    expect(beehiivFoundAction('')).toBe('leave')
+    expect(beehiivFoundAction('')).toBe('terminal')
+    expect(beehiivFoundAction('mystery')).toBe('terminal')
     const { db, close } = await createTestDatabase()
     const now = 9_000_000
     await db.insert(subscribers).values([
@@ -1190,7 +1195,7 @@ describe('subscribeToNewsletter', () => {
       return new Response(JSON.stringify({ data: { id: 'sub_unknown' } }), { status: 200 })
     }
     const applied = await reconcileStuckSubscribers({ db, apply: true, now, fetchImpl })
-    expect(applied).toMatchObject({ stale: 4, synced: 1, released: 0, optedOut: 2, failed: 1 })
+    expect(applied).toMatchObject({ stale: 4, synced: 1, released: 0, optedOut: 2, terminal: 1, failed: 0 })
     expect(posts).toBe(0)
     expect((await db.select().from(subscribers).where(eq(subscribers.email, 'validating@example.com')))[0]).toMatchObject({
       status: SYNCED_SUBSCRIBER_STATUS,
@@ -1202,9 +1207,10 @@ describe('subscribeToNewsletter', () => {
     expect((await db.select().from(subscribers).where(eq(subscribers.email, 'gone@example.com')))[0]?.status).toBe(
       UNSUBSCRIBED_SUBSCRIBER_STATUS,
     )
-    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'unknown@example.com')))[0]?.status).toBe(
-      SYNCING_SUBSCRIBER_STATUS,
-    )
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'unknown@example.com')))[0]).toMatchObject({
+      status: FAILED_SUBSCRIBER_STATUS,
+      beehiivStatus: '',
+    })
     expect(await countSyncedSubscribers(db)).toBe(1)
     await close()
   })
@@ -1309,6 +1315,26 @@ describe('subscribeToNewsletter', () => {
       fetchImpl,
     })
     expect(signup).toEqual({ status: 'error', message: FAILED_NOTICE, tracked: false })
+    const paused = await subscribeToNewsletter({
+      email: 'paused@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-paused',
+      now,
+      fetchImpl,
+    })
+    const attention = await subscribeToNewsletter({
+      email: 'attention@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-attention',
+      now,
+      fetchImpl,
+    })
+    expect(paused).toEqual({ status: 'error', message: ADD_FAILED, tracked: false })
+    expect(attention).toEqual({ status: 'error', message: ADD_FAILED, tracked: false })
+    expect(paused.message).not.toMatch(/paused|needs_attention/i)
+    expect(attention.message).not.toMatch(/paused|needs_attention/i)
     expect(posts).toBe(0)
     expect((await db.select().from(subscribers).where(eq(subscribers.email, 'bad@example.com')))[0]?.status).toBe(
       FAILED_SUBSCRIBER_STATUS,
@@ -1418,6 +1444,70 @@ describe('subscribeToNewsletter', () => {
     const backfill = await backfillPendingSubscribers({ db, apply: true, fetchImpl })
     expect(backfill).toMatchObject({ pending: 0, synced: 0, failed: 0 })
     expect(posts).toBe(1)
+    await close()
+  })
+
+  it('parks an empty Beehiiv status on reconcile and on a stale signup, and floors a short stuck window', async () => {
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    const now = 2_000_000
+    await db.insert(subscribers).values({
+      email: 'blank@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: null,
+      status: SYNCING_SUBSCRIBER_STATUS,
+      syncingStartedAt: now - 30_000,
+    })
+    await db.insert(subscribers).values({
+      email: 'old@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: null,
+      status: SYNCING_SUBSCRIBER_STATUS,
+      syncingStartedAt: now - 60_000,
+    })
+    let posts = 0
+    const fetchImpl: typeof fetch = async (input, init) => {
+      if (init?.method === 'POST') {
+        posts += 1
+        return new Response('{}', { status: 201 })
+      }
+      const url = String(input)
+      if (url.includes(encodeURIComponent('old@example.com'))) {
+        return new Response(JSON.stringify({ data: { id: 'sub_old_blank', status: ' ' } }), { status: 200 })
+      }
+      return new Response(JSON.stringify({ data: { id: 'sub_blank' } }), { status: 200 })
+    }
+    const tooSoon = await reconcileStuckSubscribers({ db, apply: true, now, staleAfterMs: 1, fetchImpl })
+    expect(tooSoon).toMatchObject({ stale: 1, terminal: 1, failed: 0 })
+    expect(posts).toBe(0)
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'blank@example.com')))[0]?.status).toBe(
+      SYNCING_SUBSCRIBER_STATUS,
+    )
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'old@example.com')))[0]).toMatchObject({
+      status: FAILED_SUBSCRIBER_STATUS,
+      beehiivStatus: '',
+    })
+    await db
+      .update(subscribers)
+      .set({ status: SYNCING_SUBSCRIBER_STATUS, beehiivStatus: null, beehiivId: null, syncingStartedAt: null })
+      .where(eq(subscribers.email, 'blank@example.com'))
+    const signup = await subscribeToNewsletter({
+      email: 'blank@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-blank-status',
+      now: now + 60_000,
+      fetchImpl,
+    })
+    expect(signup).toEqual({ status: 'error', message: FAILED_NOTICE, tracked: false })
+    expect(posts).toBe(0)
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'blank@example.com')))[0]).toMatchObject({
+      status: FAILED_SUBSCRIBER_STATUS,
+      beehiivStatus: '',
+    })
     await close()
   })
 })

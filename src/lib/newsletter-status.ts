@@ -32,3 +32,13 @@ export const RACE_SUCCESS = "You're being added. Check your email to confirm."
 
 /** Beehiiv cannot accept this address. A later signup does not post it. */
 export const FAILED_NOTICE = "This address can't be added."
+
+/** A signup that did not add the address. It does not name a Beehiiv status. */
+export const ADD_FAILED = "We couldn't add you just now. Try again in a few minutes."
+
+/** Paused and needs_attention use the same line as any other signup that was not added. */
+export function nonAddMessage(beehiivStatus: string | null | undefined): string {
+  const value = (beehiivStatus ?? '').trim().toLowerCase()
+  if (value === 'paused' || value === 'needs_attention') return ADD_FAILED
+  return FAILED_NOTICE
+}

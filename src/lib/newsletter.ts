@@ -12,14 +12,15 @@ import {
   releaseSubscriberHold,
 } from './newsletter-backfill'
 import {
+  ADD_FAILED,
+  FAILED_SUBSCRIBER_STATUS,
   PENDING_SUBSCRIBER_STATUS,
   PENDING_SUCCESS,
-  FAILED_NOTICE,
-  FAILED_SUBSCRIBER_STATUS,
   RACE_SUCCESS,
   SYNCED_SUBSCRIBER_STATUS,
   SYNCED_SUCCESS,
   UNSUBSCRIBED_SUBSCRIBER_STATUS,
+  nonAddMessage,
 } from './newsletter-status'
 
 export type { BackfillResult, ReconcileResult } from './newsletter-backfill'
@@ -30,18 +31,21 @@ export {
   newsletterBackfillAllowed,
   readStuckAfterMs,
   reconcileStuckSubscribers,
+  stuckAfterFloor,
 } from './newsletter-backfill'
 export {
-  PENDING_SUBSCRIBER_STATUS,
-  PENDING_SUCCESS,
+  ADD_FAILED,
   FAILED_NOTICE,
   FAILED_SUBSCRIBER_STATUS,
+  PENDING_SUBSCRIBER_STATUS,
+  PENDING_SUCCESS,
   RACE_SUCCESS,
   SYNCED_SUBSCRIBER_STATUS,
   SYNCED_SUCCESS,
   SYNCING_STALE_AFTER_MS,
   SYNCING_SUBSCRIBER_STATUS,
   UNSUBSCRIBED_SUBSCRIBER_STATUS,
+  nonAddMessage,
 } from './newsletter-status'
 
 export type NewsletterResult = {
@@ -108,24 +112,20 @@ export async function subscribeToNewsletter(input: {
     return { status: 'success', message: SYNCED_SUCCESS, tracked: false }
   }
   if (existing[0]?.status === FAILED_SUBSCRIBER_STATUS) {
-    return { status: 'error', message: FAILED_NOTICE, tracked: false }
+    return { status: 'error', message: nonAddMessage(existing[0].beehiivStatus), tracked: false }
   }
 
   if (isBeehiivConfigured()) {
     const held = await holdSubscriberForBeehiiv(input.db, normalized, input.now ?? Date.now(), input.fetchImpl)
     if (held.kind === 'done') return { status: 'success', message: SYNCED_SUCCESS, tracked: false }
     if (held.kind === 'terminal') {
-      return { status: 'error', message: FAILED_NOTICE, tracked: false }
+      return { status: 'error', message: nonAddMessage(held.beehiivStatus), tracked: false }
     }
     if (held.kind === 'busy') {
       return { status: 'success', message: RACE_SUCCESS, tracked: false }
     }
     if (held.kind === 'unavailable') {
-      return {
-        status: 'error',
-        message: "We couldn't add you just now. Try again in a few minutes.",
-        tracked: false,
-      }
+      return { status: 'error', message: ADD_FAILED, tracked: false }
     }
     const remote = await createBeehiivSubscription({
       email: normalized,
@@ -134,11 +134,7 @@ export async function subscribeToNewsletter(input: {
     })
     if (!remote.ok) {
       await releaseSubscriberHold(input.db, held.id, held.created, held.claimClock, held.restore)
-      return {
-        status: 'error',
-        message: "We couldn't add you just now. Try again in a few minutes.",
-        tracked: false,
-      }
+      return { status: 'error', message: ADD_FAILED, tracked: false }
     }
     const saved = await finishSubscriberSync(input.db, held.id, remote.id, held.claimClock)
     if (!saved) {
