@@ -172,6 +172,15 @@ describe('newsletterSponsorIssueExport', () => {
     }
   })
 
+  it('puts the sponsor copy and link under the Sponsored label and limits production to a read-only token', () => {
+    const runbook = readFileSync(path.join(process.cwd(), 'docs/runbooks/newsletter-sponsor-label.md'), 'utf8')
+    expect(runbook).toContain('The sponsor\'s copy goes under the Sponsored label.')
+    expect(runbook).toContain('The sponsor\'s link goes under that copy.')
+    expect(runbook).toContain('rel="sponsored nofollow"')
+    expect(runbook).toContain('Run the export against production with a read-only token only.')
+    expect(runbook).toContain('James\'s CEO OK (2026-10-18)')
+  })
+
   it('prints that HTML from the export script and does not select the email', () => {
     const script = readFileSync(path.join(process.cwd(), 'scripts/export-newsletter-sponsor.ts'), 'utf8')
     const source = readFileSync(path.join(process.cwd(), 'src/lib/newsletter-sponsor.ts'), 'utf8')
