@@ -7,6 +7,7 @@ const clerkOn = publishableKey.startsWith('pk_')
 const shell = clerkOn
   ? `import type { ReactNode } from 'react'
 import { ClerkProvider } from '@clerk/nextjs'
+import { SignUpEvent } from './sign-up-event'
 
 export function ClerkShell({
   children,
@@ -28,6 +29,7 @@ export function ClerkShell({
       signUpFallbackRedirectUrl="/members"
     >
       {children}
+      <SignUpEvent />
     </ClerkProvider>
   )
 }

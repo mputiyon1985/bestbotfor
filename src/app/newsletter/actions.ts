@@ -3,6 +3,7 @@
 import { headers } from 'next/headers'
 import { getDb } from '@/lib/db'
 import { clientIp, rateLimitKey } from '@/lib/ip'
+import { parseNewsletterSource } from '@/lib/newsletter-source'
 import { subscribeToNewsletter, type NewsletterResult } from '@/lib/newsletter'
 
 export type NewsletterState = NewsletterResult | { status: 'idle'; message: string; tracked: boolean }
@@ -13,6 +14,7 @@ export async function subscribeAction(_previous: NewsletterState, formData: Form
     return await subscribeToNewsletter({
       email: String(formData.get('email') ?? ''),
       honeypot: String(formData.get('company_website') ?? ''),
+      source: parseNewsletterSource(String(formData.get('source') ?? '')),
       db: getDb(),
       rateKey: rateLimitKey(clientIp(headerStore), 'newsletter'),
     })
