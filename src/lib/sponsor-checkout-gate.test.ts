@@ -165,7 +165,7 @@ describe('production sponsor page', () => {
     expect(html).toContain('Featured placement: $99 for one week.')
     expect(html).toContain('Featured placement: $299 for one month.')
     expect(html).toContain('Newsletter sponsor slot: $49 per issue.')
-    expect(html).toContain('These are the current list prices from server configuration.')
+    expect(html).toContain('The one-time prices above are the current list prices from server configuration.')
     expect(html).not.toContain('Payment happens on Stripe’s hosted checkout page.')
     expect(html).not.toContain('This site does not collect card numbers.')
     expect(html).not.toContain('The form does not send an amount.')
