@@ -75,7 +75,13 @@ describe('ratings launch plan', () => {
     ]) {
       expect(plan).toContain(question)
     }
-    expect(plan).toContain("Do not adopt drizzle-kit's migrator until #10 lands.")
-    expect(plan).toContain('orphan journal row')
+    const migrator = plan.slice(plan.indexOf('**Migrator.**'), plan.indexOf('Until every gate above is met'))
+    expect(migrator).toContain('17 tags, idx 0 through 16, one file per tag')
+    expect(migrator).toContain('`drizzle/0009_sponsorships.sql` is on disk')
+    expect(migrator).toContain('There is no `0010` file and no `0010` journal row.')
+    expect(migrator).toContain('`0018_retention_indexes` is idx 16.')
+    expect(migrator).toContain('This plan does not switch migrators.')
+    expect(migrator).not.toContain('is not on this branch')
+    expect(migrator).not.toContain('orphan journal row')
   })
 })
