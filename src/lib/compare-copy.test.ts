@@ -16,9 +16,11 @@ import {
 } from '@/data/compare-copy'
 import { editorialSeeds } from '@/data/scores-pros-cons.seed'
 import { a2CorrectionPlan } from '../../scripts/a2-catalog-corrections'
+import { BEST_GUIDE_TOOL_COUNT } from './descriptions'
+import { toolsForTask } from './recommend'
 import { catalogFromSeeds } from '@/test/catalog-from-seeds'
 import { comparisonRows, comparisonSummary } from './compare'
-import { compareCostAnswer, compareFaqs, compareView } from './compare-copy'
+import { compareCostAnswer, compareFaqs, compareView, visibleSecondaryNote } from './compare-copy'
 import { faqJsonLd } from './jsonld'
 import ComparePage, { generateMetadata as compareMetadata } from '@/app/compare/[pair]/page'
 import { priceLabel } from './format'
@@ -171,6 +173,7 @@ describe('curated compare copy', () => {
     expect(COMPARE_SECONDARY_NOTE).not.toContain('Confirm before publishing')
     for (const entry of compareCopy) {
       expect(entry.secondaryNote, entry.slug).toBe(COMPARE_SECONDARY_NOTE)
+      expect(viewFor(entry.slug).view.secondaryNote, entry.slug).toBe('')
       expect(entry.sources.join('\n'), entry.slug).toContain('src/data/scores-v2.3.csv')
       expect(entry.sources.join('\n'), entry.slug).not.toContain('catalog/scores-v2/scores-v2.3.csv')
     }
@@ -241,12 +244,27 @@ describe('curated compare copy', () => {
       'granola-vs-fathom': '/best/meetings',
       'fathom-vs-fireflies': '/best/meetings',
       'lovable-vs-v0': '/best/vibe-coding',
-      'assemblyai-vs-deepgram': '/best/voice',
     }
     for (const entry of compareCopy) {
       const rendered = viewFor(entry.slug)
-      expect(rendered.view.ranking?.href, entry.slug).toBe(ranking[entry.slug])
+      const href = ranking[entry.slug]
+      if (!href) {
+        expect(rendered.view.ranking, entry.slug).toBeUndefined()
+        continue
+      }
+      expect(rendered.view.ranking?.href, entry.slug).toBe(href)
       expect(rendered.view.ranking?.label, entry.slug).toMatch(/^See the full .+ ranking$/)
+    }
+  })
+
+  it('does not link AssemblyAI vs Deepgram to a guide that omits one of them', () => {
+    expect(viewFor('assemblyai-vs-deepgram').view.ranking).toBeUndefined()
+    const catalog = catalogFromSeeds()
+    for (const task of catalog.tasks) {
+      const shown = toolsForTask(catalog, task.slug)
+        .slice(0, BEST_GUIDE_TOOL_COUNT)
+        .map((tool) => tool.slug)
+      expect(shown.includes('assemblyai') && shown.includes('deepgram'), task.slug).toBe(false)
     }
   })
 
@@ -272,6 +290,22 @@ describe('curated compare copy', () => {
         'Deepgram pricing (vendor, checked Oct 17, 2026)',
       ]),
     ).toBe(`Last checked Oct 17, 2026. ${tail}`)
+    expect(
+      comparePageCheckedLine(['checked Jan 31, 2026', 'checked Dec 1, 2025', 'checked Nov 2, 2026']),
+    ).toBe(`Last checked Dec 1, 2025. ${tail}`)
+    for (const month of ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']) {
+      expect(comparePageCheckedLine([`checked ${month} 2, 2026`])).toBe(`Last checked ${month} 2, 2026. ${tail}`)
+    }
+  })
+
+  it('shows the secondary-source legend only when a cell uses it', () => {
+    const legend = COMPARE_SECONDARY_NOTE
+    expect(visibleSecondaryNote(['Core $9/mo'], legend)).toBe('')
+    expect(visibleSecondaryNote(['[S1] third party'], legend)).toBe('')
+    expect(visibleSecondaryNote(['Teams $29/mo [S]'], legend)).toBe(legend)
+    expect(readFileSync(path.join(process.cwd(), 'src/app/compare/[pair]/page.tsx'), 'utf8')).toContain(
+      'view.secondaryNote ?',
+    )
   })
 
   it('uses Nova’s Oct 18, 2026 price re-check', () => {
@@ -279,7 +313,9 @@ describe('curated compare copy', () => {
     expect(makeView.pickB.join(' ')).toContain('3,500+ apps')
     expect(makeView.pickB.join(' ')).not.toContain('1,000+ app integrations')
     const make = cell(makeView, 'Paid from').b
-    expect(make).toBe('Core $9/mo. Pro $16/mo. Team $29/mo. Each starts at 10,000 credits')
+    expect(make).toBe(
+      'Core $9/mo, Pro $16/mo, Team $29/mo billed yearly; monthly billing costs more. Each starts at 10,000 credits.',
+    )
     expect(make).not.toContain('[S]')
     expect(make).not.toContain('10.59')
     const makeCopy = compareCopy.find((entry) => entry.slug === 'n8n-vs-make')
@@ -297,8 +333,8 @@ describe('curated compare copy', () => {
     expect(cell(builders, 'Paid from').a).toContain('Pro $25/mo')
     expect(cell(builders, 'Paid from').a).toContain('$21/mo billed yearly')
     expect(cell(builders, 'Business tier').a).toBe('Business $50/mo, or $42/mo billed yearly')
-    expect(cell(builders, 'Paid from').b).toBe('Plus $30 per user (shown reduced from $90)')
-    expect(cell(builders, 'Business tier').b).not.toContain('$90')
+    expect(cell(builders, 'Paid from').b).toBe('Plus $30 per user/mo')
+    expect(`${cell(builders, 'Paid from').b} ${cell(builders, 'Business tier').b}`).not.toContain('$90')
 
     expect(cell(viewFor('heygen-vs-synthesia').view, 'Paid from').b).toBe('Starter $29/mo billed monthly')
   })

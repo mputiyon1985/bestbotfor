@@ -126,6 +126,7 @@ export function compareView(
   const today = options?.today ?? utcDay()
   const showScores = options?.showScores ?? true
   const verdict = fillFitTokens(copy.verdict, a, b)
+  const rows = resolveRows(copy, a, b, today, showScores)
   return {
     slug: copy.slug,
     metaTitle: copy.metaTitle,
@@ -140,8 +141,11 @@ export function compareView(
     pickBHeading: copy.pickBHeading,
     pickA: copy.pickA.map((item) => fillFitTokens(item, a, b)),
     pickB: copy.pickB.map((item) => fillFitTokens(item, a, b)),
-    rows: resolveRows(copy, a, b, today, showScores),
-    secondaryNote: copy.secondaryNote,
+    rows,
+    secondaryNote: visibleSecondaryNote(
+      rows.flatMap((row) => [row.a, row.b]),
+      copy.secondaryNote,
+    ),
     cta: copy.cta,
     sources: copy.sources,
     ranking: copy.ranking,
@@ -149,6 +153,11 @@ export function compareView(
 }
 
 const SECONDARY_MARKER = ' [S]'
+
+/** The legend is only useful when a comparison cell still carries the marker. Source ids such as [S1] do not count. */
+export function visibleSecondaryNote(cells: readonly string[], legend: string): string {
+  return cells.some((cell) => cell.includes(SECONDARY_MARKER)) ? legend : ''
+}
 
 /** Table cells keep the marker. FAQ JSON-LD does not, because that payload has no legend. */
 export function withoutSecondaryMarker(text: string): string {

@@ -61,7 +61,12 @@ export type CompareCopy = {
   ranking?: { href: string; label: string }
 }
 
-const CHECKED_DATE = /(?:^|[^A-Za-z-])checked (Oct \d{1,2}, \d{4})/g
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] as const
+
+const CHECKED_DATE = new RegExp(
+  `(?:^|[^A-Za-z-])checked ((?:${MONTHS.join('|')}) \\d{1,2}, \\d{4})`,
+  'g',
+)
 
 /**
  * Latest vendor check date when every price source on the page shares it.
@@ -85,9 +90,10 @@ function compareCheckedDate(left: string, right: string): number {
 }
 
 function checkedDateValue(label: string): number {
-  const match = /^Oct (\d{1,2}), (\d{4})$/.exec(label)
+  const match = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2}), (\d{4})$/.exec(label)
   if (!match) return Number.MAX_SAFE_INTEGER
-  return Number(match[2]) * 1000 + Number(match[1])
+  const month = MONTHS.indexOf(match[1] as (typeof MONTHS)[number]) + 1
+  return Number(match[3]) * 10000 + month * 100 + Number(match[2])
 }
 
 export const COMPARE_SECONDARY_NOTE =
@@ -200,7 +206,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
         label: 'Paid from',
         kind: 'text',
         a: 'Starter €20/mo billed yearly; Pro €50/mo billed yearly',
-        b: 'Core $9/mo. Pro $16/mo. Team $29/mo. Each starts at 10,000 credits',
+        b: 'Core $9/mo, Pro $16/mo, Team $29/mo billed yearly; monthly billing costs more. Each starts at 10,000 credits.',
         source: '[3]; [4]',
       },
       {
@@ -512,7 +518,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
         label: 'Paid from',
         kind: 'text',
         a: 'Pro $25/mo (100 credits) or $21/mo billed yearly',
-        b: 'Plus $30 per user (shown reduced from $90)',
+        b: 'Plus $30 per user/mo',
         source: '[12a]; [13]',
       },
       {
@@ -602,7 +608,6 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
       '[15] Deepgram pricing: https://deepgram.com/pricing (vendor, checked Oct 17, 2026)',
       catalogSource,
     ],
-    ranking: { href: '/best/voice', label: 'See the full Voice ranking' },
   },
 ]
 
