@@ -147,9 +147,11 @@ describe('subscribeToNewsletter', () => {
     expect(JSON.parse(bodies[0] ?? '{}')).toMatchObject({
       email: 'reader@example.com',
       referring_site: absoluteUrl('/best'),
+      reactivate_existing: false,
       double_opt_override: 'on',
     })
     expect(JSON.parse(bodies[0] ?? '{}').double_opt_override).not.toBe('off')
+    expect(JSON.parse(bodies[0] ?? '{}').reactivate_existing).toBe(false)
     await close()
   })
 
@@ -1342,7 +1344,7 @@ describe('subscribeToNewsletter', () => {
     await close()
   })
 
-  it('lets one fresh submit opt in again and keeps unsubscribed rows out of backfill and reconcile', async () => {
+  it('leaves an unsubscribed re-signup unsubscribed with no post and keeps those rows out of backfill', async () => {
     process.env.BEEHIIV_API_KEY = 'beehiiv-test'
     process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
     const { db, close } = await createTestDatabase()
@@ -1364,11 +1366,9 @@ describe('subscribeToNewsletter', () => {
       syncingStartedAt: null,
     })
     let posts = 0
-    const fetchImpl: typeof fetch = async (input, init) => {
+    const fetchImpl: typeof fetch = async (_input, init) => {
       if (init?.method === 'POST') {
         posts += 1
-        expect(JSON.parse(String(init.body ?? '{}')).double_opt_override).toBe('on')
-        expect(JSON.parse(String(init.body ?? '{}')).email).toBe('return@example.com')
         return new Response(JSON.stringify({ data: { id: 'sub_again' } }), { status: 201 })
       }
       return new Response(JSON.stringify({ data: { id: 'sub_remote_out', status: 'unsubscribed' } }), { status: 200 })
@@ -1390,12 +1390,14 @@ describe('subscribeToNewsletter', () => {
       now,
       fetchImpl,
     })
-    expect(signup).toEqual({ status: 'success', message: SYNCED_SUCCESS, tracked: true })
-    expect(posts).toBe(1)
+    expect(signup).toEqual({ status: 'error', message: ADD_FAILED, tracked: false })
+    expect(signup.message).not.toMatch(/unsubscribed|check your email/i)
+    expect(posts).toBe(0)
     expect((await db.select().from(subscribers).where(eq(subscribers.email, 'return@example.com')))[0]).toMatchObject({
-      status: SYNCED_SUBSCRIBER_STATUS,
-      beehiivId: 'sub_again',
+      status: UNSUBSCRIBED_SUBSCRIBER_STATUS,
+      beehiivId: 'sub_old',
     })
+    expect(await countSyncedSubscribers(db)).toBe(0)
     const repeat = await subscribeToNewsletter({
       email: 'return@example.com',
       honeypot: '',
@@ -1404,16 +1406,31 @@ describe('subscribeToNewsletter', () => {
       now: now + 1,
       fetchImpl,
     })
-    expect(repeat).toEqual({ status: 'success', message: SYNCED_SUCCESS, tracked: false })
-    expect(posts).toBe(1)
+    expect(repeat).toEqual({ status: 'error', message: ADD_FAILED, tracked: false })
+    expect(posts).toBe(0)
+    delete process.env.BEEHIIV_API_KEY
+    delete process.env.BEEHIIV_PUBLICATION_ID
+    const unset = await subscribeToNewsletter({
+      email: 'return@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-resubscribe-unset',
+      now: now + 2,
+      fetchImpl,
+    })
+    expect(unset).toEqual({ status: 'error', message: ADD_FAILED, tracked: false })
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'return@example.com')))[0]?.status).toBe(
+      UNSUBSCRIBED_SUBSCRIBER_STATUS,
+    )
+    expect(await countSyncedSubscribers(db)).toBe(0)
     await close()
   })
 
-  it('puts a failed re-subscribe back to unsubscribed so backfill does not send it', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+  it('does not post an unsubscribed re-signup and records a stale unsubscribed lookup without claiming', async () => {
     process.env.BEEHIIV_API_KEY = 'beehiiv-test'
     process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
     const { db, close } = await createTestDatabase()
+    const now = 4_000
     await db.insert(subscribers).values({
       email: 'return@example.com',
       createdAt: 1,
@@ -1421,29 +1438,57 @@ describe('subscribeToNewsletter', () => {
       beehiivId: null,
       status: UNSUBSCRIBED_SUBSCRIBER_STATUS,
     })
+    await db.insert(subscribers).values({
+      email: 'stale-out@example.com',
+      createdAt: 1,
+      destination: 'local',
+      beehiivId: null,
+      status: SYNCING_SUBSCRIBER_STATUS,
+      syncingStartedAt: null,
+    })
     let posts = 0
-    const fetchImpl: typeof fetch = async (_input, init) => {
+    const fetchImpl: typeof fetch = async (input, init) => {
       if (init?.method === 'POST') {
         posts += 1
-        expect(JSON.parse(String(init.body ?? '{}')).double_opt_override).toBe('on')
         return new Response('no', { status: 500 })
       }
-      return new Response('{}', { status: 404 })
+      expect(String(input)).toContain(encodeURIComponent('stale-out@example.com'))
+      return new Response(JSON.stringify({ data: { id: 'sub_stale_out', status: 'unsubscribed' } }), { status: 200 })
     }
     const signup = await subscribeToNewsletter({
       email: 'return@example.com',
       honeypot: '',
       db,
       rateKey: 'newsletter-resubscribe-fail',
-      now: 4_000,
+      now,
       fetchImpl,
     })
-    expect(signup.status).toBe('error')
-    expect(posts).toBe(1)
-    expect((await db.select().from(subscribers))[0]?.status).toBe(UNSUBSCRIBED_SUBSCRIBER_STATUS)
-    const backfill = await backfillPendingSubscribers({ db, apply: true, fetchImpl })
+    expect(signup).toEqual({ status: 'error', message: ADD_FAILED, tracked: false })
+    expect(signup.message).not.toMatch(/unsubscribed|check your email/i)
+    expect(posts).toBe(0)
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'return@example.com')))[0]?.status).toBe(
+      UNSUBSCRIBED_SUBSCRIBER_STATUS,
+    )
+    const backfill = await backfillPendingSubscribers({ db, apply: true, now, fetchImpl })
     expect(backfill).toMatchObject({ pending: 0, synced: 0, failed: 0 })
-    expect(posts).toBe(1)
+    expect(posts).toBe(0)
+    const stale = await subscribeToNewsletter({
+      email: 'stale-out@example.com',
+      honeypot: '',
+      db,
+      rateKey: 'newsletter-stale-unsubscribed',
+      now,
+      fetchImpl,
+    })
+    expect(stale).toEqual({ status: 'error', message: ADD_FAILED, tracked: false })
+    expect(stale.message).not.toMatch(/unsubscribed|check your email/i)
+    expect(posts).toBe(0)
+    expect((await db.select().from(subscribers).where(eq(subscribers.email, 'stale-out@example.com')))[0]).toMatchObject({
+      status: UNSUBSCRIBED_SUBSCRIBER_STATUS,
+      beehiivId: 'sub_stale_out',
+      syncingStartedAt: null,
+    })
+    expect(await countSyncedSubscribers(db)).toBe(0)
     await close()
   })
 

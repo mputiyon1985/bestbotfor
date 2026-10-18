@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { createBeehiivSubscription, isBeehiivConfigured } from './beehiiv'
 import type { Database } from './db/client'
 import { subscribers } from './db/schema'
@@ -114,10 +114,16 @@ export async function subscribeToNewsletter(input: {
   if (existing[0]?.status === FAILED_SUBSCRIBER_STATUS) {
     return { status: 'error', message: nonAddMessage(existing[0].beehiivStatus), tracked: false }
   }
+  if (existing[0]?.status === UNSUBSCRIBED_SUBSCRIBER_STATUS) {
+    return { status: 'error', message: ADD_FAILED, tracked: false }
+  }
 
   if (isBeehiivConfigured()) {
     const held = await holdSubscriberForBeehiiv(input.db, normalized, input.now ?? Date.now(), input.fetchImpl)
     if (held.kind === 'done') return { status: 'success', message: SYNCED_SUCCESS, tracked: false }
+    if (held.kind === 'opted_out') {
+      return { status: 'error', message: ADD_FAILED, tracked: false }
+    }
     if (held.kind === 'terminal') {
       return { status: 'error', message: nonAddMessage(held.beehiivStatus), tracked: false }
     }
@@ -144,12 +150,6 @@ export async function subscribeToNewsletter(input: {
   }
 
   if (existing[0]) {
-    if (existing[0].status === UNSUBSCRIBED_SUBSCRIBER_STATUS) {
-      await input.db
-        .update(subscribers)
-        .set({ status: PENDING_SUBSCRIBER_STATUS, syncingStartedAt: null })
-        .where(and(eq(subscribers.id, existing[0].id), eq(subscribers.status, UNSUBSCRIBED_SUBSCRIBER_STATUS)))
-    }
     return { status: 'success', message: PENDING_SUCCESS, tracked: false }
   }
   await input.db.insert(subscribers).values({

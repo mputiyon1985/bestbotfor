@@ -12,7 +12,7 @@ export const SYNCED_SUBSCRIBER_STATUS = 'synced'
 
 /**
  * Beehiiv reports this address inactive or unsubscribed.
- * Reconcile and backfill do not send it. A new form submit may opt in again.
+ * A later form submit leaves the row here. It is not claimed, posted, or counted.
  */
 export const UNSUBSCRIBED_SUBSCRIBER_STATUS = 'unsubscribed'
 

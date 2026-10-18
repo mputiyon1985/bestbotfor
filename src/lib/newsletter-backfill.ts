@@ -33,6 +33,7 @@ export type SubscriberHold =
   | { kind: 'held'; id: number; created: boolean; claimClock: number; restore: 'pending' | 'unsubscribed' }
   | { kind: 'done' }
   | { kind: 'busy' }
+  | { kind: 'opted_out' }
   | { kind: 'terminal'; beehiivStatus: string }
   | { kind: 'unavailable' }
 
@@ -171,16 +172,6 @@ export async function reclaimStaleSubscriber(
   return claimed.length === 1
 }
 
-/** A new form submit may opt in again. Only that compare-and-set may post. */
-export async function claimUnsubscribedSubscriber(db: Database, id: number, now: number): Promise<boolean> {
-  const claimed = await db
-    .update(subscribers)
-    .set({ status: SYNCING_SUBSCRIBER_STATUS, syncingStartedAt: now })
-    .where(and(eq(subscribers.id, id), eq(subscribers.status, UNSUBSCRIBED_SUBSCRIBER_STATUS)))
-    .returning({ id: subscribers.id })
-  return claimed.length === 1
-}
-
 /** Marks synced only while this caller still owns the claim clock. */
 export async function finishSubscriberSync(
   db: Database,
@@ -271,6 +262,7 @@ export async function releaseSubscriberHold(
 
 function holdFromStatus(status: string | undefined, beehiivStatus: string | null | undefined): SubscriberHold {
   if (status === FAILED_SUBSCRIBER_STATUS) return { kind: 'terminal', beehiivStatus: beehiivStatus ?? '' }
+  if (status === UNSUBSCRIBED_SUBSCRIBER_STATUS) return { kind: 'opted_out' }
   return { kind: 'busy' }
 }
 
@@ -280,12 +272,6 @@ async function claimOrDone(db: Database, id: number, now: number): Promise<Subsc
   const again = await db.select().from(subscribers).where(eq(subscribers.id, id)).limit(1)
   if (again[0]?.status === SYNCED_SUBSCRIBER_STATUS && again[0].destination === 'beehiiv') return { kind: 'done' }
   return holdFromStatus(again[0]?.status, again[0]?.beehiivStatus)
-}
-
-async function claimUnsubscribedOrBusy(db: Database, id: number, now: number): Promise<SubscriberHold> {
-  const claimed = await claimUnsubscribedSubscriber(db, id, now)
-  if (claimed) return { kind: 'held', id, created: false, claimClock: now, restore: 'unsubscribed' }
-  return syncedOrBusy(db, id)
 }
 
 async function syncedOrBusy(db: Database, id: number): Promise<SubscriberHold> {
@@ -302,7 +288,7 @@ async function holdExisting(
 ): Promise<SubscriberHold> {
   if (row.status === SYNCED_SUBSCRIBER_STATUS && row.destination === 'beehiiv') return { kind: 'done' }
   if (row.status === FAILED_SUBSCRIBER_STATUS) return { kind: 'terminal', beehiivStatus: row.beehiivStatus ?? '' }
-  if (row.status === UNSUBSCRIBED_SUBSCRIBER_STATUS) return claimUnsubscribedOrBusy(db, row.id, now)
+  if (row.status === UNSUBSCRIBED_SUBSCRIBER_STATUS) return { kind: 'opted_out' }
   if (row.status === SYNCING_SUBSCRIBER_STATUS) {
     if (!isSyncingStale(row.syncingStartedAt, now)) return { kind: 'busy' }
     const observedClock = row.syncingStartedAt
@@ -310,10 +296,10 @@ async function holdExisting(
     if (lookup.outcome === 'found') {
       const action = beehiivFoundAction(lookup.status)
       if (action === 'opt_out') {
-        const won = await reclaimStaleSubscriber(db, row.id, observedClock, now)
-        if (won) return { kind: 'held', id: row.id, created: false, claimClock: now, restore: 'unsubscribed' }
+        const noted = await noteSubscriberUnsubscribed(db, row.id, lookup.id, observedClock)
+        if (noted) return { kind: 'opted_out' }
         const again = await db.select().from(subscribers).where(eq(subscribers.id, row.id)).limit(1)
-        if (again[0]?.status === UNSUBSCRIBED_SUBSCRIBER_STATUS) return claimUnsubscribedOrBusy(db, row.id, now)
+        if (again[0]?.status === UNSUBSCRIBED_SUBSCRIBER_STATUS) return { kind: 'opted_out' }
         return syncedOrBusy(db, row.id)
       }
       if (action === 'terminal') {
