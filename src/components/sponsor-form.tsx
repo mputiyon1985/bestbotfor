@@ -5,6 +5,7 @@ import { sponsorCheckoutAction, type SponsorFormState } from '@/app/sponsor/acti
 import {
   SPONSOR_COMPANY_PUBLISHED,
   SPONSOR_LOGO_HINT,
+  SPONSOR_OFFERING_NOT_CONFIGURED,
   SPONSOR_REVIEW_NOTICE,
   SPONSOR_TASK_FIELD_LABEL,
 } from '@/lib/sponsor-offerings'
@@ -51,16 +52,21 @@ export function SponsorForm({ offerings, tasks }: { offerings: SponsorFormOfferi
               onChange={() => setOfferingId(offering.id)}
               required
             />
-            <span>
-              <span className="font-semibold">
-                {offering.title} · {offering.priceLabel}
+            {offering.available ? (
+              <span>
+                <span className="font-semibold">
+                  {offering.title} · {offering.priceLabel}
+                </span>
+                <span className="mt-1 block text-sm text-muted">{offering.summary}</span>
+                <span className="mt-1 block text-sm">{offering.notice}</span>
               </span>
-              <span className="mt-1 block text-sm text-muted">{offering.summary}</span>
-              <span className="mt-1 block text-sm">{offering.notice}</span>
-              {offering.available ? null : (
-                <span className="mt-1 block text-sm">Checkout for this slot is not configured yet.</span>
-              )}
-            </span>
+            ) : (
+              // A disabled option names no price: its summary and notice quote prices too.
+              <span>
+                <span className="font-semibold">{offering.title}</span>
+                <span className="mt-1 block text-sm">{SPONSOR_OFFERING_NOT_CONFIGURED}</span>
+              </span>
+            )}
           </label>
         ))}
       </fieldset>

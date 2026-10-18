@@ -45,6 +45,9 @@ export const FOUNDING_SOLD_OUT = 'All 5 founding sponsor spots are taken. Choose
 /** Label of the required task-page field. */
 export const SPONSOR_TASK_FIELD_LABEL = 'Which /best page do you want to sponsor?'
 
+/** Shown in place of the price and terms on a form option whose checkout is not configured. */
+export const SPONSOR_OFFERING_NOT_CONFIGURED = 'Checkout for this slot is not configured yet.'
+
 /**
  * Shown beside the founding offer and on its Checkout pay button. Stripe caps
  * custom_text.submit.message at 1200 characters.

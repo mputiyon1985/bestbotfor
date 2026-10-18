@@ -3,7 +3,11 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, describe, expect, it } from 'vitest'
 import SponsorPage from '@/app/sponsor/page'
 import { SPONSOR_CONTACT_EMAIL, SPONSOR_CONTACT_MAILTO } from '@/lib/sponsor-checkout-gate'
-import { SPONSOR_SUBSCRIPTION_NOTICE as OFFERING_SUBSCRIPTION_NOTICE } from '@/lib/sponsor-offerings'
+import {
+  SPONSOR_FOUNDING_NOTICE,
+  SPONSOR_OFFERING_NOT_CONFIGURED,
+  SPONSOR_SUBSCRIPTION_NOTICE as OFFERING_SUBSCRIPTION_NOTICE,
+} from '@/lib/sponsor-offerings'
 import { resetStripeCache } from '@/lib/stripe'
 import {
   FOUNDING_SPONSOR_LIMIT,
@@ -25,6 +29,7 @@ const ENV_KEYS = [
   'STRIPE_PRICE_FOUNDING_MONTHLY',
   'STRIPE_PRICE_FOUNDING_SETUP',
   'STRIPE_PRICE_PLACEMENT_SUBSCRIPTION',
+  'STRIPE_PRICE_PLACEMENT_MONTHLY',
 ] as const
 const ORIGINAL = Object.fromEntries(ENV_KEYS.map((key) => [key, process.env[key]]))
 
@@ -242,6 +247,86 @@ describe('sponsor payment links', () => {
             expect(subscriptionLine(html).length).toBe(radio(html, 'placement_subscription').includes('disabled') ? 0 : 1)
             expect(foundingLine(html).length).toBe(radio(html, 'founding_sponsor').includes('disabled') ? 0 : 1)
           }
+    })
+
+    const allSet = {
+      STRIPE_PRICE_PLACEMENT_SUBSCRIPTION: 'price_subscription_test',
+      STRIPE_PRICE_FOUNDING_MONTHLY: 'price_founding_monthly_test',
+      STRIPE_PRICE_FOUNDING_SETUP: 'price_founding_setup_test',
+    }
+
+    it('lists both lines on a preview with a test key once all three Prices are set, with enabled radios', () => {
+      const html = pageHtml({ VERCEL_ENV: 'preview', STRIPE_SECRET_KEY: testKey, ...allSet })
+      expect(html).toContain('Stripe test mode')
+      expect(foundingLine(html)).toEqual([
+        `Founding sponsor: $99 for 2 weeks, then $299/mo. ${SPONSOR_FOUNDING_NOTICE} Limited to 5 founding sponsors.`,
+      ])
+      expect(subscriptionLine(html)).toEqual([`Featured placement, monthly subscription: $299/mo. ${OFFERING_SUBSCRIPTION_NOTICE}`])
+      expect(radio(html, 'founding_sponsor')).not.toContain('disabled')
+      expect(radio(html, 'placement_subscription')).not.toContain('disabled')
+      expect(html).not.toContain(SPONSOR_PAYMENT_LINK_HOST)
+    })
+
+    it('on closed production lists configured lines like the one-time prices, with no form and no radio', () => {
+      const closed = pageHtml({ VERCEL_ENV: 'production', STRIPE_SECRET_KEY: testKey, ...allSet })
+      expect(closed).not.toContain('Continue to checkout')
+      expect(radio(closed, 'placement_subscription')).toBe('')
+      expect(radio(closed, 'founding_sponsor')).toBe('')
+      expect(subscriptionLine(closed)).toHaveLength(1)
+      expect(foundingLine(closed)).toHaveLength(1)
+      expect(closed).toContain('Featured placement: $299 for one month.')
+      expect(closed).toContain('The prices above, one-time and subscription, are the current list prices from server configuration.')
+      const unsetClosed = pageHtml({ VERCEL_ENV: 'production', STRIPE_SECRET_KEY: testKey, ...unset })
+      expect(subscriptionLine(unsetClosed)).toEqual([])
+      expect(foundingLine(unsetClosed)).toEqual([])
+    })
+  })
+
+  describe('form options without configured Prices', () => {
+    const live = { VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }
+    const option = (html: string, id: string) => {
+      const start = html.indexOf(`value="${id}"`)
+      if (start < 0) return ''
+      const label = html.lastIndexOf('<label', start)
+      return html.slice(label, html.indexOf('</label>', start)).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+    }
+
+    it('shows a disabled monthly or Founding option with its title and no price or terms', () => {
+      const html = pageHtml({
+        ...live,
+        STRIPE_PRICE_PLACEMENT_MONTHLY: 'price_month_test',
+        STRIPE_PRICE_PLACEMENT_SUBSCRIPTION: undefined,
+        STRIPE_PRICE_FOUNDING_MONTHLY: 'price_founding_monthly_test',
+        STRIPE_PRICE_FOUNDING_SETUP: undefined,
+      })
+      expect(option(html, 'placement_subscription')).toBe(`Featured placement, monthly subscription ${SPONSOR_OFFERING_NOT_CONFIGURED}`)
+      expect(option(html, 'founding_sponsor')).toBe(`Founding sponsor ${SPONSOR_OFFERING_NOT_CONFIGURED}`)
+      for (const id of ['placement_subscription', 'founding_sponsor']) {
+        expect(option(html, id)).not.toContain('$')
+        expect(option(html, id)).not.toContain('·')
+      }
+      // Nothing in the page payload carries the hidden offers' terms either.
+      expect(html).not.toContain(OFFERING_SUBSCRIPTION_NOTICE)
+      expect(html).not.toContain(SPONSOR_FOUNDING_NOTICE)
+      // The one-time options keep their prices.
+      expect(option(html, 'placement_monthly')).toContain('Featured placement for one month · $299')
+      expect(option(html, 'placement_monthly')).not.toContain(SPONSOR_OFFERING_NOT_CONFIGURED)
+    })
+
+    it('shows the price and terms again once the option is configured', () => {
+      const html = pageHtml({
+        ...live,
+        STRIPE_PRICE_PLACEMENT_SUBSCRIPTION: 'price_subscription_test',
+        STRIPE_PRICE_FOUNDING_MONTHLY: 'price_founding_monthly_test',
+        STRIPE_PRICE_FOUNDING_SETUP: 'price_founding_setup_test',
+      })
+      expect(option(html, 'placement_subscription')).toContain('Featured placement, monthly subscription · $299/mo')
+      expect(option(html, 'placement_subscription')).toContain(OFFERING_SUBSCRIPTION_NOTICE)
+      expect(option(html, 'founding_sponsor')).toContain('Founding sponsor · $99 for 2 weeks, then $299/mo')
+      expect(option(html, 'founding_sponsor')).toContain(SPONSOR_FOUNDING_NOTICE)
+      for (const id of ['placement_subscription', 'founding_sponsor']) {
+        expect(option(html, id)).not.toContain(SPONSOR_OFFERING_NOT_CONFIGURED)
+      }
     })
   })
 })
