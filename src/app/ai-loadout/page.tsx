@@ -103,8 +103,9 @@ export default async function AiLoadoutPage() {
       <section aria-labelledby="loadout-pdf" className="rounded-3xl border border-line bg-card px-4 py-6 md:px-6">
         <h2 id="loadout-pdf" className="font-semibold text-3xl">Get the PDF + The Daily Bot</h2>
         <p className="mt-2 max-w-xl text-muted">
-          The one-page PDF is free to download below, no signup needed. The Daily Bot is a free weekday note on AI tools. If you
-          subscribe, we store your email. Unsubscribe anytime.
+          The one-page PDF is free to download below, no signup needed.
+          The Daily Bot: Free AI newsletter, first issue coming soon.
+          If you subscribe, we store your email. Unsubscribe anytime.
         </p>
         <div className="mt-4 max-w-xl">
           <NewsletterForm source="ai-loadout" />
