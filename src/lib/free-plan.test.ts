@@ -79,6 +79,22 @@ describe('free-plan catalog data', () => {
     }
   })
 
+  it('keeps every note official across the Oct 18 catalog host moves', () => {
+    // The catalog patch moves these tools to new hosts. Each note must pass on the old and the new catalog URL.
+    const moves: Record<string, { url: string; allowedHosts: string[] }> = {
+      playground: { url: 'https://playgroundai.com', allowedHosts: ['playgroundai.com'] },
+      runway: { url: 'https://runway.com', allowedHosts: ['runway.com'] },
+      'kilo-code': { url: 'https://kilo.ai', allowedHosts: ['kilo.ai'] },
+      podcastle: { url: 'https://async.com', allowedHosts: ['async.com'] },
+    }
+    for (const [slug, moved] of Object.entries(moves)) {
+      const fields = freePlanNotes[slug]
+      expect(fields, slug).toBeTruthy()
+      if (!fields) continue
+      expect(isOfficialSource(fields.freePlanSource, moved, freePlanOfficialDomains[slug] ?? []), slug).toBe(true)
+    }
+  })
+
   it('holds the unverified tools and gives them no note', () => {
     expect(Object.keys(freePlanHolds).sort()).toEqual(['hedra', 'picsart'])
     for (const slug of Object.keys(freePlanHolds)) expect(freePlanNotes[slug]).toBeUndefined()

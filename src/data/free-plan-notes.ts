@@ -349,4 +349,9 @@ export const freePlanOfficialDomains: Readonly<Record<string, readonly string[]>
   'kilo-code': ['kilo.ai'],
   // podcastle.ai now redirects to async.com, branded Async (catalog fix is a separate PR).
   podcastle: ['async.com'],
+  // playground.com 301-redirects to playgroundai.com (checked live Oct 18, 2026). The note was read on
+  // playground.com and the catalog moves to playgroundai.com in the catalog patch, so allow both.
+  playground: ['playground.com', 'playgroundai.com'],
+  // runwayml.com redirects to runway.com. The note cites runwayml.com and the catalog patch moves to runway.com.
+  runway: ['runwayml.com', 'runway.com'],
 }
