@@ -124,7 +124,7 @@ describe('ratings launch plan', () => {
     expect(v1214).toContain('Gate 16 is Closed.')
     expect(v1214).toContain("Tony's Stripe API read-back at 2:31:12 PM ET")
     expect(v1214).toContain('`we_1URwkHIJUbygfAucFVXA9X0z`')
-    expect(v1214).toContain('`STRIPE_ALLOW_LIVE=true` is set in Production after Mark approved go-live on 2026-10-18.')
+    expect(v1214).toContain('`STRIPE_ALLOW_LIVE` is `true` in Production, set after Mark approved go-live on 2026-10-18.')
     expect(v1214).toContain("James (CEO) OK'd it on 2026-10-18")
     expect(liveGates).toContain('15. **Sponsorship: live webhook subscribed to refund events.** Closed.')
     expect(liveGates).toContain('The live endpoint is `POST /api/stripe/webhook`.')
@@ -135,7 +135,7 @@ describe('ratings launch plan', () => {
     for (const event of ['charge.refunded', 'refund.created', 'refund.updated', 'invoice.paid', 'invoice.payment_failed', 'charge.dispute.created', 'charge.dispute.updated', 'charge.dispute.closed', 'charge.dispute.funds_withdrawn', 'charge.dispute.funds_reinstated']) {
       expect(gate15, event).toContain(`\`${event}\``)
     }
-    expect(gate15).toContain('`STRIPE_ALLOW_LIVE=true` is set in Production only, after Mark approved go-live on 2026-10-18.')
+    expect(gate15).toContain('`STRIPE_ALLOW_LIVE` is `true` in Production only, set after Mark approved go-live on 2026-10-18.')
     expect(liveGates).toContain('16. **Sponsorship: refund runbook.** Closed. James (CEO) OK\'d it on 2026-10-18: "Gates 15 and 16: ship the docs PR today."')
     expect(liveGates).toContain('`/admin/sponsors` opens in preview, development, and test when `ADMIN_SPONSORS` is `on`, and returns 404 in production until gate 19.')
     expect(liveGates).toContain('A status flip alone does not publish a card.')
