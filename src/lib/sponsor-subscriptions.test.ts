@@ -21,6 +21,7 @@ import {
   foundingSpotsLeft,
   foundingSpotsTaken,
   releaseSponsorSlot,
+  sponsorHoldKey,
 } from './sponsor-availability'
 import { approvedSponsorRedirectUrl } from './sponsor-impressions'
 import { parseSponsorCheckout, sponsorCheckoutParams } from './sponsor-checkout'
@@ -437,7 +438,7 @@ describe('founding sponsor cap', () => {
     // The standard subscription is not capped.
     expect(await claimSponsorSlot(db, { taskSlug: TASKS[5] ?? '', offering: 'placement_subscription', requestKey: 'req-sub', now: NOW + 6 })).toMatchObject({ ok: true })
     // A released hold frees its spot.
-    await releaseSponsorSlot(db, { taskSlug: TASKS[3] ?? '', requestKey: `req-${TASKS[3]}` })
+    await releaseSponsorSlot(db, { taskSlug: TASKS[3] ?? '', requestKey: sponsorHoldKey({ requestKey: `req-${TASKS[3]}`, offering: 'founding_sponsor' }) })
     expect(await claimSponsorSlot(db, { taskSlug: TASKS[6] ?? '', offering: 'founding_sponsor', requestKey: 'req-7', now: NOW + 7 })).toMatchObject({ ok: true })
     // An expired hold frees its spot too: a founding hold counts for 65 minutes, not 24 hours.
     expect(await foundingSpotsLeft(db, NOW + 1 + FOUNDING_HOLD_MS)).toBe(0)

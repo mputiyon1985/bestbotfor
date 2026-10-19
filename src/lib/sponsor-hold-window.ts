@@ -48,3 +48,49 @@ export function foundingHoldTooOldForNewSession(claimedAt: number, now: number):
 export function foundingHoldMinutesLeft(claimedAt: number, now: number): number {
   return Math.max(1, Math.ceil((claimedAt + FOUNDING_HOLD_MS - now) / 60_000))
 }
+
+/**
+ * Legacy founding holds: written by main before the short hold shipped (#103).
+ * Their request_key is the bare request_id, and their Checkout session has no
+ * expires_at, so Stripe's default 24-hour expiry applies, and their idempotency
+ * key is `sponsor-<fingerprint>-<request_id>` with no `-h<claimed_at>`.
+ *
+ * Every founding hold written by this code stores a marked request_key
+ * (`<request_id>|s`, FOUNDING_HOLD_KEY_SUFFIX), so a founding row whose
+ * request_key has no `|` was created before this deploy.
+ *
+ * A legacy hold keeps counting toward the cap for 24 hours plus 5 minutes from
+ * claimed_at: its session was created at or after claimed_at and lives 24 hours
+ * from creation, so the 5 minutes cover the gap the way FOUNDING_HOLD_MS does
+ * for a new hold.
+ */
+export const LEGACY_FOUNDING_HOLD_MS = SPONSOR_CHECKOUT_EXPIRY_MS + 5 * 60 * 1000
+
+/** Marks a founding hold written by the short-hold code. */
+export const FOUNDING_HOLD_KEY_SEPARATOR = '|'
+export const FOUNDING_HOLD_KEY_SUFFIX = `${FOUNDING_HOLD_KEY_SEPARATOR}s`
+
+/** True for a founding hold's request_key written before the short hold (a bare request_id). */
+export function isLegacyFoundingHoldKey(requestKey: string): boolean {
+  return !requestKey.includes(FOUNDING_HOLD_KEY_SEPARATOR)
+}
+
+/** SQL: true when the founding row aliased `alias` is a legacy hold. */
+export function legacyFoundingHoldSql(alias: string): string {
+  return `instr(${alias}.request_key, '${FOUNDING_HOLD_KEY_SEPARATOR}') = 0`
+}
+
+/**
+ * A legacy session can be replayed (same body, same key) only while Stripe
+ * still has it open and still remembers its idempotency key: both last at
+ * least 24 hours from the session's creation, which is at or after
+ * claimed_at. A minute of margin, as for new holds.
+ */
+export function legacyFoundingReplayOpen(claimedAt: number, now: number): boolean {
+  return now + 60_000 < claimedAt + SPONSOR_CHECKOUT_EXPIRY_MS
+}
+
+/** Whole minutes (at least 1) until a legacy founding hold stops counting. */
+export function legacyFoundingHoldMinutesLeft(claimedAt: number, now: number): number {
+  return Math.max(1, Math.ceil((claimedAt + LEGACY_FOUNDING_HOLD_MS - now) / 60_000))
+}

@@ -1,10 +1,16 @@
 import { placementWindowMs } from './best-placement'
 import { getDb } from './db'
 import type { Database } from './db/client'
-import { FOUNDING_HOLD_MS, SPONSOR_CHECKOUT_EXPIRY_MS } from './sponsor-hold-window'
+import {
+  FOUNDING_HOLD_KEY_SUFFIX,
+  FOUNDING_HOLD_MS,
+  LEGACY_FOUNDING_HOLD_MS,
+  legacyFoundingHoldSql,
+  SPONSOR_CHECKOUT_EXPIRY_MS,
+} from './sponsor-hold-window'
 import { FOUNDING_SOLD_OUT, FOUNDING_SPONSOR_CAP, isSubscriptionOffering, isTaskOffering } from './sponsor-offerings'
 
-export { FOUNDING_HOLD_MS, SPONSOR_CHECKOUT_EXPIRY_MS }
+export { FOUNDING_HOLD_MS, LEGACY_FOUNDING_HOLD_MS, SPONSOR_CHECKOUT_EXPIRY_MS }
 
 export const SPONSOR_SLOT_TAKEN = 'That task page already has a placement in this period. Choose another page.'
 
@@ -17,8 +23,19 @@ export const OPEN_ENDED_MS = 8_640_000_000_000_000
 export type SponsorSlotClaim = {
   taskSlug: string
   offering: string
+  /** The form's request_id. */
   requestKey: string
   now: number
+}
+
+/**
+ * The request_key a hold stores. A founding hold stores `<request_id>|s`, which
+ * marks it as a short hold written by this code; a founding row with a bare
+ * request_id is a legacy 24-hour hold from before #103. Placement holds keep
+ * the bare request_id.
+ */
+export function sponsorHoldKey(input: { requestKey: string; offering: string }): string {
+  return input.offering === 'founding_sponsor' ? `${input.requestKey}${FOUNDING_HOLD_KEY_SUFFIX}` : input.requestKey
 }
 
 /**
@@ -42,15 +59,35 @@ export type SponsorSlotClaim = {
  * sends Stripe the same expires_at under the same idempotency key and never
  * extends the hold. `fresh` is true only when this call created the hold (or
  * took over an expired one) with claimed_at = now.
+ *
+ * Legacy founding holds (Reviewer must-fix on #103): a founding hold written
+ * by main before this deploy stores the bare request_id, and its Checkout has
+ * Stripe's default 24-hour expiry and the key `sponsor-<fingerprint>-<request_id>`.
+ * It counts toward the cap for LEGACY_FOUNDING_HOLD_MS (24h + 5m) from
+ * claimed_at, cannot be taken over before then, and a retry of its own
+ * request_id on its page returns `legacy: true` with the original claimed_at
+ * and writes nothing, so the action replays the original session under the
+ * original key and never opens a second one.
  */
 export async function claimSponsorSlot(
   db: Database,
   input: SponsorSlotClaim,
-): Promise<{ ok: true; claimedAt?: number; fresh?: boolean } | { ok: false; message: string }> {
+): Promise<{ ok: true; claimedAt?: number; fresh?: boolean; legacy?: boolean; holdKey?: string } | { ok: false; message: string }> {
   if (!isTaskOffering(input.offering)) return { ok: true }
+  const holdKey = sponsorHoldKey(input)
   const windowMs = isSubscriptionOffering(input.offering) ? null : placementWindowMs(input.offering)
   const newEnd = windowMs == null ? OPEN_ENDED_MS : input.now + windowMs
   const founding = input.offering === 'founding_sponsor'
+  if (founding) {
+    // A live legacy hold from this request_id on this page: replay, never a new hold.
+    const legacy = await db.$client.execute({
+      sql: `SELECT claimed_at FROM sponsorship_slot_claims
+        WHERE task_slug = ? AND request_key = ? AND offering = 'founding_sponsor' AND claimed_at > ?`,
+      args: [input.taskSlug, input.requestKey, input.now - LEGACY_FOUNDING_HOLD_MS],
+    })
+    const legacyRow = legacy.rows[0]
+    if (legacyRow) return { ok: true, claimedAt: Number(legacyRow.claimed_at), fresh: false, legacy: true, holdKey: input.requestKey }
+  }
   // Whether this request already holds a live founding hold on the task. Its
   // claimed_at is kept below, so the claim is a reuse, not a fresh hold, even
   // when it lands in the same millisecond.
@@ -58,7 +95,7 @@ export async function claimSponsorSlot(
     ? await db.$client.execute({
         sql: `SELECT 1 FROM sponsorship_slot_claims
           WHERE task_slug = ? AND request_key = ? AND offering = 'founding_sponsor' AND claimed_at > ?`,
-        args: [input.taskSlug, input.requestKey, input.now - FOUNDING_HOLD_MS],
+        args: [input.taskSlug, holdKey, input.now - FOUNDING_HOLD_MS],
       })
     : null
   const reused = (prior?.rows.length ?? 0) > 0
@@ -99,13 +136,13 @@ export async function claimSponsorSlot(
         END
       WHERE sponsorship_slot_claims.request_key = excluded.request_key
          OR sponsorship_slot_claims.claimed_at <= CASE sponsorship_slot_claims.offering
-           WHEN 'founding_sponsor' THEN ?
+           WHEN 'founding_sponsor' THEN CASE WHEN ${legacyFoundingHoldSql('sponsorship_slot_claims')} THEN ? ELSE ? END
            ELSE ?
          END
       RETURNING task_slug, claimed_at`,
     args: [
       input.taskSlug,
-      input.requestKey,
+      holdKey,
       input.offering,
       input.now,
       input.taskSlug,
@@ -115,10 +152,12 @@ export async function claimSponsorSlot(
       MONTH_MS,
       OPEN_ENDED_MS,
       founding ? 1 : 0,
+      input.now - LEGACY_FOUNDING_HOLD_MS,
       input.now - FOUNDING_HOLD_MS,
       input.taskSlug,
       FOUNDING_SPONSOR_CAP,
       input.now - FOUNDING_HOLD_MS,
+      input.now - LEGACY_FOUNDING_HOLD_MS,
       input.now - FOUNDING_HOLD_MS,
       input.now - SPONSOR_CHECKOUT_EXPIRY_MS,
     ],
@@ -126,7 +165,7 @@ export async function claimSponsorSlot(
   const row = claimed.rows[0]
   if (row) {
     const claimedAt = Number(row.claimed_at)
-    return { ok: true, claimedAt, fresh: !reused && claimedAt === input.now }
+    return { ok: true, claimedAt, fresh: !reused && claimedAt === input.now, legacy: false, holdKey }
   }
   if (founding && (await foundingSpotsTaken(db, input.now, input.taskSlug)) >= FOUNDING_SPONSOR_CAP) {
     return { ok: false, message: FOUNDING_SOLD_OUT }
@@ -153,7 +192,9 @@ export const FOUNDING_LINK_KEY_PREFIX = 'founding_link:'
  *   rows never count on their own, so a renewal written after the first period
  *   was refunded does not bring the sale back. The key is matched trimmed and
  *   case-insensitively, and LIKE's `_` also accepts `founding-link:`;
- * - founding checkout holds younger than FOUNDING_HOLD_MS (65 minutes), unless the
+ * - founding checkout holds younger than FOUNDING_HOLD_MS (65 minutes), or a
+ *   legacy hold (bare request_id, from before #103) younger than
+ *   LEGACY_FOUNDING_HOLD_MS (24 hours + 5 minutes), unless the
  *   task's paid founding row came from that hold (paid_at at or after the
  *   hold's claimed_at), so a paid row and its own hold count once. A paid row
  *   from an older sale (for example a canceled, ended founder on that page)
@@ -176,7 +217,7 @@ const FOUNDING_TAKEN_SQL = `
       AND status = 'paid' AND refunded_at IS NULL)
   + (SELECT count(*) FROM sponsorship_slot_claims AS hold
     WHERE hold.offering = 'founding_sponsor'
-      AND hold.claimed_at > ?
+      AND hold.claimed_at > CASE WHEN ${legacyFoundingHoldSql('hold')} THEN ? ELSE ? END
       AND hold.task_slug != ?
       AND NOT EXISTS (
         SELECT 1 FROM sponsorships AS paid
@@ -190,7 +231,7 @@ const FOUNDING_TAKEN_SQL = `
 export async function foundingSpotsTaken(db: Database, now: number, excludeTask = ''): Promise<number> {
   const result = await db.$client.execute({
     sql: `SELECT ${FOUNDING_TAKEN_SQL} AS taken`,
-    args: [now - FOUNDING_HOLD_MS, excludeTask],
+    args: [now - LEGACY_FOUNDING_HOLD_MS, now - FOUNDING_HOLD_MS, excludeTask],
   })
   return Number(result.rows[0]?.taken ?? 0)
 }

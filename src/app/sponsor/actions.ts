@@ -16,7 +16,13 @@ import {
   sponsorRateLimitMessage,
 } from '@/lib/sponsor-checkout'
 import { claimSponsorSlot, releaseSponsorSlot } from '@/lib/sponsor-availability'
-import { foundingCheckoutExpiresAt, foundingHoldMinutesLeft, foundingHoldTooOldForNewSession } from '@/lib/sponsor-hold-window'
+import {
+  foundingCheckoutExpiresAt,
+  foundingHoldMinutesLeft,
+  foundingHoldTooOldForNewSession,
+  legacyFoundingHoldMinutesLeft,
+  legacyFoundingReplayOpen,
+} from '@/lib/sponsor-hold-window'
 import { readSponsorCardForm, savePendingSponsorCard, saveSponsorCardForSession } from '@/lib/sponsor-card'
 import { verifyPaidSponsorCheckout } from '@/lib/sponsor-session'
 import {
@@ -57,6 +63,10 @@ export async function sponsorCheckoutAction(_previous: SponsorFormState, formDat
   // True only when this attempt created the hold (claimed_at = now). A repeat
   // of a live founding hold's own request reuses it and is never released.
   let freshHold = false
+  // A legacy founding hold (bare request_id, from before #103): replay only.
+  let legacyHold = false
+  // The hold's request_key, which a release must match.
+  let holdKey = parsed.value.requestId
   if (taskSlug) {
     const claim = await claimSponsorSlot(getDb(), {
       taskSlug,
@@ -67,6 +77,8 @@ export async function sponsorCheckoutAction(_previous: SponsorFormState, formDat
     if (!claim.ok) return { status: 'error', message: claim.message }
     claimedAt = claim.claimedAt
     freshHold = claim.fresh === true
+    legacyHold = founding && claim.legacy === true
+    holdKey = claim.holdKey ?? holdKey
     // A separate per-address limit on new founding holds, so one address
     // cannot hold every founding spot for free. Only a new hold counts; Stripe
     // has not been called, so a refused new hold is released at once.
@@ -79,7 +91,7 @@ export async function sponsorCheckoutAction(_previous: SponsorFormState, formDat
         { onError: 'closed' },
       )
       if (holdDecision !== 'allow') {
-        await releaseSponsorSlot(getDb(), { taskSlug, requestKey: parsed.value.requestId })
+        await releaseSponsorSlot(getDb(), { taskSlug, requestKey: holdKey })
         return {
           status: 'error',
           message: holdDecision === 'limit' ? FOUNDING_HOLD_LIMIT_MESSAGE : sponsorRateLimitMessage(holdDecision),
@@ -99,7 +111,7 @@ export async function sponsorCheckoutAction(_previous: SponsorFormState, formDat
       now: Date.now(),
     })
     if (!saved.ok) {
-      if (taskSlug && releasableBeforeStripe) await releaseSponsorSlot(getDb(), { taskSlug, requestKey: parsed.value.requestId })
+      if (taskSlug && releasableBeforeStripe) await releaseSponsorSlot(getDb(), { taskSlug, requestKey: holdKey })
       return { status: 'error', message: saved.message }
     }
     creativeId = String(saved.id)
@@ -113,7 +125,12 @@ export async function sponsorCheckoutAction(_previous: SponsorFormState, formDat
   )
   // A founding session expires at claimed_at + 60 minutes. Within a minute of
   // that, even a replay of an existing session would open an expired page.
-  if (founding && claimedAt != null && foundingCheckoutExpiresAt(claimedAt) * 1000 <= Date.now() + 60_000) {
+  // A legacy session lives 24 hours from its creation; past that a replay would
+  // open an expired page or, once Stripe forgot the key, a new 24-hour session.
+  if (legacyHold && claimedAt != null && !legacyFoundingReplayOpen(claimedAt, Date.now())) {
+    return { status: 'error', message: foundingHoldTimedOutMessage(legacyFoundingHoldMinutesLeft(claimedAt, Date.now())) }
+  }
+  if (founding && !legacyHold && claimedAt != null && foundingCheckoutExpiresAt(claimedAt) * 1000 <= Date.now() + 60_000) {
     return { status: 'error', message: foundingHoldTimedOutMessage(foundingHoldMinutesLeft(claimedAt, Date.now())) }
   }
 
@@ -123,6 +140,7 @@ export async function sponsorCheckoutAction(_previous: SponsorFormState, formDat
       ...parsed.value,
       creativeId,
       claimedAt,
+      legacyFoundingHold: legacyHold,
       successUrl: returnUrls.successUrl,
       cancelUrl: returnUrls.cancelUrl,
     })
@@ -133,8 +151,8 @@ export async function sponsorCheckoutAction(_previous: SponsorFormState, formDat
   if (!url) {
     // Once Stripe was called, a founding session may exist (a lost response),
     // payable until its expires_at, so the founding hold keeps counting.
-    if (taskSlug && !founding) await releaseSponsorSlot(getDb(), { taskSlug, requestKey: parsed.value.requestId })
-    if (founding && claimedAt != null && foundingHoldTooOldForNewSession(claimedAt, Date.now())) {
+    if (taskSlug && !founding) await releaseSponsorSlot(getDb(), { taskSlug, requestKey: holdKey })
+    if (founding && !legacyHold && claimedAt != null && foundingHoldTooOldForNewSession(claimedAt, Date.now())) {
       return { status: 'error', message: foundingHoldTimedOutMessage(foundingHoldMinutesLeft(claimedAt, Date.now())) }
     }
     return { status: 'error', message: 'Checkout could not be started. Try again.' }

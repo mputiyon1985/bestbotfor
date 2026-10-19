@@ -124,6 +124,13 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
   cancelUrl: string
   /** The hold's claimed_at (ms) from claimSponsorSlot. Required for founding: it fixes the session's expires_at. */
   claimedAt?: number
+  /**
+   * Founding only: the hold is a legacy hold from before #103 (bare
+   * request_id). Its session was created by main with no expires_at under
+   * `sponsor-<fingerprint>-<request_id>`, so a retry sends exactly that body
+   * and key and Stripe replays the original session instead of opening one.
+   */
+  legacyFoundingHold?: boolean
 }): { params: Stripe.Checkout.SessionCreateParams; idempotencyKey: string } {
   const offering = sponsorOffering(input.offering)
   if (!offering) throw new Error('unknown sponsor offering')
@@ -173,8 +180,9 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
   // also carries claimed_at, the only input to expires_at outside the
   // fingerprint, so the same hold always sends the same body under the same
   // key, and a later hold (after this one lapsed) gets a new key.
-  const expiresAt = founding ? foundingCheckoutExpiresAt(input.claimedAt ?? Number.NaN) : undefined
-  const idempotencyKey = founding
+  const shortHold = founding && input.legacyFoundingHold !== true
+  const expiresAt = shortHold ? foundingCheckoutExpiresAt(input.claimedAt ?? Number.NaN) : undefined
+  const idempotencyKey = shortHold
     ? `sponsor-${fingerprint}-${input.requestId}-h${input.claimedAt}`
     : `sponsor-${fingerprint}-${input.requestId}`
   const shared = {
