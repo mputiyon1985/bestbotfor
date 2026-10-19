@@ -10,13 +10,17 @@ export default function robots(): MetadataRoute.Robots {
   }
   const site = getSiteUrl()
   const disallow = ['/go/', '/api/', '/members', '/admin', '/sign-in', '/sign-up']
+  // Social crawlers (Twitterbot, LinkedInBot) honor robots.txt, so the share
+  // images under /api/og must stay fetchable. The longer, more specific Allow
+  // wins over `Disallow: /api/`, which still covers every other API route.
+  const allow = ['/', '/api/og']
   return {
     rules: [
-      { userAgent: '*', allow: '/', disallow },
-      { userAgent: 'GPTBot', allow: '/', disallow },
-      { userAgent: 'ClaudeBot', allow: '/', disallow },
-      { userAgent: 'PerplexityBot', allow: '/', disallow },
-      { userAgent: 'Google-Extended', allow: '/', disallow },
+      { userAgent: '*', allow, disallow },
+      { userAgent: 'GPTBot', allow, disallow },
+      { userAgent: 'ClaudeBot', allow, disallow },
+      { userAgent: 'PerplexityBot', allow, disallow },
+      { userAgent: 'Google-Extended', allow, disallow },
     ],
     sitemap: new URL('/sitemap.xml', site).toString(),
     host: site,
