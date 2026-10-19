@@ -9,11 +9,11 @@ import { JsonLd } from '@/components/json-ld'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
 import { EditorialCompact } from '@/components/editorial'
-import { recommendQuiz } from '@/lib/catalog'
+import { listTaskCandidates, recommendQuiz } from '@/lib/catalog'
 import { matchBudgetLabel, matchesPath, seeAllMatchesLabel } from '@/lib/matches'
 import { allMatchesRequest, resultRequestStatus, searchParamsToUrl } from '@/lib/result-request'
 import { resultMissMetadata } from '@/lib/result-http'
-import { matchesPageTitle, matchesRobots, quizResultRobots, quizResultTitle } from '@/lib/result-index'
+import { matchesCanonicalPath, matchesPageTitle, matchesRobots, quizResultRobots, quizResultTitle } from '@/lib/result-index'
 import { AllMatches } from './all-matches'
 import NotFoundPage from '../not-found'
 import { getDb } from '@/lib/db'
@@ -61,6 +61,12 @@ const loadResult = cache(async function loadResult(key: string): Promise<ResultL
   return { kind: 'quiz', answers: parsed.data, result }
 })
 
+/** /best/<task> renders only when the task has at least one active match (see src/app/best/[task]/page.tsx). */
+async function bestPageExists(taskSlug: string): Promise<boolean> {
+  const loaded = await listTaskCandidates(taskSlug)
+  return (loaded?.tools.length ?? 0) > 0
+}
+
 export async function generateMetadata({
   searchParams,
 }: {
@@ -78,8 +84,8 @@ export async function generateMetadata({
   }
   if (loaded.kind === 'matches') {
     const { loaded: matches } = loaded
-    const path = matchesPath(matches.task.slug, matches.budget, matches.page)
-    const robots = matchesRobots(matches.budget)
+    const path = matchesCanonicalPath(matches.task.slug, matches.budget, matches.page, await bestPageExists(matches.task.slug))
+    const robots = matchesRobots()
     const title = matchesPageTitle(matches.task.name, matches.budget, matches.page)
     return pageMetadata({
       title,

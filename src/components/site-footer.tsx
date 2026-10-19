@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { taskSeeds } from '@/data/catalog'
 import { TAGLINE } from '@/lib/site'
+import { SOCIAL_LINK_REL, SOCIAL_LINKS } from '@/lib/social'
 import { BrandLockup } from './brand-lockup'
 import { CookieSettingsButton } from './cookie-settings-button'
 import { SuggestSomethingLink } from './suggest-something'
@@ -12,6 +13,23 @@ export function SiteFooter() {
         <div>
           <BrandLockup />
           <p className="mt-3 text-sm text-muted">{TAGLINE}</p>
+          <nav aria-label="Follow BestBotFor" className="mt-4">
+            <h2 className="text-sm font-semibold">Follow</h2>
+            <ul className="mt-2 text-sm">
+              {SOCIAL_LINKS.map((link) => (
+                <li key={link.href}>
+                  <a
+                    className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline"
+                    href={link.href}
+                    rel={SOCIAL_LINK_REL}
+                    aria-label={link.label}
+                  >
+                    {link.name}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </nav>
         </div>
         <nav aria-label="Best for">
           <h2 className="text-sm font-semibold">Best for</h2>

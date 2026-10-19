@@ -1,12 +1,14 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { NewsletterForm } from '@/components/newsletter-form'
 import { StripeTestModeNotice } from '@/components/stripe-test-mode-notice'
 import { checkoutNoticeMessage } from '@/lib/billing-notice'
 import { formatStripeAmount } from '@/lib/format'
 import { pageMetadata } from '@/lib/metadata'
 import { currentClerkUserId } from '@/lib/members'
 import { getPublicPrice } from '@/lib/pricing'
+import { MEMBERS_COMING_SOON_COPY, pricingView } from '@/lib/pricing-view'
 import { checkoutAction } from './actions'
 
 export const metadata: Metadata = pageMetadata({
@@ -24,6 +26,20 @@ export default async function PricingPage({
   const userId = await currentClerkUserId()
   const params = await searchParams
   const notice = checkoutNoticeMessage(typeof params.notice === 'string' ? params.notice : '')
+  const view = pricingView(price)
+
+  if (view === 'coming-soon') {
+    return (
+      <article className="max-w-2xl space-y-6">
+        <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Pricing', path: '/pricing' }]} />
+        <h1 className="font-bold text-5xl">Membership</h1>
+        <StripeTestModeNotice />
+        {notice ? <p role="alert">{notice}</p> : null}
+        <p className="text-xl">{MEMBERS_COMING_SOON_COPY}</p>
+        <NewsletterForm source="newsletter" idSuffix="pricing" />
+      </article>
+    )
+  }
 
   return (
     <article className="max-w-2xl space-y-6">
@@ -34,8 +50,6 @@ export default async function PricingPage({
       <p>A free account can save 10 picks. Membership saves without a cap and opens the longer comparison notes. The public guides stay free.</p>
       {price.available ? (
         <p className="font-bold text-4xl">{formatStripeAmount(price.unitAmount, price.currency, price.interval)}</p>
-      ) : price.reason === 'unconfigured' ? (
-        <p>Membership billing is not available yet. We are not listing a price until Stripe returns one.</p>
       ) : (
         <p>Pricing is temporarily unavailable. We will not guess a number.</p>
       )}
