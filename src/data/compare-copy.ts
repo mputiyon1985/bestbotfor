@@ -206,7 +206,10 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
         label: 'Paid from',
         kind: 'text',
         a: 'Starter €20/mo billed yearly; Pro €50/mo billed yearly',
-        b: 'Core $9/mo, Pro $16/mo, Team $29/mo billed yearly; monthly billing costs more. Each starts at 10,000 credits.',
+        // Plan cards on make.com/en/pricing (10,000 credits/mo view), Nova's Oct 18, 2026 capture.
+        // Make's own make-vs-zapier compare table still shows older Core $9 / Pro $16 / Team $29
+        // with no billing basis, so it is not cited here.
+        b: 'Core $12/mo, Pro $21/mo, Teams $38/mo billed yearly, or $16, $28 and $51/mo billed monthly. Each starts at 10,000 credits.',
         source: '[3]; [4]',
       },
       {
@@ -222,7 +225,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
     cta: 'Automation pricing shifts often (Make moved to credits on Aug 27). Get **The Daily Bot** for AI tool and pricing changes in plain English.',
     sources: [
       '[3] n8n pricing: https://n8n.io/pricing/ (vendor, checked Oct 17, 2026)',
-      '[4] Make pricing: https://www.make.com/en/pricing (vendor, checked Oct 18, 2026). Plan prices read on https://www.make.com/en/compare/make-vs-zapier (vendor, checked Oct 18, 2026)',
+      '[4] Make pricing: https://www.make.com/en/pricing (vendor, checked Oct 18, 2026)',
       catalogSource,
     ],
     ranking: { href: '/best/automation', label: 'See the full Automation ranking' },

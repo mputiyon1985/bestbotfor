@@ -320,13 +320,14 @@ describe('curated compare copy', () => {
     expect(makeView.pickB.join(' ')).not.toContain('1,000+ app integrations')
     const make = cell(makeView, 'Paid from').b
     expect(make).toBe(
-      'Core $9/mo, Pro $16/mo, Team $29/mo billed yearly; monthly billing costs more. Each starts at 10,000 credits.',
+      'Core $12/mo, Pro $21/mo, Teams $38/mo billed yearly, or $16, $28 and $51/mo billed monthly. Each starts at 10,000 credits.',
     )
     expect(make).not.toContain('[S]')
     expect(make).not.toContain('10.59')
+    for (const stale of ['$9/mo', 'Pro $16/mo', '$29/mo']) expect(make).not.toContain(stale)
     const makeCopy = compareCopy.find((entry) => entry.slug === 'n8n-vs-make')
     expect(makeCopy?.sources.join('\n')).toContain('https://www.make.com/en/pricing')
-    expect(makeCopy?.sources.join('\n')).toContain('https://www.make.com/en/compare/make-vs-zapier')
+    expect(makeCopy?.sources.join('\n')).not.toContain('https://www.make.com/en/compare/make-vs-zapier')
     expect(makeCopy?.sources.join('\n')).not.toContain('meetalog')
     expect(makeCopy?.sources.join('\n')).not.toContain('mainsum')
     expect(makeCopy?.checkedLine).toBe(`Last checked Oct 17, 2026. ${CHECKED_TAIL}`)
