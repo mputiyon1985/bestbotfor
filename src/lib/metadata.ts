@@ -3,7 +3,7 @@ import { OG_IMAGE_PATH } from './brand'
 import { isProductionDeployment } from './indexing'
 import { POLICY_PAGES_LAWYER_APPROVED } from './review-flags'
 import { omitScoreText } from './score-visibility'
-import { absoluteUrl, getSiteUrl, SITE_NAME, TAGLINE } from './site'
+import { absoluteUrl, getSiteUrl, SITE_NAME, TAGLINE, TWITTER_SITE } from './site'
 
 export function pageMetadata(input: {
   title: string
@@ -40,6 +40,7 @@ export function pageMetadata(input: {
     },
     twitter: {
       card: 'summary_large_image',
+      site: TWITTER_SITE,
       title: branded,
       description,
       images: [{ url: image, width: 1200, height: 630, alt: title }],

@@ -86,7 +86,7 @@ describe('privacy policy facts', () => {
 
   it('says a newsletter signup gets a confirmation email before the address is subscribed', () => {
     expect(NEWSLETTER_SIGNUP_PARAGRAPH).toBe(
-      'If you join the newsletter, we store your email address. Before the digest is connected to Beehiiv, we keep that address as a pending signup and you are not subscribed yet. When the digest is connected, we send that email address to Beehiiv, including an address we stored while it was pending. We also send utm_source set to bestbotfor, utm_medium set to website, and referring_site set to the absolute URL of the page that offered the form. That page is one of /, /result, /best, /compare, /newsletter, /ai-loadout, /guides/how-to-choose-an-ai-tool, /alternatives/chatgpt, /alternatives/midjourney, /alternatives/zapier, /alternatives/cursor, or /alternatives/elevenlabs. You get a confirmation email first (double opt-in). You are subscribed only after you confirm that message. We do not ask for your name on the form. We keep your email address and signup record while you are subscribed. After you unsubscribe, we keep that row so we do not email you again. It holds your email, the unsubscribe status, when it was created, where it was sent, the Beehiiv id when we have one, and the utm_source, utm_medium, utm_campaign, and utm_content values and landing page from the link that first brought you, when we recorded them. Beehiiv keeps its own record. We do not delete that row on a schedule. If you ask us to delete it, we delete our copy within 30 days. If you unsubscribe, we honor that. The signup form does not turn it back on. The only way back is your own resubscribe link.',
+      'If you join the newsletter, we store your email address. Before the digest is connected to Beehiiv, we keep that address as a pending signup and you are not subscribed yet. When the digest is connected, we send that email address to Beehiiv, including an address we stored while it was pending. We also send the utm_source, utm_medium, utm_campaign, and utm_content values from the link that first brought you to the site, when we recorded one. If we did not record one, we send utm_source set to bestbotfor and utm_medium set to website. We also send referring_site set to the absolute URL of the page that offered the form. That page is one of /, /result, /best, /compare, /newsletter, /ai-loadout, /guides/how-to-choose-an-ai-tool, /alternatives/chatgpt, /alternatives/midjourney, /alternatives/zapier, /alternatives/cursor, or /alternatives/elevenlabs. You get a confirmation email first (double opt-in). You are subscribed only after you confirm that message. We do not ask for your name on the form. We keep your email address and signup record while you are subscribed. After you unsubscribe, we keep that row so we do not email you again. It holds your email, the unsubscribe status, when it was created, where it was sent, the Beehiiv id when we have one, and the utm_source, utm_medium, utm_campaign, and utm_content values and landing page from the link that first brought you, when we recorded them. Beehiiv keeps its own record. We do not delete that row on a schedule. If you ask us to delete it, we delete our copy within 30 days. If you unsubscribe, we honor that. The signup form does not turn it back on. The only way back is your own resubscribe link.',
     )
     expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain('utm_source set to bestbotfor')
     expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain('utm_medium set to website')
@@ -96,6 +96,13 @@ describe('privacy policy facts', () => {
     expect(NEWSLETTER_SIGNUP_PARAGRAPH).not.toContain('lawyer')
     expect(NEWSLETTER_SIGNUP_PARAGRAPH).not.toContain('[')
     expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain('The only way back is your own resubscribe link.')
+    // #101's send sentences stay word for word; #102 adds only the row-storage clause (migration 0023).
+    expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain(
+      'We also send the utm_source, utm_medium, utm_campaign, and utm_content values from the link that first brought you to the site, when we recorded one. If we did not record one, we send utm_source set to bestbotfor and utm_medium set to website.',
+    )
+    const rowSentence = NEWSLETTER_SIGNUP_PARAGRAPH.split('. ').find((sentence) => sentence.startsWith('It holds your email')) ?? ''
+    expect(rowSentence).toContain('utm_source, utm_medium, utm_campaign, and utm_content values and landing page')
+    expect(rowSentence).not.toMatch(/arriv|arrival|\btime\b/i)
     // Every referring_site path a form can send is named in the policy.
     for (const referringPath of newsletterReferringPaths()) expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain(` ${referringPath}`)
     const page = readFileSync(path.join(process.cwd(), 'src/app/privacy/page.tsx'), 'utf8')
@@ -123,7 +130,7 @@ describe('privacy policy facts', () => {
     expect(page).not.toContain('Lawyer note')
     expect(page).toContain('PRIVACY_UPDATED')
     const dates = readFileSync(path.join(process.cwd(), 'src/lib/ratings-policy-copy.ts'), 'utf8')
-    expect(dates).toContain("export const PRIVACY_UPDATED = 'October 18, 2026'")
+    expect(dates).toContain("export const PRIVACY_UPDATED = 'October 19, 2026'")
     expect(dates.match(/export const PRIVACY_UPDATED =/g)).toEqual(['export const PRIVACY_UPDATED ='])
     expect(PRIVACY_UPDATED_WITH_RATINGS.startsWith(`${PRIVACY_UPDATED}.`)).toBe(true)
     expect(PRIVACY_UPDATED_WITH_RATINGS).toContain('recorded on October 17, 2026')
@@ -169,7 +176,7 @@ describe('privacy policy facts', () => {
     expect(retentionJobParagraph(false)).toContain(suggestionSentence)
     expect(retentionJobParagraph(true)).toContain(suggestionSentence)
     expect(RETENTION_ROWS.find((row) => row.data === 'Rate-limit rows')?.kept).toBe(rateLimitRetentionKept())
-    expect(PRIVACY_UPDATED).toBe('October 18, 2026')
+    expect(PRIVACY_UPDATED).toBe('October 19, 2026')
 
     const outside = ['src/app/privacy/page.tsx', 'src/lib/ratings-policy-copy.ts']
     for (const file of outside) {

@@ -1,3 +1,5 @@
+import { beehiivUtmFields, type FirstTouch } from './first-touch'
+
 const PUBLICATION_ID = /^pub_[0-9a-fA-F-]+$/
 
 export function isBeehiivConfigured(): boolean {
@@ -18,6 +20,8 @@ export type BeehiivResult = { ok: true; id: string | null } | { ok: false }
 export async function createBeehiivSubscription(input: {
   email: string
   referringSite: string
+  /** Stored first-touch tags. Without them the fixed bestbotfor / website pair is sent. */
+  firstTouch?: FirstTouch | null
   fetchImpl?: typeof fetch
 }): Promise<BeehiivResult> {
   const apiKey = process.env.BEEHIIV_API_KEY?.trim() ?? ''
@@ -40,8 +44,7 @@ export async function createBeehiivSubscription(input: {
           reactivate_existing: false,
           send_welcome_email: true,
           double_opt_override: 'on',
-          utm_source: 'bestbotfor',
-          utm_medium: 'website',
+          ...beehiivUtmFields(input.firstTouch),
           referring_site: input.referringSite,
         }),
         signal: AbortSignal.timeout(8000),
