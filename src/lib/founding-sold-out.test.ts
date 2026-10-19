@@ -137,7 +137,7 @@ describe('founding sold-out auto-hide', () => {
     expect(html).not.toContain('Become a founding sponsor')
     // The other offers are unaffected.
     expect(isDisabled(html.match(/<input[^>]*value="placement_weekly"[^>]*>/)?.[0] ?? '')).toBe(false)
-    expect(html.match(new RegExp(SPONSOR_OFFERING_NOT_CONFIGURED.replace(/\./g, '\\.'), 'g'))?.length ?? 0).toBe(1)
+    expect(html.match(new RegExp(SPONSOR_OFFERING_NOT_CONFIGURED.replace(/\./g, '\\.'), 'g'))?.length ?? 0).toBe(0) // the unconfigured monthly subscription is hidden, not labeled
 
     // Server side: a new founding checkout is refused before any Stripe session.
     expect(await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: 'req-6', now: T0 })).toEqual({

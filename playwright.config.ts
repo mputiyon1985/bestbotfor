@@ -52,7 +52,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: ['**/user-ratings-on.spec.ts', '**/admin-sponsors-on.spec.ts', '**/free-pages-hooks.spec.ts', '**/founding-cap.spec.ts'],
+      testIgnore: ['**/user-ratings-on.spec.ts', '**/admin-sponsors-on.spec.ts', '**/free-pages-hooks.spec.ts', '**/founding-cap.spec.ts', '**/sponsor-unconfigured.spec.ts'],
       use: { ...devices['Desktop Chrome'], baseURL: siteUrl },
     },
     {
@@ -75,7 +75,7 @@ export default defineConfig({
       // Its own server and database file: these tests fill all 5 founding spots,
       // which would close the founding offer for the main server's sponsor tests.
       name: 'founding-cap',
-      testMatch: '**/founding-cap.spec.ts',
+      testMatch: ['**/founding-cap.spec.ts', '**/sponsor-unconfigured.spec.ts'],
       use: { ...devices['Desktop Chrome'], baseURL: foundingCapUrl },
     },
   ],

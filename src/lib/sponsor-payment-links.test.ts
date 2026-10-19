@@ -218,7 +218,8 @@ describe('sponsor payment links', () => {
       }
       const html = await pageHtml({ ...live, ...unset, STRIPE_PRICE_PLACEMENT_SUBSCRIPTION: 'sub_not_a_price' })
       expect(subscriptionLine(html)).toEqual([])
-      expect(radio(html, 'placement_subscription')).toContain('disabled')
+      // An unconfigured monthly subscription is left off the form entirely.
+      expect(radio(html, 'placement_subscription')).toBe('')
     })
 
     it('lists each subscription line once its Prices are set, matching its radio', async () => {
@@ -251,7 +252,10 @@ describe('sponsor payment links', () => {
               STRIPE_PRICE_FOUNDING_MONTHLY: monthly,
               STRIPE_PRICE_FOUNDING_SETUP: setup,
             })
-            expect(subscriptionLine(html).length).toBe(radio(html, 'placement_subscription').includes('disabled') ? 0 : 1)
+            // The subscription radio is either enabled with its line, or absent with no line.
+            const subRadio = radio(html, 'placement_subscription')
+            expect(subRadio).not.toContain('disabled')
+            expect(subscriptionLine(html).length).toBe(subRadio ? 1 : 0)
             expect(foundingLine(html).length).toBe(radio(html, 'founding_sponsor').includes('disabled') ? 0 : 1)
           }
     })
@@ -298,7 +302,7 @@ describe('sponsor payment links', () => {
       return html.slice(label, html.indexOf('</label>', start)).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
     }
 
-    it('shows a disabled monthly or Founding option with its title and no price or terms', async () => {
+    it('hides an unconfigured monthly subscription and shows a disabled Founding option with no price or terms', async () => {
       const html = await pageHtml({
         ...live,
         STRIPE_PRICE_PLACEMENT_MONTHLY: 'price_month_test',
@@ -306,7 +310,8 @@ describe('sponsor payment links', () => {
         STRIPE_PRICE_FOUNDING_MONTHLY: 'price_founding_monthly_test',
         STRIPE_PRICE_FOUNDING_SETUP: undefined,
       })
-      expect(option(html, 'placement_subscription')).toBe(`Featured placement, monthly subscription ${SPONSOR_OFFERING_NOT_CONFIGURED}`)
+      expect(option(html, 'placement_subscription')).toBe('')
+      expect(html).not.toContain('Featured placement, monthly subscription')
       expect(option(html, 'founding_sponsor')).toBe(`Founding sponsor ${SPONSOR_OFFERING_NOT_CONFIGURED}`)
       for (const id of ['placement_subscription', 'founding_sponsor']) {
         expect(option(html, id)).not.toContain('$')

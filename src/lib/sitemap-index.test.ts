@@ -1,10 +1,12 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Metadata } from 'next'
 import sitemap, { SITEMAP_STATIC_PATHS } from '@/app/sitemap'
 import { isProductionDeployment } from '@/lib/indexing'
 import { pageMetadata } from '@/lib/metadata'
+import { SITEMAP_STATIC_LASTMOD } from '@/lib/sitemap-dates'
+import { GUIDES, guidePath } from '@/content/guides'
 
 const originalVercel = process.env.VERCEL_ENV
 
@@ -76,6 +78,36 @@ describe('static sitemap paths', () => {
     for (const route of SITEMAP_STATIC_PATHS) {
       expect(urls, route).toContain(route)
       expect(await staticRobots(route), route).toEqual({ index: true, follow: true })
+    }
+  })
+})
+
+describe('sitemap entries', () => {
+  it('leaves out every /result match list', async () => {
+    const entries = await sitemap()
+    for (const entry of entries) {
+      expect(entry.url).not.toContain('/result')
+      expect(entry.url).not.toContain('view=all')
+    }
+  })
+
+  it('gives every entry a stable YYYY-MM-DD lastmod that does not follow the clock', async () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date('2031-01-02T03:04:05Z'))
+      const later = await sitemap()
+      vi.setSystemTime(new Date('2027-06-07T08:09:10Z'))
+      const earlier = await sitemap()
+      expect(later).toEqual(earlier)
+      for (const entry of later) {
+        expect(String(entry.lastModified), entry.url).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+        expect(String(entry.lastModified), entry.url).not.toMatch(/^20(27|31)/)
+      }
+      const byPath = new Map(later.map((entry) => [new URL(entry.url).pathname, entry.lastModified]))
+      expect(byPath.get('/privacy')).toBe(SITEMAP_STATIC_LASTMOD)
+      for (const guide of GUIDES) expect(byPath.get(guidePath(guide.slug))).toBe(guide.updatedAt)
+    } finally {
+      vi.useRealTimers()
     }
   })
 })

@@ -74,8 +74,10 @@ function robotsContent(html: string): string {
 
 async function assertProductionRobots(): Promise<void> {
   const cases: Array<{ path: string; content: string }> = [
-    { path: '/result?task=chat&view=all', content: 'index, follow' },
-    { path: '/result?task=seo&view=all', content: 'index, follow' },
+    { path: '/best/chat', content: 'index, follow' },
+    { path: '/best/seo', content: 'index, follow' },
+    { path: '/result?task=chat&view=all', content: 'noindex, follow' },
+    { path: '/result?task=seo&view=all', content: 'noindex, follow' },
     { path: '/result?task=chat&budget=any&skill=beginner', content: 'noindex, follow' },
     { path: '/result?task=seo&budget=free&skill=beginner', content: 'noindex, follow' },
     { path: '/result?task=seo&view=all&budget=free', content: 'noindex, follow' },
