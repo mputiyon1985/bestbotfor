@@ -3,6 +3,7 @@
 import { useActionState, useEffect, useRef } from 'react'
 import { track } from '@/lib/analytics'
 import { CONSENT_EVENT } from '@/lib/consent'
+import { FirstTouchField } from '@/components/first-touch-field'
 import type { NewsletterSource } from '@/lib/newsletter-source'
 import { subscribeAction, type NewsletterState } from '@/app/newsletter/actions'
 
@@ -37,6 +38,7 @@ export function NewsletterForm({
   return (
     <form action={action} className="space-y-4" noValidate>
       <input type="hidden" name="source" value={source} />
+      <FirstTouchField />
       <div>
         <label htmlFor={emailId} className="font-semibold">
           Email address

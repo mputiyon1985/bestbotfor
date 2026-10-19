@@ -2,6 +2,8 @@
 export const DEFAULT_SITE_URL = 'https://bestbotfor.com'
 
 export const TAGLINE = 'The right AI in 30 seconds.'
+/** The brand X account, emitted as twitter:site on every page. */
+export const TWITTER_SITE = '@bestbotfor'
 
 export const SITE_NAME = 'BestBotFor'
 

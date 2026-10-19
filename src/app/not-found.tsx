@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFoundDescription, notFoundTitle } from '@/lib/metadata'
+import { TWITTER_SITE } from '@/lib/site'
 
 export const metadata: Metadata = {
   // Absolute so the layout template does not turn this into "Page not found · BestBotFor".
@@ -21,6 +22,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary',
+    site: TWITTER_SITE,
     title: { absolute: notFoundTitle },
     description: notFoundDescription,
   },

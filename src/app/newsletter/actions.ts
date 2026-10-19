@@ -3,6 +3,7 @@
 import { headers } from 'next/headers'
 import { getDb } from '@/lib/db'
 import { clientIp, rateLimitKey } from '@/lib/ip'
+import { parseFirstTouch } from '@/lib/first-touch'
 import { parseNewsletterSource } from '@/lib/newsletter-source'
 import { subscribeToNewsletter, type NewsletterResult } from '@/lib/newsletter'
 
@@ -15,6 +16,7 @@ export async function subscribeAction(_previous: NewsletterState, formData: Form
       email: String(formData.get('email') ?? ''),
       honeypot: String(formData.get('company_website') ?? ''),
       source: parseNewsletterSource(String(formData.get('source') ?? '')),
+      firstTouch: parseFirstTouch(formData.get('first_touch')),
       db: getDb(),
       rateKey: rateLimitKey(clientIp(headerStore), 'newsletter'),
     })
