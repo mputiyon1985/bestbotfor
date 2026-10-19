@@ -1,10 +1,15 @@
 import { placementWindowMs } from './best-placement'
 import { getDb } from './db'
 import type { Database } from './db/client'
-import { SPONSOR_CHECKOUT_EXPIRY_MS } from './sponsor-hold-window'
+import { FOUNDING_HOLD_REUSE_MS, SPONSOR_CHECKOUT_EXPIRY_MS } from './sponsor-hold-window'
 import { FOUNDING_SOLD_OUT, FOUNDING_SPONSOR_CAP, isSubscriptionOffering, isTaskOffering } from './sponsor-offerings'
 
-export { FOUNDING_CHECKOUT_SESSION_MS, SPONSOR_CHECKOUT_EXPIRY_MS, foundingCheckoutExpiresAt } from './sponsor-hold-window'
+export {
+  FOUNDING_CHECKOUT_SESSION_MS,
+  FOUNDING_HOLD_REUSE_MS,
+  SPONSOR_CHECKOUT_EXPIRY_MS,
+  foundingCheckoutExpiresAt,
+} from './sponsor-hold-window'
 
 export const SPONSOR_SLOT_TAKEN = 'That task page already has a placement in this period. Choose another page.'
 
@@ -35,10 +40,21 @@ export type SponsorSlotClaim = {
  * The founding offer is also capped at FOUNDING_SPONSOR_CAP in the same
  * statement, so two concurrent checkouts cannot both take the last spot.
  *
- * A repeat of the same request while its hold is live keeps the original
- * claimed_at, which is returned as `claimedAt`. The founding Checkout session's
- * expires_at is derived from it, so a retried form sends Stripe the same
- * parameters under the same idempotency key, and the hold is not stretched.
+ * Founding only: a repeat of the same request keeps its hold's original
+ * claimed_at while the hold is younger than FOUNDING_HOLD_REUSE_MS (23h20m).
+ * It is returned as `claimedAt`; the founding session's expires_at and
+ * idempotency key are derived from it, so a retried form sends Stripe the same
+ * parameters under the same key, and the hold is not stretched. An older hold
+ * is renewed at `now` for the same request, so a new session still gets
+ * Stripe's minimum 30 minutes, under a new key. Every other offering
+ * refreshes claimed_at on each attempt, as before: their sessions use Stripe's
+ * default expiry, which runs from session creation, so a fresh hold clock
+ * keeps the hold at least as long as the session.
+ *
+ * A live founding hold stays a founding hold when the same request switches
+ * to another offering (the form keeps one request_id). A founding session may
+ * already exist under it, so the hold keeps counting toward the cap of 5, and
+ * releaseSponsorSlot keeps leaving it alone, until it expires.
  */
 export async function claimSponsorSlot(
   db: Database,
@@ -74,9 +90,17 @@ export async function claimSponsorSlot(
       AND (? = 0 OR (${FOUNDING_TAKEN_SQL}) < ?)
       ON CONFLICT(task_slug) DO UPDATE SET
         request_key = excluded.request_key,
-        offering = excluded.offering,
+        offering = CASE
+          WHEN sponsorship_slot_claims.offering = 'founding_sponsor'
+            AND sponsorship_slot_claims.request_key = excluded.request_key
+            AND sponsorship_slot_claims.claimed_at > ?
+          THEN 'founding_sponsor'
+          ELSE excluded.offering
+        END,
         claimed_at = CASE
-          WHEN sponsorship_slot_claims.request_key = excluded.request_key
+          WHEN ? = 1
+            AND sponsorship_slot_claims.offering = 'founding_sponsor'
+            AND sponsorship_slot_claims.request_key = excluded.request_key
             AND sponsorship_slot_claims.claimed_at > ?
           THEN sponsorship_slot_claims.claimed_at
           ELSE excluded.claimed_at
@@ -100,6 +124,8 @@ export async function claimSponsorSlot(
       input.taskSlug,
       FOUNDING_SPONSOR_CAP,
       input.now - SPONSOR_CHECKOUT_EXPIRY_MS,
+      founding ? 1 : 0,
+      input.now - FOUNDING_HOLD_REUSE_MS,
       input.now - SPONSOR_CHECKOUT_EXPIRY_MS,
     ],
   })
@@ -194,7 +220,16 @@ export async function foundingSoldOutNow(now = Date.now(), db?: Database): Promi
   }
 }
 
-/** Drop this request's hold after Checkout fails. Another request's hold stays. */
+/**
+ * Drop this request's hold after Checkout fails. Another request's hold stays.
+ *
+ * A founding hold is never released early: it runs its full 24 hours. A
+ * failed create can still have made a session (a lost response, a Stripe 5xx,
+ * a session with an unusable URL), and that session stays payable until its
+ * expires_at. Releasing the hold would free the spot for a sixth founder while
+ * it can still be paid. The buyer's retry from the same form reuses the hold
+ * and replays the same Stripe request.
+ */
 export async function releaseSponsorSlot(
   db: Database,
   input: { taskSlug: string; requestKey: string },
@@ -202,7 +237,7 @@ export async function releaseSponsorSlot(
   await db.$client.execute({
     sql: `UPDATE sponsorship_slot_claims
       SET claimed_at = 0
-      WHERE task_slug = ? AND request_key = ?`,
+      WHERE task_slug = ? AND request_key = ? AND offering != 'founding_sponsor'`,
     args: [input.taskSlug, input.requestKey],
   })
 }

@@ -188,7 +188,7 @@ describe('sponsor payment links', () => {
         expect(html).not.toContain('one-time and subscription')
       }
       const html = await pageHtml({ ...live, ...unset })
-      // The founding Payment Link card and its terms still show on live production.
+      // The Monthly Payment Link card (the only one left) and its terms still show on live production.
       expect(html).toContain(`href="${SPONSOR_PAYMENT_LINKS[0].url}"`)
       expect(html).toContain(SPONSOR_PAYMENT_LINKS[0].terms)
     })

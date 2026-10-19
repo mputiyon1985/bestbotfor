@@ -164,7 +164,7 @@ describe('subscription checkout params', () => {
     expect(parsed.value.setupPriceId).toBe('price_e2e_founding_setup')
     // The hold's claimed_at, 2026-10-19 10:00 AM ET. The session ends 23h55m later (Sentinel P3-3 on #97).
     const claimedAt = Date.UTC(2026, 9, 19, 14)
-    const built = sponsorCheckoutParams({ ...parsed.value, creativeId: '7', claimedAt, ...urls })
+    const built = sponsorCheckoutParams({ ...parsed.value, creativeId: '7', claimedAt, now: claimedAt + 2_000, ...urls })
     const params = built.params
     expect(params.mode).toBe('subscription')
     expect(params.expires_at).toBe(1_792_504_500)
@@ -191,9 +191,9 @@ describe('subscription checkout params', () => {
     expect(params).not.toHaveProperty('automatic_tax')
     expect(JSON.stringify(params)).not.toContain('unit_amount')
     expect(JSON.stringify(params)).not.toContain('price_data')
-    const again = sponsorCheckoutParams({ ...parsed.value, creativeId: '7', claimedAt, ...urls })
+    const again = sponsorCheckoutParams({ ...parsed.value, creativeId: '7', claimedAt, now: claimedAt + 60_000, ...urls })
     expect(again).toEqual(built)
-    expect(built.idempotencyKey).toMatch(new RegExp(`^sponsor-[0-9a-f]{16}-${REQUEST_ID}$`))
+    expect(built.idempotencyKey).toMatch(new RegExp(`^sponsor-[0-9a-f]{16}-${REQUEST_ID}-h${claimedAt}$`))
   })
 
   it('starts the standard monthly subscription with one recurring line and no trial', () => {
@@ -393,7 +393,7 @@ describe('founding sponsor cap', () => {
   const NOW = Date.UTC(2026, 9, 18)
   const TASKS = ['coding', 'writing', 'image', 'video', 'voice', 'music', 'research']
 
-  it('allows 5 founding sponsors, counts live holds once, and frees a hold that expires or is released', async () => {
+  it('allows 5 founding sponsors, counts live holds once, and frees a hold only when it expires', async () => {
     const { db, close } = await createTestDatabase()
     expect(await foundingSpotsLeft(db, NOW)).toBe(5)
     // Two paid founding sponsors.
@@ -436,13 +436,20 @@ describe('founding sponsor cap', () => {
     expect(await claimSponsorSlot(db, { taskSlug: TASKS[5] ?? '', offering: 'placement_subscription', requestKey: 'req-sub', now: NOW + 6 })).toMatchObject({
       ok: true,
     })
-    // A released hold frees its spot.
+    // A failed checkout does not free a founding spot: Stripe may already have made
+    // that session, so the hold runs its full 24 hours (Sentinel must-fix on #98).
     await releaseSponsorSlot(db, { taskSlug: TASKS[3] ?? '', requestKey: `req-${TASKS[3]}` })
-    expect(await claimSponsorSlot(db, { taskSlug: TASKS[6] ?? '', offering: 'founding_sponsor', requestKey: 'req-7', now: NOW + 7 })).toMatchObject({
+    expect(await foundingSpotsLeft(db, NOW + 7)).toBe(0)
+    expect(await claimSponsorSlot(db, { taskSlug: TASKS[6] ?? '', offering: 'founding_sponsor', requestKey: 'req-7', now: NOW + 7 })).toEqual({
+      ok: false,
+      message: FOUNDING_SOLD_OUT,
+    })
+    expect(await claimSponsorSlot(db, { taskSlug: TASKS[6] ?? '', offering: 'founding_sponsor', requestKey: 'req-7', now: NOW + 2 + SPONSOR_CHECKOUT_EXPIRY_MS })).toMatchObject({
       ok: true,
     })
-    // An expired hold frees its spot too.
-    expect(await foundingSpotsLeft(db, NOW + 7 + SPONSOR_CHECKOUT_EXPIRY_MS)).toBe(3)
+    // An expired hold frees its spot: the first holds have, the req-7 hold has not.
+    expect(await foundingSpotsLeft(db, NOW + 7 + SPONSOR_CHECKOUT_EXPIRY_MS)).toBe(2)
+    expect(await foundingSpotsLeft(db, NOW + 3 + 2 * SPONSOR_CHECKOUT_EXPIRY_MS)).toBe(3)
     await close()
   })
 

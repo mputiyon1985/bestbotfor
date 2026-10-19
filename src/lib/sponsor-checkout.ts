@@ -114,6 +114,8 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
   cancelUrl: string
   /** The hold's claimed_at (ms) from claimSponsorSlot. Required for founding: it sets the session's expires_at. */
   claimedAt?: number
+  /** When the params are built (ms). Founding only: keeps expires_at inside Stripe's window. Defaults to Date.now(). */
+  now?: number
 }): { params: Stripe.Checkout.SessionCreateParams; idempotencyKey: string } {
   const offering = sponsorOffering(input.offering)
   if (!offering) throw new Error('unknown sponsor offering')
@@ -158,7 +160,19 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
   if (subscription) fingerprintFields.push('subscription', setupPriceId ?? '', String(trialDays), String(lockMonths))
   const fingerprintSource = fingerprintFields.join('\n')
   const fingerprint = createHash('sha256').update(fingerprintSource).digest('hex').slice(0, 16)
-  const idempotencyKey = `sponsor-${fingerprint}-${input.requestId}`
+  const founding = input.offering === 'founding_sponsor'
+  if (founding && (input.claimedAt == null || !Number.isFinite(input.claimedAt) || input.claimedAt <= 0)) {
+    throw new Error('founding checkout needs its hold time')
+  }
+  // A founding key also carries the hold's claimed_at, the only input to its
+  // expires_at that is not in the fingerprint. The same hold always sends the
+  // same body under the same key; a new or renewed hold gets a new key, so a
+  // retry can never reuse a key with a different expires_at. Founding holds
+  // are never released early (releaseSponsorSlot), so a session Stripe may
+  // already have made under an earlier key stays covered by its hold.
+  const idempotencyKey = founding
+    ? `sponsor-${fingerprint}-${input.requestId}-h${input.claimedAt}`
+    : `sponsor-${fingerprint}-${input.requestId}`
   const shared = {
     customer_email: input.email,
     success_url: input.successUrl,
@@ -216,11 +230,6 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
   }
   // A founding session ends 5 minutes before its hold stops counting toward
   // the cap, so it cannot complete once the spot may have gone to someone else.
-  if (input.offering === 'founding_sponsor') {
-    if (input.claimedAt == null || !Number.isFinite(input.claimedAt) || input.claimedAt <= 0) {
-      throw new Error('founding checkout needs its hold time')
-    }
-    params.expires_at = foundingCheckoutExpiresAt(input.claimedAt)
-  }
+  if (founding) params.expires_at = foundingCheckoutExpiresAt(input.claimedAt as number, input.now ?? Date.now())
   return { idempotencyKey, params }
 }

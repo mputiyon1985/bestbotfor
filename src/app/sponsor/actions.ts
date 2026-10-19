@@ -77,15 +77,25 @@ export async function sponsorCheckoutAction(_previous: SponsorFormState, formDat
       requestHost: requestHostFromHeaders(headerStore),
     }),
   )
-  const built = sponsorCheckoutParams({
-    ...parsed.value,
-    creativeId,
-    claimedAt,
-    successUrl: returnUrls.successUrl,
-    cancelUrl: returnUrls.cancelUrl,
-  })
-
-  const url = await hostedCheckoutUrl(stripe, built.params, built.idempotencyKey)
+  // A failed attempt releases a placement hold, but never a founding hold
+  // (releaseSponsorSlot): Stripe may already have made that session. The
+  // buyer's retry from the same form reuses the hold and its claimed_at, so it
+  // sends the same body under the same idempotency key, and Stripe returns the
+  // session it already made instead of a second one.
+  let url: string | null = null
+  try {
+    const built = sponsorCheckoutParams({
+      ...parsed.value,
+      creativeId,
+      claimedAt,
+      now: Date.now(),
+      successUrl: returnUrls.successUrl,
+      cancelUrl: returnUrls.cancelUrl,
+    })
+    url = await hostedCheckoutUrl(stripe, built.params, built.idempotencyKey)
+  } catch (error) {
+    console.error('sponsor checkout params failed', error instanceof Error ? error.name : 'error')
+  }
   if (!url) {
     if (taskSlug) await releaseSponsorSlot(getDb(), { taskSlug, requestKey: parsed.value.requestId })
     return { status: 'error', message: 'Checkout could not be started. Try again.' }

@@ -132,3 +132,51 @@ test('rule F: a refund of the last spot through the signed webhook frees it and 
   await expect(page.getByText('Sold out')).toHaveCount(0)
   await expect(page.getByRole('listitem').filter({ hasText: 'Founding sponsor: $99 for 2 weeks, then $299/mo.' })).toBeVisible()
 })
+
+test('a lost Checkout response keeps the founding hold; Try again replays the same session under the same key (Sentinel must-fix on #98)', async ({ page }) => {
+  await page.route('https://checkout.stripe.com/**', (route) =>
+    route.fulfill({ status: 200, contentType: 'text/html', body: '<main><h1>Stripe Checkout</h1></main>' }),
+  )
+  await db.execute("DELETE FROM sponsorship_slot_claims WHERE task_slug = 'coding'")
+  const email = `retry-founder-${Date.now()}@example.com`
+  // Stripe makes the session, but the action never sees it (a 500 after the work was done).
+  await fetch(`http://127.0.0.1:12111/__lose_response?email=${encodeURIComponent(email)}&times=1`, { method: 'POST' })
+
+  await page.goto('/sponsor')
+  await fillFoundingCheckout(page, email)
+  await page.getByRole('button', { name: 'Continue to checkout' }).click()
+  await expect(page.locator('#sponsor-status')).toHaveText('Checkout could not be started. Try again.')
+  await expect(page).toHaveURL(/\/sponsor$/)
+
+  // The founding hold was not released: it keeps its claimed_at and the fifth spot.
+  const held = await db.execute("SELECT request_key, offering, claimed_at FROM sponsorship_slot_claims WHERE task_slug = 'coding'")
+  const claimedAt = Number(held.rows[0]?.claimed_at)
+  expect(held.rows[0]?.offering).toBe('founding_sponsor')
+  expect(claimedAt).toBeGreaterThan(0)
+
+  // Try again from the same form (same request_id; React resets the uncontrolled fields after
+  // the action, so the buyer fills them in again): Stripe returns the session it already made.
+  await fillFoundingCheckout(page, email)
+  await page.getByRole('button', { name: 'Continue to checkout' }).click()
+  await expect(page).toHaveURL(/checkout\.stripe\.com/)
+
+  const history = (await fetch(`http://127.0.0.1:12111/__history?email=${encodeURIComponent(email)}`).then((response) =>
+    response.json(),
+  )) as Array<Record<string, string>>
+  expect(history.map((item) => item.__outcome)).toEqual(['created_response_lost', 'replayed'])
+  const [first, retry] = history
+  expect(retry?.__idempotency_key).toBe(first?.__idempotency_key)
+  expect(first?.__idempotency_key).toMatch(new RegExp(`-h${claimedAt}$`))
+  expect(retry?.__session_id).toBe(first?.__session_id)
+  expect(page.url()).toContain(String(first?.__session_id))
+  expect(retry?.expires_at).toBe(first?.expires_at)
+  expect(Number(first?.expires_at)).toBe(Math.floor((claimedAt + (23 * 60 + 55) * 60 * 1000) / 1000))
+  const after = await db.execute("SELECT request_key, claimed_at FROM sponsorship_slot_claims WHERE task_slug = 'coding'")
+  expect(Number(after.rows[0]?.claimed_at)).toBe(claimedAt)
+  expect(after.rows[0]?.request_key).toBe(held.rows[0]?.request_key)
+
+  // 4 paid plus this hold: a new visitor sees the founding offer sold out, so no second founding session can open.
+  await page.goto('/sponsor')
+  await expect(foundingRadio(page)).toBeDisabled()
+  await expect(foundingRadio(page)).toHaveAccessibleName(/Founding sponsor · Sold out/)
+})
