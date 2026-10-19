@@ -78,10 +78,11 @@ async function paidFounder(db: TestDb['db'], task: string, index: number, extra:
   })
 }
 
+/** A short founding hold as this code writes it (`<request_id>|<form key>`; a bare key is a legacy 24-hour hold). */
 async function hold(db: TestDb['db'], task: string, claimedAt: number): Promise<void> {
   await db.$client.execute({
     sql: `INSERT INTO sponsorship_slot_claims (task_slug, request_key, offering, claimed_at) VALUES (?, ?, 'founding_sponsor', ?)`,
-    args: [task, `hold-${task}`, claimedAt],
+    args: [task, `hold-${task}|form`, claimedAt],
   })
 }
 
@@ -257,7 +258,7 @@ describe('one open checkout per founding hold (Sentinel must-fix on #98)', () =>
     })
     expect(await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: REQ, formKey: formKey(), now: T0 + 60_000 })).toMatchObject({
       ok: false,
-      reason: 'founding_form_changed',
+      reason: 'founding_legacy_hold_open',
     })
     await close()
   })

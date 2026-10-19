@@ -22,6 +22,7 @@ import {
   sponsorPriceLabel,
 } from '@/lib/sponsor-offerings'
 import { stripeKeyMode } from '@/lib/stripe'
+import { visibleSponsorOfferings } from '@/lib/sponsor-visible-offerings'
 
 export const dynamic = 'force-dynamic'
 
@@ -134,7 +135,7 @@ export default async function SponsorPage() {
           </a>
         </p>
       ) : null}
-      {surface === 'closed' ? null : <SponsorForm offerings={offerings} tasks={tasks} />}
+      {surface === 'closed' ? null : <SponsorForm offerings={visibleSponsorOfferings(offerings)} tasks={tasks} />}
     </article>
   )
 }

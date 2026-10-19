@@ -59,3 +59,52 @@ export function foundingFormChangedMessage(minutesLeft: number): string {
   const minutes = minutesLeft === 1 ? '1 minute' : `${minutesLeft} minutes`
   return `This form already started a founding checkout with different details, and each founding spot can have only one open checkout. Finish the checkout you opened, or reload the page in ${minutes} to start again with the new details.`
 }
+
+/**
+ * Legacy founding holds: written by main before the short hold shipped (#103).
+ * Their request_key is the bare request_id, and their Checkout session has no
+ * expires_at, so Stripe's default 24-hour expiry applies, and their idempotency
+ * key is `sponsor-<fingerprint>-<request_id>` with no `-h<claimed_at>`.
+ *
+ * Every founding hold written by this code stores a marked request_key,
+ * `<request_id>|<form key>` (or `<request_id>|s` without a form key,
+ * FOUNDING_HOLD_KEY_SUFFIX), so a founding row whose request_key has no `|`
+ * was created before this deploy.
+ *
+ * A legacy hold keeps counting toward the cap for 24 hours plus 5 minutes from
+ * claimed_at: its session was created at or after claimed_at and lives 24 hours
+ * from creation, so the 5 minutes cover the gap the way FOUNDING_HOLD_MS does
+ * for a new hold.
+ */
+export const LEGACY_FOUNDING_HOLD_MS = SPONSOR_CHECKOUT_EXPIRY_MS + 5 * 60 * 1000
+
+/** Marks a founding hold written by the short-hold code. */
+export const FOUNDING_HOLD_KEY_SEPARATOR = '|'
+export const FOUNDING_HOLD_KEY_SUFFIX = `${FOUNDING_HOLD_KEY_SEPARATOR}s`
+
+/** True for a founding hold's request_key written before the short hold (a bare request_id). */
+export function isLegacyFoundingHoldKey(requestKey: string): boolean {
+  return !requestKey.includes(FOUNDING_HOLD_KEY_SEPARATOR)
+}
+
+/** SQL: true when the founding row aliased `alias` is a legacy hold. */
+export function legacyFoundingHoldSql(alias: string): string {
+  return `instr(${alias}.request_key, '${FOUNDING_HOLD_KEY_SEPARATOR}') = 0`
+}
+
+/** Whole minutes (at least 1) until a legacy founding hold stops counting. */
+export function legacyFoundingHoldMinutesLeft(claimedAt: number, now: number): number {
+  return Math.max(1, Math.ceil((claimedAt + LEGACY_FOUNDING_HOLD_MS - now) / 60_000))
+}
+
+/**
+ * Shown when a request_id with a live legacy founding hold (from before #103)
+ * comes back. Its session (Stripe's 24-hour default) may still be paid, and a
+ * bare hold stores no form key, so an identical form cannot be told apart
+ * from an edited one. It is refused until the legacy hold lapses instead of
+ * risking a second payable session.
+ */
+export function foundingLegacyHoldOpenMessage(minutesLeft: number): string {
+  const minutes = minutesLeft === 1 ? '1 minute' : `${minutesLeft} minutes`
+  return `This form already has an open founding checkout, and each founding spot can have only one. Finish the checkout you opened, or reload the page in ${minutes} to start again.`
+}

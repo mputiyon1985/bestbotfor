@@ -49,9 +49,16 @@ import { sponsorCheckoutAction } from '@/app/sponsor/actions'
 import { createTestDatabase } from '@/test/db'
 import type { Database } from './db/client'
 import { sponsorships } from './db/schema'
-import { claimSponsorSlot, foundingSpotsTaken } from './sponsor-availability'
+import { claimSponsorSlot, foundingSpotsTaken, SPONSOR_SLOT_TAKEN, sponsorHoldKey } from './sponsor-availability'
 import { FOUNDING_HOLD_LIMIT_MESSAGE, foundingFormChangedMessage, foundingHoldTimedOutMessage } from './sponsor-checkout'
-import { FOUNDING_CHECKOUT_SESSION_MS, FOUNDING_HOLD_MS, SPONSOR_CHECKOUT_EXPIRY_MS } from './sponsor-hold-window'
+import {
+  FOUNDING_CHECKOUT_SESSION_MS,
+  FOUNDING_HOLD_MS,
+  foundingLegacyHoldOpenMessage,
+  isLegacyFoundingHoldKey,
+  LEGACY_FOUNDING_HOLD_MS,
+  SPONSOR_CHECKOUT_EXPIRY_MS,
+} from './sponsor-hold-window'
 import { FOUNDING_SOLD_OUT } from './sponsor-offerings'
 
 const MIN = 60_000
@@ -357,5 +364,88 @@ describe('one open checkout per founding hold (Sentinel must-fix on #98, action 
       calls.length = 0
       await run(form('coding', RID(1), 'other@example.com'))
       expect(calls).toEqual([])
+    }))
+})
+
+// Reviewer must-fix on #98 and #103: founding holds written by main before this
+// deploy. Their request_key is the bare request_id; their Checkout has Stripe's
+// default 24-hour expiry and the key `sponsor-<fingerprint>-<request_id>`. A
+// bare hold has no form key, so #98 refuses every request from that request_id
+// for the hold's full window: no new form-key hold, no second session.
+describe('legacy founding holds (written before #103)', () => {
+  const HOUR = 60 * MIN
+
+  async function legacyHold(db: Database, task: string, requestId: string, claimedAt: number) {
+    await db.$client.execute({
+      sql: 'INSERT INTO sponsorship_slot_claims (task_slug, request_key, offering, claimed_at) VALUES (?, ?, ?, ?)',
+      args: [task, requestId, 'founding_sponsor', claimedAt],
+    })
+  }
+
+  it('new founding holds are marked with their form key, so a bare request_id is recognisably legacy', () =>
+    withDb(async (db) => {
+      expect(await run(form('coding', RID(1)))).toBe('REDIRECT')
+      const key = (await hold(db, 'coding'))?.requestKey ?? ''
+      expect(key).toMatch(new RegExp(`^${RID(1)}\\|[0-9a-f]{16}$`))
+      expect(isLegacyFoundingHoldKey(key)).toBe(false)
+      expect(isLegacyFoundingHoldKey(RID(1))).toBe(true)
+      expect(sponsorHoldKey({ requestKey: RID(1), offering: 'founding_sponsor' })).toBe(`${RID(1)}|s`)
+      expect(sponsorHoldKey({ requestKey: RID(1), offering: 'placement_weekly', formKey: 'x' })).toBe(RID(1))
+    }))
+
+  it('a legacy hold still counts toward the cap at 66 minutes and at 23 hours', () =>
+    withDb(async (db) => {
+      await paid(db, 4)
+      await legacyHold(db, 'coding', RID(1), T0)
+      for (const at of [T0 + 66 * MIN, T0 + 23 * HOUR]) {
+        vi.setSystemTime(at)
+        expect(await foundingSpotsTaken(db, at)).toBe(5)
+        expect(await run(form('chat', RID(2), 'other@example.com'))).toBe(FOUNDING_SOLD_OUT)
+        // A reload (new request_id) on the legacy hold's page is refused too.
+        expect(await run(form('coding', RID(3), 'other@example.com'))).toBe(SPONSOR_SLOT_TAKEN)
+      }
+      expect(creates).toHaveLength(0)
+      expect(await hold(db, 'coding')).toEqual({ requestKey: RID(1), claimedAt: T0 })
+    }))
+
+  it('the same request_id is refused for the full window, identical or edited, on any page: no new hold, no Stripe call', () =>
+    withDb(async (db) => {
+      process.env.STRIPE_PRICE_PLACEMENT_WEEKLY = 'price_w'
+      await legacyHold(db, 'coding', RID(1), T0)
+      for (const at of [T0 + 5 * MIN, T0 + 66 * MIN, T0 + 23 * HOUR, T0 + LEGACY_FOUNDING_HOLD_MS - 1]) {
+        vi.setSystemTime(at)
+        calls.length = 0
+        const message = foundingLegacyHoldOpenMessage(Math.max(1, Math.ceil((T0 + LEGACY_FOUNDING_HOLD_MS - at) / MIN)))
+        expect(await run(form('coding', RID(1)))).toBe(message)
+        expect(await run(form('coding', RID(1), 'typo-fixed@example.com'))).toBe(message)
+        expect(await run(form('research', RID(1)))).toBe(message)
+        expect(await run(form('coding', RID(1), 'buyer@example.com', 'Acme Tools', 'placement_weekly'))).toBe(message)
+        // Refused before the card save and before Stripe.
+        expect(calls).toEqual([])
+      }
+      expect(foundingLegacyHoldOpenMessage(66)).toBe(
+        'This form already has an open founding checkout, and each founding spot can have only one. Finish the checkout you opened, or reload the page in 66 minutes to start again.',
+      )
+      expect(creates).toHaveLength(0)
+      expect(await hold(db, 'coding')).toEqual({ requestKey: RID(1), claimedAt: T0 })
+      expect(await hold(db, 'research')).toBeNull()
+    }))
+
+  it('after 24 hours + 5 minutes the legacy hold expires: the spot is free and the same form takes a new short hold', () =>
+    withDb(async (db) => {
+      await paid(db, 4)
+      await legacyHold(db, 'coding', RID(1), T0)
+      expect(LEGACY_FOUNDING_HOLD_MS).toBe(24 * HOUR + 5 * MIN)
+      vi.setSystemTime(T0 + LEGACY_FOUNDING_HOLD_MS - 1)
+      expect(await foundingSpotsTaken(db, Date.now())).toBe(5)
+      vi.setSystemTime(T0 + LEGACY_FOUNDING_HOLD_MS)
+      expect(await foundingSpotsTaken(db, Date.now())).toBe(4)
+      expect(await run(form('coding', RID(1)))).toBe('REDIRECT')
+      const now = T0 + LEGACY_FOUNDING_HOLD_MS
+      expect((await hold(db, 'coding'))?.requestKey).toMatch(new RegExp(`^${RID(1)}\\|[0-9a-f]{16}$`))
+      expect((await hold(db, 'coding'))?.claimedAt).toBe(now)
+      expect(creates).toHaveLength(1)
+      expect(creates[0]?.key).toMatch(new RegExp(`-${RID(1)}-h${now}$`))
+      expect(creates[0]?.expires_at).toBe((now + 60 * MIN) / 1000)
     }))
 })
