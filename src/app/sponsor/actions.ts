@@ -8,8 +8,16 @@ import { getDb } from '@/lib/db'
 import { clientIp, rateLimitKey } from '@/lib/ip'
 import { isStripeHostedUrl } from '@/lib/redirect'
 import { SPONSOR_OPENING_SOON, sponsorCheckoutClosed } from '@/lib/sponsor-checkout-gate'
-import { parseSponsorCheckout, sponsorCheckoutParams, sponsorRateLimitMessage } from '@/lib/sponsor-checkout'
+import {
+  FOUNDING_HOLD_LIMIT_MESSAGE,
+  foundingHoldFormKey,
+  foundingHoldTimedOutMessage,
+  parseSponsorCheckout,
+  sponsorCheckoutParams,
+  sponsorRateLimitMessage,
+} from '@/lib/sponsor-checkout'
 import { claimSponsorSlot, releaseSponsorSlot } from '@/lib/sponsor-availability'
+import { foundingCheckoutExpiresAt, foundingHoldMinutesLeft, foundingHoldTooOldForNewSession } from '@/lib/sponsor-hold-window'
 import { readSponsorCardForm, savePendingSponsorCard, saveSponsorCardForSession } from '@/lib/sponsor-card'
 import { verifyPaidSponsorCheckout } from '@/lib/sponsor-session'
 import {
@@ -45,15 +53,56 @@ export async function sponsorCheckoutAction(_previous: SponsorFormState, formDat
   if (decision !== 'allow') return { status: 'error', message: sponsorRateLimitMessage(decision) }
 
   const taskSlug = parsed.value.taskSlug
+  const founding = parsed.value.offering === 'founding_sponsor'
+  let claimedAt: number | undefined
+  // True only when this attempt created the hold (claimed_at = now). A repeat
+  // of a live founding hold's own request reuses it and is never released.
+  let freshHold = false
+  const returnUrls = sponsorReturnUrls(
+    sponsorReturnOrigin({
+      requestOrigin: requestOriginFromHeaders(headerStore),
+      requestHost: requestHostFromHeaders(headerStore),
+    }),
+  )
+  // The hold's request_key, which a release must match.
+  let holdKey = parsed.value.requestId
   if (taskSlug) {
     const claim = await claimSponsorSlot(getDb(), {
       taskSlug,
       offering: parsed.value.offering,
       requestKey: parsed.value.requestId,
+      // A founding hold remembers its form, so while it is live only the identical form reaches Stripe.
+      formKey: founding ? foundingHoldFormKey({ ...parsed.value, ...returnUrls }) : undefined,
       now: Date.now(),
     })
+    // Includes the refusal of a changed form under a live founding hold (no Stripe call).
     if (!claim.ok) return { status: 'error', message: claim.message }
+    claimedAt = claim.claimedAt
+    freshHold = claim.fresh === true
+    holdKey = claim.holdKey ?? holdKey
+    // A separate per-address limit on new founding holds, so one address
+    // cannot hold every founding spot for free. Only a new hold counts; Stripe
+    // has not been called, so a refused new hold is released at once.
+    if (founding && freshHold) {
+      const holdDecision = await allowRate(
+        getDb(),
+        rateLimitKey(clientIp(headerStore), 'founding_hold'),
+        ACTION_LIMITS.foundingHold.limit,
+        ACTION_LIMITS.foundingHold.windowMs,
+        { onError: 'closed' },
+      )
+      if (holdDecision !== 'allow') {
+        await releaseSponsorSlot(getDb(), { taskSlug, requestKey: holdKey })
+        return {
+          status: 'error',
+          message: holdDecision === 'limit' ? FOUNDING_HOLD_LIMIT_MESSAGE : sponsorRateLimitMessage(holdDecision),
+        }
+      }
+    }
   }
+  // Before Stripe is called, a hold can be released: a placement hold always,
+  // a founding hold only when this attempt created it.
+  const releasableBeforeStripe = !founding || freshHold
 
   let creativeId: string | undefined
   if (card?.ok) {
@@ -63,28 +112,38 @@ export async function sponsorCheckoutAction(_previous: SponsorFormState, formDat
       now: Date.now(),
     })
     if (!saved.ok) {
-      if (taskSlug) await releaseSponsorSlot(getDb(), { taskSlug, requestKey: parsed.value.requestId })
+      if (taskSlug && releasableBeforeStripe) await releaseSponsorSlot(getDb(), { taskSlug, requestKey: holdKey })
       return { status: 'error', message: saved.message }
     }
     creativeId = String(saved.id)
   }
 
-  const returnUrls = sponsorReturnUrls(
-    sponsorReturnOrigin({
-      requestOrigin: requestOriginFromHeaders(headerStore),
-      requestHost: requestHostFromHeaders(headerStore),
-    }),
-  )
-  const built = sponsorCheckoutParams({
-    ...parsed.value,
-    creativeId,
-    successUrl: returnUrls.successUrl,
-    cancelUrl: returnUrls.cancelUrl,
-  })
+  // A founding session expires at claimed_at + 60 minutes. Within a minute of
+  // that, even a replay of an existing session would open an expired page.
+  if (founding && claimedAt != null && foundingCheckoutExpiresAt(claimedAt) * 1000 <= Date.now() + 60_000) {
+    return { status: 'error', message: foundingHoldTimedOutMessage(foundingHoldMinutesLeft(claimedAt, Date.now())) }
+  }
 
-  const url = await hostedCheckoutUrl(stripe, built.params, built.idempotencyKey)
+  let url: string | null = null
+  try {
+    const built = sponsorCheckoutParams({
+      ...parsed.value,
+      creativeId,
+      claimedAt,
+      successUrl: returnUrls.successUrl,
+      cancelUrl: returnUrls.cancelUrl,
+    })
+    url = await hostedCheckoutUrl(stripe, built.params, built.idempotencyKey)
+  } catch (error) {
+    console.error('sponsor checkout params failed', error instanceof Error ? error.name : 'error')
+  }
   if (!url) {
-    if (taskSlug) await releaseSponsorSlot(getDb(), { taskSlug, requestKey: parsed.value.requestId })
+    // Once Stripe was called, a founding session may exist (a lost response),
+    // payable until its expires_at, so the founding hold keeps counting.
+    if (taskSlug && !founding) await releaseSponsorSlot(getDb(), { taskSlug, requestKey: holdKey })
+    if (founding && claimedAt != null && foundingHoldTooOldForNewSession(claimedAt, Date.now())) {
+      return { status: 'error', message: foundingHoldTimedOutMessage(foundingHoldMinutesLeft(claimedAt, Date.now())) }
+    }
     return { status: 'error', message: 'Checkout could not be started. Try again.' }
   }
   redirect(url)

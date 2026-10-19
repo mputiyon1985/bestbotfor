@@ -4,6 +4,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { SponsorCheckoutNotice } from '@/components/sponsor-checkout-notice'
 import { SponsorForm } from '@/components/sponsor-form'
 import { SponsorPaymentLinks } from '@/components/sponsor-payment-links'
+import { SPONSOR_PAYMENT_LINKS_NOTE } from '@/lib/sponsor-payment-links'
 import { pageMetadata } from '@/lib/metadata'
 import { foundingSoldOutNow } from '@/lib/sponsor-availability'
 import { SPONSOR_CONTACT_EMAIL, SPONSOR_CONTACT_MAILTO, sponsorCheckoutSurface } from '@/lib/sponsor-checkout-gate'
@@ -40,8 +41,8 @@ export function generateMetadata(): Metadata {
 export default async function SponsorPage() {
   const surface = sponsorCheckoutSurface()
   const mode = stripeKeyMode()
-  // Go-live gate: once the in-app founding Prices are set, the founding Payment
-  // Link is hidden so both founding offers never show together (shared cap of 5).
+  // The founding offer is in-app only. Its Payment Link was retired from the
+  // code after the 2026-10-19 go-live (it is inactive in Stripe).
   const inAppFounding = sponsorOfferingConfigured('founding_sponsor')
   // Sold out: the shared founding count (paid unrefunded founding rows, founding
   // link first-period rows, and live founding checkout holds) has reached the cap.
@@ -73,7 +74,14 @@ export default async function SponsorPage() {
   // The price list names a subscription offer only once its Prices are set, the
   // same check that enables its radio, so the list never offers a disabled option.
   const listSubscription = Boolean(subscriptionOffering) && sponsorOfferingConfigured('placement_subscription')
-  const listFounding = Boolean(foundingOffering) && inAppFounding
+  // The founding line is listed only where the offer can be bought (checkout
+  // open with a usable key), the same place its sold-out count is read. A closed
+  // or keyless page at 5/5 would otherwise list a founding price and "Limited to
+  // 5" for spots that are gone.
+  const listFounding = Boolean(foundingOffering) && inAppFounding && surface !== 'closed' && mode !== 'off'
+  // "one-time and subscription" only while a subscription price is listed. A
+  // sold-out founding line carries no price.
+  const listsSubscriptionPrice = listSubscription || (listFounding && !foundingSoldOut)
 
   return (
     <article className="max-w-2xl space-y-6">
@@ -111,14 +119,14 @@ export default async function SponsorPage() {
         ) : null}
       </ul>
       <p className="text-sm text-muted">
-        {listSubscription || listFounding
+        {listsSubscriptionPrice
           ? 'The prices above, one-time and subscription, are the current list prices from server configuration.'
           : 'The prices above are the current list prices from server configuration.'}{' '}
         They can be changed there.
-        {surface === 'live' ? ' The Payment Links below are separate Stripe links with their own prices set in Stripe.' : null}
+        {surface === 'live' ? ` ${SPONSOR_PAYMENT_LINKS_NOTE}` : null}
         {surface === 'closed' ? null : ' The form does not send an amount. Checkout charges the Stripe price configured on the server.'}
       </p>
-      {surface === 'live' ? <SponsorPaymentLinks hideFounding={inAppFounding} /> : null}
+      {surface === 'live' ? <SponsorPaymentLinks /> : null}
       {surface === 'live' ? (
         <p>
           Questions or custom deals?{' '}

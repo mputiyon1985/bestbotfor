@@ -15,7 +15,9 @@ import {
   type SponsorOfferingId,
 } from './sponsor-offerings'
 import type { RateLimitDecision } from './action-limit'
+import { SPONSOR_CONTACT_EMAIL } from './sponsor-checkout-gate'
 import { sanitizeSponsorCompany } from './sponsor-company'
+import { foundingCheckoutExpiresAt } from './sponsor-hold-window'
 import { emailSchema } from './validation'
 
 const COMPANY = /^[^\r\n<>]{2,120}$/
@@ -26,6 +28,40 @@ const TASKS = new Set(taskSeeds.map((task) => task.slug))
 export function sponsorRateLimitMessage(decision: Exclude<RateLimitDecision, 'allow'>): string {
   if (decision === 'unavailable') return 'Checkout is temporarily unavailable. Try again.'
   return 'Too many checkout attempts. Try again in an hour.'
+}
+
+/** Shown when one network has already taken FOUNDING_HOLD_RATE_LIMIT founding holds in the window. */
+export const FOUNDING_HOLD_LIMIT_MESSAGE = `Too many founding sponsor checkouts from this network today. Try again tomorrow, or email ${SPONSOR_CONTACT_EMAIL}.`
+
+export { foundingFormChangedMessage } from './sponsor-hold-window'
+
+/**
+ * Key of a founding hold's form: a hash of every input to the founding
+ * Checkout request except creative_id (fixed per request_id, because the card
+ * upsert is keyed by it) and claimed_at (fixed per hold). The hold stores it
+ * next to the request_id, so while the hold is live only an identical form can
+ * reach Stripe, and the idempotency key and body stay the same for the whole
+ * hold.
+ */
+export function foundingHoldFormKey(input: SponsorCheckoutInput & { successUrl: string; cancelUrl: string }): string {
+  const fields = [
+    input.offering,
+    input.email,
+    input.company,
+    input.taskSlug ?? '',
+    input.issueDate ?? '',
+    input.priceId,
+    input.setupPriceId ?? '',
+    input.successUrl,
+    input.cancelUrl,
+  ]
+  return createHash('sha256').update(fields.join('\n')).digest('hex').slice(0, 16)
+}
+
+/** Shown when a founding hold is too old for Stripe to start its session (less than 30 minutes left). */
+export function foundingHoldTimedOutMessage(minutesLeft: number): string {
+  const minutes = minutesLeft === 1 ? '1 minute' : `${minutesLeft} minutes`
+  return `This founding checkout timed out. The spot stays held for ${minutes}; reload the page after that to start again.`
 }
 
 export type SponsorCheckoutInput = {
@@ -111,6 +147,8 @@ function parseIssueDate(value: string): string | null {
 export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
   successUrl: string
   cancelUrl: string
+  /** The hold's claimed_at (ms) from claimSponsorSlot. Required for founding: it fixes the session's expires_at. */
+  claimedAt?: number
 }): { params: Stripe.Checkout.SessionCreateParams; idempotencyKey: string } {
   const offering = sponsorOffering(input.offering)
   if (!offering) throw new Error('unknown sponsor offering')
@@ -155,7 +193,15 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
   if (subscription) fingerprintFields.push('subscription', setupPriceId ?? '', String(trialDays), String(lockMonths))
   const fingerprintSource = fingerprintFields.join('\n')
   const fingerprint = createHash('sha256').update(fingerprintSource).digest('hex').slice(0, 16)
-  const idempotencyKey = `sponsor-${fingerprint}-${input.requestId}`
+  const founding = input.offering === 'founding_sponsor'
+  // A founding session expires at its hold's claimed_at + 60 minutes. The key
+  // also carries claimed_at, the only input to expires_at outside the
+  // fingerprint, so the same hold always sends the same body under the same
+  // key, and a later hold (after this one lapsed) gets a new key.
+  const expiresAt = founding ? foundingCheckoutExpiresAt(input.claimedAt ?? Number.NaN) : undefined
+  const idempotencyKey = founding
+    ? `sponsor-${fingerprint}-${input.requestId}-h${input.claimedAt}`
+    : `sponsor-${fingerprint}-${input.requestId}`
   const shared = {
     customer_email: input.email,
     success_url: input.successUrl,
@@ -204,14 +250,15 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
     description: offering.productName,
   }
   if (trialDays > 0) subscriptionData.trial_period_days = trialDays
-  return {
-    idempotencyKey,
-    params: {
-      mode: 'subscription',
-      ...shared,
-      line_items: lineItems,
-      payment_method_collection: 'always',
-      subscription_data: subscriptionData,
-    },
+  const params: Stripe.Checkout.SessionCreateParams = {
+    mode: 'subscription',
+    ...shared,
+    line_items: lineItems,
+    payment_method_collection: 'always',
+    subscription_data: subscriptionData,
   }
+  // The founding session ends 5 minutes before its hold stops counting toward
+  // the cap (FOUNDING_HOLD_MS), so it cannot complete after the spot was freed.
+  if (expiresAt != null) params.expires_at = expiresAt
+  return { idempotencyKey, params }
 }

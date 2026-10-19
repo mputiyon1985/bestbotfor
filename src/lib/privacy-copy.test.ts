@@ -39,6 +39,7 @@ describe('privacy policy facts', () => {
     expect(text).toContain('word unknown')
     expect(paragraphs.join('\n')).toContain(`The suggestion box uses a ${windowPhrase(SUGGESTION_RATE_WINDOW_MS)} window`)
     expect(paragraphs.join('\n')).toContain(`sponsor checkout uses a ${windowPhrase(SPONSOR_RATE_WINDOW_MS)} window`)
+    expect(paragraphs.join('\n')).toContain('new founding sponsor holds use a separate limit of 2 per 24 hours')
     expect(windowPhrase(SUGGESTION_RATE_WINDOW_MS)).toBe('one hour')
     expect(text).toContain('do not delete those rows when the window ends')
     expect(text).toContain('After the window ends, the next request for the same code resets the count')

@@ -18,6 +18,15 @@ export const GO_RATE_WINDOW_MS = 60_000
 export const SPONSOR_RATE_LIMIT = 8
 export const SPONSOR_RATE_WINDOW_MS = 60 * 60_000
 
+/**
+ * New founding sponsor holds per network address, on top of the sponsor
+ * checkout limit. Without it one address could hold all 5 founding spots for
+ * free (Sentinel's lock-all-5 repro on #98). A repeat of a live hold's own
+ * request does not count; only a newly created hold does.
+ */
+export const FOUNDING_HOLD_RATE_LIMIT = 2
+export const FOUNDING_HOLD_RATE_WINDOW_MS = 24 * 60 * 60_000
+
 /** Suggestion box. Its own bucket, separate from newsletter signup. */
 export const SUGGESTION_RATE_LIMIT = 5
 export const SUGGESTION_RATE_WINDOW_MS = 60 * 60_000
