@@ -1,3 +1,4 @@
+import { createClient } from '@libsql/client'
 import { expect, test } from '@playwright/test'
 
 const KEY = 'bbf_first_touch'
@@ -26,6 +27,20 @@ test('first-touch tags are stored once, without consent, and sent with a newslet
   await page.getByLabel('Email address').fill('utm-reader@example.com')
   await page.getByRole('button', { name: 'Get The Daily Bot' }).click()
   await expect(page.getByRole('status')).toHaveText("You'll get a confirmation email when The Daily Bot launches.")
+
+  // #102: the real form post fills the subscriber row's five columns from the same record (0023).
+  const db = createClient({ url: process.env.TURSO_DATABASE_URL || 'file:./data/e2e.db' })
+  try {
+    const row = await db.execute({
+      sql: 'SELECT utm_source, utm_medium, utm_campaign, utm_content, landing_path FROM subscribers WHERE email = ?',
+      args: ['utm-reader@example.com'],
+    })
+    expect(row.rows.map((r) => ({ ...r }))).toEqual([
+      { utm_source: 'facebook', utm_medium: 'social', utm_campaign: 'w1_oct19', utm_content: 'fb1x', landing_path: '/best/music' },
+    ])
+  } finally {
+    db.close()
+  }
 })
 
 test('a visit without tags stores nothing', async ({ page }) => {

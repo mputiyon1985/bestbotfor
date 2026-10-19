@@ -3,7 +3,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { CLICK_HASH_RETENTION_MS, RATE_LIMIT_RETENTION_MS } from './data-retention'
 import { OG_RATE_WINDOW_MS } from './og'
-import { CLICK_LOG_PARAGRAPH, clickLogParagraph, GPC_PRIVACY_PARAGRAPH, NEWSLETTER_SIGNUP_PARAGRAPH, rateLimitPrivacyParagraphs, rateLimitRetentionKept, RETENTION_JOB_PARAGRAPH, retentionCopyOn, retentionJobParagraph, SHARING_PARAGRAPH, TURSO_BACKUP_PARAGRAPH, windowPhrase } from './privacy-copy'
+import { CLICK_LOG_PARAGRAPH, clickLogParagraph, FIRST_TOUCH_PRIVACY_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, NEWSLETTER_SIGNUP_PARAGRAPH, rateLimitPrivacyParagraphs, rateLimitRetentionKept, RETENTION_JOB_PARAGRAPH, retentionCopyOn, retentionJobParagraph, SHARING_PARAGRAPH, TURSO_BACKUP_PARAGRAPH, windowPhrase } from './privacy-copy'
 import {
   CHECKOUT_RATE_WINDOW_MS,
   GO_RATE_WINDOW_MS,
@@ -103,6 +103,10 @@ describe('privacy policy facts', () => {
     const rowSentence = NEWSLETTER_SIGNUP_PARAGRAPH.split('. ').find((sentence) => sentence.startsWith('It holds your email')) ?? ''
     expect(rowSentence).toContain('utm_source, utm_medium, utm_campaign, and utm_content values and landing page')
     expect(rowSentence).not.toMatch(/arriv|arrival|\btime\b/i)
+    // The first-touch paragraph points at the DB copy and does not claim the arrival time is stored there.
+    expect(FIRST_TOUCH_PRIVACY_PARAGRAPH).toContain(
+      'We also keep those four tags and the landing page, but not the arrival time, with your newsletter signup record, as described in the next paragraph.',
+    )
     // Every referring_site path a form can send is named in the policy.
     for (const referringPath of newsletterReferringPaths()) expect(NEWSLETTER_SIGNUP_PARAGRAPH).toContain(` ${referringPath}`)
     const page = readFileSync(path.join(process.cwd(), 'src/app/privacy/page.tsx'), 'utf8')
