@@ -13,6 +13,7 @@ import {
   placementEndsAt,
 } from './best-placement'
 import {
+  FOUNDING_HOLD_MS,
   SPONSOR_CHECKOUT_EXPIRY_MS,
   SPONSOR_SLOT_TAKEN,
   FOUNDING_LINK_KEY_PREFIX,
@@ -162,9 +163,13 @@ describe('subscription checkout params', () => {
     if (!parsed.ok) return
     expect(parsed.value.priceId).toBe('price_e2e_founding_monthly')
     expect(parsed.value.setupPriceId).toBe('price_e2e_founding_setup')
-    const built = sponsorCheckoutParams({ ...parsed.value, creativeId: '7', ...urls })
+    const claimedAt = Date.UTC(2026, 9, 19, 14)
+    expect(() => sponsorCheckoutParams({ ...parsed.value, creativeId: '7', ...urls })).toThrow('founding checkout needs its hold time')
+    const built = sponsorCheckoutParams({ ...parsed.value, creativeId: '7', claimedAt, ...urls })
     const params = built.params
     expect(params.mode).toBe('subscription')
+    // The session expires 60 minutes after the hold's claimed_at (Stripe's minimum is 30).
+    expect(params.expires_at).toBe((claimedAt + 60 * 60 * 1000) / 1000)
     expect(params.line_items).toEqual([
       { price: 'price_e2e_founding_monthly', quantity: 1 },
       { price: 'price_e2e_founding_setup', quantity: 1 },
@@ -188,9 +193,13 @@ describe('subscription checkout params', () => {
     expect(params).not.toHaveProperty('automatic_tax')
     expect(JSON.stringify(params)).not.toContain('unit_amount')
     expect(JSON.stringify(params)).not.toContain('price_data')
-    const again = sponsorCheckoutParams({ ...parsed.value, creativeId: '7', ...urls })
+    const again = sponsorCheckoutParams({ ...parsed.value, creativeId: '7', claimedAt, ...urls })
     expect(again).toEqual(built)
-    expect(built.idempotencyKey).toMatch(new RegExp(`^sponsor-[0-9a-f]{16}-${REQUEST_ID}$`))
+    expect(built.idempotencyKey).toMatch(new RegExp(`^sponsor-[0-9a-f]{16}-${REQUEST_ID}-h${claimedAt}$`))
+    // A later hold (after this one lapsed) sends a different expires_at, so it gets a different key.
+    const later = sponsorCheckoutParams({ ...parsed.value, creativeId: '7', claimedAt: claimedAt + 65 * 60 * 1000, ...urls })
+    expect(later.idempotencyKey).not.toBe(built.idempotencyKey)
+    expect(later.params.expires_at).not.toBe(params.expires_at)
   })
 
   it('starts the standard monthly subscription with one recurring line and no trial', () => {
@@ -354,7 +363,7 @@ describe('subscription slot claims', () => {
     const later = await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'placement_weekly', requestKey: 'req-a', now: NOW + 200 * DAY })
     expect(later).toEqual({ ok: false, message: SPONSOR_SLOT_TAKEN })
     const otherTask = await claimSponsorSlot(db, { taskSlug: 'writing', offering: 'founding_sponsor', requestKey: 'req-b', now: NOW + DAY })
-    expect(otherTask).toEqual({ ok: true })
+    expect(otherTask).toMatchObject({ ok: true })
     await close()
   })
 
@@ -363,7 +372,7 @@ describe('subscription slot claims', () => {
     const during = await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'placement_weekly', requestKey: 'req-a', now: NOW + DAY })
     expect(during.ok).toBe(false)
     const after = await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'placement_weekly', requestKey: 'req-b', now: NOW + 14 * DAY })
-    expect(after).toEqual({ ok: true })
+    expect(after).toMatchObject({ ok: true })
     await close()
   })
 
@@ -381,7 +390,7 @@ describe('subscription slot claims', () => {
     const blocked = await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'placement_subscription', requestKey: 'req-a', now: NOW + 6 * DAY })
     expect(blocked.ok).toBe(false)
     const open = await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'placement_subscription', requestKey: 'req-b', now: NOW + 7 * DAY })
-    expect(open).toEqual({ ok: true })
+    expect(open).toMatchObject({ ok: true })
     await close()
   })
 })
@@ -416,9 +425,7 @@ describe('founding sponsor cap', () => {
     expect(await foundingSpotsLeft(db, NOW + 1)).toBe(3)
     // Three more checkouts hold the last three spots.
     for (const task of TASKS.slice(2, 5)) {
-      expect(await claimSponsorSlot(db, { taskSlug: task, offering: 'founding_sponsor', requestKey: `req-${task}`, now: NOW + 2 })).toEqual({
-        ok: true,
-      })
+      expect(await claimSponsorSlot(db, { taskSlug: task, offering: 'founding_sponsor', requestKey: `req-${task}`, now: NOW + 2 })).toMatchObject({ ok: true })
     }
     expect(await foundingSpotsLeft(db, NOW + 3)).toBe(0)
     // A sixth is refused as sold out, and a retry of a held checkout still works.
@@ -426,20 +433,16 @@ describe('founding sponsor cap', () => {
       ok: false,
       message: FOUNDING_SOLD_OUT,
     })
-    expect(await claimSponsorSlot(db, { taskSlug: TASKS[2] ?? '', offering: 'founding_sponsor', requestKey: `req-${TASKS[2]}`, now: NOW + 5 })).toEqual({
-      ok: true,
-    })
+    expect(await claimSponsorSlot(db, { taskSlug: TASKS[2] ?? '', offering: 'founding_sponsor', requestKey: `req-${TASKS[2]}`, now: NOW + 5 })).toMatchObject({ ok: true })
     // The standard subscription is not capped.
-    expect(await claimSponsorSlot(db, { taskSlug: TASKS[5] ?? '', offering: 'placement_subscription', requestKey: 'req-sub', now: NOW + 6 })).toEqual({
-      ok: true,
-    })
+    expect(await claimSponsorSlot(db, { taskSlug: TASKS[5] ?? '', offering: 'placement_subscription', requestKey: 'req-sub', now: NOW + 6 })).toMatchObject({ ok: true })
     // A released hold frees its spot.
     await releaseSponsorSlot(db, { taskSlug: TASKS[3] ?? '', requestKey: `req-${TASKS[3]}` })
-    expect(await claimSponsorSlot(db, { taskSlug: TASKS[6] ?? '', offering: 'founding_sponsor', requestKey: 'req-7', now: NOW + 7 })).toEqual({
-      ok: true,
-    })
-    // An expired hold frees its spot too.
-    expect(await foundingSpotsLeft(db, NOW + 7 + SPONSOR_CHECKOUT_EXPIRY_MS)).toBe(3)
+    expect(await claimSponsorSlot(db, { taskSlug: TASKS[6] ?? '', offering: 'founding_sponsor', requestKey: 'req-7', now: NOW + 7 })).toMatchObject({ ok: true })
+    // An expired hold frees its spot too: a founding hold counts for 65 minutes, not 24 hours.
+    expect(await foundingSpotsLeft(db, NOW + 1 + FOUNDING_HOLD_MS)).toBe(0)
+    expect(await foundingSpotsLeft(db, NOW + 7 + FOUNDING_HOLD_MS)).toBe(3)
+    expect(SPONSOR_CHECKOUT_EXPIRY_MS).toBe(24 * 60 * 60 * 1000)
     await close()
   })
 
@@ -484,7 +487,7 @@ describe('founding sponsor cap', () => {
     }
     expect(await foundingSpotsTaken(db, T)).toBe(4)
     // Buyer A holds the freed coding page: the 5th spot.
-    expect(await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: 'req-A', now: T })).toEqual({ ok: true })
+    expect(await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: 'req-A', now: T })).toMatchObject({ ok: true })
     expect(await foundingSpotsTaken(db, T + 1)).toBe(5)
     // Buyer B on another page is refused.
     expect(await claimSponsorSlot(db, { taskSlug: 'voice', offering: 'founding_sponsor', requestKey: 'req-B', now: T + 2 })).toEqual({
@@ -566,8 +569,8 @@ describe('founding sponsor cap', () => {
     const T = NOW + 40 * DAY
     expect(await foundingSpotsTaken(db, T)).toBe(3)
     expect(await foundingSpotsLeft(db, T)).toBe(2)
-    expect(await claimSponsorSlot(db, { taskSlug: 'voice', offering: 'founding_sponsor', requestKey: 'req-1', now: T })).toEqual({ ok: true })
-    expect(await claimSponsorSlot(db, { taskSlug: 'meetings', offering: 'founding_sponsor', requestKey: 'req-2', now: T })).toEqual({ ok: true })
+    expect(await claimSponsorSlot(db, { taskSlug: 'voice', offering: 'founding_sponsor', requestKey: 'req-1', now: T })).toMatchObject({ ok: true })
+    expect(await claimSponsorSlot(db, { taskSlug: 'meetings', offering: 'founding_sponsor', requestKey: 'req-2', now: T })).toMatchObject({ ok: true })
     expect(await claimSponsorSlot(db, { taskSlug: 'chat', offering: 'founding_sponsor', requestKey: 'req-3', now: T })).toEqual({
       ok: false,
       message: FOUNDING_SOLD_OUT,

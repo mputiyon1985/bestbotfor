@@ -1,6 +1,8 @@
 import { OG_RATE_WINDOW_MS } from './og'
 import {
   CHECKOUT_RATE_WINDOW_MS,
+  FOUNDING_HOLD_RATE_LIMIT,
+  FOUNDING_HOLD_RATE_WINDOW_MS,
   GO_RATE_WINDOW_MS,
   NEWSLETTER_RATE_WINDOW_MS,
   PORTAL_RATE_WINDOW_MS,
@@ -103,7 +105,7 @@ export function rateLimitPrivacyParagraphs(input: RetentionCopyInput = {}): stri
   const cleanup = windowPhrase(RESULT_WINDOW_PURGE_INTERVAL_MS)
   return [
     'When a rate limit uses the network address, we store a code made from a fixed label, the limit name, the address, and a secret key. That code is still pseudonymous personal data. If we have no address, the code uses the word unknown instead of an address.',
-    `Newsletter signup stores that code with a count and a window end time. The window is ${newsletter}. Visit redirects use a ${visit} window. Social-card images use a ${card} window. The suggestion box uses a ${windowPhrase(SUGGESTION_RATE_WINDOW_MS)} window, and sponsor checkout uses a ${windowPhrase(SPONSOR_RATE_WINDOW_MS)} window. We do not delete those rows when the window ends. After the window ends, the next request for the same code resets the count. ${
+    `Newsletter signup stores that code with a count and a window end time. The window is ${newsletter}. Visit redirects use a ${visit} window. Social-card images use a ${card} window. The suggestion box uses a ${windowPhrase(SUGGESTION_RATE_WINDOW_MS)} window, sponsor checkout uses a ${windowPhrase(SPONSOR_RATE_WINDOW_MS)} window, and new founding sponsor holds use a separate limit of ${FOUNDING_HOLD_RATE_LIMIT} per ${windowPhrase(FOUNDING_HOLD_RATE_WINDOW_MS)}. We do not delete those rows when the window ends. After the window ends, the next request for the same code resets the count. ${
       launch
         ? `The retention job deletes the row about 24 to 48 hours after the window ends. ${BACKLOG_CAVEAT}`
         : 'A row that is never requested again stays in the database while the retention job is off.'

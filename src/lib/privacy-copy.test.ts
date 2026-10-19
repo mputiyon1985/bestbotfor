@@ -39,6 +39,7 @@ describe('privacy policy facts', () => {
     expect(text).toContain('word unknown')
     expect(paragraphs.join('\n')).toContain(`The suggestion box uses a ${windowPhrase(SUGGESTION_RATE_WINDOW_MS)} window`)
     expect(paragraphs.join('\n')).toContain(`sponsor checkout uses a ${windowPhrase(SPONSOR_RATE_WINDOW_MS)} window`)
+    expect(paragraphs.join('\n')).toContain('new founding sponsor holds use a separate limit of 2 per 24 hours')
     expect(windowPhrase(SUGGESTION_RATE_WINDOW_MS)).toBe('one hour')
     expect(text).toContain('do not delete those rows when the window ends')
     expect(text).toContain('After the window ends, the next request for the same code resets the count')
@@ -123,7 +124,7 @@ describe('privacy policy facts', () => {
     expect(page).not.toContain('Lawyer note')
     expect(page).toContain('PRIVACY_UPDATED')
     const dates = readFileSync(path.join(process.cwd(), 'src/lib/ratings-policy-copy.ts'), 'utf8')
-    expect(dates).toContain("export const PRIVACY_UPDATED = 'October 18, 2026'")
+    expect(dates).toContain("export const PRIVACY_UPDATED = 'October 19, 2026'")
     expect(dates.match(/export const PRIVACY_UPDATED =/g)).toEqual(['export const PRIVACY_UPDATED ='])
     expect(PRIVACY_UPDATED_WITH_RATINGS.startsWith(`${PRIVACY_UPDATED}.`)).toBe(true)
     expect(PRIVACY_UPDATED_WITH_RATINGS).toContain('recorded on October 17, 2026')
@@ -169,7 +170,7 @@ describe('privacy policy facts', () => {
     expect(retentionJobParagraph(false)).toContain(suggestionSentence)
     expect(retentionJobParagraph(true)).toContain(suggestionSentence)
     expect(RETENTION_ROWS.find((row) => row.data === 'Rate-limit rows')?.kept).toBe(rateLimitRetentionKept())
-    expect(PRIVACY_UPDATED).toBe('October 18, 2026')
+    expect(PRIVACY_UPDATED).toBe('October 19, 2026')
 
     const outside = ['src/app/privacy/page.tsx', 'src/lib/ratings-policy-copy.ts']
     for (const file of outside) {

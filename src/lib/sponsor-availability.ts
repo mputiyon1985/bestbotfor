@@ -1,10 +1,10 @@
 import { placementWindowMs } from './best-placement'
 import { getDb } from './db'
 import type { Database } from './db/client'
+import { FOUNDING_HOLD_MS, SPONSOR_CHECKOUT_EXPIRY_MS } from './sponsor-hold-window'
 import { FOUNDING_SOLD_OUT, FOUNDING_SPONSOR_CAP, isSubscriptionOffering, isTaskOffering } from './sponsor-offerings'
 
-/** Stripe Checkout expires after 24 hours. A claim older than that can be taken. */
-export const SPONSOR_CHECKOUT_EXPIRY_MS = 24 * 60 * 60 * 1000
+export { FOUNDING_HOLD_MS, SPONSOR_CHECKOUT_EXPIRY_MS }
 
 export const SPONSOR_SLOT_TAKEN = 'That task page already has a placement in this period. Choose another page.'
 
@@ -34,15 +34,34 @@ export type SponsorSlotClaim = {
  *
  * The founding offer is also capped at FOUNDING_SPONSOR_CAP in the same
  * statement, so two concurrent checkouts cannot both take the last spot.
+ *
+ * Hold lengths: a placement hold counts for 24 hours (Stripe's default
+ * Checkout expiry), a founding hold for 65 minutes (FOUNDING_HOLD_MS; its
+ * session expires at claimed_at + 60 minutes). A repeat of the same founding
+ * request while its hold is live keeps the hold's claimed_at, so the retry
+ * sends Stripe the same expires_at under the same idempotency key and never
+ * extends the hold. `fresh` is true only when this call created the hold (or
+ * took over an expired one) with claimed_at = now.
  */
 export async function claimSponsorSlot(
   db: Database,
   input: SponsorSlotClaim,
-): Promise<{ ok: true } | { ok: false; message: string }> {
+): Promise<{ ok: true; claimedAt?: number; fresh?: boolean } | { ok: false; message: string }> {
   if (!isTaskOffering(input.offering)) return { ok: true }
   const windowMs = isSubscriptionOffering(input.offering) ? null : placementWindowMs(input.offering)
   const newEnd = windowMs == null ? OPEN_ENDED_MS : input.now + windowMs
   const founding = input.offering === 'founding_sponsor'
+  // Whether this request already holds a live founding hold on the task. Its
+  // claimed_at is kept below, so the claim is a reuse, not a fresh hold, even
+  // when it lands in the same millisecond.
+  const prior = founding
+    ? await db.$client.execute({
+        sql: `SELECT 1 FROM sponsorship_slot_claims
+          WHERE task_slug = ? AND request_key = ? AND offering = 'founding_sponsor' AND claimed_at > ?`,
+        args: [input.taskSlug, input.requestKey, input.now - FOUNDING_HOLD_MS],
+      })
+    : null
+  const reused = (prior?.rows.length ?? 0) > 0
   const claimed = await db.$client.execute({
     sql: `INSERT INTO sponsorship_slot_claims (task_slug, request_key, offering, claimed_at)
       SELECT ?, ?, ?, ?
@@ -70,10 +89,20 @@ export async function claimSponsorSlot(
       ON CONFLICT(task_slug) DO UPDATE SET
         request_key = excluded.request_key,
         offering = excluded.offering,
-        claimed_at = excluded.claimed_at
+        claimed_at = CASE
+          WHEN excluded.offering = 'founding_sponsor'
+            AND sponsorship_slot_claims.offering = 'founding_sponsor'
+            AND sponsorship_slot_claims.request_key = excluded.request_key
+            AND sponsorship_slot_claims.claimed_at > ?
+          THEN sponsorship_slot_claims.claimed_at
+          ELSE excluded.claimed_at
+        END
       WHERE sponsorship_slot_claims.request_key = excluded.request_key
-         OR sponsorship_slot_claims.claimed_at <= ?
-      RETURNING task_slug`,
+         OR sponsorship_slot_claims.claimed_at <= CASE sponsorship_slot_claims.offering
+           WHEN 'founding_sponsor' THEN ?
+           ELSE ?
+         END
+      RETURNING task_slug, claimed_at`,
     args: [
       input.taskSlug,
       input.requestKey,
@@ -86,13 +115,19 @@ export async function claimSponsorSlot(
       MONTH_MS,
       OPEN_ENDED_MS,
       founding ? 1 : 0,
-      input.now - SPONSOR_CHECKOUT_EXPIRY_MS,
+      input.now - FOUNDING_HOLD_MS,
       input.taskSlug,
       FOUNDING_SPONSOR_CAP,
+      input.now - FOUNDING_HOLD_MS,
+      input.now - FOUNDING_HOLD_MS,
       input.now - SPONSOR_CHECKOUT_EXPIRY_MS,
     ],
   })
-  if (claimed.rows.length > 0) return { ok: true }
+  const row = claimed.rows[0]
+  if (row) {
+    const claimedAt = Number(row.claimed_at)
+    return { ok: true, claimedAt, fresh: !reused && claimedAt === input.now }
+  }
   if (founding && (await foundingSpotsTaken(db, input.now, input.taskSlug)) >= FOUNDING_SPONSOR_CAP) {
     return { ok: false, message: FOUNDING_SOLD_OUT }
   }
@@ -118,7 +153,7 @@ export const FOUNDING_LINK_KEY_PREFIX = 'founding_link:'
  *   rows never count on their own, so a renewal written after the first period
  *   was refunded does not bring the sale back. The key is matched trimmed and
  *   case-insensitively, and LIKE's `_` also accepts `founding-link:`;
- * - founding checkout holds younger than the Checkout expiry, unless the
+ * - founding checkout holds younger than FOUNDING_HOLD_MS (65 minutes), unless the
  *   task's paid founding row came from that hold (paid_at at or after the
  *   hold's claimed_at), so a paid row and its own hold count once. A paid row
  *   from an older sale (for example a canceled, ended founder on that page)
@@ -155,7 +190,7 @@ const FOUNDING_TAKEN_SQL = `
 export async function foundingSpotsTaken(db: Database, now: number, excludeTask = ''): Promise<number> {
   const result = await db.$client.execute({
     sql: `SELECT ${FOUNDING_TAKEN_SQL} AS taken`,
-    args: [now - SPONSOR_CHECKOUT_EXPIRY_MS, excludeTask],
+    args: [now - FOUNDING_HOLD_MS, excludeTask],
   })
   return Number(result.rows[0]?.taken ?? 0)
 }
@@ -182,7 +217,14 @@ export async function foundingSoldOutNow(now = Date.now(), db?: Database): Promi
   }
 }
 
-/** Drop this request's hold after Checkout fails. Another request's hold stays. */
+/**
+ * Drop this request's hold after Checkout fails. Another request's hold stays.
+ *
+ * The checkout action releases a founding hold only when that attempt created
+ * the hold fresh and never called Stripe: once Stripe was called, a session
+ * may exist (a lost response, a 5xx after the work was done) and stays
+ * payable until its expires_at, so the hold keeps counting for its 65 minutes.
+ */
 export async function releaseSponsorSlot(
   db: Database,
   input: { taskSlug: string; requestKey: string },
