@@ -95,12 +95,21 @@ describe('ratings launch plan', () => {
       expect(plan).toContain(question)
     }
     const migrator = plan.slice(plan.indexOf('**Migrator.**'), plan.indexOf('Until every gate above is met'))
-    expect(migrator).toContain('20 tags, idx 0 through 19, one file per tag')
+    const journal = JSON.parse(readFileSync(path.join(process.cwd(), 'drizzle/meta/_journal.json'), 'utf8')) as {
+      entries: { idx: number; tag: string }[]
+    }
+    const maxIdx = Math.max(...journal.entries.map((entry) => entry.idx))
+    expect(migrator).toContain(`${journal.entries.length} tags, idx 0 through ${maxIdx}, one file per tag`)
+    const lastTag = journal.entries.find((entry) => entry.idx === maxIdx)?.tag ?? ''
+    expect(migrator).toContain(`includes migrations through \`${lastTag.slice(0, 4)}\``)
+    expect(migrator).toContain(`\`${lastTag}\` is idx ${maxIdx}`)
     expect(migrator).toContain('`0021_subscriber_beehiiv_status` is idx 19')
     expect(migrator).toContain('`0022_suggestions` is idx 20')
     expect(migrator).toContain('`drizzle/0022_suggestions.sql` is on disk')
-    expect(migrator).toContain('The production deploy applies it automatically')
-    expect(migrator).toContain("so merging its PR to main applies it, and Mark's OK is needed before merge.")
+    expect(migrator).toContain(
+      'every production build, including the one a merge to main triggers, runs prebuild; preview builds apply it to the preview DB on push.',
+    )
+    expect(migrator).toContain("so Mark's OK is needed before merge.")
     expect(migrator).not.toContain('Production must not apply that table')
     expect(migrator).toContain('`drizzle/0021_subscriber_beehiiv_status.sql` is on disk')
     expect(migrator).toContain('`0020_subscriber_syncing_started` is idx 18')
