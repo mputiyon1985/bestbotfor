@@ -206,9 +206,7 @@ describe('founding sold-out auto-hide', () => {
     const reopened = await sponsorHtml(url)
     expect(isDisabled(foundingRadio(reopened))).toBe(false)
     expect(reopened).not.toContain(SPONSOR_SOLD_OUT_LABEL)
-    expect(await claimSponsorSlot(db, { taskSlug: 'chat', offering: 'founding_sponsor', requestKey: 'req-next', now: T0 + 3_600_001 })).toMatchObject({
-      ok: true,
-    })
+    expect(await claimSponsorSlot(db, { taskSlug: 'chat', offering: 'founding_sponsor', requestKey: 'req-next', now: T0 + 3_600_001 })).toMatchObject({ ok: true })
     await close()
   })
 

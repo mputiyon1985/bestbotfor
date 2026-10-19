@@ -13,6 +13,7 @@ import {
   placementEndsAt,
 } from './best-placement'
 import {
+  FOUNDING_HOLD_MS,
   SPONSOR_CHECKOUT_EXPIRY_MS,
   SPONSOR_SLOT_TAKEN,
   FOUNDING_LINK_KEY_PREFIX,
@@ -162,12 +163,13 @@ describe('subscription checkout params', () => {
     if (!parsed.ok) return
     expect(parsed.value.priceId).toBe('price_e2e_founding_monthly')
     expect(parsed.value.setupPriceId).toBe('price_e2e_founding_setup')
-    // The hold's claimed_at, 2026-10-19 10:00 AM ET. The session ends 23h55m later (Sentinel P3-3 on #97).
     const claimedAt = Date.UTC(2026, 9, 19, 14)
-    const built = sponsorCheckoutParams({ ...parsed.value, creativeId: '7', claimedAt, now: claimedAt + 2_000, ...urls })
+    expect(() => sponsorCheckoutParams({ ...parsed.value, creativeId: '7', ...urls })).toThrow('founding checkout needs its hold time')
+    const built = sponsorCheckoutParams({ ...parsed.value, creativeId: '7', claimedAt, ...urls })
     const params = built.params
     expect(params.mode).toBe('subscription')
-    expect(params.expires_at).toBe(1_792_504_500)
+    // The session expires 60 minutes after the hold's claimed_at (Stripe's minimum is 30).
+    expect(params.expires_at).toBe((claimedAt + 60 * 60 * 1000) / 1000)
     expect(params.line_items).toEqual([
       { price: 'price_e2e_founding_monthly', quantity: 1 },
       { price: 'price_e2e_founding_setup', quantity: 1 },
@@ -191,9 +193,13 @@ describe('subscription checkout params', () => {
     expect(params).not.toHaveProperty('automatic_tax')
     expect(JSON.stringify(params)).not.toContain('unit_amount')
     expect(JSON.stringify(params)).not.toContain('price_data')
-    const again = sponsorCheckoutParams({ ...parsed.value, creativeId: '7', claimedAt, now: claimedAt + 60_000, ...urls })
+    const again = sponsorCheckoutParams({ ...parsed.value, creativeId: '7', claimedAt, ...urls })
     expect(again).toEqual(built)
     expect(built.idempotencyKey).toMatch(new RegExp(`^sponsor-[0-9a-f]{16}-${REQUEST_ID}-h${claimedAt}$`))
+    // A later hold (after this one lapsed) sends a different expires_at, so it gets a different key.
+    const later = sponsorCheckoutParams({ ...parsed.value, creativeId: '7', claimedAt: claimedAt + 65 * 60 * 1000, ...urls })
+    expect(later.idempotencyKey).not.toBe(built.idempotencyKey)
+    expect(later.params.expires_at).not.toBe(params.expires_at)
   })
 
   it('starts the standard monthly subscription with one recurring line and no trial', () => {
@@ -393,7 +399,7 @@ describe('founding sponsor cap', () => {
   const NOW = Date.UTC(2026, 9, 18)
   const TASKS = ['coding', 'writing', 'image', 'video', 'voice', 'music', 'research']
 
-  it('allows 5 founding sponsors, counts live holds once, and frees a hold only when it expires', async () => {
+  it('allows 5 founding sponsors, counts live holds once, and frees a hold that expires or is released', async () => {
     const { db, close } = await createTestDatabase()
     expect(await foundingSpotsLeft(db, NOW)).toBe(5)
     // Two paid founding sponsors.
@@ -419,9 +425,7 @@ describe('founding sponsor cap', () => {
     expect(await foundingSpotsLeft(db, NOW + 1)).toBe(3)
     // Three more checkouts hold the last three spots.
     for (const task of TASKS.slice(2, 5)) {
-      expect(await claimSponsorSlot(db, { taskSlug: task, offering: 'founding_sponsor', requestKey: `req-${task}`, now: NOW + 2 })).toMatchObject({
-        ok: true,
-      })
+      expect(await claimSponsorSlot(db, { taskSlug: task, offering: 'founding_sponsor', requestKey: `req-${task}`, now: NOW + 2 })).toMatchObject({ ok: true })
     }
     expect(await foundingSpotsLeft(db, NOW + 3)).toBe(0)
     // A sixth is refused as sold out, and a retry of a held checkout still works.
@@ -429,27 +433,16 @@ describe('founding sponsor cap', () => {
       ok: false,
       message: FOUNDING_SOLD_OUT,
     })
-    expect(await claimSponsorSlot(db, { taskSlug: TASKS[2] ?? '', offering: 'founding_sponsor', requestKey: `req-${TASKS[2]}`, now: NOW + 5 })).toMatchObject({
-      ok: true,
-    })
+    expect(await claimSponsorSlot(db, { taskSlug: TASKS[2] ?? '', offering: 'founding_sponsor', requestKey: `req-${TASKS[2]}`, now: NOW + 5 })).toMatchObject({ ok: true })
     // The standard subscription is not capped.
-    expect(await claimSponsorSlot(db, { taskSlug: TASKS[5] ?? '', offering: 'placement_subscription', requestKey: 'req-sub', now: NOW + 6 })).toMatchObject({
-      ok: true,
-    })
-    // A failed checkout does not free a founding spot: Stripe may already have made
-    // that session, so the hold runs its full 24 hours (Sentinel must-fix on #98).
+    expect(await claimSponsorSlot(db, { taskSlug: TASKS[5] ?? '', offering: 'placement_subscription', requestKey: 'req-sub', now: NOW + 6 })).toMatchObject({ ok: true })
+    // A released hold frees its spot.
     await releaseSponsorSlot(db, { taskSlug: TASKS[3] ?? '', requestKey: `req-${TASKS[3]}` })
-    expect(await foundingSpotsLeft(db, NOW + 7)).toBe(0)
-    expect(await claimSponsorSlot(db, { taskSlug: TASKS[6] ?? '', offering: 'founding_sponsor', requestKey: 'req-7', now: NOW + 7 })).toEqual({
-      ok: false,
-      message: FOUNDING_SOLD_OUT,
-    })
-    expect(await claimSponsorSlot(db, { taskSlug: TASKS[6] ?? '', offering: 'founding_sponsor', requestKey: 'req-7', now: NOW + 2 + SPONSOR_CHECKOUT_EXPIRY_MS })).toMatchObject({
-      ok: true,
-    })
-    // An expired hold frees its spot: the first holds have, the req-7 hold has not.
-    expect(await foundingSpotsLeft(db, NOW + 7 + SPONSOR_CHECKOUT_EXPIRY_MS)).toBe(2)
-    expect(await foundingSpotsLeft(db, NOW + 3 + 2 * SPONSOR_CHECKOUT_EXPIRY_MS)).toBe(3)
+    expect(await claimSponsorSlot(db, { taskSlug: TASKS[6] ?? '', offering: 'founding_sponsor', requestKey: 'req-7', now: NOW + 7 })).toMatchObject({ ok: true })
+    // An expired hold frees its spot too: a founding hold counts for 65 minutes, not 24 hours.
+    expect(await foundingSpotsLeft(db, NOW + 1 + FOUNDING_HOLD_MS)).toBe(0)
+    expect(await foundingSpotsLeft(db, NOW + 7 + FOUNDING_HOLD_MS)).toBe(3)
+    expect(SPONSOR_CHECKOUT_EXPIRY_MS).toBe(24 * 60 * 60 * 1000)
     await close()
   })
 

@@ -4,6 +4,8 @@ import { consumeRateLimit } from './rate-limit'
 import {
   CHECKOUT_RATE_LIMIT,
   CHECKOUT_RATE_WINDOW_MS,
+  FOUNDING_HOLD_RATE_LIMIT,
+  FOUNDING_HOLD_RATE_WINDOW_MS,
   GO_RATE_LIMIT,
   GO_RATE_WINDOW_MS,
   NEWSLETTER_RATE_LIMIT,
@@ -25,6 +27,7 @@ export const ACTION_LIMITS = {
   newsletter: { limit: NEWSLETTER_RATE_LIMIT, windowMs: NEWSLETTER_RATE_WINDOW_MS },
   go: { limit: GO_RATE_LIMIT, windowMs: GO_RATE_WINDOW_MS },
   sponsor: { limit: SPONSOR_RATE_LIMIT, windowMs: SPONSOR_RATE_WINDOW_MS },
+  foundingHold: { limit: FOUNDING_HOLD_RATE_LIMIT, windowMs: FOUNDING_HOLD_RATE_WINDOW_MS },
   suggestion: { limit: SUGGESTION_RATE_LIMIT, windowMs: SUGGESTION_RATE_WINDOW_MS },
 } as const
 

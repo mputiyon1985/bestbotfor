@@ -154,6 +154,15 @@ test('a lost Checkout response keeps the founding hold; Try again replays the sa
   expect(held.rows[0]?.offering).toBe('founding_sponsor')
   expect(claimedAt).toBeGreaterThan(0)
 
+  // An edited email under the same hold is refused before Stripe (Sentinel must-fix on #98):
+  // one founding hold, one open checkout.
+  await fillFoundingCheckout(page, `edited-${email}`)
+  await page.getByRole('button', { name: 'Continue to checkout' }).click()
+  await expect(page.locator('#sponsor-status')).toHaveText(
+    /^This form already started a founding checkout with different details, and each founding spot can have only one open checkout\. Finish the checkout you opened, or reload the page in 6[45] minutes to start again with the new details\.$/,
+  )
+  await expect(page).toHaveURL(/\/sponsor$/)
+
   // Try again from the same form (same request_id; React resets the uncontrolled fields after
   // the action, so the buyer fills them in again): Stripe returns the session it already made.
   await fillFoundingCheckout(page, email)
@@ -170,7 +179,7 @@ test('a lost Checkout response keeps the founding hold; Try again replays the sa
   expect(retry?.__session_id).toBe(first?.__session_id)
   expect(page.url()).toContain(String(first?.__session_id))
   expect(retry?.expires_at).toBe(first?.expires_at)
-  expect(Number(first?.expires_at)).toBe(Math.floor((claimedAt + (23 * 60 + 55) * 60 * 1000) / 1000))
+  expect(Number(first?.expires_at)).toBe(Math.floor((claimedAt + 60 * 60 * 1000) / 1000))
   const after = await db.execute("SELECT request_key, claimed_at FROM sponsorship_slot_claims WHERE task_slug = 'coding'")
   expect(Number(after.rows[0]?.claimed_at)).toBe(claimedAt)
   expect(after.rows[0]?.request_key).toBe(held.rows[0]?.request_key)

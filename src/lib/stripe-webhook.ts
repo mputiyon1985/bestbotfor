@@ -16,6 +16,9 @@ import { getStripe, stripeWebhookSecret } from './stripe'
 import { liveModeAllowed } from './stripe-key'
 import { sanitizeSponsorCompany } from './sponsor-company'
 import { linkSponsorCreative } from './sponsor-card'
+import { alertFoundingOverCap } from './founding-cap-alert'
+import { listPaidFounders } from './sponsor-availability'
+import { FOUNDING_SPONSOR_CAP } from './sponsor-offerings'
 
 // Covers 2 to 3 Stripe reads for sponsor subscription events; a slow read returns 500 and Stripe retries (idempotent). See docs/runbooks/sponsor-subscriptions.md.
 const WEBHOOK_DB_BUDGET_MS = 2_000
@@ -504,6 +507,23 @@ async function applySponsorSubscriptionCheckout(
     sessionId: data.id,
     now,
   })
+  if (offering.id === 'founding_sponsor' && status === 'paid') await recountFounders(db, data.id)
+}
+
+/**
+ * Safety net for the cap of 5 (Sentinel must-fix on #98). The hold is what
+ * enforces the cap; if a sixth founder still pays, the row is kept as paid,
+ * flagged on /admin/sponsors, and alerted. Nothing is refunded automatically:
+ * Mark decides refund or honor case by case. A failed recount is logged and
+ * does not fail the webhook, because the payment is already recorded.
+ */
+async function recountFounders(db: Database, sessionId: string): Promise<void> {
+  try {
+    const founders = await listPaidFounders(db)
+    if (founders.length > FOUNDING_SPONSOR_CAP) alertFoundingOverCap({ sessionId, paidFounders: founders.length })
+  } catch (error) {
+    console.error('founding recount failed', sessionId, error instanceof Error ? error.name : 'error')
+  }
 }
 
 const invoiceSchema = z.object({

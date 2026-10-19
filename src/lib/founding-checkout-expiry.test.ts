@@ -4,27 +4,23 @@ import SponsorPage from '@/app/sponsor/page'
 import { createTestDatabase } from '@/test/db'
 import { resetDbCache } from './db'
 import { sponsorships } from './db/schema'
+import { SPONSOR_SLOT_TAKEN, claimSponsorSlot, foundingSpotsTaken, releaseSponsorSlot } from './sponsor-availability'
+import { foundingHoldFormKey, sponsorCheckoutParams, type SponsorCheckoutInput } from './sponsor-checkout'
 import {
   FOUNDING_CHECKOUT_SESSION_MS,
+  FOUNDING_HOLD_MS,
   SPONSOR_CHECKOUT_EXPIRY_MS,
-  claimSponsorSlot,
-  foundingCheckoutExpiresAt,
-  foundingSpotsTaken,
-  releaseSponsorSlot,
-} from './sponsor-availability'
-import { sponsorCheckoutParams, type SponsorCheckoutInput } from './sponsor-checkout'
-import {
-  CHECKOUT_EXPIRY_SLACK_MS,
-  FOUNDING_HOLD_REUSE_MS,
-  FOUNDING_HOLD_TOO_OLD,
-  STRIPE_CHECKOUT_MAX_EXPIRY_MS,
   STRIPE_CHECKOUT_MIN_EXPIRY_MS,
+  foundingCheckoutExpiresAt,
+  foundingFormChangedMessage,
 } from './sponsor-hold-window'
 import { SPONSOR_SOLD_OUT_LABEL } from './sponsor-offerings'
 import { resetStripeCache } from './stripe'
 
-// Sentinel's P3s on #97: founding session expiry (P3-3), refunded rows and holds
-// (P3-4), and the /sponsor price list on closed or keyless pages and at 5/5 (P3-2, P3-5).
+// Sentinel's P3s on #97 and must-fixes on #98: founding session expiry (60
+// minutes from the claim, hold 65), one open checkout per founding hold (no
+// renewal, identical form only), refunded rows and holds (P3-4), and the
+// /sponsor price list on closed or keyless pages and at 5/5 (P3-2, P3-5).
 
 const DAY = 24 * 60 * 60 * 1000
 const T0 = Date.UTC(2026, 9, 19, 14) // Oct 19, 2026 10:00 AM ET
@@ -112,30 +108,31 @@ function foundingInput(requestId = '123e4567-e89b-42d3-a456-426614174000'): Spon
   }
 }
 
-describe('founding Checkout session expiry (P3-3)', () => {
-  it('pins the hold window at 24h and the founding session at 23h55m, 5 minutes inside it', () => {
-    expect(SPONSOR_CHECKOUT_EXPIRY_MS).toBe(86_400_000)
-    expect(FOUNDING_CHECKOUT_SESSION_MS).toBe(86_100_000)
-    expect(SPONSOR_CHECKOUT_EXPIRY_MS - FOUNDING_CHECKOUT_SESSION_MS).toBe(5 * 60 * 1000)
+const formKey = (input = foundingInput()) => foundingHoldFormKey({ ...input, ...urls })
+
+describe('founding Checkout session expiry', () => {
+  it('pins the founding session at 60 minutes and the hold at 65; placement holds stay 24 hours', () => {
+    expect(FOUNDING_CHECKOUT_SESSION_MS).toBe(60 * 60 * 1000)
+    expect(FOUNDING_HOLD_MS).toBe(65 * 60 * 1000)
+    expect(FOUNDING_HOLD_MS - FOUNDING_CHECKOUT_SESSION_MS).toBe(5 * 60 * 1000)
+    expect(SPONSOR_CHECKOUT_EXPIRY_MS).toBe(24 * 60 * 60 * 1000)
     // Stripe accepts 30 minutes to 24 hours from session creation.
-    expect(FOUNDING_CHECKOUT_SESSION_MS).toBeGreaterThan(30 * 60 * 1000)
-    expect(FOUNDING_CHECKOUT_SESSION_MS).toBeLessThan(24 * 60 * 60 * 1000)
+    expect(FOUNDING_CHECKOUT_SESSION_MS).toBeGreaterThan(STRIPE_CHECKOUT_MIN_EXPIRY_MS)
   })
 
-  it('sets expires_at to claim time + 23h55m, in whole seconds', () => {
-    expect(foundingCheckoutExpiresAt(T0)).toBe(1_792_504_500)
-    expect(foundingCheckoutExpiresAt(T0 + 999)).toBe(1_792_504_500)
-    expect(foundingCheckoutExpiresAt(T0 + 1000)).toBe(1_792_504_501)
-    const { params } = sponsorCheckoutParams({ ...foundingInput(), claimedAt: T0, now: T0 + 2_000, ...urls })
+  it('sets expires_at to claim time + 60 minutes, in whole seconds', () => {
+    expect(foundingCheckoutExpiresAt(T0)).toBe(1_792_422_000)
+    expect(foundingCheckoutExpiresAt(T0 + 999)).toBe(1_792_422_000)
+    expect(foundingCheckoutExpiresAt(T0 + 1000)).toBe(1_792_422_001)
+    const { params } = sponsorCheckoutParams({ ...foundingInput(), claimedAt: T0, ...urls })
     expect(params.mode).toBe('subscription')
-    expect(params.expires_at).toBe(1_792_504_500)
-    // 2026-10-20 9:55 AM ET: 23h55m after the 10:00 AM ET claim.
-    expect(new Date(params.expires_at! * 1000).toISOString()).toBe('2026-10-20T13:55:00.000Z')
+    // 2026-10-19 11:00 AM ET: 60 minutes after the 10:00 AM ET claim.
+    expect(new Date(params.expires_at! * 1000).toISOString()).toBe('2026-10-19T15:00:00.000Z')
   })
 
   it('refuses to build a founding session without its hold time', () => {
     for (const claimedAt of [undefined, 0, -1, Number.NaN]) {
-      expect(() => sponsorCheckoutParams({ ...foundingInput(), claimedAt, now: T0, ...urls })).toThrow('founding checkout needs its hold time')
+      expect(() => sponsorCheckoutParams({ ...foundingInput(), claimedAt, ...urls })).toThrow('founding checkout needs its hold time')
     }
   })
 
@@ -150,47 +147,162 @@ describe('founding Checkout session expiry (P3-3)', () => {
     }
   })
 
-  it('the claim returns its claimed_at; a retry keeps it, so a retried form sends the same expires_at under the same key', async () => {
+  it('the hold still counts when its session expires, so a session cannot complete after its spot is freed', async () => {
     const { db, close }: TestDb = await createTestDatabase()
-    const claim = { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: 'req-a' }
-    expect(await claimSponsorSlot(db, { ...claim, now: T0 })).toEqual({ ok: true, claimedAt: T0 })
-    expect(await claimSponsorSlot(db, { ...claim, now: T0 + 60_000 })).toEqual({ ok: true, claimedAt: T0 })
-    const first = sponsorCheckoutParams({ ...foundingInput(), claimedAt: T0, now: T0 + 1_000, ...urls })
-    const retried = sponsorCheckoutParams({ ...foundingInput(), claimedAt: T0, now: T0 + 61_000, ...urls })
-    expect(retried).toEqual(first)
-    expect(first.idempotencyKey).toMatch(/^sponsor-[0-9a-f]{16}-123e4567-e89b-42d3-a456-426614174000-h1792418400000$/)
-    // An expired hold, for this request or another, starts over at the new time.
-    expect(await claimSponsorSlot(db, { ...claim, requestKey: 'req-b', now: T0 + SPONSOR_CHECKOUT_EXPIRY_MS })).toEqual({
-      ok: true,
-      claimedAt: T0 + SPONSOR_CHECKOUT_EXPIRY_MS,
+    for (const [index, task] of TASKS.slice(0, 4).entries()) await paidFounder(db, task, index)
+    const claimed = await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: 'req-5', formKey: formKey(), now: T0 })
+    expect(claimed).toMatchObject({ ok: true, claimedAt: T0, fresh: true })
+    const sessionEnd = foundingCheckoutExpiresAt(T0) * 1000
+    for (const at of [sessionEnd, sessionEnd + 4 * 60 * 1000, T0 + FOUNDING_HOLD_MS - 1]) {
+      expect(await foundingSpotsTaken(db, at)).toBe(5)
+      expect((await claimSponsorSlot(db, { taskSlug: 'music', offering: 'founding_sponsor', requestKey: 'req-6', now: at })).ok).toBe(false)
+    }
+    expect(await foundingSpotsTaken(db, T0 + FOUNDING_HOLD_MS)).toBe(4)
+    await close()
+  })
+})
+
+async function holdRow(db: TestDb['db'], task: string) {
+  const result = await db.$client.execute({
+    sql: 'SELECT request_key, offering, claimed_at FROM sponsorship_slot_claims WHERE task_slug = ?',
+    args: [task],
+  })
+  const row = result.rows[0]
+  return row ? { requestKey: String(row.request_key), offering: String(row.offering), claimedAt: Number(row.claimed_at) } : null
+}
+
+const REQ = '123e4567-e89b-42d3-a456-426614174000'
+
+describe('one open checkout per founding hold (Sentinel must-fix on #98)', () => {
+  it('stores the form key on the hold; an identical form reuses it with the same claimed_at, key and body', async () => {
+    const { db, close }: TestDb = await createTestDatabase()
+    const claim = { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: REQ, formKey: formKey() }
+    expect(await claimSponsorSlot(db, { ...claim, now: T0 })).toMatchObject({ ok: true, claimedAt: T0, fresh: true, holdKey: `${REQ}|${formKey()}` })
+    expect(await holdRow(db, 'coding')).toEqual({ requestKey: `${REQ}|${formKey()}`, offering: 'founding_sponsor', claimedAt: T0 })
+    for (const at of [T0, T0 + 60_000, T0 + 29 * 60_000, T0 + FOUNDING_HOLD_MS - 1]) {
+      expect(await claimSponsorSlot(db, { ...claim, now: at })).toMatchObject({ ok: true, claimedAt: T0, fresh: false })
+    }
+    const first = sponsorCheckoutParams({ ...foundingInput(), claimedAt: T0, ...urls })
+    const again = sponsorCheckoutParams({ ...foundingInput(), claimedAt: T0, ...urls })
+    expect(again).toEqual(first)
+    expect(first.idempotencyKey).toMatch(new RegExp(`^sponsor-[0-9a-f]{16}-${REQ}-h${T0}$`))
+    await close()
+  })
+
+  it('no renewal: a live hold never moves claimed_at, so it never gets a second key; only a lapsed hold starts over', async () => {
+    const { db, close }: TestDb = await createTestDatabase()
+    const claim = { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: REQ, formKey: formKey() }
+    await claimSponsorSlot(db, { ...claim, now: T0 })
+    // Late in the hold: still the original claimed_at (no renewal path).
+    expect(await claimSponsorSlot(db, { ...claim, now: T0 + FOUNDING_HOLD_MS - 1 })).toMatchObject({ claimedAt: T0, fresh: false })
+    // Once the hold lapsed, its session (expires_at = T0 + 60m) has already expired.
+    const later = T0 + FOUNDING_HOLD_MS
+    expect(await claimSponsorSlot(db, { ...claim, now: later })).toMatchObject({ claimedAt: later, fresh: true })
+    expect(foundingCheckoutExpiresAt(T0) * 1000).toBeLessThan(later)
+    await close()
+  })
+
+  it('an edited email, company or any other Stripe input under the same request_id is refused while the hold is live', async () => {
+    const { db, close }: TestDb = await createTestDatabase()
+    await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: REQ, formKey: formKey(), now: T0 })
+    const edits: Array<Partial<SponsorCheckoutInput>> = [
+      { email: 'typo-fixed@example.com' },
+      { company: 'Example Tools Inc' },
+      { priceId: 'price_other' },
+      { setupPriceId: 'price_other_setup' },
+    ]
+    for (const edit of edits) {
+      const edited = { ...foundingInput(), ...edit }
+      expect(formKey(edited)).not.toBe(formKey())
+      expect(await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: REQ, formKey: formKey(edited), now: T0 + 10 * 60_000 })).toEqual({
+        ok: false,
+        reason: 'founding_form_changed',
+        message: foundingFormChangedMessage(55),
+      })
+    }
+    // Other return URLs change the body too.
+    expect(foundingHoldFormKey({ ...foundingInput(), ...urls, cancelUrl: 'https://www.bestbotfor.com/sponsor/cancel' })).not.toBe(formKey())
+    // The hold is unchanged.
+    expect(await holdRow(db, 'coding')).toEqual({ requestKey: `${REQ}|${formKey()}`, offering: 'founding_sponsor', claimedAt: T0 })
+    // After the hold lapses, the edited form can start over.
+    const edited = { ...foundingInput(), email: 'typo-fixed@example.com' }
+    expect(await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: REQ, formKey: formKey(edited), now: T0 + FOUNDING_HOLD_MS })).toMatchObject({ ok: true, fresh: true })
+    await close()
+  })
+
+  it('the same request_id on another page, or for another offering, is refused while its founding hold is live', async () => {
+    const { db, close }: TestDb = await createTestDatabase()
+    await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: REQ, formKey: formKey(), now: T0 })
+    const other = { ...foundingInput(), taskSlug: 'music' }
+    expect(await claimSponsorSlot(db, { taskSlug: 'music', offering: 'founding_sponsor', requestKey: REQ, formKey: formKey(other), now: T0 + 60_000 })).toMatchObject({
+      ok: false,
+      reason: 'founding_form_changed',
+    })
+    for (const offering of ['placement_weekly', 'placement_monthly', 'placement_subscription']) {
+      for (const task of ['coding', 'music']) {
+        expect(await claimSponsorSlot(db, { taskSlug: task, offering, requestKey: REQ, now: T0 + 60_000 })).toMatchObject({ ok: false, reason: 'founding_form_changed' })
+      }
+    }
+    expect(await holdRow(db, 'music')).toBeNull()
+    expect(await holdRow(db, 'coding')).toEqual({ requestKey: `${REQ}|${formKey()}`, offering: 'founding_sponsor', claimedAt: T0 })
+    expect(await foundingSpotsTaken(db, T0 + 120_000)).toBe(1)
+    await close()
+  })
+
+  it('a live founding hold written before form keys (a bare request_id) cannot be shown identical, so it refuses', async () => {
+    const { db, close }: TestDb = await createTestDatabase()
+    await db.$client.execute({
+      sql: `INSERT INTO sponsorship_slot_claims (task_slug, request_key, offering, claimed_at) VALUES ('coding', ?, 'founding_sponsor', ?)`,
+      args: [REQ, T0],
+    })
+    expect(await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: REQ, formKey: formKey(), now: T0 + 60_000 })).toMatchObject({
+      ok: false,
+      reason: 'founding_form_changed',
     })
     await close()
   })
 
-  it('the hold still counts when its session expires, so a session cannot complete after its spot is freed', async () => {
+  it('a reload (new request_id) on the held page is refused; the release of a founding hold matches its stored key', async () => {
     const { db, close }: TestDb = await createTestDatabase()
-    for (const [index, task] of TASKS.slice(0, 4).entries()) await paidFounder(db, task, index)
-    const claimed = await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: 'req-5', now: T0 })
-    expect(claimed).toEqual({ ok: true, claimedAt: T0 })
-    const sessionEnd = foundingCheckoutExpiresAt(T0) * 1000
-    // At the session's expires_at and up to the hold's 24h, the fifth spot stays held and a sixth buyer is refused.
-    for (const at of [sessionEnd, sessionEnd + 4 * 60 * 1000, T0 + SPONSOR_CHECKOUT_EXPIRY_MS - 1]) {
-      expect(await foundingSpotsTaken(db, at)).toBe(5)
-      expect((await claimSponsorSlot(db, { taskSlug: 'music', offering: 'founding_sponsor', requestKey: 'req-6', now: at })).ok).toBe(false)
+    const first = await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: REQ, formKey: formKey(), now: T0 })
+    expect(await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: 'req-reload', formKey: formKey(), now: T0 + 60_000 })).toEqual({
+      ok: false,
+      message: SPONSOR_SLOT_TAKEN,
+    })
+    // releaseSponsorSlot with the bare request_id does nothing; the action passes holdKey.
+    await releaseSponsorSlot(db, { taskSlug: 'coding', requestKey: REQ })
+    expect((await holdRow(db, 'coding'))?.claimedAt).toBe(T0)
+    if (!first.ok || !('holdKey' in first) || !first.holdKey) throw new Error('expected a hold key')
+    await releaseSponsorSlot(db, { taskSlug: 'coding', requestKey: first.holdKey })
+    expect((await holdRow(db, 'coding'))?.claimedAt).toBe(0)
+    await close()
+  })
+
+  it('the founding claimed_at freeze is founding only: a placement retry refreshes claimed_at and can switch to founding on its page', async () => {
+    const { db, close }: TestDb = await createTestDatabase()
+    for (const offering of ['placement_weekly', 'placement_monthly', 'placement_subscription']) {
+      await db.$client.execute('DELETE FROM sponsorship_slot_claims')
+      const claim = { taskSlug: 'coding', offering, requestKey: REQ }
+      expect(await claimSponsorSlot(db, { ...claim, now: T0 })).toMatchObject({ ok: true, claimedAt: T0 })
+      expect(await claimSponsorSlot(db, { ...claim, now: T0 + 60_000 })).toMatchObject({ ok: true, claimedAt: T0 + 60_000 })
+      // The same form switches to founding on the page it already holds.
+      expect(await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: REQ, formKey: formKey(), now: T0 + 120_000 })).toMatchObject({
+        ok: true,
+        claimedAt: T0 + 120_000,
+      })
+      expect(await holdRow(db, 'coding')).toEqual({ requestKey: `${REQ}|${formKey()}`, offering: 'founding_sponsor', claimedAt: T0 + 120_000 })
     }
-    // Only after the hold window does the spot open again.
-    expect(await foundingSpotsTaken(db, T0 + SPONSOR_CHECKOUT_EXPIRY_MS + 1)).toBe(4)
     await close()
   })
 })
 
 describe('refunded paid rows and holds (P3-4, Sentinel QA97 hold boundaries)', () => {
-  it('a hold counts until 24h; a paid row from the hold counts once; an older paid row does not hide it; a refunded paid row does not hide it', async () => {
+  it('a hold counts until 65 minutes; a paid row from the hold counts once; an older paid row does not hide it; a refunded paid row does not hide it', async () => {
     const { db, close }: TestDb = await createTestDatabase()
-    const E = SPONSOR_CHECKOUT_EXPIRY_MS
+    const E = FOUNDING_HOLD_MS
     await hold(db, 'coding', T0 - E + 1)
-    expect(await foundingSpotsTaken(db, T0)).toBe(1) // 1 ms under 24h counts
-    expect(await foundingSpotsTaken(db, T0 + 1)).toBe(0) // exactly 24h: expired
+    expect(await foundingSpotsTaken(db, T0)).toBe(1) // 1 ms under 65 minutes counts
+    expect(await foundingSpotsTaken(db, T0 + 1)).toBe(0) // exactly 65 minutes: expired
     await hold(db, 'writing', T0 - E - 1000)
     expect(await foundingSpotsTaken(db, T0)).toBe(1) // an expired hold is not counted
     // The hold, then its own paid row (paid_at >= claimed_at): counted once.
@@ -254,153 +366,5 @@ describe('/sponsor price list at 5/5 (P3-2, P3-5)', () => {
     expect(foundingLine(html)[0]).toContain('Limited to 5 founding sponsors.')
     expect(html).toContain('The prices above, one-time and subscription, are the current list prices')
     await open.close()
-  })
-})
-
-async function holdRow(db: TestDb['db'], task: string) {
-  const result = await db.$client.execute({
-    sql: 'SELECT request_key, offering, claimed_at FROM sponsorship_slot_claims WHERE task_slug = ?',
-    args: [task],
-  })
-  const row = result.rows[0]
-  return row ? { requestKey: String(row.request_key), offering: String(row.offering), claimedAt: Number(row.claimed_at) } : null
-}
-
-/**
- * What sponsorCheckoutAction sends for one founding attempt: claim the hold,
- * build the params from its claimed_at at `now`. A failed create then calls
- * releaseSponsorSlot, as the action does.
- */
-async function foundingAttempt(db: TestDb['db'], now: number, requestKey = 'req-a', input = foundingInput()) {
-  const claim = await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey, now })
-  if (!claim.ok) throw new Error(claim.message)
-  return sponsorCheckoutParams({ ...input, claimedAt: claim.claimedAt, now: now + 1_500, ...urls })
-}
-
-describe('a failed founding Checkout and its retry (Sentinel must-fix on #98)', () => {
-  it('Checkout fails, the action releases, the same form retries: same idempotency key, same body, same hold', async () => {
-    const { db, close }: TestDb = await createTestDatabase()
-    for (const [index, task] of TASKS.slice(0, 4).entries()) await paidFounder(db, task, index)
-    const first = await foundingAttempt(db, T0)
-    // Checkout creation failed (a lost response, a Stripe 5xx, or an unusable URL): the action releases.
-    await releaseSponsorSlot(db, { taskSlug: 'coding', requestKey: 'req-a' })
-    // The founding hold is kept with its original claimed_at, and still holds the fifth spot.
-    expect(await holdRow(db, 'coding')).toEqual({ requestKey: 'req-a', offering: 'founding_sponsor', claimedAt: T0 })
-    expect(await foundingSpotsTaken(db, T0 + 60_000)).toBe(5)
-    expect((await claimSponsorSlot(db, { taskSlug: 'music', offering: 'founding_sponsor', requestKey: 'req-6', now: T0 + 60_000 })).ok).toBe(false)
-    // The buyer clicks "Try again" a minute, then an hour, then 23h19m later: Stripe gets
-    // the same key and the same body, so it returns the session it already made.
-    for (const at of [T0 + 60_000, T0 + 60 * 60_000, T0 + FOUNDING_HOLD_REUSE_MS - 1]) {
-      const retry = await foundingAttempt(db, at)
-      expect(retry.idempotencyKey).toBe(first.idempotencyKey)
-      expect(retry.params).toEqual(first.params)
-      await releaseSponsorSlot(db, { taskSlug: 'coding', requestKey: 'req-a' })
-    }
-    expect(first.params.expires_at).toBe(1_792_504_500)
-    await close()
-  })
-
-  it('a reload (new request_id) cannot open a second session while the first may still be payable', async () => {
-    const { db, close }: TestDb = await createTestDatabase()
-    await foundingAttempt(db, T0)
-    await releaseSponsorSlot(db, { taskSlug: 'coding', requestKey: 'req-a' })
-    // Same task from a new form: the page is still held by the first request.
-    expect(await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: 'req-reload', now: T0 + 60_000 })).toEqual({
-      ok: false,
-      message: 'That task page already has a placement in this period. Choose another page.',
-    })
-    // Another task is a separate hold, and both count toward the cap until each expires.
-    expect((await claimSponsorSlot(db, { taskSlug: 'music', offering: 'founding_sponsor', requestKey: 'req-reload', now: T0 + 60_000 })).ok).toBe(true)
-    expect(await foundingSpotsTaken(db, T0 + 120_000)).toBe(2)
-    // The first session ends at its expires_at, still inside its hold.
-    expect(foundingCheckoutExpiresAt(T0) * 1000).toBeLessThan(T0 + SPONSOR_CHECKOUT_EXPIRY_MS)
-    await close()
-  })
-
-  it('one idempotency key never carries two bodies: every input to expires_at is in the key', () => {
-    const seen = new Map<string, string>()
-    for (const claimedAt of [T0, T0 + 1, T0 + 999, T0 + 60_000, T0 + FOUNDING_HOLD_REUSE_MS]) {
-      for (const delay of [0, 1_000, 60_000, 60 * 60_000, FOUNDING_HOLD_REUSE_MS - 1]) {
-        const built = sponsorCheckoutParams({ ...foundingInput(), claimedAt, now: claimedAt + delay, ...urls })
-        const body = JSON.stringify(built.params)
-        expect(seen.get(built.idempotencyKey) ?? body).toBe(body)
-        seen.set(built.idempotencyKey, body)
-      }
-    }
-    expect(seen.size).toBe(5)
-  })
-
-  it('a hold in its last 35 minutes is renewed for the same request, under a new key, and the renewed hold covers the old session', async () => {
-    const { db, close }: TestDb = await createTestDatabase()
-    const first = await foundingAttempt(db, T0)
-    await releaseSponsorSlot(db, { taskSlug: 'coding', requestKey: 'req-a' })
-    const late = T0 + FOUNDING_HOLD_REUSE_MS
-    const renewed = await foundingAttempt(db, late)
-    expect(await holdRow(db, 'coding')).toEqual({ requestKey: 'req-a', offering: 'founding_sponsor', claimedAt: late })
-    expect(renewed.idempotencyKey).not.toBe(first.idempotencyKey)
-    expect(renewed.idempotencyKey.endsWith(`-h${late}`)).toBe(true)
-    expect(renewed.params.expires_at).toBe(foundingCheckoutExpiresAt(late))
-    // The old session (if Stripe made it) ends before the renewed hold does.
-    expect((first.params.expires_at ?? 0) * 1000).toBeLessThan(late + SPONSOR_CHECKOUT_EXPIRY_MS)
-    await close()
-  })
-
-  it('a founding hold stays founding when the same request switches offering, so it keeps counting and is not released', async () => {
-    const { db, close }: TestDb = await createTestDatabase()
-    await foundingAttempt(db, T0)
-    expect((await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'placement_weekly', requestKey: 'req-a', now: T0 + 60_000 })).ok).toBe(true)
-    expect(await holdRow(db, 'coding')).toEqual({ requestKey: 'req-a', offering: 'founding_sponsor', claimedAt: T0 + 60_000 })
-    await releaseSponsorSlot(db, { taskSlug: 'coding', requestKey: 'req-a' })
-    expect((await holdRow(db, 'coding'))?.claimedAt).toBe(T0 + 60_000)
-    expect(await foundingSpotsTaken(db, T0 + 120_000)).toBe(1)
-    // After the founding hold expires, the request's next claim is the offering it asks for.
-    const after = T0 + 60_000 + SPONSOR_CHECKOUT_EXPIRY_MS
-    expect((await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'placement_weekly', requestKey: 'req-a', now: after })).ok).toBe(true)
-    expect(await holdRow(db, 'coding')).toEqual({ requestKey: 'req-a', offering: 'placement_weekly', claimedAt: after })
-    await close()
-  })
-})
-
-describe('Checkout expires_at stays inside Stripe’s 30 minutes to 24 hours', () => {
-  it('a reused hold always leaves a new session at least 30 minutes plus slack', () => {
-    for (const age of [0, 1_000, 60 * 60_000, 12 * 60 * 60_000, FOUNDING_HOLD_REUSE_MS - 1]) {
-      const now = T0 + age
-      const expiresMs = foundingCheckoutExpiresAt(T0, now) * 1000
-      expect(expiresMs).toBeGreaterThanOrEqual(now + STRIPE_CHECKOUT_MIN_EXPIRY_MS + CHECKOUT_EXPIRY_SLACK_MS - 1_000)
-      expect(expiresMs).toBeLessThanOrEqual(now + STRIPE_CHECKOUT_MAX_EXPIRY_MS)
-      expect(expiresMs).toBe(Math.floor((T0 + FOUNDING_CHECKOUT_SESSION_MS) / 1000) * 1000)
-    }
-    expect(FOUNDING_HOLD_REUSE_MS).toBe(23 * 60 * 60_000 + 20 * 60_000)
-  })
-
-  it('never extends a session past its hold: under 31 minutes left, it refuses instead of raising expires_at', () => {
-    const lastMoment = T0 + FOUNDING_CHECKOUT_SESSION_MS - STRIPE_CHECKOUT_MIN_EXPIRY_MS - CHECKOUT_EXPIRY_SLACK_MS
-    expect(foundingCheckoutExpiresAt(T0, lastMoment)).toBe(foundingCheckoutExpiresAt(T0))
-    for (const now of [lastMoment + 1, T0 + FOUNDING_CHECKOUT_SESSION_MS, T0 + SPONSOR_CHECKOUT_EXPIRY_MS + 1]) {
-      expect(() => foundingCheckoutExpiresAt(T0, now)).toThrow(FOUNDING_HOLD_TOO_OLD)
-      expect(() => sponsorCheckoutParams({ ...foundingInput(), claimedAt: T0, now, ...urls })).toThrow(FOUNDING_HOLD_TOO_OLD)
-    }
-  })
-
-  it('clamps the top to 24 hours from now, less slack, when the claim time is ahead of this clock', () => {
-    const now = T0 - 10 * 60_000
-    expect(foundingCheckoutExpiresAt(T0, now)).toBe(Math.floor((now + STRIPE_CHECKOUT_MAX_EXPIRY_MS - CHECKOUT_EXPIRY_SLACK_MS) / 1000))
-    expect(foundingCheckoutExpiresAt(T0, T0 - 4 * 60_000)).toBe(foundingCheckoutExpiresAt(T0))
-  })
-})
-
-describe('the claimed_at freeze is founding only (Sentinel nice-to-have 3 on #98)', () => {
-  it('a placement retry refreshes claimed_at and a failed placement checkout is released', async () => {
-    const { db, close }: TestDb = await createTestDatabase()
-    for (const offering of ['placement_weekly', 'placement_monthly', 'placement_subscription']) {
-      await db.$client.execute('DELETE FROM sponsorship_slot_claims')
-      const claim = { taskSlug: 'coding', offering, requestKey: 'req-p' }
-      expect(await claimSponsorSlot(db, { ...claim, now: T0 })).toEqual({ ok: true, claimedAt: T0 })
-      expect(await claimSponsorSlot(db, { ...claim, now: T0 + 60_000 })).toEqual({ ok: true, claimedAt: T0 + 60_000 })
-      await releaseSponsorSlot(db, { taskSlug: 'coding', requestKey: 'req-p' })
-      expect(await holdRow(db, 'coding')).toEqual({ requestKey: 'req-p', offering, claimedAt: 0 })
-      expect((await claimSponsorSlot(db, { ...claim, requestKey: 'req-other', now: T0 + 120_000 })).ok).toBe(true)
-    }
-    await close()
   })
 })

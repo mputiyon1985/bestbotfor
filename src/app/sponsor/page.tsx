@@ -4,6 +4,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { SponsorCheckoutNotice } from '@/components/sponsor-checkout-notice'
 import { SponsorForm } from '@/components/sponsor-form'
 import { SponsorPaymentLinks } from '@/components/sponsor-payment-links'
+import { SPONSOR_PAYMENT_LINKS_NOTE } from '@/lib/sponsor-payment-links'
 import { pageMetadata } from '@/lib/metadata'
 import { foundingSoldOutNow } from '@/lib/sponsor-availability'
 import { SPONSOR_CONTACT_EMAIL, SPONSOR_CONTACT_MAILTO, sponsorCheckoutSurface } from '@/lib/sponsor-checkout-gate'
@@ -121,7 +122,7 @@ export default async function SponsorPage() {
           ? 'The prices above, one-time and subscription, are the current list prices from server configuration.'
           : 'The prices above are the current list prices from server configuration.'}{' '}
         They can be changed there.
-        {surface === 'live' ? ' The Payment Links below are separate Stripe links with their own prices set in Stripe.' : null}
+        {surface === 'live' ? ` ${SPONSOR_PAYMENT_LINKS_NOTE}` : null}
         {surface === 'closed' ? null : ' The form does not send an amount. Checkout charges the Stripe price configured on the server.'}
       </p>
       {surface === 'live' ? <SponsorPaymentLinks /> : null}

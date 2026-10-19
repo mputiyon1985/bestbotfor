@@ -43,3 +43,9 @@ export const SPONSOR_PAYMENT_LINKS = [
     cta: 'Subscribe monthly',
   },
 ] as const
+
+/** The live /sponsor price note about the links: singular while there is one link (Sentinel P3-1 on #98). */
+export const SPONSOR_PAYMENT_LINKS_NOTE: string =
+  (SPONSOR_PAYMENT_LINKS as readonly unknown[]).length === 1
+    ? 'The Payment Link below is a separate Stripe link with its own price set in Stripe.'
+    : 'The Payment Links below are separate Stripe links with their own prices set in Stripe.'

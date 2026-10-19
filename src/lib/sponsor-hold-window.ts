@@ -1,54 +1,61 @@
 /**
- * How long a sponsor checkout hold (sponsorship_slot_claims) counts, from its
- * claimed_at. A claim older than this can be taken by another buyer, and a
- * founding hold older than this no longer counts toward the cap of 5.
+ * How long a placement checkout hold (sponsorship_slot_claims) counts, from
+ * its claimed_at. Placement sessions use Stripe's default 24-hour expiry, so a
+ * placement claim older than this can be taken by another buyer.
  */
 export const SPONSOR_CHECKOUT_EXPIRY_MS = 24 * 60 * 60 * 1000
 
 /**
- * The founding Checkout session expires this long after its hold's claimed_at
- * (Checkout `expires_at`), 5 minutes before the hold stops counting. Stripe's
- * default 24 hours would run from session creation, which is after the claim,
- * so a session could still complete a few seconds after its hold expired and
- * let a sixth founder in.
+ * A founding Checkout session expires this long after its hold's claimed_at
+ * (Checkout `expires_at` = claimed_at + 60 minutes). Stripe accepts 30 minutes
+ * to 24 hours.
  */
-export const FOUNDING_CHECKOUT_SESSION_MS = 23 * 60 * 60 * 1000 + 55 * 60 * 1000
+export const FOUNDING_CHECKOUT_SESSION_MS = 60 * 60 * 1000
 
-/** Stripe accepts a Checkout `expires_at` from 30 minutes to 24 hours after the session is created. */
+/**
+ * A founding hold counts toward the cap of 5 for this long from claimed_at:
+ * 65 minutes, 5 minutes past its session's expires_at, so the session can
+ * never complete after its hold stopped counting. Short on purpose: an
+ * abandoned or abusive hold frees its spot within about an hour, not a day
+ * (Sentinel's lock-all-5 repro on #98, live since #81).
+ */
+export const FOUNDING_HOLD_MS = 65 * 60 * 1000
+
+/** Stripe refuses a Checkout `expires_at` less than 30 minutes after the session is created. */
 export const STRIPE_CHECKOUT_MIN_EXPIRY_MS = 30 * 60 * 1000
-export const STRIPE_CHECKOUT_MAX_EXPIRY_MS = 24 * 60 * 60 * 1000
 
-/** Room for the time between building the params and Stripe creating the session. */
-export const CHECKOUT_EXPIRY_SLACK_MS = 60 * 1000
+/** How long a hold on this offering counts from its claimed_at. */
+export function sponsorHoldMs(offering: string): number {
+  return offering === 'founding_sponsor' ? FOUNDING_HOLD_MS : SPONSOR_CHECKOUT_EXPIRY_MS
+}
 
-/**
- * A repeat of the same founding request reuses its hold's claimed_at (so the
- * retry sends Stripe the same expires_at and idempotency key) only while the
- * hold is younger than this: 23h20m, which leaves a session built from it at
- * least 35 minutes (Stripe's 30 plus 5 of slack). Past that, the same request
- * renews its hold at the current time and gets a new idempotency key. The
- * renewed hold still covers any earlier session from the old one, which ends
- * at the old claimed_at + 23h55m.
- */
-export const FOUNDING_HOLD_REUSE_MS = FOUNDING_CHECKOUT_SESSION_MS - STRIPE_CHECKOUT_MIN_EXPIRY_MS - 5 * 60 * 1000
-
-export const FOUNDING_HOLD_TOO_OLD = 'founding hold is too old for a new checkout session'
+/** Checkout `expires_at` (Unix seconds) for a founding session whose hold was claimed at `claimedAt` (ms). */
+export function foundingCheckoutExpiresAt(claimedAt: number): number {
+  if (!Number.isFinite(claimedAt) || claimedAt <= 0) throw new Error('founding checkout needs its hold time')
+  return Math.floor((claimedAt + FOUNDING_CHECKOUT_SESSION_MS) / 1000)
+}
 
 /**
- * Checkout `expires_at` (Unix seconds) for a founding session whose hold was
- * claimed at `claimedAt` (ms), built at `now` (ms): claimedAt + 23h55m, kept
- * inside Stripe's window. The top is clamped to 24 hours from now (less
- * slack), which only matters if claimedAt is ahead of this server's clock.
- * The bottom is never raised past claimedAt + 23h55m, because the session
- * would then outlive its hold: when less than 30 minutes (plus slack) would be
- * left, this throws instead, and the hold is renewed on the next attempt
- * (FOUNDING_HOLD_REUSE_MS).
+ * True when a new Stripe create for this founding hold would be refused,
+ * because its fixed expires_at is less than Stripe's 30 minutes away. An
+ * identical replay of a session Stripe already made can still succeed.
  */
-export function foundingCheckoutExpiresAt(claimedAt: number, now: number = claimedAt): number {
-  const target = claimedAt + FOUNDING_CHECKOUT_SESSION_MS
-  const earliest = now + STRIPE_CHECKOUT_MIN_EXPIRY_MS + CHECKOUT_EXPIRY_SLACK_MS
-  const latest = now + STRIPE_CHECKOUT_MAX_EXPIRY_MS - CHECKOUT_EXPIRY_SLACK_MS
-  const expiresAt = Math.min(target, latest)
-  if (expiresAt < earliest) throw new Error(FOUNDING_HOLD_TOO_OLD)
-  return Math.floor(expiresAt / 1000)
+export function foundingHoldTooOldForNewSession(claimedAt: number, now: number): boolean {
+  return foundingCheckoutExpiresAt(claimedAt) * 1000 < now + STRIPE_CHECKOUT_MIN_EXPIRY_MS
+}
+
+/** Whole minutes (at least 1) until a founding hold stops counting. */
+export function foundingHoldMinutesLeft(claimedAt: number, now: number): number {
+  return Math.max(1, Math.ceil((claimedAt + FOUNDING_HOLD_MS - now) / 60_000))
+}
+
+/**
+ * Shown when the same form (request_id) comes back with other details (email,
+ * company, page, offering, or anything else sent to Stripe) while its
+ * founding hold is live. One hold has one Checkout session, so the edit is
+ * refused instead of opening a second payable session.
+ */
+export function foundingFormChangedMessage(minutesLeft: number): string {
+  const minutes = minutesLeft === 1 ? '1 minute' : `${minutesLeft} minutes`
+  return `This form already started a founding checkout with different details, and each founding spot can have only one open checkout. Finish the checkout you opened, or reload the page in ${minutes} to start again with the new details.`
 }

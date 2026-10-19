@@ -117,8 +117,8 @@ test('founding sponsor checkout is a subscription with the $99 first period and 
   >
   const session = recorded.find((item) => item['metadata[email]'] === 'founder@example.com')
   expect(session?.mode).toBe('subscription')
-  // The session ends 23h55m after the hold is claimed, 5 minutes before the hold stops counting (Sentinel P3-3 on #97).
-  const sessionWindow = (23 * 60 + 55) * 60
+  // The session ends 60 minutes after the hold is claimed, 5 minutes before the 65-minute hold stops counting.
+  const sessionWindow = 60 * 60
   const expiresAt = Number(session?.expires_at)
   expect(Number.isInteger(expiresAt)).toBe(true)
   expect(expiresAt).toBeGreaterThanOrEqual(Math.floor(clickedAt / 1000) + sessionWindow)
@@ -132,6 +132,41 @@ test('founding sponsor checkout is a subscription with the $99 first period and 
   expect(session?.['custom_text[submit][message]']).toBe(SPONSOR_FOUNDING_NOTICE)
   expect(session?.['payment_intent_data[statement_descriptor_suffix]']).toBeUndefined()
   expect(JSON.stringify(session)).not.toContain('unit_amount')
+})
+
+test('one network address gets at most 2 new founding holds a day (Sentinel lock-all-5 repro on #98)', async ({ page }) => {
+  await page.route('https://checkout.stripe.com/**', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'text/html', body: '<main><h1>Stripe Checkout</h1></main>' })
+  })
+  await page.setExtraHTTPHeaders({ 'x-forwarded-for': `2001:db8:f0::${Date.now().toString(16)}` })
+  const holdFounding = async (task: string, email: string) => {
+    await page.goto('/sponsor')
+    await page.getByRole('radio', { name: /Founding sponsor/ }).check()
+    await page.getByLabel('Work email').fill(email)
+    await page.getByRole('textbox', { name: 'Company' }).fill('Founding Tools')
+    await page.getByLabel(SPONSOR_TASK_FIELD_LABEL).selectOption(task)
+    await page.getByLabel('Tool name').fill('Widget')
+    await page.getByLabel('One-line description').fill('A useful tool.')
+    await page.getByLabel('Tool URL').fill('https://example.com/widget')
+    await page.getByLabel('Logo').setInputFiles({
+      name: 'logo.png',
+      mimeType: 'image/png',
+      buffer: Buffer.from(
+        'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+        'base64',
+      ),
+    })
+    await page.getByRole('button', { name: 'Continue to checkout' }).click()
+  }
+  await holdFounding('images', 'hold-1@example.com')
+  await expect(page).toHaveURL(/checkout\.stripe\.com/)
+  await holdFounding('video', 'hold-2@example.com')
+  await expect(page).toHaveURL(/checkout\.stripe\.com/)
+  await holdFounding('voice', 'hold-3@example.com')
+  await expect(page.locator('#sponsor-status')).toHaveText(
+    'Too many founding sponsor checkouts from this network today. Try again tomorrow, or email mark@bestbotfor.com.',
+  )
+  await expect(page).toHaveURL(/\/sponsor$/)
 })
 
 test('disclosure names paid placements and a guide without one is unlabeled', async ({ page }) => {
