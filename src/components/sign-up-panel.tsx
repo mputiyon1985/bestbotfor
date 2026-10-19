@@ -5,7 +5,11 @@ import { useEffect, useState } from 'react'
 import { BRAND } from '@/lib/brand'
 import { captureFirstTouch, type FirstTouch, readFirstTouch } from '@/lib/first-touch'
 
-/** Clerk unsafeMetadata written at sign-up. Only the first-touch record, when one was stored. */
+/**
+ * Clerk unsafeMetadata written at sign-up. Only the first-touch record, when one was stored.
+ * unsafeMetadata is client-writable, so `first_touch` is untrusted attribution only: it must
+ * never drive authorization, membership, pricing, or entitlements (Sentinel P3-3 on #101).
+ */
 export function signUpUnsafeMetadata(firstTouch: FirstTouch | null): Record<string, unknown> | undefined {
   return firstTouch ? { first_touch: firstTouch } : undefined
 }

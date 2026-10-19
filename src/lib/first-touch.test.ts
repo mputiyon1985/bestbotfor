@@ -6,7 +6,10 @@ import {
   captureFirstTouch,
   FIRST_TOUCH_JSON_MAX,
   FIRST_TOUCH_STORAGE_KEY,
+  FIRST_TOUCH_TTL_MS,
   firstTouchFromUrl,
+  firstTouchOptedOut,
+  isFirstTouchExpired,
   LANDING_PATH_MAX,
   parseFirstTouch,
   readFirstTouch,
@@ -27,6 +30,9 @@ function memoryStorage(initial: Record<string, string> = {}) {
     setItem: (key: string, value: string) => {
       writes.push(key)
       data.set(key, value)
+    },
+    removeItem: (key: string) => {
+      data.delete(key)
     },
   }
 }
@@ -97,10 +103,16 @@ describe('first-touch UTM capture', () => {
   })
 
   it('re-sanitizes a posted record and rejects oversized or tagless input', () => {
-    expect(parseFirstTouch(JSON.stringify({ utm_source: 'face<>book', landing_path: '//x', extra: 'drop', at: 'nope' }))).toEqual({
+    expect(
+      parseFirstTouch(JSON.stringify({ utm_source: 'face<>book', landing_path: '//x', extra: 'drop', at: now.toISOString() }), now),
+    ).toEqual({
       utm_source: 'facebook',
       landing_path: '/',
+      at: now.toISOString(),
     })
+    // A record with no valid arrival time cannot age out, so it is rejected.
+    expect(parseFirstTouch(JSON.stringify({ utm_source: 'x', landing_path: '/', at: 'nope' }), now)).toBeNull()
+    expect(parseFirstTouch(JSON.stringify({ utm_source: 'x', landing_path: '/' }), now)).toBeNull()
     expect(parseFirstTouch(JSON.stringify({ landing_path: '/' }))).toBeNull()
     expect(parseFirstTouch('x'.repeat(FIRST_TOUCH_JSON_MAX + 1))).toBeNull()
     expect(parseFirstTouch('[]')).toBeNull()
@@ -121,9 +133,64 @@ describe('first-touch UTM capture', () => {
     expect(panel).toContain('unsafeMetadata={signUpUnsafeMetadata(firstTouch)}')
   })
 
-  it('does not depend on analytics consent and is mounted sitewide', () => {
+  it('expires 90 days after arrival and removes the expired copy', () => {
+    const day = 24 * 60 * 60 * 1000
+    const at = (ms: number) => new Date(now.getTime() - ms).toISOString()
+    expect(FIRST_TOUCH_TTL_MS).toBe(90 * day)
+    expect(isFirstTouchExpired({ at: at(89 * day) }, now)).toBe(false)
+    expect(isFirstTouchExpired({ at: at(90 * day) }, now)).toBe(false)
+    expect(isFirstTouchExpired({ at: at(90 * day + 1) }, now)).toBe(true)
+    expect(isFirstTouchExpired({ at: at(-2 * day) }, now)).toBe(true)
+    expect(isFirstTouchExpired({}, now)).toBe(true)
+    const old = JSON.stringify({ utm_source: 'old', landing_path: '/', at: at(91 * day) })
+    expect(parseFirstTouch(old, now)).toBeNull()
+    const storage = memoryStorage({ [FIRST_TOUCH_STORAGE_KEY]: old })
+    expect(readFirstTouch(storage, now, { optedOut: false })).toBeNull()
+    expect(storage.data.has(FIRST_TOUCH_STORAGE_KEY)).toBe(false)
+    const again = memoryStorage({ [FIRST_TOUCH_STORAGE_KEY]: old })
+    expect(captureFirstTouch({ search: '?utm_source=fresh', pathname: '/' }, again, now, { optedOut: false })).toMatchObject({
+      utm_source: 'fresh',
+      at: now.toISOString(),
+    })
+  })
+
+  it('captures and sends nothing while GPC is on or analytics is denied', () => {
+    const storage = memoryStorage()
+    expect(captureFirstTouch({ search: '?utm_source=x', pathname: '/' }, storage, now, { optedOut: true })).toBeNull()
+    expect(storage.writes).toEqual([])
+    const stored = memoryStorage()
+    captureFirstTouch({ search: '?utm_source=x', pathname: '/' }, stored, now, { optedOut: false })
+    expect(readFirstTouch(stored, now, { optedOut: true })).toBeNull()
+    expect(readFirstTouch(stored, now, { optedOut: false })).toMatchObject({ utm_source: 'x' })
+
+    const nav = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+    const doc = Object.getOwnPropertyDescriptor(globalThis, 'document')
+    const setGlobals = (gpc: boolean, cookie: string) => {
+      Object.defineProperty(globalThis, 'navigator', { value: { globalPrivacyControl: gpc }, configurable: true })
+      Object.defineProperty(globalThis, 'document', { value: { cookie }, configurable: true })
+    }
+    try {
+      setGlobals(true, '')
+      expect(firstTouchOptedOut()).toBe(true)
+      expect(captureFirstTouch({ search: '?utm_source=x', pathname: '/' }, memoryStorage(), now)).toBeNull()
+      setGlobals(false, 'bbf_consent=denied')
+      expect(firstTouchOptedOut()).toBe(true)
+      setGlobals(false, 'bbf_consent=granted')
+      expect(firstTouchOptedOut()).toBe(false)
+      setGlobals(false, '')
+      expect(firstTouchOptedOut()).toBe(false)
+      expect(captureFirstTouch({ search: '?utm_source=x', pathname: '/' }, memoryStorage(), now)).toMatchObject({ utm_source: 'x' })
+    } finally {
+      if (nav) Object.defineProperty(globalThis, 'navigator', nav)
+      else Reflect.deleteProperty(globalThis, 'navigator')
+      if (doc) Object.defineProperty(globalThis, 'document', doc)
+      else Reflect.deleteProperty(globalThis, 'document')
+    }
+  })
+
+  it('is mounted sitewide and the components go through the opt-out-aware helpers', () => {
     const capture = readFileSync(path.join(process.cwd(), 'src/components/first-touch-capture.tsx'), 'utf8')
-    expect(capture).not.toMatch(/consent|gpc/i)
+    expect(capture).toContain('captureFirstTouch(window.location)')
     const layout = readFileSync(path.join(process.cwd(), 'src/app/layout.tsx'), 'utf8')
     expect(layout).toContain('<FirstTouchCapture />')
     const form = readFileSync(path.join(process.cwd(), 'src/components/newsletter-form.tsx'), 'utf8')
