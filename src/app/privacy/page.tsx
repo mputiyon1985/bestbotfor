@@ -4,7 +4,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { LawyerReviewNotice } from '@/components/lawyer-review-notice'
 import { userRatingsEnabled } from '@/lib/flags'
 import { pageMetadata } from '@/lib/metadata'
-import { CLICK_LOG_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, NEWSLETTER_SIGNUP_PARAGRAPH, rateLimitPrivacyParagraphs, RETENTION_JOB_PARAGRAPH, SHARING_PARAGRAPH, SUGGESTION_PRIVACY_PARAGRAPH, TURSO_BACKUP_PARAGRAPH } from '@/lib/privacy-copy'
+import { CLICK_LOG_PARAGRAPH, FIRST_TOUCH_PRIVACY_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, NEWSLETTER_SIGNUP_PARAGRAPH, rateLimitPrivacyParagraphs, RETENTION_JOB_PARAGRAPH, SHARING_PARAGRAPH, SUGGESTION_PRIVACY_PARAGRAPH, TURSO_BACKUP_PARAGRAPH } from '@/lib/privacy-copy'
 import { PRIVACY_RATINGS_PARAGRAPHS, PRIVACY_UPDATED, PRIVACY_UPDATED_WITH_RATINGS, RETENTION_ROWS } from '@/lib/ratings-policy-copy'
 
 export const dynamic = 'force-dynamic'
@@ -27,6 +27,7 @@ export default function PrivacyPage() {
           : `This policy covers bestbotfor.com, a United States site. It was last updated on ${PRIVACY_UPDATED}.`}
       </p>
       <h2 className="font-semibold text-3xl">What we collect</h2>
+      <p>{FIRST_TOUCH_PRIVACY_PARAGRAPH}</p>
       <p>{NEWSLETTER_SIGNUP_PARAGRAPH}</p>
       <p>{SUGGESTION_PRIVACY_PARAGRAPH}</p>
       <p>
@@ -49,6 +50,11 @@ export default function PrivacyPage() {
       <p>
         Analytics cookies are off until you accept the banner. That choice is stored in a first-party cookie named
         bbf_consent. It is a preference cookie, not an advertising cookie.
+      </p>
+      <p>
+        Your browser&apos;s local storage can also hold bbf_first_touch, the link record described under What we collect.
+        It is not an advertising identifier. We do not write it while Global Privacy Control is on or after you reject
+        analytics, and it expires 90 days after you arrived.
       </p>
       <p>{GPC_PRIVACY_PARAGRAPH}</p>
       <p>

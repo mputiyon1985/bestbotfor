@@ -8,7 +8,7 @@ import { rateLimitRetentionKept } from './privacy-copy'
 export const LAWYER_REVIEW_NOTICE =
   'Lawyer review of the ratings drafts and the base policy pages was recorded on October 17, 2026. The written sign-off is a pending link. User ratings are not launched, so this copy is not in effect yet.'
 
-export const PRIVACY_UPDATED = 'October 18, 2026'
+export const PRIVACY_UPDATED = 'October 19, 2026'
 
 export const PRIVACY_UPDATED_WITH_RATINGS =
   `${PRIVACY_UPDATED}. Lawyer review of the ratings and reviews section was recorded on October 17, 2026. The section is not in effect until user ratings launch.`

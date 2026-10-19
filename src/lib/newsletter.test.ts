@@ -155,6 +155,33 @@ describe('subscribeToNewsletter', () => {
     await close()
   })
 
+  it('sends stored first-touch tags to Beehiiv and falls back to the fixed pair without them', async () => {
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    const bodies: Record<string, unknown>[] = []
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      bodies.push(JSON.parse(String(init?.body ?? '{}')))
+      return new Response(JSON.stringify({ data: { id: `sub_${bodies.length}` } }), { status: 201 })
+    }
+    await subscribeToNewsletter({
+      email: 'tagged@example.com',
+      honeypot: '',
+      source: 'best',
+      firstTouch: { utm_source: 'facebook', utm_medium: 'social', utm_campaign: 'w1_oct19', utm_content: 'fb1', landing_path: '/best/music' },
+      db,
+      rateKey: 'newsletter-utm-1',
+      now: 1_000,
+      fetchImpl,
+    })
+    await subscribeToNewsletter({ email: 'plain@example.com', honeypot: '', db, rateKey: 'newsletter-utm-2', now: 1_000, fetchImpl })
+    expect(bodies[0]).toMatchObject({ utm_source: 'facebook', utm_medium: 'social', utm_campaign: 'w1_oct19', utm_content: 'fb1', referring_site: absoluteUrl('/best') })
+    expect(bodies[0]).not.toHaveProperty('landing_path')
+    expect(bodies[1]).toMatchObject({ utm_source: 'bestbotfor', utm_medium: 'website' })
+    expect(bodies[1]).not.toHaveProperty('utm_campaign')
+    await close()
+  })
+
   it('does not log the email when Beehiiv rejects the signup', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     process.env.BEEHIIV_API_KEY = 'beehiiv-test'

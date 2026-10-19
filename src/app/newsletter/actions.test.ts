@@ -1,0 +1,47 @@
+import { afterEach, describe, expect, it, vi } from 'vitest'
+
+const subscribeToNewsletter = vi.fn()
+
+vi.mock('next/headers', () => ({ headers: async () => new Headers({ 'x-forwarded-for': '203.0.113.9' }) }))
+vi.mock('@/lib/db', () => ({ getDb: () => ({}) }))
+vi.mock('@/lib/newsletter', () => ({ subscribeToNewsletter: (input: unknown) => subscribeToNewsletter(input) }))
+
+import { subscribeAction } from './actions'
+
+afterEach(() => subscribeToNewsletter.mockReset())
+
+function form(fields: Record<string, string>) {
+  const data = new FormData()
+  for (const [key, value] of Object.entries(fields)) data.set(key, value)
+  return data
+}
+
+const idle = { status: 'idle' as const, message: '', tracked: false }
+
+describe('subscribeAction first_touch wiring (Sentinel P3-1 on #101)', () => {
+  it('passes the posted first_touch through parseFirstTouch, not the raw value', async () => {
+    subscribeToNewsletter.mockResolvedValue({ status: 'success', message: 'ok', tracked: false })
+    const at = new Date().toISOString()
+    const raw = JSON.stringify({
+      utm_source: 'face<b>book',
+      utm_medium: 'social',
+      landing_path: '//evil.example/x?email=a@b.c',
+      email: 'smuggled@example.com',
+      reactivate_existing: true,
+      at,
+    })
+    await subscribeAction(idle, form({ email: 'reader@example.com', first_touch: raw }))
+    expect(subscribeToNewsletter).toHaveBeenCalledTimes(1)
+    const input = subscribeToNewsletter.mock.calls[0]?.[0] as { firstTouch: unknown }
+    expect(input.firstTouch).toEqual({ utm_source: 'facebbook', utm_medium: 'social', landing_path: '/', at })
+  })
+
+  it('passes null for a missing, malformed, tagless, or expired first_touch', async () => {
+    subscribeToNewsletter.mockResolvedValue({ status: 'success', message: 'ok', tracked: false })
+    const expired = JSON.stringify({ utm_source: 'x', landing_path: '/', at: new Date(Date.now() - 91 * 86_400_000).toISOString() })
+    for (const value of [undefined, '{not json', JSON.stringify({ landing_path: '/' }), expired]) {
+      await subscribeAction(idle, form(value === undefined ? { email: 'r@example.com' } : { email: 'r@example.com', first_touch: value }))
+    }
+    expect(subscribeToNewsletter.mock.calls.map((call) => (call[0] as { firstTouch: unknown }).firstTouch)).toEqual([null, null, null, null])
+  })
+})
