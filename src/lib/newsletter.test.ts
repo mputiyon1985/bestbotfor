@@ -155,6 +155,45 @@ describe('subscribeToNewsletter', () => {
     await close()
   })
 
+  it('stores first-touch tags on a new subscriber row and leaves them null without any', async () => {
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    const fetchImpl: typeof fetch = async () => new Response(JSON.stringify({ data: { id: 'sub_x' } }), { status: 201 })
+    await subscribeToNewsletter({
+      email: 'tagged@example.com',
+      honeypot: '',
+      attribution: { utm_source: 'facebook', utm_medium: 'social', utm_campaign: 'w1_oct19', utm_content: 'fb1', landing_path: '/best/music' },
+      db,
+      rateKey: 'newsletter-utm-row-1',
+      now: 1_000,
+      fetchImpl,
+    })
+    await subscribeToNewsletter({ email: 'plain@example.com', honeypot: '', db, rateKey: 'newsletter-utm-row-2', now: 1_000, fetchImpl })
+    const [tagged] = await db.select().from(subscribers).where(eq(subscribers.email, 'tagged@example.com'))
+    expect(tagged).toMatchObject({ utmSource: 'facebook', utmMedium: 'social', utmCampaign: 'w1_oct19', utmContent: 'fb1', landingPath: '/best/music' })
+    const [plain] = await db.select().from(subscribers).where(eq(subscribers.email, 'plain@example.com'))
+    expect(plain).toMatchObject({ utmSource: null, utmMedium: null, utmCampaign: null, utmContent: null, landingPath: null })
+    await close()
+  })
+
+  it('stores first-touch tags on a pending row when Beehiiv is not connected', async () => {
+    delete process.env.BEEHIIV_API_KEY
+    delete process.env.BEEHIIV_PUBLICATION_ID
+    const { db, close } = await createTestDatabase()
+    await subscribeToNewsletter({
+      email: 'pending@example.com',
+      honeypot: '',
+      attribution: { utm_source: 'x', landing_path: '/' },
+      db,
+      rateKey: 'newsletter-utm-row-3',
+      now: 1_000,
+    })
+    const [row] = await db.select().from(subscribers).where(eq(subscribers.email, 'pending@example.com'))
+    expect(row).toMatchObject({ utmSource: 'x', utmMedium: null, landingPath: '/' })
+    await close()
+  })
+
   it('does not log the email when Beehiiv rejects the signup', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
     process.env.BEEHIIV_API_KEY = 'beehiiv-test'

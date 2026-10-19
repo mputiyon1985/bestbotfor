@@ -322,6 +322,34 @@ async function holdExisting(
   return claimOrDone(db, row.id, now)
 }
 
+/** First-touch values for a new subscriber row. Callers pass already-sanitized values. */
+export type SubscriberAttribution = {
+  utm_source?: string
+  utm_medium?: string
+  utm_campaign?: string
+  utm_content?: string
+  landing_path?: string
+}
+
+const ATTRIBUTION_MAX = 200
+
+function attributionValue(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const trimmed = value.trim().slice(0, ATTRIBUTION_MAX)
+  return trimmed.length > 0 ? trimmed : null
+}
+
+/** Column values for an insert. Existing rows are never updated, so the first signup's tags stay. */
+export function attributionColumns(attribution: SubscriberAttribution | null | undefined) {
+  return {
+    utmSource: attributionValue(attribution?.utm_source),
+    utmMedium: attributionValue(attribution?.utm_medium),
+    utmCampaign: attributionValue(attribution?.utm_campaign),
+    utmContent: attributionValue(attribution?.utm_content),
+    landingPath: attributionValue(attribution?.landing_path),
+  }
+}
+
 /**
  * Marks the row in progress before Beehiiv is called. A concurrent signup or backfill
  * loses the conditional update and must not send the address again.
@@ -331,6 +359,7 @@ export async function holdSubscriberForBeehiiv(
   email: string,
   now: number,
   fetchImpl?: typeof fetch,
+  attribution: SubscriberAttribution = {},
 ): Promise<SubscriberHold> {
   const existing = await db.select().from(subscribers).where(eq(subscribers.email, email)).limit(1)
   if (existing[0]) return holdExisting(db, existing[0], now, fetchImpl)
@@ -344,6 +373,7 @@ export async function holdSubscriberForBeehiiv(
         beehiivId: null,
         status: SYNCING_SUBSCRIBER_STATUS,
         syncingStartedAt: now,
+        ...attributionColumns(attribution),
       })
       .returning({ id: subscribers.id })
     const id = inserted[0]?.id

@@ -8,7 +8,9 @@ import { newsletterReferringPath, type NewsletterSource } from './newsletter-sou
 import { emailSchema, newsletterFieldsSchema } from './validation'
 import {
   finishSubscriberSync,
+  attributionColumns,
   holdSubscriberForBeehiiv,
+  type SubscriberAttribution,
   releaseSubscriberHold,
 } from './newsletter-backfill'
 import {
@@ -75,6 +77,8 @@ export async function subscribeToNewsletter(input: {
   db: Database
   rateKey: string
   source?: NewsletterSource
+  /** First-touch tags for a new row (PR A supplies them from the form). */
+  attribution?: SubscriberAttribution | null
   fetchImpl?: typeof fetch
   now?: number
 }): Promise<NewsletterResult> {
@@ -119,7 +123,7 @@ export async function subscribeToNewsletter(input: {
   }
 
   if (isBeehiivConfigured()) {
-    const held = await holdSubscriberForBeehiiv(input.db, normalized, input.now ?? Date.now(), input.fetchImpl)
+    const held = await holdSubscriberForBeehiiv(input.db, normalized, input.now ?? Date.now(), input.fetchImpl, input.attribution ?? {})
     if (held.kind === 'done') return { status: 'success', message: SYNCED_SUCCESS, tracked: false }
     if (held.kind === 'opted_out') {
       return { status: 'error', message: ADD_FAILED, tracked: false }
@@ -158,6 +162,7 @@ export async function subscribeToNewsletter(input: {
     destination: 'local',
     beehiivId: null,
     status: PENDING_SUBSCRIBER_STATUS,
+    ...attributionColumns(input.attribution),
   })
   return { status: 'success', message: PENDING_SUCCESS, tracked: false }
 }
