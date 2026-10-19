@@ -36,7 +36,16 @@ There is ONE founding cap of 5, shared by the Founding Payment Link and the in-a
 - Founders already sold through the link keep their Stripe subscriptions, price lock, and manual rows.
 - The Monthly link is not part of the founding cap.
 
-**Still open (Sentinel P3-1 on #84):** when the 5th founding link sale completes, Stripe deactivates the link but the `/sponsor` card stays up until a code change hides it; #88 hides it only on configuration, not on sell-out. A session opened before the 5th completes can still finish, so until sell-out hiding ships, the live payment watch must check for a 6th founding sale and refund it.
+**Sold-out auto-hide (Sentinel P3-1 on #84, shipped; Mark approved building it on 2026-10-19).** Once the shared count reaches 5, live `/sponsor` renders the in-app founding option disabled and labeled "Founding sponsor · Sold out" with "All founding sponsor spots are taken.", and the price list line reads "Founding sponsor: Sold out. All 5 founding sponsor spots are taken." No founding price or terms are shown while sold out, and the Founding Payment Link card stays hidden (it is hidden whenever the founding Prices are set). The checkout server action refuses a new founding session with "All 5 founding sponsor spots are taken. Choose another option." before any Stripe call. Details, the race guard, and the refund rule are in `sponsor-subscriptions.md`, "Founding sold out". The Founding Payment Link has been inactive since the 2026-10-19 go-live, so a link session can no longer add a sixth founder; keep the live payment watch on for the webhook-completion edge case described there.
+
+## Founding go-live record (2026-10-19)
+
+- Approval: Mark directly approved the founding go-live at 8:49 PM ET on 2026-10-18.
+- 0(a): the Founding Payment Link `plink_1URylTIJUbygfAuc07cebXfn` (…fZudRabMce0q5BoebyfrW04) and the two other founding links (`plink_1URyevIJUbygfAuc7BjAxQtg`, `plink_1URyeXIJUbygfAucLVGvitJK`) are inactive (live API read-back, 2026-10-19). The founding link had 0 completed sessions of its limit of 5.
+- 0(b): a read-only SELECT on the production database returned 0 `founding_link:` rows and 0 sponsorships; live Stripe had 0 charges.
+- Step 1: `STRIPE_PRICE_FOUNDING_SETUP` = `price_1URydxIJUbygfAucGkbOAOpq` ($99 one-time, live, active) and `STRIPE_PRICE_FOUNDING_MONTHLY` = `price_1URydxIJUbygfAucYoEgdmVJ` ($299/mo recurring, live, active) were set as Sensitive, Production only, at about 5:53 AM ET on 2026-10-19. They are the live founding link's own line-item Prices. They have no `lookup_key`, so the `ensure_price` lookup in `sponsor-subscriptions.md` does not find them; the app matches by Price id only. The 14-day trial comes from the app's Checkout (`FOUNDING_TRIAL_DAYS`), not from the Price.
+- Step 2: production redeployed from main `0aa9c0c` as `dpl_7m5jB9YuxbaNdmNZrkQVGWEpSBvL`, ready 5:54 AM ET.
+- Step 3 verify (read-only): `/sponsor` live mode with the founding option enabled, the founding line "$99 for 2 weeks, then $299/mo", the Founding Payment Link card hidden; HTML and client chunks free of `priceEnv`, `STRIPE_PRICE_` and both Price ids; an unsigned webhook POST returned 400 `invalid-signature`; no 5xx; 0 live charges.
 
 ## Cancelling
 

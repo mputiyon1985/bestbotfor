@@ -4,9 +4,11 @@ import { useActionState, useEffect, useState } from 'react'
 import { sponsorCheckoutAction, type SponsorFormState } from '@/app/sponsor/actions'
 import {
   SPONSOR_COMPANY_PUBLISHED,
+  SPONSOR_FOUNDING_SOLD_OUT_NOTICE,
   SPONSOR_LOGO_HINT,
   SPONSOR_OFFERING_NOT_CONFIGURED,
   SPONSOR_REVIEW_NOTICE,
+  SPONSOR_SOLD_OUT_LABEL,
   SPONSOR_TASK_FIELD_LABEL,
 } from '@/lib/sponsor-form-copy'
 
@@ -19,6 +21,8 @@ export type SponsorFormOffering = {
   notice: string
   target: 'task' | 'issue_date'
   available: boolean
+  /** The founding cap is reached: the option is disabled and labeled Sold out. */
+  soldOut?: boolean
 }
 
 export type SponsorFormTask = { slug: string; name: string }
@@ -63,8 +67,13 @@ export function SponsorForm({ offerings, tasks }: { offerings: SponsorFormOfferi
             ) : (
               // A disabled option names no price: its summary and notice quote prices too.
               <span>
-                <span className="font-semibold">{offering.title}</span>
-                <span className="mt-1 block text-sm">{SPONSOR_OFFERING_NOT_CONFIGURED}</span>
+                <span className="font-semibold">
+                  {offering.title}
+                  {offering.soldOut ? ` · ${SPONSOR_SOLD_OUT_LABEL}` : null}
+                </span>
+                <span className="mt-1 block text-sm">
+                  {offering.soldOut ? SPONSOR_FOUNDING_SOLD_OUT_NOTICE : SPONSOR_OFFERING_NOT_CONFIGURED}
+                </span>
               </span>
             )}
           </label>

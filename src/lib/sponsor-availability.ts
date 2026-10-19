@@ -1,4 +1,5 @@
 import { placementWindowMs } from './best-placement'
+import { getDb } from './db'
 import type { Database } from './db/client'
 import { FOUNDING_SOLD_OUT, FOUNDING_SPONSOR_CAP, isSubscriptionOffering, isTaskOffering } from './sponsor-offerings'
 
@@ -162,6 +163,23 @@ export async function foundingSpotsTaken(db: Database, now: number, excludeTask 
 /** Founding spots still open, never below zero. */
 export async function foundingSpotsLeft(db: Database, now: number): Promise<number> {
   return Math.max(0, FOUNDING_SPONSOR_CAP - (await foundingSpotsTaken(db, now)))
+}
+
+/**
+ * For /sponsor: true once every founding spot is taken (foundingSpotsLeft is 0),
+ * so the page renders the founding option disabled and labeled Sold out.
+ * Display only. The checkout claim (claimSponsorSlot) is the authority: it
+ * refuses a founding hold past the cap in one statement. If this read fails,
+ * the page logs the error name and shows the option as open; a checkout
+ * attempt is then still refused by the claim, or fails on the same database.
+ */
+export async function foundingSoldOutNow(now = Date.now(), db?: Database): Promise<boolean> {
+  try {
+    return (await foundingSpotsLeft(db ?? getDb(), now)) === 0
+  } catch (error) {
+    console.error('founding availability read failed', error instanceof Error ? error.name : 'error')
+    return false
+  }
 }
 
 /** Drop this request's hold after Checkout fails. Another request's hold stays. */

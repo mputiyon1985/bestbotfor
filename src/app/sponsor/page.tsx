@@ -5,10 +5,12 @@ import { SponsorCheckoutNotice } from '@/components/sponsor-checkout-notice'
 import { SponsorForm } from '@/components/sponsor-form'
 import { SponsorPaymentLinks } from '@/components/sponsor-payment-links'
 import { pageMetadata } from '@/lib/metadata'
+import { foundingSoldOutNow } from '@/lib/sponsor-availability'
 import { SPONSOR_CONTACT_EMAIL, SPONSOR_CONTACT_MAILTO, sponsorCheckoutSurface } from '@/lib/sponsor-checkout-gate'
 import {
   FOUNDING_SPONSOR_CAP,
   SPONSOR_FOUNDING_NOTICE,
+  SPONSOR_SOLD_OUT_LABEL,
   SPONSOR_OFFERINGS,
   SPONSOR_ONE_TIME_NOTICE,
   SPONSOR_SUBSCRIPTION_NOTICE,
@@ -34,11 +36,19 @@ export function generateMetadata(): Metadata {
   })
 }
 
-export default function SponsorPage() {
+export default async function SponsorPage() {
   const surface = sponsorCheckoutSurface()
   const mode = stripeKeyMode()
+  // Go-live gate: once the in-app founding Prices are set, the founding Payment
+  // Link is hidden so both founding offers never show together (shared cap of 5).
+  const inAppFounding = sponsorOfferingConfigured('founding_sponsor')
+  // Sold out: the shared founding count (paid unrefunded founding rows, founding
+  // link first-period rows, and live founding checkout holds) has reached the cap.
+  // The database is read only when the founding offer could otherwise be bought.
+  const foundingSoldOut = surface !== 'closed' && mode !== 'off' && inAppFounding ? await foundingSoldOutNow() : false
   const offerings = SPONSOR_OFFERINGS.map((offering) => {
-    const available = surface !== 'closed' && mode !== 'off' && sponsorOfferingConfigured(offering.id)
+    const soldOut = offering.id === 'founding_sponsor' && foundingSoldOut
+    const available = surface !== 'closed' && mode !== 'off' && sponsorOfferingConfigured(offering.id) && !soldOut
     // A disabled option is sent without its price or terms, so the form cannot show them.
     return {
       id: offering.id,
@@ -48,6 +58,7 @@ export default function SponsorPage() {
       notice: available ? sponsorOfferingNotice(offering) : '',
       target: offering.target,
       available,
+      soldOut,
     }
   })
   const tasks = taskSeeds.map((task) => ({ slug: task.slug, name: task.name }))
@@ -58,9 +69,6 @@ export default function SponsorPage() {
   const foundingOffering = sponsorOffering('founding_sponsor')
   const subscription = subscriptionOffering ? sponsorOfferingPriceLabel(subscriptionOffering) : ''
   const founding = foundingOffering ? sponsorOfferingPriceLabel(foundingOffering) : ''
-  // Go-live gate: once the in-app founding Prices are set, the founding Payment
-  // Link is hidden so both founding offers never show together (shared cap of 5).
-  const inAppFounding = sponsorOfferingConfigured('founding_sponsor')
   // The price list names a subscription offer only once its Prices are set, the
   // same check that enables its radio, so the list never offers a disabled option.
   const listSubscription = Boolean(subscriptionOffering) && sponsorOfferingConfigured('placement_subscription')
@@ -90,7 +98,12 @@ export default function SponsorPage() {
             Featured placement, monthly subscription: {subscription}. {SPONSOR_SUBSCRIPTION_NOTICE}
           </li>
         ) : null}
-        {listFounding ? (
+        {listFounding && foundingSoldOut ? (
+          <li>
+            Founding sponsor: {SPONSOR_SOLD_OUT_LABEL}. All {FOUNDING_SPONSOR_CAP} founding sponsor spots are taken.
+          </li>
+        ) : null}
+        {listFounding && !foundingSoldOut ? (
           <li>
             Founding sponsor: {founding}. {SPONSOR_FOUNDING_NOTICE} Limited to {FOUNDING_SPONSOR_CAP} founding sponsors.
           </li>
