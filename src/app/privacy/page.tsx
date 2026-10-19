@@ -51,6 +51,11 @@ export default function PrivacyPage() {
         Analytics cookies are off until you accept the banner. That choice is stored in a first-party cookie named
         bbf_consent. It is a preference cookie, not an advertising cookie.
       </p>
+      <p>
+        Your browser&apos;s local storage can also hold bbf_first_touch, the link record described under What we collect.
+        It is not an advertising identifier. We do not write it while Global Privacy Control is on or after you reject
+        analytics, and it expires 90 days after you arrived.
+      </p>
       <p>{GPC_PRIVACY_PARAGRAPH}</p>
       <p>
         If Google Analytics 4 is configured, we load it with Google Consent Mode. The default is denied. If you accept,

@@ -1,13 +1,24 @@
 /**
  * First-touch attribution (James, Oct 19, 2026). On the first visit that
  * carries utm_* tags we keep the tags and the landing path in first-party
- * localStorage. Nothing is written when the URL has no tags, and an existing
- * entry is never overwritten. This does not depend on analytics consent: it is
- * a functional first-party record that never leaves the browser unless the
- * visitor joins the newsletter or creates an account. Every value is
+ * localStorage. Nothing is written when the URL has no tags, and a valid
+ * existing entry is never overwritten. It is a first-party record that never
+ * leaves the browser unless the visitor joins the newsletter or creates an
+ * account. Every value is
  * sanitized and length-capped on write and again on read (the server
  * re-sanitizes anything the browser sends).
+ *
+ * Opt-out (James, Oct 19, 2026, Sentinel P2-2 on #101): nothing is captured,
+ * and a stored record is not read or sent, while Global Privacy Control is on
+ * or the bbf_consent cookie is denied.
+ *
+ * Expiry (Sentinel P2-1 on #101): a record is valid for 90 days from its `at`
+ * time. A record without a valid `at`, or one older than 90 days, is ignored
+ * and removed from storage, so the next tagged visit can write a fresh one.
  */
+
+import { readConsent } from './consent'
+import { readNavigatorGpc } from './gpc'
 
 export const FIRST_TOUCH_STORAGE_KEY = 'bbf_first_touch'
 export const UTM_FIELDS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content'] as const
@@ -17,6 +28,11 @@ export const UTM_VALUE_MAX = 100
 export const LANDING_PATH_MAX = 200
 /** Upper bound on the serialized record a form may post. */
 export const FIRST_TOUCH_JSON_MAX = 1024
+/** How long a stored record stays valid, from its `at` time. */
+export const FIRST_TOUCH_TTL_DAYS = 90
+export const FIRST_TOUCH_TTL_MS = FIRST_TOUCH_TTL_DAYS * 24 * 60 * 60 * 1000
+/** Clock-skew allowance for an `at` slightly in the future. */
+const FIRST_TOUCH_FUTURE_SKEW_MS = 24 * 60 * 60 * 1000
 
 export type FirstTouch = Partial<Record<UtmField, string>> & {
   landing_path: string
@@ -69,8 +85,29 @@ export function firstTouchFromUrl(search: string, pathname: string, now: Date = 
   return record
 }
 
-/** Parses and re-sanitizes a stored or posted record. Null when it holds no tags. */
-export function parseFirstTouch(raw: unknown): FirstTouch | null {
+/** True when the record has no usable `at`, is older than 90 days, or is dated more than a day ahead. */
+export function isFirstTouchExpired(record: Pick<FirstTouch, 'at'>, now: Date = new Date()): boolean {
+  if (typeof record.at !== 'string') return true
+  const time = Date.parse(record.at)
+  if (!Number.isFinite(time)) return true
+  const age = now.getTime() - time
+  return age > FIRST_TOUCH_TTL_MS || age < -FIRST_TOUCH_FUTURE_SKEW_MS
+}
+
+/** GPC on, or analytics rejected on the banner. No consent choice yet is not an opt-out. */
+export function firstTouchOptedOut(): boolean {
+  try {
+    return readNavigatorGpc() || readConsent() === 'denied'
+  } catch {
+    return true
+  }
+}
+
+/**
+ * Parses and re-sanitizes a stored or posted record. Null when it holds no tags, has no
+ * valid `at`, or is past the 90-day expiry.
+ */
+export function parseFirstTouch(raw: unknown, now: Date = new Date()): FirstTouch | null {
   if (typeof raw !== 'string' || raw.length === 0 || raw.length > FIRST_TOUCH_JSON_MAX) return null
   let data: unknown
   try {
@@ -91,7 +128,9 @@ export function parseFirstTouch(raw: unknown): FirstTouch | null {
   }
   if (!found) return null
   const at = sanitizeAt(input.at)
-  if (at) record.at = at
+  if (!at) return null
+  record.at = at
+  if (isFirstTouchExpired(record, now)) return null
   return record
 }
 
@@ -108,7 +147,7 @@ export function beehiivUtmFields(firstTouch: FirstTouch | null | undefined): Par
   return Object.keys(fields).length > 0 ? fields : { ...FALLBACK_UTM }
 }
 
-type StorageLike = Pick<Storage, 'getItem' | 'setItem'>
+type StorageLike = Pick<Storage, 'getItem' | 'setItem'> & Partial<Pick<Storage, 'removeItem'>>
 
 function safeStorage(storage?: StorageLike): StorageLike | null {
   if (storage) return storage
@@ -119,16 +158,32 @@ function safeStorage(storage?: StorageLike): StorageLike | null {
   }
 }
 
+/** The valid stored record, or null. An expired or corrupt entry is removed. */
+function readValid(store: StorageLike, now: Date): FirstTouch | null {
+  const raw = store.getItem(FIRST_TOUCH_STORAGE_KEY)
+  if (raw === null) return null
+  const record = parseFirstTouch(raw, now)
+  if (!record) store.removeItem?.(FIRST_TOUCH_STORAGE_KEY)
+  return record
+}
+
+export type FirstTouchOptions = {
+  /** Defaults to the browser's GPC signal and the bbf_consent cookie. */
+  optedOut?: boolean
+}
+
 /** Writes the record only if nothing valid is stored yet. Returns what is stored after the call. */
 export function captureFirstTouch(
   location: { search: string; pathname: string },
   storage?: StorageLike,
   now: Date = new Date(),
+  options: FirstTouchOptions = {},
 ): FirstTouch | null {
+  if (options.optedOut ?? firstTouchOptedOut()) return null
   const store = safeStorage(storage)
   if (!store) return null
   try {
-    const existing = parseFirstTouch(store.getItem(FIRST_TOUCH_STORAGE_KEY))
+    const existing = readValid(store, now)
     if (existing) return existing
     const record = firstTouchFromUrl(location.search, location.pathname, now)
     if (!record) return null
@@ -139,11 +194,13 @@ export function captureFirstTouch(
   }
 }
 
-export function readFirstTouch(storage?: StorageLike): FirstTouch | null {
+/** The stored record for a form or sign-up. Null while opted out, or when nothing valid is stored. */
+export function readFirstTouch(storage?: StorageLike, now: Date = new Date(), options: FirstTouchOptions = {}): FirstTouch | null {
+  if (options.optedOut ?? firstTouchOptedOut()) return null
   const store = safeStorage(storage)
   if (!store) return null
   try {
-    return parseFirstTouch(store.getItem(FIRST_TOUCH_STORAGE_KEY))
+    return readValid(store, now)
   } catch {
     return null
   }

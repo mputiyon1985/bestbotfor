@@ -46,3 +46,21 @@ test('the privacy policy says we record which link brought a visitor', async ({ 
   await page.goto('/privacy')
   await expect(page.getByText('We record which link brought you to the site')).toBeVisible()
 })
+
+test('nothing is captured after analytics is rejected or with Global Privacy Control', async ({ browser, baseURL }) => {
+  const denied = await browser.newContext()
+  await denied.addCookies([{ name: 'bbf_consent', value: 'denied', url: baseURL ?? 'http://localhost:3000' }])
+  const page = await denied.newPage()
+  await page.goto('/best/music?utm_source=facebook&utm_campaign=w1_oct19')
+  await page.waitForLoadState('networkidle')
+  expect(await page.evaluate((key) => localStorage.getItem(key), KEY)).toBeNull()
+  await denied.close()
+
+  const gpc = await browser.newContext()
+  await gpc.addInitScript(() => Object.defineProperty(navigator, 'globalPrivacyControl', { get: () => true }))
+  const gpcPage = await gpc.newPage()
+  await gpcPage.goto('/best/music?utm_source=facebook&utm_campaign=w1_oct19')
+  await gpcPage.waitForLoadState('networkidle')
+  expect(await gpcPage.evaluate((key) => localStorage.getItem(key), KEY)).toBeNull()
+  await gpc.close()
+})
