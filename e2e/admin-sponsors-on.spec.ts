@@ -31,3 +31,13 @@ test('the proxy lets the sponsor queue and MFA through while ratings stay hidden
   const tool = await request.get('/tools/chatgpt')
   expect(tool.status()).toBe(200)
 })
+
+test('/pricing shows no Stripe test-mode note when the server has no test key', async ({ page }) => {
+  // This server sets no STRIPE_SECRET_KEY (stripeKeyMode is off), the same branch a live key takes:
+  // the note renders only in test mode. The main server's test key shows it (product.spec.ts).
+  await page.goto('/pricing')
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Membership')
+  await expect(page.getByText('Stripe test mode')).toHaveCount(0)
+  await expect(page.getByText('No real charges')).toHaveCount(0)
+  await expect(page.getByRole('note')).toHaveCount(0)
+})

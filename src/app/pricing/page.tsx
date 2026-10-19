@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { StripeTestModeNotice } from '@/components/stripe-test-mode-notice'
 import { checkoutNoticeMessage } from '@/lib/billing-notice'
 import { formatStripeAmount } from '@/lib/format'
 import { pageMetadata } from '@/lib/metadata'
@@ -28,9 +29,7 @@ export default async function PricingPage({
     <article className="max-w-2xl space-y-6">
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Pricing', path: '/pricing' }]} />
       <h1 className="font-bold text-5xl">Membership</h1>
-      <p role="note" className="rounded-2xl border border-line bg-mist px-4 py-3 text-sm">
-        Checkout uses Stripe test mode. No real charges occur.
-      </p>
+      <StripeTestModeNotice />
       {notice ? <p role="alert">{notice}</p> : null}
       <p>A free account can save 10 picks. Membership saves without a cap and opens the longer comparison notes. The public guides stay free.</p>
       {price.available ? (
