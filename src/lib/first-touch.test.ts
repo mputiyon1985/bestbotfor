@@ -137,4 +137,23 @@ describe('first-touch UTM capture', () => {
     const page = readFileSync(path.join(process.cwd(), 'src/app/privacy/page.tsx'), 'utf8')
     expect(page).toContain('FIRST_TOUCH_PRIVACY_PARAGRAPH')
   })
+
+  it('privacy line splits Beehiiv tags from Clerk landing path and arrival time', () => {
+    // Beehiiv gets only the four utm values; landing path and "at" go to Clerk at sign-up.
+    expect(FIRST_TOUCH_PRIVACY_PARAGRAPH).toContain(
+      'On a newsletter signup we send only the utm_source, utm_medium, utm_campaign, and utm_content values to Beehiiv.',
+    )
+    expect(FIRST_TOUCH_PRIVACY_PARAGRAPH).toContain(
+      'On an account sign-up we send those tags, the landing page, and the arrival time to Clerk.',
+    )
+    expect(FIRST_TOUCH_PRIVACY_PARAGRAPH).not.toMatch(/send them only with a newsletter signup \(to Beehiiv\)/)
+    // Beehiiv sentence must not claim the landing page or arrival time.
+    const beehiivSentence = FIRST_TOUCH_PRIVACY_PARAGRAPH.match(/On a newsletter signup[^.]+\./)?.[0] ?? ''
+    expect(beehiivSentence).toContain('Beehiiv')
+    expect(beehiivSentence).not.toMatch(/landing page|arrival time|when you arrived/i)
+    const clerkSentence = FIRST_TOUCH_PRIVACY_PARAGRAPH.match(/On an account sign-up[^.]+\./)?.[0] ?? ''
+    expect(clerkSentence).toContain('Clerk')
+    expect(clerkSentence).toMatch(/landing page/)
+    expect(clerkSentence).toMatch(/arrival time/)
+  })
 })

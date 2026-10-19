@@ -122,7 +122,7 @@ export const NEWSLETTER_SIGNUP_PARAGRAPH =
 
 /** One line on first-touch attribution (James, Oct 19, 2026). Shown on /privacy. */
 export const FIRST_TOUCH_PRIVACY_PARAGRAPH =
-  'We record which link brought you to the site: the first time you arrive from a link with utm_source, utm_medium, utm_campaign, or utm_content tags, we save those tags and the page you landed on in your browser\'s local storage (bbf_first_touch), whether or not you accept analytics, and we send them only with a newsletter signup (to Beehiiv) or an account sign-up (to Clerk).'
+  'We record which link brought you to the site: the first time you arrive from a link with utm_source, utm_medium, utm_campaign, or utm_content tags, we save those tags, the page you landed on, and when you arrived in your browser\'s local storage (bbf_first_touch), whether or not you accept analytics. On a newsletter signup we send only the utm_source, utm_medium, utm_campaign, and utm_content values to Beehiiv. On an account sign-up we send those tags, the landing page, and the arrival time to Clerk.'
 
 const SUGGESTION_BASE =
   'If you suggest something, we store the feedback (whether you like something, want something added, or want something removed, and the message) and we store your email address only when you choose to include it. We use that email only to reply to you, and we do not add it to the newsletter or send it to Beehiiv.'
