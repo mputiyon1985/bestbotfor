@@ -107,14 +107,22 @@ test('founding sponsor checkout is a subscription with the $99 first period and 
       'base64',
     ),
   })
+  const clickedAt = Date.now()
   await page.getByRole('button', { name: 'Continue to checkout' }).click()
   await expect(page).toHaveURL(/checkout\.stripe\.com/)
+  const redirectedAt = Date.now()
 
   const recorded = (await fetch('http://127.0.0.1:12111/__requests').then((response) => response.json())) as Array<
     Record<string, string>
   >
   const session = recorded.find((item) => item['metadata[email]'] === 'founder@example.com')
   expect(session?.mode).toBe('subscription')
+  // The session ends 23h55m after the hold is claimed, 5 minutes before the hold stops counting (Sentinel P3-3 on #97).
+  const sessionWindow = (23 * 60 + 55) * 60
+  const expiresAt = Number(session?.expires_at)
+  expect(Number.isInteger(expiresAt)).toBe(true)
+  expect(expiresAt).toBeGreaterThanOrEqual(Math.floor(clickedAt / 1000) + sessionWindow)
+  expect(expiresAt).toBeLessThanOrEqual(Math.floor(redirectedAt / 1000) + sessionWindow)
   expect(session?.['line_items[0][price]']).toBe('price_e2e_founding_monthly')
   expect(session?.['line_items[1][price]']).toBe('price_e2e_founding_setup')
   expect(session?.['subscription_data[trial_period_days]']).toBe('14')

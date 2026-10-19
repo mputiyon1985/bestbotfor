@@ -1,10 +1,10 @@
 import { placementWindowMs } from './best-placement'
 import { getDb } from './db'
 import type { Database } from './db/client'
+import { SPONSOR_CHECKOUT_EXPIRY_MS } from './sponsor-hold-window'
 import { FOUNDING_SOLD_OUT, FOUNDING_SPONSOR_CAP, isSubscriptionOffering, isTaskOffering } from './sponsor-offerings'
 
-/** Stripe Checkout expires after 24 hours. A claim older than that can be taken. */
-export const SPONSOR_CHECKOUT_EXPIRY_MS = 24 * 60 * 60 * 1000
+export { FOUNDING_CHECKOUT_SESSION_MS, SPONSOR_CHECKOUT_EXPIRY_MS, foundingCheckoutExpiresAt } from './sponsor-hold-window'
 
 export const SPONSOR_SLOT_TAKEN = 'That task page already has a placement in this period. Choose another page.'
 
@@ -34,11 +34,16 @@ export type SponsorSlotClaim = {
  *
  * The founding offer is also capped at FOUNDING_SPONSOR_CAP in the same
  * statement, so two concurrent checkouts cannot both take the last spot.
+ *
+ * A repeat of the same request while its hold is live keeps the original
+ * claimed_at, which is returned as `claimedAt`. The founding Checkout session's
+ * expires_at is derived from it, so a retried form sends Stripe the same
+ * parameters under the same idempotency key, and the hold is not stretched.
  */
 export async function claimSponsorSlot(
   db: Database,
   input: SponsorSlotClaim,
-): Promise<{ ok: true } | { ok: false; message: string }> {
+): Promise<{ ok: true; claimedAt?: number } | { ok: false; message: string }> {
   if (!isTaskOffering(input.offering)) return { ok: true }
   const windowMs = isSubscriptionOffering(input.offering) ? null : placementWindowMs(input.offering)
   const newEnd = windowMs == null ? OPEN_ENDED_MS : input.now + windowMs
@@ -70,10 +75,15 @@ export async function claimSponsorSlot(
       ON CONFLICT(task_slug) DO UPDATE SET
         request_key = excluded.request_key,
         offering = excluded.offering,
-        claimed_at = excluded.claimed_at
+        claimed_at = CASE
+          WHEN sponsorship_slot_claims.request_key = excluded.request_key
+            AND sponsorship_slot_claims.claimed_at > ?
+          THEN sponsorship_slot_claims.claimed_at
+          ELSE excluded.claimed_at
+        END
       WHERE sponsorship_slot_claims.request_key = excluded.request_key
          OR sponsorship_slot_claims.claimed_at <= ?
-      RETURNING task_slug`,
+      RETURNING task_slug, claimed_at`,
     args: [
       input.taskSlug,
       input.requestKey,
@@ -90,9 +100,11 @@ export async function claimSponsorSlot(
       input.taskSlug,
       FOUNDING_SPONSOR_CAP,
       input.now - SPONSOR_CHECKOUT_EXPIRY_MS,
+      input.now - SPONSOR_CHECKOUT_EXPIRY_MS,
     ],
   })
-  if (claimed.rows.length > 0) return { ok: true }
+  const row = claimed.rows[0]
+  if (row) return { ok: true, claimedAt: Number(row.claimed_at) }
   if (founding && (await foundingSpotsTaken(db, input.now, input.taskSlug)) >= FOUNDING_SPONSOR_CAP) {
     return { ok: false, message: FOUNDING_SOLD_OUT }
   }

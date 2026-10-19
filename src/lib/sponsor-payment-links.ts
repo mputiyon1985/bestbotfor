@@ -12,19 +12,18 @@
  * changes in Stripe, update this file in the same change
  * (docs/runbooks/sponsor-payment-links.md has the read-back to compare).
  *
- * The founding cap of 5 is ONE cap shared with the in-app founding offer
- * (James, Oct 18). This link stays the only founding path until the in-app
- * founding Prices go live; then it is deactivated in Stripe and /sponsor
- * switches to the in-app offer.
+ * The founding Payment Link (plink_1URylTIJUbygfAuc07cebXfn) is retired. It
+ * was deactivated in Stripe at the in-app founding go-live on 2026-10-19 and
+ * removed from this list afterwards, so unsetting the founding Price vars can
+ * never put a dead buy.stripe.com link back on /sponsor. Its record (Prices,
+ * limit, past sales as `founding_link:` rows, which still count toward the
+ * shared cap of 5) is in docs/runbooks/sponsor-payment-links.md.
  *
  * /sponsor shows them only when live billing is on, so a preview or local
  * build never sends a tester to a live charge.
  */
 
 export const SPONSOR_PAYMENT_LINK_HOST = 'buy.stripe.com'
-
-/** Stripe restrictions.completed_sessions.limit on the founding link. */
-export const FOUNDING_SPONSOR_LIMIT = 5
 
 export const SPONSOR_SUBSCRIPTION_NOTICE = 'Subscription, renews monthly until you cancel.'
 
@@ -35,14 +34,6 @@ export const SPONSOR_SUBSCRIPTION_DISCLOSURE = 'Placements carry a Sponsored lab
 export const SPONSOR_CANCEL_LINE = 'To cancel, email'
 
 export const SPONSOR_PAYMENT_LINKS = [
-  {
-    id: 'founding_sponsor',
-    paymentLinkId: 'plink_1URylTIJUbygfAuc07cebXfn',
-    url: 'https://buy.stripe.com/fZudRabMce0q5BoebyfrW04',
-    title: 'Founding sponsor',
-    terms: `$99 for the first 2 weeks, then $299/mo. Price locked at $299/mo for 6 months. Cancel anytime. Limited to ${FOUNDING_SPONSOR_LIMIT} sponsors.`,
-    cta: 'Become a founding sponsor',
-  },
   {
     id: 'sponsor_monthly',
     paymentLinkId: 'plink_1URyeXIJUbygfAucnLlkSP5u',

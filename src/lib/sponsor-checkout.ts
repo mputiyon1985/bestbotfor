@@ -16,6 +16,7 @@ import {
 } from './sponsor-offerings'
 import type { RateLimitDecision } from './action-limit'
 import { sanitizeSponsorCompany } from './sponsor-company'
+import { foundingCheckoutExpiresAt } from './sponsor-hold-window'
 import { emailSchema } from './validation'
 
 const COMPANY = /^[^\r\n<>]{2,120}$/
@@ -111,6 +112,8 @@ function parseIssueDate(value: string): string | null {
 export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
   successUrl: string
   cancelUrl: string
+  /** The hold's claimed_at (ms) from claimSponsorSlot. Required for founding: it sets the session's expires_at. */
+  claimedAt?: number
 }): { params: Stripe.Checkout.SessionCreateParams; idempotencyKey: string } {
   const offering = sponsorOffering(input.offering)
   if (!offering) throw new Error('unknown sponsor offering')
@@ -204,14 +207,20 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
     description: offering.productName,
   }
   if (trialDays > 0) subscriptionData.trial_period_days = trialDays
-  return {
-    idempotencyKey,
-    params: {
-      mode: 'subscription',
-      ...shared,
-      line_items: lineItems,
-      payment_method_collection: 'always',
-      subscription_data: subscriptionData,
-    },
+  const params: Stripe.Checkout.SessionCreateParams = {
+    mode: 'subscription',
+    ...shared,
+    line_items: lineItems,
+    payment_method_collection: 'always',
+    subscription_data: subscriptionData,
   }
+  // A founding session ends 5 minutes before its hold stops counting toward
+  // the cap, so it cannot complete once the spot may have gone to someone else.
+  if (input.offering === 'founding_sponsor') {
+    if (input.claimedAt == null || !Number.isFinite(input.claimedAt) || input.claimedAt <= 0) {
+      throw new Error('founding checkout needs its hold time')
+    }
+    params.expires_at = foundingCheckoutExpiresAt(input.claimedAt)
+  }
+  return { idempotencyKey, params }
 }

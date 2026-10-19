@@ -45,6 +45,7 @@ export async function sponsorCheckoutAction(_previous: SponsorFormState, formDat
   if (decision !== 'allow') return { status: 'error', message: sponsorRateLimitMessage(decision) }
 
   const taskSlug = parsed.value.taskSlug
+  let claimedAt: number | undefined
   if (taskSlug) {
     const claim = await claimSponsorSlot(getDb(), {
       taskSlug,
@@ -53,6 +54,7 @@ export async function sponsorCheckoutAction(_previous: SponsorFormState, formDat
       now: Date.now(),
     })
     if (!claim.ok) return { status: 'error', message: claim.message }
+    claimedAt = claim.claimedAt
   }
 
   let creativeId: string | undefined
@@ -78,6 +80,7 @@ export async function sponsorCheckoutAction(_previous: SponsorFormState, formDat
   const built = sponsorCheckoutParams({
     ...parsed.value,
     creativeId,
+    claimedAt,
     successUrl: returnUrls.successUrl,
     cancelUrl: returnUrls.cancelUrl,
   })
