@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { createClient } from '@libsql/client'
 import { afterEach, describe, expect, it } from 'vitest'
-import { applyMigrations, ensureSqliteDirectory, sqliteFilePath } from './migrate'
+import { addColumnStatements, applyMigrations, ensureSqliteDirectory, sqliteFilePath } from './migrate'
 
 const directories: string[] = []
 
@@ -178,6 +178,7 @@ describe('sqlite file directories', () => {
       '0020_subscriber_syncing_started.sql',
       '0021_subscriber_beehiiv_status.sql',
       '0022_suggestions.sql',
+      '0023_subscriber_utm.sql',
     ])
     const tables = await client.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('stripe_events', 'sponsorships') ORDER BY name",
@@ -284,6 +285,7 @@ describe('sqlite file directories', () => {
       '0020_subscriber_syncing_started.sql',
       '0021_subscriber_beehiiv_status.sql',
       '0022_suggestions.sql',
+      '0023_subscriber_utm.sql',
     ])
     const columns = await after.execute('PRAGMA table_info(sponsorships)')
     const beforeCols = before.rows.map((row) => ({
@@ -334,7 +336,7 @@ describe('sqlite file directories', () => {
     await applyMigrations(url)
     const again = createClient({ url })
     const count = await again.execute('SELECT COUNT(*) AS n FROM schema_migrations')
-    expect(Number(count.rows[0]?.n)).toBe(MAIN_MIGRATIONS.length + 14)
+    expect(Number(count.rows[0]?.n)).toBe(MAIN_MIGRATIONS.length + 15)
     const stillThere = await again.execute({
       sql: "SELECT id FROM schema_migrations WHERE id = '0005_sponsorships.sql'",
     })
@@ -506,6 +508,82 @@ describe('sqlite file directories', () => {
   })
 })
 
+const SUBSCRIBER_UTM_COLUMNS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'landing_path']
+
+describe('0023 subscriber UTM columns', () => {
+  async function freshUrl() {
+    const root = await mkdtemp(path.join(tmpdir(), 'bestbotfor-0023-'))
+    directories.push(root)
+    return `file:${path.join(root, 'app.db')}`
+  }
+
+  it('adds exactly five nullable TEXT columns with no default', async () => {
+    const url = await freshUrl()
+    await applyMigrations(url)
+    const client = createClient({ url })
+    const info = await client.execute('PRAGMA table_info(subscribers)')
+    const utm = info.rows.filter((row) => SUBSCRIBER_UTM_COLUMNS.includes(String(row.name)))
+    expect(utm.map((row) => String(row.name)).sort()).toEqual([...SUBSCRIBER_UTM_COLUMNS].sort())
+    for (const row of utm) {
+      expect(String(row.type)).toBe('TEXT')
+      expect(Number(row.notnull)).toBe(0)
+      expect(row.dflt_value).toBeNull()
+      expect(Number(row.pk)).toBe(0)
+    }
+    const ledger = await client.execute("SELECT id FROM schema_migrations WHERE id = '0023_subscriber_utm.sql'")
+    expect(ledger.rows).toHaveLength(1)
+    client.close()
+  })
+
+  it('keeps the 0023 file to the five approved ADD COLUMN statements', async () => {
+    const sql = await readFile(path.join(process.cwd(), 'drizzle/0023_subscriber_utm.sql'), 'utf8')
+    expect(addColumnStatements(sql)).toEqual(
+      SUBSCRIBER_UTM_COLUMNS.map((column) => ({
+        table: 'subscribers',
+        column,
+        statement: `ALTER TABLE subscribers ADD COLUMN ${column} TEXT`,
+      })),
+    )
+  })
+
+  it('re-runs cleanly after a partial apply that left some columns and no ledger row', async () => {
+    const url = await freshUrl()
+    await applyMigrations(url)
+    const client = createClient({ url })
+    await client.execute({
+      sql: 'INSERT INTO subscribers (email, created_at, destination, status, utm_source, landing_path) VALUES (?, ?, ?, ?, ?, ?)',
+      args: ['kept@example.com', 1, 'local', 'pending', 'facebook', '/best'],
+    })
+    // Simulate a crash after the first two ALTERs: three columns gone, ledger row missing.
+    for (const column of ['utm_campaign', 'utm_content', 'landing_path']) {
+      await client.execute(`ALTER TABLE subscribers DROP COLUMN ${column}`)
+    }
+    await client.execute("DELETE FROM schema_migrations WHERE id = '0023_subscriber_utm.sql'")
+    client.close()
+
+    await applyMigrations(url)
+    const again = createClient({ url })
+    const names = (await again.execute('PRAGMA table_info(subscribers)')).rows.map((row) => String(row.name))
+    for (const column of SUBSCRIBER_UTM_COLUMNS) expect(names.filter((name) => name === column)).toHaveLength(1)
+    const ledger = await again.execute("SELECT id FROM schema_migrations WHERE id = '0023_subscriber_utm.sql'")
+    expect(ledger.rows).toHaveLength(1)
+    const kept = await again.execute("SELECT utm_source, utm_campaign, landing_path FROM subscribers WHERE email = 'kept@example.com'")
+    expect(kept.rows).toEqual([{ utm_source: 'facebook', utm_campaign: null, landing_path: null }])
+    again.close()
+    // A third run is a no-op.
+    await applyMigrations(url)
+  })
+
+  it('splits only plain ADD COLUMN files and leaves every other file to executeMultiple', () => {
+    expect(addColumnStatements('-- c\nALTER TABLE t ADD COLUMN a TEXT;\nALTER TABLE t ADD COLUMN b INTEGER;')).toHaveLength(2)
+    expect(addColumnStatements("ALTER TABLE t ADD COLUMN a TEXT DEFAULT 'x;y';")).toBeNull()
+    expect(addColumnStatements('CREATE TABLE t (a TEXT);')).toBeNull()
+    expect(addColumnStatements('ALTER TABLE t ADD COLUMN a TEXT; DROP TABLE t;')).toBeNull()
+    expect(addColumnStatements('ALTER TABLE t RENAME COLUMN a TO b;')).toBeNull()
+    expect(addColumnStatements('-- only a comment')).toBeNull()
+  })
+})
+
 describe('drizzle journal', () => {
   it('gives every migration file on disk one increasing idx', async () => {
     const journal = JSON.parse(await readFile(path.join(process.cwd(), 'drizzle/meta/_journal.json'), 'utf8')) as {
@@ -538,6 +616,7 @@ describe('drizzle journal', () => {
     expect(idxOf('0020_subscriber_syncing_started')).toBe(18)
     expect(idxOf('0021_subscriber_beehiiv_status')).toBe(19)
     expect(idxOf('0022_suggestions')).toBe(20)
+    expect(idxOf('0023_subscriber_utm')).toBe(21)
     const migration = await readFile(path.join(process.cwd(), 'drizzle/0013_sponsorship_paid_at.sql'), 'utf8')
     const executable = executableSql(migration).toLowerCase()
     expect(executable).not.toContain('add column if not exists')

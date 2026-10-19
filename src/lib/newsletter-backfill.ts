@@ -6,6 +6,7 @@ import { dbHost, isProdHost, normalizeHost, UNPARSEABLE, type DbGuardConfig } fr
 import { subscribers } from './db/schema'
 import { absoluteUrl } from './site'
 import { newsletterReferringPath } from './newsletter-source'
+import { sanitizeLandingPath, sanitizeUtmValue, type FirstTouch } from './first-touch'
 import {
   FAILED_SUBSCRIBER_STATUS,
   PENDING_SUBSCRIBER_STATUS,
@@ -323,6 +324,50 @@ async function holdExisting(
 }
 
 /**
+ * Column values for a new subscriber row, from the same sanitized first-touch record
+ * (#101's `parseFirstTouch`) that the Beehiiv call reads. Values are run through #101's
+ * charset and same-site path rules again, so a caller cannot store anything the form
+ * parser would have dropped. A record with no usable utm tag stores nothing (all null).
+ * Only an insert uses this. Existing rows are never updated, so the first signup's tags stay.
+ */
+export function attributionColumns(firstTouch: FirstTouch | null | undefined) {
+  const empty = { utmSource: null, utmMedium: null, utmCampaign: null, utmContent: null, landingPath: null }
+  if (!firstTouch || typeof firstTouch !== 'object') return empty
+  const utmSource = sanitizeUtmValue(firstTouch.utm_source)
+  const utmMedium = sanitizeUtmValue(firstTouch.utm_medium)
+  const utmCampaign = sanitizeUtmValue(firstTouch.utm_campaign)
+  const utmContent = sanitizeUtmValue(firstTouch.utm_content)
+  if (!utmSource && !utmMedium && !utmCampaign && !utmContent) return empty
+  return { utmSource, utmMedium, utmCampaign, utmContent, landingPath: sanitizeLandingPath(firstTouch.landing_path) }
+}
+
+/** The stored first-touch record of a row, for a later Beehiiv call (pending backfill). Null when none was stored. */
+export function firstTouchFromRow(row: {
+  utmSource: string | null
+  utmMedium: string | null
+  utmCampaign: string | null
+  utmContent: string | null
+  landingPath: string | null
+}): FirstTouch | null {
+  const record: FirstTouch = { landing_path: sanitizeLandingPath(row.landingPath) }
+  let found = false
+  const pairs = [
+    ['utm_source', row.utmSource],
+    ['utm_medium', row.utmMedium],
+    ['utm_campaign', row.utmCampaign],
+    ['utm_content', row.utmContent],
+  ] as const
+  for (const [field, value] of pairs) {
+    const clean = sanitizeUtmValue(value)
+    if (clean) {
+      record[field] = clean
+      found = true
+    }
+  }
+  return found ? record : null
+}
+
+/**
  * Marks the row in progress before Beehiiv is called. A concurrent signup or backfill
  * loses the conditional update and must not send the address again.
  */
@@ -331,6 +376,7 @@ export async function holdSubscriberForBeehiiv(
   email: string,
   now: number,
   fetchImpl?: typeof fetch,
+  firstTouch: FirstTouch | null = null,
 ): Promise<SubscriberHold> {
   const existing = await db.select().from(subscribers).where(eq(subscribers.email, email)).limit(1)
   if (existing[0]) return holdExisting(db, existing[0], now, fetchImpl)
@@ -344,6 +390,7 @@ export async function holdSubscriberForBeehiiv(
         beehiivId: null,
         status: SYNCING_SUBSCRIBER_STATUS,
         syncingStartedAt: now,
+        ...attributionColumns(firstTouch),
       })
       .returning({ id: subscribers.id })
     const id = inserted[0]?.id
@@ -412,6 +459,7 @@ export async function backfillPendingSubscribers(input: {
     const remote = await createBeehiivSubscription({
       email: row.email,
       referringSite: absoluteUrl(newsletterReferringPath('newsletter')),
+      firstTouch: firstTouchFromRow(row),
       fetchImpl: input.fetchImpl,
     })
     if (!remote.ok) {

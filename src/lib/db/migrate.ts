@@ -170,6 +170,47 @@ export async function adoptSuggestionsSchema(client: Client): Promise<void> {
   await addMissingColumns(client, 'suggestions', SUGGESTION_ADOPT_COLUMNS)
 }
 
+/**
+ * A migration file made only of `ALTER TABLE t ADD COLUMN c ...;` statements (and `--`
+ * comment lines) is split into its statements, so the runner can skip a column that is
+ * already present. That makes such a file safe to re-run after a partial apply: SQLite
+ * has no `ADD COLUMN IF NOT EXISTS` and `executeMultiple` is not one transaction, so a
+ * crash after the first ALTER and before the ledger insert would otherwise fail the next
+ * deploy on "duplicate column". Each statement runs as written in the file (whitespace collapsed).
+ * Returns null for any other file (quotes, other statements, or anything unexpected),
+ * which then runs through `executeMultiple` exactly as before.
+ */
+export function addColumnStatements(sql: string): Array<{ table: string; column: string; statement: string }> | null {
+  const body = sql
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('--'))
+    .join('\n')
+  if (/['"`]/.test(body)) return null
+  const statements = body
+    .split(';')
+    .map((part) => part.replace(/\s+/g, ' ').trim())
+    .filter((part) => part.length > 0)
+  if (statements.length === 0) return null
+  const parsed: Array<{ table: string; column: string; statement: string }> = []
+  for (const statement of statements) {
+    const match = /^ALTER TABLE ([A-Za-z_][A-Za-z0-9_]*) ADD COLUMN ([A-Za-z_][A-Za-z0-9_]*)(?: [A-Za-z0-9_ ()]*)?$/i.exec(statement)
+    if (!match) return null
+    parsed.push({ table: match[1] as string, column: match[2] as string, statement })
+  }
+  return parsed
+}
+
+async function applyAddColumnFile(
+  client: Client,
+  statements: ReadonlyArray<{ table: string; column: string; statement: string }>,
+): Promise<void> {
+  for (const { table, column, statement } of statements) {
+    const info = await client.execute(`PRAGMA table_info(${table})`)
+    if (info.rows.some((row) => String(row.name) === column)) continue
+    await client.execute(statement)
+  }
+}
+
 /** Create the parent directory for a file: database. Remote libsql URLs are unchanged. */
 export async function ensureSqliteDirectory(url: string): Promise<void> {
   const filePath = sqliteFilePath(url)
@@ -210,7 +251,9 @@ export async function applyMigrations(url: string, authToken?: string, migration
     })
     if (existing.rows.length > 0) continue
     const sql = await readFile(path.join(directory, file), 'utf8')
-    await client.executeMultiple(sql)
+    const addColumns = addColumnStatements(sql)
+    if (addColumns) await applyAddColumnFile(client, addColumns)
+    else await client.executeMultiple(sql)
     await client.execute({
       sql: 'INSERT INTO schema_migrations (id, applied_at) VALUES (?, ?)',
       args: [file, Date.now()],

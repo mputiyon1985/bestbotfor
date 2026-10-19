@@ -121,6 +121,12 @@ export const subscribers = sqliteTable('subscribers', {
   status: text('status').notNull().default('pending'),
   /** Set when the row becomes `syncing`. Null means a crash left no clock, so reconcile treats it as stale. */
   syncingStartedAt: integer('syncing_started_at'),
+  /** First-touch tags from the signup form, written once when the row is created. Null when none were recorded. */
+  utmSource: text('utm_source'),
+  utmMedium: text('utm_medium'),
+  utmCampaign: text('utm_campaign'),
+  utmContent: text('utm_content'),
+  landingPath: text('landing_path'),
 })
 
 export const subscriptions = sqliteTable(

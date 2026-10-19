@@ -9,6 +9,7 @@ import { newsletterReferringPath, type NewsletterSource } from './newsletter-sou
 import { emailSchema, newsletterFieldsSchema } from './validation'
 import {
   finishSubscriberSync,
+  attributionColumns,
   holdSubscriberForBeehiiv,
   releaseSubscriberHold,
 } from './newsletter-backfill'
@@ -122,7 +123,13 @@ export async function subscribeToNewsletter(input: {
   }
 
   if (isBeehiivConfigured()) {
-    const held = await holdSubscriberForBeehiiv(input.db, normalized, input.now ?? Date.now(), input.fetchImpl)
+    const held = await holdSubscriberForBeehiiv(
+      input.db,
+      normalized,
+      input.now ?? Date.now(),
+      input.fetchImpl,
+      input.firstTouch ?? null,
+    )
     if (held.kind === 'done') return { status: 'success', message: SYNCED_SUCCESS, tracked: false }
     if (held.kind === 'opted_out') {
       return { status: 'error', message: ADD_FAILED, tracked: false }
@@ -162,6 +169,7 @@ export async function subscribeToNewsletter(input: {
     destination: 'local',
     beehiivId: null,
     status: PENDING_SUBSCRIBER_STATUS,
+    ...attributionColumns(input.firstTouch),
   })
   return { status: 'success', message: PENDING_SUCCESS, tracked: false }
 }

@@ -7,6 +7,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { subscribers } from './db/schema'
 import type { Database } from './db/client'
 import { reclaimStaleSubscriber } from './newsletter-backfill'
+import { parseFirstTouch, type FirstTouch } from './first-touch'
 import {
   PENDING_SUCCESS,
   PENDING_SUBSCRIBER_STATUS,
@@ -179,6 +180,90 @@ describe('subscribeToNewsletter', () => {
     expect(bodies[0]).not.toHaveProperty('landing_path')
     expect(bodies[1]).toMatchObject({ utm_source: 'bestbotfor', utm_medium: 'website' })
     expect(bodies[1]).not.toHaveProperty('utm_campaign')
+    await close()
+  })
+
+  it('stores the same first-touch record Beehiiv gets on a new row, and nulls without one', async () => {
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const { db, close } = await createTestDatabase()
+    const bodies: Record<string, unknown>[] = []
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      bodies.push(JSON.parse(String(init?.body ?? '{}')))
+      return new Response(JSON.stringify({ data: { id: `sub_${bodies.length}` } }), { status: 201 })
+    }
+    // What the form posts, through the same parser the server action uses.
+    const posted = JSON.stringify({ utm_source: 'facebook', utm_medium: 'social', utm_campaign: 'w1_oct19', utm_content: 'fb1', landing_path: '/best/music', at: new Date().toISOString() })
+    await subscribeToNewsletter({ email: 'row-tagged@example.com', honeypot: '', firstTouch: parseFirstTouch(posted), db, rateKey: 'nl-row-1', now: 1_000, fetchImpl })
+    await subscribeToNewsletter({ email: 'row-plain@example.com', honeypot: '', firstTouch: parseFirstTouch(null), db, rateKey: 'nl-row-2', now: 1_000, fetchImpl })
+    const [tagged] = await db.select().from(subscribers).where(eq(subscribers.email, 'row-tagged@example.com'))
+    expect(tagged).toMatchObject({ utmSource: 'facebook', utmMedium: 'social', utmCampaign: 'w1_oct19', utmContent: 'fb1', landingPath: '/best/music', status: SYNCED_SUBSCRIBER_STATUS })
+    expect(bodies[0]).toMatchObject({ utm_source: tagged?.utmSource, utm_medium: tagged?.utmMedium, utm_campaign: tagged?.utmCampaign, utm_content: tagged?.utmContent })
+    const [plain] = await db.select().from(subscribers).where(eq(subscribers.email, 'row-plain@example.com'))
+    expect(plain).toMatchObject({ utmSource: null, utmMedium: null, utmCampaign: null, utmContent: null, landingPath: null })
+    expect(bodies[1]).toMatchObject({ utm_source: 'bestbotfor', utm_medium: 'website' })
+    await close()
+  })
+
+  it('stores first-touch tags on a pending row and a later signup does not overwrite them', async () => {
+    delete process.env.BEEHIIV_API_KEY
+    delete process.env.BEEHIIV_PUBLICATION_ID
+    const { db, close } = await createTestDatabase()
+    await subscribeToNewsletter({ email: 'first@example.com', honeypot: '', firstTouch: { utm_source: 'x', landing_path: '/compare', at: '2026-10-19T12:00:00.000Z' }, db, rateKey: 'nl-row-3', now: 1_000 })
+    await subscribeToNewsletter({ email: 'first@example.com', honeypot: '', firstTouch: { utm_source: 'facebook', utm_campaign: 'later', landing_path: '/best' }, db, rateKey: 'nl-row-4', now: 2_000 })
+    const rows = await db.select().from(subscribers).where(eq(subscribers.email, 'first@example.com'))
+    expect(rows).toHaveLength(1)
+    expect(rows[0]).toMatchObject({ utmSource: 'x', utmMedium: null, utmCampaign: null, utmContent: null, landingPath: '/compare', status: PENDING_SUBSCRIBER_STATUS })
+
+    // Once Beehiiv is connected, a signup that claims the existing row still leaves its tags alone.
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const fetchImpl: typeof fetch = async () => new Response(JSON.stringify({ data: { id: 'sub_first' } }), { status: 201 })
+    await subscribeToNewsletter({ email: 'first@example.com', honeypot: '', firstTouch: { utm_source: 'linkedin', landing_path: '/' }, db, rateKey: 'nl-row-5', now: 3_000, fetchImpl })
+    const [after] = await db.select().from(subscribers).where(eq(subscribers.email, 'first@example.com'))
+    expect(after).toMatchObject({ utmSource: 'x', landingPath: '/compare', status: SYNCED_SUBSCRIBER_STATUS })
+    await close()
+  })
+
+  it('applies #101 sanitizing to stored values even when a caller skips parseFirstTouch', async () => {
+    delete process.env.BEEHIIV_API_KEY
+    delete process.env.BEEHIIV_PUBLICATION_ID
+    const { db, close } = await createTestDatabase()
+    const hostile = {
+      utm_source: '<script>alert(1)</script>',
+      utm_medium: 'a"b\'c;d\ne',
+      utm_campaign: 'x'.repeat(500),
+      utm_content: 42,
+      landing_path: '//evil.example/x?email=a@b.c',
+    } as unknown as FirstTouch
+    await subscribeToNewsletter({ email: 'hostile@example.com', honeypot: '', firstTouch: hostile, db, rateKey: 'nl-row-6', now: 1_000 })
+    const [row] = await db.select().from(subscribers).where(eq(subscribers.email, 'hostile@example.com'))
+    expect(row).toMatchObject({ utmSource: 'scriptalert1script', utmMedium: 'abcde', utmContent: null, landingPath: '/' })
+    expect(row?.utmCampaign).toHaveLength(100)
+    await subscribeToNewsletter({ email: 'tagless@example.com', honeypot: '', firstTouch: { utm_source: '<<>>', landing_path: '/best' }, db, rateKey: 'nl-row-7', now: 1_000 })
+    const [tagless] = await db.select().from(subscribers).where(eq(subscribers.email, 'tagless@example.com'))
+    expect(tagless).toMatchObject({ utmSource: null, landingPath: null })
+    await close()
+  })
+
+  it('sends a pending row\'s stored tags to Beehiiv on backfill', async () => {
+    delete process.env.BEEHIIV_API_KEY
+    delete process.env.BEEHIIV_PUBLICATION_ID
+    const { db, close } = await createTestDatabase()
+    await subscribeToNewsletter({ email: 'later@example.com', honeypot: '', firstTouch: { utm_source: 'x', utm_campaign: 'w1', landing_path: '/' }, db, rateKey: 'nl-row-8', now: 1_000 })
+    await subscribeToNewsletter({ email: 'untagged@example.com', honeypot: '', db, rateKey: 'nl-row-9', now: 1_000 })
+    process.env.BEEHIIV_API_KEY = 'beehiiv-test'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_abc123'
+    const bodies: Record<string, unknown>[] = []
+    const fetchImpl: typeof fetch = async (_input, init) => {
+      bodies.push(JSON.parse(String(init?.body ?? '{}')))
+      return new Response(JSON.stringify({ data: { id: `sub_b${bodies.length}` } }), { status: 201 })
+    }
+    await backfillPendingSubscribers({ db, apply: true, fetchImpl, now: 5_000 })
+    const byEmail = Object.fromEntries(bodies.map((body) => [String(body.email), body]))
+    expect(byEmail['later@example.com']).toMatchObject({ utm_source: 'x', utm_campaign: 'w1' })
+    expect(byEmail['later@example.com']).not.toHaveProperty('landing_path')
+    expect(byEmail['untagged@example.com']).toMatchObject({ utm_source: 'bestbotfor', utm_medium: 'website' })
     await close()
   })
 
