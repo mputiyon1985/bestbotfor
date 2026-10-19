@@ -1,5 +1,5 @@
 /**
- * Curated /compare copy. Make, Murf, Lovable, v0, and Synthesia prices were re-checked Oct 18, 2026.
+ * Curated /compare copy. Make prices were re-checked Oct 19, 2026 (Nova browser confirm). Murf, Lovable, v0, and Synthesia prices were re-checked Oct 18, 2026.
  * Each page's "Last checked" line uses the vendor "checked" dates in its sources.
  * When those dates agree, that date is the line. When they differ, the line uses the earliest,
  * so a later re-check of one tool does not claim the other tool was read that day.
@@ -206,7 +206,9 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
         label: 'Paid from',
         kind: 'text',
         a: 'Starter €20/mo billed yearly; Pro €50/mo billed yearly',
-        b: 'Core $9/mo, Pro $16/mo, Team $29/mo billed yearly; monthly billing costs more. Each starts at 10,000 credits.',
+        // Plan cards on make.com/en/pricing (10,000 credits/mo view), Nova's Oct 19, 2026 browser confirm.
+        // Make shows some visitors lower prices ($9/$16/$29 a month); note that below and ask readers to confirm.
+        b: 'Core $12/mo, Pro $21/mo, Teams $38/mo billed yearly, or $16, $28 and $51/mo billed monthly. Each starts at 10,000 credits. Make shows some visitors lower prices ($9/$16/$29 a month); confirm on Make\'s site.',
         source: '[3]; [4]',
       },
       {
@@ -222,7 +224,7 @@ const compareCopyDraft: readonly Omit<CompareCopy, 'checkedLine'>[] = [
     cta: 'Automation pricing shifts often (Make moved to credits on Aug 27). Get **The Daily Bot** for AI tool and pricing changes in plain English.',
     sources: [
       '[3] n8n pricing: https://n8n.io/pricing/ (vendor, checked Oct 17, 2026)',
-      '[4] Make pricing: https://www.make.com/en/pricing (vendor, checked Oct 18, 2026). Plan prices read on https://www.make.com/en/compare/make-vs-zapier (vendor, checked Oct 18, 2026)',
+      '[4] Make pricing: https://www.make.com/en/pricing (vendor, checked Oct 19, 2026)',
       catalogSource,
     ],
     ranking: { href: '/best/automation', label: 'See the full Automation ranking' },
