@@ -1,5 +1,9 @@
 -- Private suggestion box. Additive. Nothing is dropped or deleted.
--- Production must not apply this table without Mark's OK.
+-- The deploy applies this file automatically: every production build,
+-- including the one a merge to main triggers, runs prebuild; preview builds
+-- apply it to the preview DB on push. Prebuild (scripts/prepare-db.ts) runs
+-- every unapplied drizzle/*.sql file, so Mark's OK is needed before merge.
+-- Applied in production on the d7b1978 deploy (#86), 2026-10-18 7:40 PM ET.
 
 CREATE TABLE IF NOT EXISTS suggestions (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
