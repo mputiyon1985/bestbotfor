@@ -33,7 +33,8 @@ test('the proxy lets the sponsor queue and MFA through while ratings stay hidden
 })
 
 test('/pricing shows no Stripe test-mode note when the server has no test key', async ({ page }) => {
-  // This server sets no STRIPE_SECRET_KEY (stripeKeyMode is off), the same branch a live key takes:
+  // playwright.config.ts blanks every STRIPE_* name for this server, so it is keyless even when the parent
+  // shell exports a key. stripeKeyMode is off, the same branch a live key takes:
   // the note renders only in test mode. The main server's test key shows it (product.spec.ts).
   await page.goto('/pricing')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Membership')

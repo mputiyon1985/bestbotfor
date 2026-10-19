@@ -30,6 +30,17 @@ const sharedEnv = {
   BBF_E2E_HOOKS: '',
 }
 
+/**
+ * Every STRIPE_* name from the parent env set to '' (an explicit blank, so it
+ * also wins over anything inherited), plus the two keys stripeKeyMode reads.
+ * A blank STRIPE_SECRET_KEY is not an allowed key, so the server is keyless.
+ */
+const keylessStripeEnv: Record<string, string> = {
+  ...Object.fromEntries(Object.keys(process.env).filter((key) => key.startsWith('STRIPE_')).map((key) => [key, ''])),
+  STRIPE_SECRET_KEY: '',
+  STRIPE_ALLOW_LIVE: '',
+}
+
 export default defineConfig({
   testDir: 'e2e',
   fullyParallel: true,
@@ -123,6 +134,9 @@ export default defineConfig({
         USER_RATINGS: '',
         ADMIN_SPONSORS: 'on',
         NEXT_PUBLIC_SITE_URL: sponsorsOnUrl,
+        // Keyless whatever the parent shell holds: stripeKeyMode() is off here.
+        // admin-sponsors-on.spec.ts asserts /pricing shows no test-mode note.
+        ...keylessStripeEnv,
       },
     },
     {
