@@ -13,12 +13,20 @@ import tseslint from 'typescript-eslint'
  */
 const CATALOG_CLIENT_ALLOWED = new Set(['src/components/sponsor-card-queue.tsx'])
 /**
- * True when the file starts with a 'use client' directive. Next accepts the
- * directive after leading comments (and a BOM), so those are skipped first.
+ * True when the file's directive prologue contains 'use client'. Next accepts
+ * the directive after a BOM, a `#!` first line, comments and other string
+ * directives such as 'use strict', so those are skipped first.
  */
 export function isClientModuleSource(text) {
-  const body = text.replace(/^\uFEFF/, '').replace(/^(?:\s*(?:\/\/[^\n]*(?:\n|$)|\/\*[\s\S]*?\*\/))*/, '')
-  return /^\s*['"]use client['"]/.test(body)
+  let body = text.replace(/^\uFEFF/, '').replace(/^#![^\n]*/, '')
+  const gap = /^(?:\s+|\/\/[^\n]*|\/\*[\s\S]*?\*\/)*/
+  for (;;) {
+    body = body.replace(gap, '')
+    const directive = /^(['"])((?:(?!\1)[^\\\n]|\\.)*)\1[ \t]*(?:;|(?=\s|\/[/*]|$))/.exec(body)
+    if (!directive) return false
+    if (directive[2] === 'use client') return true
+    body = body.slice(directive[0].length)
+  }
 }
 function clientModules(directory) {
   const found = []

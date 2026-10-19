@@ -147,12 +147,32 @@ test('sponsor success and cancel pages do not record the payment', async ({ page
 })
 
 test('sponsor pages send no catalog Price env names in the HTML or RSC data', async ({ request }) => {
-  for (const pathname of ['/sponsor', '/sponsor/success']) {
+  const sessionId = 'cs_test_qa12345678'
+  const pages: { pathname: string; expected: string[] }[] = [
+    {
+      pathname: '/sponsor',
+      // The real page: the h1, the checkout button and an offering title, so an empty 200 cannot pass.
+      expected: ['<h1 class="font-bold text-5xl">Sponsor</h1>', 'Continue to checkout', 'Featured placement for one week'],
+    },
+    { pathname: '/sponsor/success', expected: ['Checkout received'] },
+    {
+      // With a session id the page renders the client SponsorCardFollowup, so its props are in the flight data.
+      pathname: `/sponsor/success?session_id=${sessionId}`,
+      expected: [
+        'Checkout received',
+        '<h2 class="font-semibold text-2xl">Tool card</h2>',
+        `name="session_id" value="${sessionId}"`,
+        'name="tool_name"',
+      ],
+    },
+  ]
+  for (const { pathname, expected } of pages) {
     const response = await request.get(pathname)
     expect(response.status(), pathname).toBe(200)
     const html = await response.text()
     // The flight data (self.__next_f) carries every server-to-client prop.
     expect(html, pathname).toContain('self.__next_f')
+    for (const text of expected) expect(html, `${pathname} shows ${text}`).toContain(text)
     for (const needle of ['priceEnv', 'STRIPE_PRICE_']) expect(html.includes(needle), `${pathname} contains ${needle}`).toBe(false)
   }
 })
