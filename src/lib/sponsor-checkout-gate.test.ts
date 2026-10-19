@@ -1,8 +1,7 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { POST } from '@/app/api/sponsor/checkout/route'
 import { sponsorCheckoutAction } from '@/app/sponsor/actions'
 import SponsorPage, { generateMetadata } from '@/app/sponsor/page'
@@ -13,6 +12,12 @@ import {
   sponsorCheckoutSurface,
   sponsorLiveBilling,
 } from './sponsor-checkout-gate'
+
+// These tests cover the env gates. The founding sold-out read is covered in founding-sold-out.test.ts.
+vi.mock('@/lib/sponsor-availability', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/sponsor-availability')>()),
+  foundingSoldOutNow: async () => false,
+}))
 
 const liveKey = ['sk', 'live', 'example'].join('_')
 const restrictedLiveKey = ['rk', 'live', 'example'].join('_')
@@ -58,7 +63,7 @@ function env(overrides: Record<string, string | undefined>): Record<string, stri
 }
 
 describe('sponsor checkout surface', () => {
-  it('opens live billing only for exact production with the flag and a live key', () => {
+  it('opens live billing only for exact production with the flag and a live key', async () => {
     for (const key of [liveKey, restrictedLiveKey]) {
       expect(sponsorLiveBilling(env({ VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: key }))).toBe(true)
       expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: key }))).toBe('live')
@@ -91,7 +96,7 @@ describe('sponsor checkout surface', () => {
     }
   })
 
-  it('shows the test surface only with a test-mode key', () => {
+  it('shows the test surface only with a test-mode key', async () => {
     for (const vercelEnv of ['preview', 'development', undefined]) {
       const nodeEnv = vercelEnv === undefined ? 'development' : 'production'
       expect(sponsorCheckoutSurface(env({ VERCEL_ENV: vercelEnv, NODE_ENV: nodeEnv, STRIPE_SECRET_KEY: testKey })), String(vercelEnv)).toBe('test')
@@ -101,7 +106,7 @@ describe('sponsor checkout surface', () => {
     }
   })
 
-  it('is live only when the flag is exactly true and the key is sk_live or rk_live', () => {
+  it('is live only when the flag is exactly true and the key is sk_live or rk_live', async () => {
     expect(sponsorLiveBilling(env({ STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }))).toBe(true)
     expect(sponsorLiveBilling(env({ STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: restrictedLiveKey }))).toBe(true)
     expect(sponsorCheckoutSurface(env({ STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }))).toBe('live')
@@ -113,7 +118,7 @@ describe('sponsor checkout surface', () => {
     expect(sponsorCheckoutSurface(env({ STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: '' }))).toBe('closed')
   })
 
-  it('allows test checkout only for exact preview, development, test, or local dev', () => {
+  it('allows test checkout only for exact preview, development, test, or local dev', async () => {
     expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'preview', STRIPE_SECRET_KEY: testKey }))).toBe('test')
     expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'development', STRIPE_SECRET_KEY: testKey }))).toBe('test')
     expect(sponsorCheckoutSurface(env({ VERCEL_ENV: 'test', NODE_ENV: 'production', STRIPE_SECRET_KEY: testKey }))).toBe('test')
@@ -146,19 +151,19 @@ function expectSponsorMetadata(closed: boolean) {
 }
 
 describe('production sponsor page', () => {
-  function pageHtml(): string {
+  async function pageHtml(): Promise<string> {
     resetStripeCache()
-    return renderToStaticMarkup(createElement(SponsorPage))
+    return renderToStaticMarkup(await SponsorPage())
   }
 
-  it('hides the test banner and checkout button and keeps the prices and contact link', () => {
+  it('hides the test banner and checkout button and keeps the prices and contact link', async () => {
     process.env.VERCEL_ENV = 'production'
     process.env.STRIPE_SECRET_KEY = testKey
     delete process.env.STRIPE_ALLOW_LIVE
     process.env.STRIPE_PRICE_PLACEMENT_WEEKLY = 'price_week'
     process.env.STRIPE_PRICE_PLACEMENT_MONTHLY = 'price_month'
     process.env.STRIPE_PRICE_NEWSLETTER_SLOT = 'price_issue'
-    const html = pageHtml()
+    const html = await pageHtml()
     expect(html).toContain(SPONSOR_OPENING_SOON)
     expect(html).toContain(`href="${SPONSOR_CONTACT_MAILTO}"`)
     expect(html).toContain('Buy a featured tool slot on one /best/[task] page, or a sponsor mention in one newsletter issue.')
@@ -177,12 +182,12 @@ describe('production sponsor page', () => {
     expectSponsorMetadata(true)
   })
 
-  it('shows live checkout on production once live billing is on', () => {
+  it('shows live checkout on production once live billing is on', async () => {
     process.env.VERCEL_ENV = 'production'
     process.env.STRIPE_ALLOW_LIVE = allowLive
     process.env.STRIPE_SECRET_KEY = liveKey
     process.env.STRIPE_PRICE_PLACEMENT_WEEKLY = 'price_week'
-    const html = pageHtml()
+    const html = await pageHtml()
     expect(html).toContain('Checkout uses Stripe live mode.')
     expect(html).toContain('The prices above are the current list prices from server configuration. They can be changed there.')
     expect(html).toContain('The Payment Links below are separate Stripe links with their own prices set in Stripe.')
@@ -196,7 +201,7 @@ describe('production sponsor page', () => {
     expectSponsorMetadata(false)
   })
 
-  it('stays closed for unset production, a blank env, a padded production value, and an unknown name', () => {
+  it('stays closed for unset production, a blank env, a padded production value, and an unknown name', async () => {
     const cases = [
       { VERCEL_ENV: undefined, NODE_ENV: 'production' },
       { VERCEL_ENV: '', NODE_ENV: 'development' },
@@ -211,7 +216,7 @@ describe('production sponsor page', () => {
       setNodeEnv(item.NODE_ENV)
       delete process.env.STRIPE_ALLOW_LIVE
       process.env.STRIPE_SECRET_KEY = testKey
-      const html = pageHtml()
+      const html = await pageHtml()
       expect(html, JSON.stringify(item)).toContain(SPONSOR_OPENING_SOON)
       expect(html, JSON.stringify(item)).not.toContain('Stripe test mode')
       expect(html, JSON.stringify(item)).not.toContain('Continue to checkout')
@@ -228,7 +233,7 @@ describe('production sponsor page', () => {
       else process.env.VERCEL_ENV = vercelEnv
       process.env.STRIPE_ALLOW_LIVE = allowLive
       process.env.STRIPE_SECRET_KEY = liveKey
-      const html = pageHtml()
+      const html = await pageHtml()
       const label = String(vercelEnv)
       expect(html, label).toContain(SPONSOR_OPENING_SOON)
       expect(html, label).not.toContain('Stripe live mode')
@@ -240,23 +245,23 @@ describe('production sponsor page', () => {
     }
   })
 
-  it('opens the live page and metadata on exact production with the flag and a live key', () => {
+  it('opens the live page and metadata on exact production with the flag and a live key', async () => {
     process.env.VERCEL_ENV = 'production'
     process.env.STRIPE_ALLOW_LIVE = allowLive
     process.env.STRIPE_SECRET_KEY = liveKey
-    const html = pageHtml()
+    const html = await pageHtml()
     expect(html).toContain('Checkout uses Stripe live mode.')
     expect(html).not.toContain('Stripe test mode')
     expect(html).not.toContain(SPONSOR_OPENING_SOON)
     expectSponsorMetadata(false)
   })
 
-  it('shows test checkout on preview, development, and test', () => {
+  it('shows test checkout on preview, development, and test', async () => {
     for (const vercelEnv of ['preview', 'development', 'test']) {
       process.env.VERCEL_ENV = vercelEnv
       delete process.env.STRIPE_ALLOW_LIVE
       process.env.STRIPE_SECRET_KEY = testKey
-      const html = pageHtml()
+      const html = await pageHtml()
       expect(html, vercelEnv).toContain('Stripe test mode')
       expect(html, vercelEnv).toContain('Continue to checkout')
       expect(html, vercelEnv).toContain('Payment happens on Stripe’s hosted checkout page.')
@@ -297,7 +302,7 @@ describe('sponsor checkout refusal', () => {
     expect(await preview.json()).toEqual({ error: 'Checkout is not available on this endpoint.' })
   })
 
-  it('checks the gate before Stripe and has no query-string bypass', () => {
+  it('checks the gate before Stripe and has no query-string bypass', async () => {
     const action = readFileSync(path.join(process.cwd(), 'src/app/sponsor/actions.ts'), 'utf8')
     const page = readFileSync(path.join(process.cwd(), 'src/app/sponsor/page.tsx'), 'utf8')
     const route = readFileSync(path.join(process.cwd(), 'src/app/api/sponsor/checkout/route.ts'), 'utf8')
