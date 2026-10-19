@@ -314,19 +314,28 @@ describe('curated compare copy', () => {
     )
   })
 
-  it('uses Nova’s Oct 18, 2026 price re-check', () => {
+  it('uses Nova’s Oct 19, 2026 Make price confirm', () => {
     const makeView = viewFor('n8n-vs-make').view
     expect(makeView.pickB.join(' ')).toContain('3,500+ apps')
     expect(makeView.pickB.join(' ')).not.toContain('1,000+ app integrations')
     const make = cell(makeView, 'Paid from').b
     expect(make).toBe(
-      'Core $12/mo, Pro $21/mo, Teams $38/mo billed yearly, or $16, $28 and $51/mo billed monthly. Each starts at 10,000 credits.',
+      "Core $12/mo, Pro $21/mo, Teams $38/mo billed yearly, or $16, $28 and $51/mo billed monthly. Each starts at 10,000 credits. Make shows some visitors lower prices ($9/$16/$29 a month); confirm on Make's site.",
     )
+    expect(make).toContain('Core $12/mo')
+    expect(make).toContain('Pro $21/mo')
+    expect(make).toContain('Teams $38/mo')
+    expect(make).toContain('Make shows some visitors lower prices ($9/$16/$29 a month)')
+    expect(make).toContain("confirm on Make's site")
     expect(make).not.toContain('[S]')
     expect(make).not.toContain('10.59')
-    for (const stale of ['$9/mo', 'Pro $16/mo', '$29/mo']) expect(make).not.toContain(stale)
+    // Primary plan prices must not fall back to the visitor-variant figures as the listed Core/Pro/Teams amounts.
+    expect(make).not.toMatch(/Core \$9\/mo/)
+    expect(make).not.toMatch(/Pro \$16\/mo/)
+    expect(make).not.toMatch(/Teams? \$29\/mo/)
     const makeCopy = compareCopy.find((entry) => entry.slug === 'n8n-vs-make')
     expect(makeCopy?.sources.join('\n')).toContain('https://www.make.com/en/pricing')
+    expect(makeCopy?.sources.join('\n')).toContain('checked Oct 19, 2026')
     expect(makeCopy?.sources.join('\n')).not.toContain('https://www.make.com/en/compare/make-vs-zapier')
     expect(makeCopy?.sources.join('\n')).not.toContain('meetalog')
     expect(makeCopy?.sources.join('\n')).not.toContain('mainsum')
@@ -344,6 +353,30 @@ describe('curated compare copy', () => {
     expect(`${cell(builders, 'Paid from').b} ${cell(builders, 'Business tier').b}`).not.toContain('$90')
 
     expect(cell(viewFor('heygen-vs-synthesia').view, 'Paid from').b).toBe('Starter $29/mo billed monthly')
+  })
+
+  it('strips one trailing period from Paid from cells in the cost FAQ', () => {
+    const makeView = viewFor('n8n-vs-make').view
+    const answer = compareCostAnswer(makeView, {
+      nameA: 'n8n',
+      priceA: 'unused.',
+      nameB: 'Make',
+      priceB: 'unused.',
+    })
+    // Make's Paid from cell already ends with "."; without the strip the FAQ read "credits.. Confirm".
+    expect(answer).not.toContain('credits..')
+    expect(answer).toContain('10,000 credits. Make shows some visitors')
+    expect(answer).toContain("confirm on Make's site. Confirm the current price on each site.")
+    expect(answer).toMatch(/n8n: .+\. Make: .+\. Confirm the current price on each site\.$/)
+    // Fallback path also strips so a price ending in "." does not double up.
+    expect(
+      compareCostAnswer(null, {
+        nameA: 'A',
+        priceA: 'ends with period.',
+        nameB: 'B',
+        priceB: 'also ends.',
+      }),
+    ).toBe('A: ends with period. B: also ends. Confirm the current price on each site.')
   })
 
   it('drops the expired ElevenLabs promo and the Murf third-party markers', () => {
