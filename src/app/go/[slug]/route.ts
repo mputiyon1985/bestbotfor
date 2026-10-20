@@ -18,8 +18,8 @@ export const dynamic = 'force-dynamic'
 
 /**
  * Allowlist redirect. The destination is the tool's official URL, and the
- * host must be on the reviewed list shipped with the seed. Query strings and
- * affiliate URLs are ignored. The click row is written after the response.
+ * host must be on the reviewed list shipped with the seed. The affiliate URL is
+ * used when it passes the same allowlist. Only utm_* query keys are passed on. The click row is written after the response.
  *
  * HEAD is the cheap path. Next would otherwise run this GET handler, which
  * logs a rate-limit or catalog deadline while still answering 302.
@@ -40,6 +40,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     headers: request.headers,
     ip,
     siteUrl: getSiteUrl(),
+    search: new URL(request.url).search,
     seedUrl: reviewed.url,
     allowedHosts: reviewed.allowedHosts,
     limit: () => consumeRateLimit(db, rateLimitKey(ip, 'go'), ACTION_LIMITS.go.limit, ACTION_LIMITS.go.windowMs),

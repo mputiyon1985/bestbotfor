@@ -5,11 +5,30 @@ import { decideRedirect, isStripeHostedUrl, officialHttpsUrl, reviewedToolUrl } 
 const chatgpt = ['chatgpt.com']
 
 describe('decideRedirect', () => {
-  it('sends people to the stored official https URL when the host is reviewed', () => {
+  it('falls back to the official URL when the affiliate host is not reviewed', () => {
     const decision = decideRedirect({
       tool: { url: 'https://chatgpt.com', affiliateUrl: 'https://evil.example/aff?ref=1', allowedHosts: chatgpt },
     })
-    expect(decision).toEqual({ type: 'redirect', url: 'https://chatgpt.com/' })
+    expect(decision).toEqual({ type: 'redirect', url: 'https://chatgpt.com/', affiliate: false })
+  })
+
+  it('uses the affiliate URL when it is https on a reviewed host', () => {
+    expect(
+      decideRedirect({ tool: { url: 'https://chatgpt.com', affiliateUrl: 'https://chatgpt.com/?via=bbf', allowedHosts: chatgpt } }),
+    ).toEqual({ type: 'redirect', url: 'https://chatgpt.com/?via=bbf', affiliate: true })
+    for (const bad of ['http://chatgpt.com/?via=bbf', 'javascript:alert(1)', 'https://chatgpt.com:8443/', 'https://u:p@chatgpt.com/', '']) {
+      expect(decideRedirect({ tool: { url: 'https://chatgpt.com', affiliateUrl: bad, allowedHosts: chatgpt } })).toEqual({
+        type: 'redirect',
+        url: 'https://chatgpt.com/',
+        affiliate: false,
+      })
+    }
+  })
+
+  it('refuses an off-list official URL when there is no affiliate URL', () => {
+    expect(
+      decideRedirect({ tool: { url: 'https://evil.example', affiliateUrl: null, allowedHosts: chatgpt } }),
+    ).toEqual({ type: 'not_found' })
   })
 
   it('refuses a missing tool, a non-https URL, and any host that was not reviewed', () => {

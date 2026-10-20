@@ -563,7 +563,7 @@ export const toolSeeds: ToolSeed[] = [
     name: 'ElevenLabs',
     vendor: 'ElevenLabs',
     url: 'https://elevenlabs.io',
-    allowedHosts: ['elevenlabs.io'],
+    allowedHosts: ['elevenlabs.io', 'try.elevenlabs.io'],
     category: 'Voice',
     shortDesc: 'Text-to-speech and voice tools with a wide set of voices.',
     longDesc: 'ElevenLabs is the usual pick when the job is a natural voiceover from a script. You stay in control of the script. It does not edit the picture.',
