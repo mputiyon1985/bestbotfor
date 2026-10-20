@@ -85,4 +85,17 @@ describe('guide markdown', () => {
     const xss = renderToStaticMarkup(createElement(GuideMarkdown, { markdown: '<img src=x onerror=alert(1)>' }))
     expect(xss).toContain('&lt;img')
   })
+
+  it('marks an affiliate /go link as sponsored with the Affiliate link note', async () => {
+    const { GuideMarkdown } = await import('@/components/guide-markdown')
+    const on = renderToStaticMarkup(
+      createElement(GuideMarkdown, { markdown: 'Try [Synthesia](https://bestbotfor.com/go/synthesia?utm_source=site).\n' }),
+    )
+    expect(on).toContain('href="/go/synthesia?utm_source=site" rel="sponsored nofollow noopener"')
+    expect(on).toContain('data-affiliate-disclosure="affiliate"')
+    const off = renderToStaticMarkup(createElement(GuideMarkdown, { markdown: 'Try [Cursor](https://bestbotfor.com/go/cursor).\n' }))
+    expect(off).toContain('rel="nofollow noopener"')
+    expect(off).not.toContain('sponsored')
+    expect(off).not.toContain('data-affiliate-disclosure')
+  })
 })
