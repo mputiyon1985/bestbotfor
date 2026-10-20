@@ -2,6 +2,7 @@ import type { MetadataRoute } from 'next'
 import { comparePairSeeds } from '@/data/catalog'
 import { ALTERNATIVE_PAGES, alternativesPath } from '@/lib/alternatives'
 import { GUIDES, guidePath } from '@/content/guides'
+import { CATEGORY_GUIDES } from '@/content/category-guides'
 import { listPublicSlugs } from '@/lib/catalog'
 import { getDb } from '@/lib/db'
 import { emptySitemapDates, latestIsoDate, readSitemapDates, SITEMAP_STATIC_LASTMOD, type SitemapDates } from '@/lib/sitemap-dates'
@@ -27,6 +28,7 @@ export const SITEMAP_STATIC_PATHS = [
   '/best',
   '/ai-loadout',
   ...GUIDES.map((guide) => guidePath(guide.slug)),
+  ...CATEGORY_GUIDES.map((guide) => guidePath(guide.category)),
 ] as const
 
 /** Catalog-backed hubs take the newest catalog review date. */
@@ -35,6 +37,8 @@ const CATALOG_HUB_PATHS = new Set<string>(['/', '/best', '/tools'])
 function staticLastmod(path: string, dates: SitemapDates): string {
   const guide = GUIDES.find((entry) => guidePath(entry.slug) === path)
   if (guide) return latestIsoDate([guide.updatedAt]) ?? SITEMAP_STATIC_LASTMOD
+  const categoryGuide = CATEGORY_GUIDES.find((entry) => guidePath(entry.category) === path)
+  if (categoryGuide) return latestIsoDate([categoryGuide.checked]) ?? SITEMAP_STATIC_LASTMOD
   if (CATALOG_HUB_PATHS.has(path)) return dates.catalog ?? SITEMAP_STATIC_LASTMOD
   return SITEMAP_STATIC_LASTMOD
 }

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { EDITOR_BIO } from '@/content/category-guides'
 import { pageMetadata } from '@/lib/metadata'
 import { BUSINESS_PHONE_DISPLAY, BUSINESS_PHONE_HREF, TAGLINE } from '@/lib/site'
 
@@ -28,6 +29,8 @@ export default function AboutPage() {
         The catalog was reviewed on October 15, 2026. Product details change. Check the vendor’s site before you pay or
         install anything.
       </p>
+      <h2 className="font-bold text-2xl">Our editor</h2>
+      <p data-editor-bio>{EDITOR_BIO}</p>
       <h2 className="font-bold text-2xl">Contact</h2>
       <p>
         Call us at{' '}
