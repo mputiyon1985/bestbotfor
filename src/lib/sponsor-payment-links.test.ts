@@ -184,7 +184,7 @@ describe('sponsor payment links', () => {
         expect(subscriptionLine(html)).toEqual([])
         expect(foundingLine(html)).toEqual([])
         expect(html).toContain('Featured placement: $299 for one month.')
-        expect(html).toContain('The prices above are the current list prices from server configuration.')
+        expect(html).toContain('Prices above are current.')
         expect(html).not.toContain('one-time and subscription')
       }
       const html = await pageHtml({ ...live, ...unset })
@@ -215,7 +215,7 @@ describe('sponsor payment links', () => {
       expect(subscriptionLine(subOnly)).toEqual([`Featured placement, monthly subscription: $299/mo. ${OFFERING_SUBSCRIPTION_NOTICE}`])
       expect(foundingLine(subOnly)).toEqual([])
       expect(radio(subOnly, 'placement_subscription')).not.toContain('disabled')
-      expect(subOnly).toContain('The prices above, one-time and subscription, are the current list prices from server configuration.')
+      expect(subOnly).toContain('Prices above, one-time and subscription, are current.')
 
       const both = await pageHtml({
         ...live,
@@ -276,7 +276,7 @@ describe('sponsor payment links', () => {
       expect(foundingLine(closed)).toEqual([])
       expect(closed).not.toContain('Limited to 5')
       expect(closed).toContain('Featured placement: $299 for one month.')
-      expect(closed).toContain('The prices above, one-time and subscription, are the current list prices from server configuration.')
+      expect(closed).toContain('Prices above, one-time and subscription, are current.')
       const unsetClosed = await pageHtml({ VERCEL_ENV: 'production', STRIPE_SECRET_KEY: testKey, ...unset })
       expect(subscriptionLine(unsetClosed)).toEqual([])
       expect(foundingLine(unsetClosed)).toEqual([])

@@ -9,7 +9,7 @@
 export const SPONSOR_TASK_FIELD_LABEL = 'Which /best page do you want to sponsor?'
 
 /** Shown in place of the price and terms on a form option whose checkout is not configured. */
-export const SPONSOR_OFFERING_NOT_CONFIGURED = 'Checkout for this slot is not configured yet.'
+export const SPONSOR_OFFERING_NOT_CONFIGURED = 'This option isn’t available right now.'
 
 /** Label added to the founding option's title once every founding spot is taken. */
 export const SPONSOR_SOLD_OUT_LABEL = 'Sold out'
