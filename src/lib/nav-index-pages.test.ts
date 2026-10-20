@@ -21,9 +21,9 @@ describe('header nav index pages', () => {
     expect(entries.every((e) => / vs /.test(e.title))).toBe(true)
   })
 
-  it('/best links every category and its guide; both index pages carry ItemList, no ratings, and are in the sitemap', () => {
+  it('/best links every category with a pick and its guide; both index pages carry ItemList, no ratings, and are in the sitemap', () => {
     const best = read('src/app/best/page.tsx')
-    expect(best).toContain('const listed = rows\n')
+    expect(best).toContain('const listed = rows.filter((row) => row.pick)')
     expect(best).toContain('guidePath(row.taskSlug)')
     const compare = read('src/app/compare/page.tsx')
     for (const src of [best, compare]) {

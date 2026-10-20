@@ -33,7 +33,8 @@ export default async function BestHubPage() {
     { name: 'Home', path: '/' },
     { name: 'Best by job', path: BEST_HUB_PATH },
   ]
-  const listed = rows
+  // Categories with no pick yet are hidden here and from the ItemList (their pages are noindex).
+  const listed = rows.filter((row) => row.pick)
   const itemList = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
