@@ -134,7 +134,7 @@ export default async function SponsorPage() {
       <p className="text-sm text-muted">
         {listsSubscriptionPrice ? 'Prices above, one-time and subscription, are current.' : 'Prices above are current.'}
         {surface === 'live' ? ` ${SPONSOR_PAYMENT_LINKS_NOTE}` : null}
-        {surface === 'closed' ? null : ' Checkout charges exactly the listed price.'}
+        {surface === 'closed' ? null : " You’ll see the final price on Stripe’s checkout page before you pay."}
       </p>
       {surface === 'live' ? <SponsorPaymentLinks /> : null}
       {surface === 'live' ? (
