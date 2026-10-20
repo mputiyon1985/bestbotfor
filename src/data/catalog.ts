@@ -583,6 +583,7 @@ export const toolSeeds: ToolSeed[] = [
       sourceUrl: 'https://elevenlabs.io/affiliates',
       status: 'available',
       commissionNote: '22% for 12 months (PartnerStack), as stated on the affiliates page.',
+      affiliateUrl: 'https://try.elevenlabs.io/8hbaa9knuwda',
     },
   }),
   tool({

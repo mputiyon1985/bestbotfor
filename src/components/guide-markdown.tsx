@@ -26,7 +26,7 @@ function inline(nodes: Inline[]): ReactNode[] {
     return (
       <span key={index}>
         {link}
-        <AffiliateDisclosure affiliate />
+        <AffiliateDisclosure affiliate target="link" />
       </span>
     )
   })

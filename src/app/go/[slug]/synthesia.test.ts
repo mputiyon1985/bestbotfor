@@ -46,3 +46,12 @@ describe('/go/synthesia', () => {
     expect((await go()).headers.get('location')).toBe('https://www.synthesia.io/')
   })
 })
+
+describe('/go/elevenlabs', () => {
+  it('redirects to the reviewed ElevenLabs affiliate URL', async () => {
+    const res = await GET(new Request('https://bestbotfor.com/go/elevenlabs'), { params: Promise.resolve({ slug: 'elevenlabs' }) })
+    expect(res.status).toBe(302)
+    expect(res.headers.get('location')).toBe('https://try.elevenlabs.io/8hbaa9knuwda')
+    expect(servesAffiliateLink('elevenlabs', null)).toBe(true)
+  })
+})

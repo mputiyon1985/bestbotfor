@@ -98,4 +98,15 @@ describe('guide markdown', () => {
     expect(off).not.toContain('sponsored')
     expect(off).not.toContain('data-affiliate-disclosure')
   })
+
+  it('ElevenLabs /go links in guides are sponsored, and the note says "link" not "button"', async () => {
+    const { GuideMarkdown } = await import('@/components/guide-markdown')
+    const html = renderToStaticMarkup(createElement(GuideMarkdown, { markdown: '[ElevenLabs](https://bestbotfor.com/go/elevenlabs).\n' }))
+    expect(html).toContain('href="/go/elevenlabs" rel="sponsored nofollow noopener"')
+    expect(html).toContain('data-affiliate-disclosure="affiliate"')
+    expect(html).toContain('through this link.')
+    expect(html).not.toContain('through this button')
+    const { AffiliateDisclosure } = await import('@/components/affiliate-disclosure')
+    expect(renderToStaticMarkup(createElement(AffiliateDisclosure, { affiliate: true }))).toContain('through this button.')
+  })
 })
