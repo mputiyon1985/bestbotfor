@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "tsx scripts/prepare-clerk-shell.ts && tsx scripts/prepare-db.ts && next dev",
-    "prebuild": "tsx scripts/prepare-clerk-shell.ts && tsx scripts/prepare-db.ts",
+    "prebuild": "tsx scripts/prepare-clerk-shell.ts && tsx scripts/prepare-db.ts && tsx scripts/build-catalog-fallback.ts",
     "build": "next build",
     "start": "NODE_ENV=production tsx scripts/serve.ts",
     "lint": "eslint .",
@@ -26,7 +26,8 @@
     "check:members": "tsx scripts/check-member-routes.ts",
     "check:lighthouse": "tsx scripts/check-lighthouse.ts",
     "logos:fetch": "tsx scripts/fetch-tool-logos.ts",
-    "stripe:setup-test": "tsx scripts/stripe-setup-test.ts"
+    "stripe:setup-test": "tsx scripts/stripe-setup-test.ts",
+    "build:catalog-fallback": "tsx scripts/build-catalog-fallback.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.16",
