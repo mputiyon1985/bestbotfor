@@ -31,12 +31,17 @@ describe('category guides', () => {
     expect(meetings.body).not.toContain('free AI note takers guide')
   })
 
-  it('automation shows Make Set A prices only', () => {
+  it('automation lists no unverified Make prices and points to make.com', () => {
     const body = CATEGORY_GUIDES.find((g) => g.category === 'automation')!.body
-    expect(body).toContain('| Core | $12 / $16 per month |')
-    expect(body).toContain('| Pro | $21 / $28 per month |')
-    expect(body).toContain('| Teams | $38 / $51 per month |')
-    expect(body).not.toMatch(/\$9 \/ \$10\.59|\$16 \/ \$18\.82|\$29 \/ \$34\.12/)
+    expect(body).not.toMatch(/\| (Core|Pro|Teams) \|/)
+    expect(body).toContain('(https://www.make.com/en/pricing)')
+  })
+
+  it('has no internal notes, commit ids, Fit % wording or a stale affiliate claim', () => {
+    for (const guide of CATEGORY_GUIDES) {
+      expect(guide.body).not.toMatch(/qa-pr|Unresolved|Discrepancy|1c2f652|commit [0-9a-f]{7}|Fit %|% fit\b|Fit for this job|affiliate codes/)
+      expect(guide.body).toContain('may be affiliate links')
+    }
   })
 
   it('Article JSON-LD names Mark as author', () => {
