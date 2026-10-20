@@ -39,7 +39,7 @@ describe('category guides', () => {
 
   it('has no internal notes, commit ids, Fit % wording or a stale affiliate claim', () => {
     for (const guide of CATEGORY_GUIDES) {
-      expect(guide.body).not.toMatch(/qa-pr|Unresolved|Discrepancy|1c2f652|commit [0-9a-f]{7}|Fit %|% fit\b|Fit for this job|affiliate codes/)
+      expect(guide.body).not.toMatch(/verification flag|qa-pr|Unresolved|Discrepancy|1c2f652|commit [0-9a-f]{7}|Fit %|% fit\b|Fit for this job|affiliate codes/)
       expect(guide.body).toContain('may be affiliate links')
     }
   })
@@ -84,5 +84,29 @@ describe('guide markdown', () => {
     }
     const xss = renderToStaticMarkup(createElement(GuideMarkdown, { markdown: '<img src=x onerror=alert(1)>' }))
     expect(xss).toContain('&lt;img')
+  })
+
+  it('marks an affiliate /go link as sponsored with the Affiliate link note', async () => {
+    const { GuideMarkdown } = await import('@/components/guide-markdown')
+    const on = renderToStaticMarkup(
+      createElement(GuideMarkdown, { markdown: 'Try [Synthesia](https://bestbotfor.com/go/synthesia?utm_source=site).\n' }),
+    )
+    expect(on).toContain('href="/go/synthesia?utm_source=site" rel="sponsored nofollow noopener"')
+    expect(on).toContain('data-affiliate-disclosure="affiliate"')
+    const off = renderToStaticMarkup(createElement(GuideMarkdown, { markdown: 'Try [Cursor](https://bestbotfor.com/go/cursor).\n' }))
+    expect(off).toContain('rel="nofollow noopener"')
+    expect(off).not.toContain('sponsored')
+    expect(off).not.toContain('data-affiliate-disclosure')
+  })
+
+  it('ElevenLabs /go links in guides are sponsored, and the note says "link" not "button"', async () => {
+    const { GuideMarkdown } = await import('@/components/guide-markdown')
+    const html = renderToStaticMarkup(createElement(GuideMarkdown, { markdown: '[ElevenLabs](https://bestbotfor.com/go/elevenlabs).\n' }))
+    expect(html).toContain('href="/go/elevenlabs" rel="sponsored nofollow noopener"')
+    expect(html).toContain('data-affiliate-disclosure="affiliate"')
+    expect(html).toContain('through this link.')
+    expect(html).not.toContain('through this button')
+    const { AffiliateDisclosure } = await import('@/components/affiliate-disclosure')
+    expect(renderToStaticMarkup(createElement(AffiliateDisclosure, { affiliate: true }))).toContain('through this button.')
   })
 })

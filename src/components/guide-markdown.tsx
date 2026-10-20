@@ -1,5 +1,7 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
+import { servesAffiliateLink } from '@/lib/go-redirect'
 import { parseGuideMarkdown, type Inline } from '@/lib/guide-markdown'
 
 function inline(nodes: Inline[]): ReactNode[] {
@@ -14,10 +16,18 @@ function inline(nodes: Inline[]): ReactNode[] {
         </Link>
       )
     }
-    return (
-      <a key={index} href={node.href} rel="nofollow noopener" className="underline">
+    const affiliate = node.kind === 'go' && servesAffiliateLink(goSlug(node.href), null)
+    const link = (
+      <a key={index} href={node.href} rel={affiliate ? 'sponsored nofollow noopener' : 'nofollow noopener'} className="underline">
         {inline(node.children)}
       </a>
+    )
+    if (!affiliate) return link
+    return (
+      <span key={index}>
+        {link}
+        <AffiliateDisclosure affiliate target="link" />
+      </span>
     )
   })
 }
@@ -68,4 +78,9 @@ export function GuideMarkdown({ markdown }: { markdown: string }) {
       })}
     </>
   )
+}
+
+/** "/go/synthesia?utm_source=..." -> "synthesia" */
+function goSlug(href: string): string {
+  return href.slice('/go/'.length).split(/[?#/]/)[0] ?? ''
 }

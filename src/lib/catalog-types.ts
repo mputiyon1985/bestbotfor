@@ -11,6 +11,12 @@ export type AffiliateSeed = {
   sourceUrl: string | null
   status: AffiliateStatus
   commissionNote: string | null
+  /**
+   * Reviewed affiliate link shipped in code. Used by /go only when the DB has no
+   * affiliate_url, and only if it passes the tool's allowedHosts. The seed script
+   * still never writes it to the DB.
+   */
+  affiliateUrl?: string
 }
 
 /**
@@ -80,7 +86,7 @@ export type CatalogTool = {
   platforms: string[]
   lastVerifiedAt: string
   fits: CatalogFit[]
-  affiliate: AffiliateSeed & { affiliateUrl: string | null }
+  affiliate: Omit<AffiliateSeed, 'affiliateUrl'> & { affiliateUrl: string | null }
   /** Null when this tool has no verified editorial score. */
   editorial: EditorialScore | null
   pros: ProCon[]

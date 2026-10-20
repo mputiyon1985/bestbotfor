@@ -583,6 +583,7 @@ export const toolSeeds: ToolSeed[] = [
       sourceUrl: 'https://elevenlabs.io/affiliates',
       status: 'available',
       commissionNote: '22% for 12 months (PartnerStack), as stated on the affiliates page.',
+      affiliateUrl: 'https://try.elevenlabs.io/8hbaa9knuwda',
     },
   }),
   tool({
@@ -617,7 +618,7 @@ export const toolSeeds: ToolSeed[] = [
     name: 'Synthesia',
     vendor: 'Synthesia',
     url: 'https://www.synthesia.io',
-    allowedHosts: ['www.synthesia.io'],
+    allowedHosts: ['www.synthesia.io', 'synthesia.io'],
     category: 'AI video',
     shortDesc: 'Turns a script into a presenter-style video.',
     longDesc:
@@ -637,6 +638,7 @@ export const toolSeeds: ToolSeed[] = [
       sourceUrl: 'https://www.synthesia.io/partners/affiliates',
       status: 'available',
       commissionNote: '25% with a 60-day cookie, as stated on the affiliates page.',
+      affiliateUrl: 'https://www.synthesia.io?via=mark-putiyon',
     },
   }),
   tool({
