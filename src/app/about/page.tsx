@@ -31,7 +31,7 @@ export default function AboutPage() {
       <h2 className="font-bold text-2xl">Contact</h2>
       <p>
         Call us at{' '}
-        <a className="font-semibold underline underline-offset-4" href={BUSINESS_PHONE_HREF}>
+        <a className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4" href={BUSINESS_PHONE_HREF}>
           {BUSINESS_PHONE_DISPLAY}
         </a>
         .
