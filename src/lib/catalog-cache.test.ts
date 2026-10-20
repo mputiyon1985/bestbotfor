@@ -38,9 +38,10 @@ describe('catalog reads when Turso is down', () => {
     expect((await listTasks()).length).toBeGreaterThan(10)
   })
 
-  it.skipIf(!fallbackBuilt)('an unknown slug in the fallback is still a 404 (undefined), not an error', async () => {
-    const { getTool } = await import('./catalog')
-    expect(await getTool('no-such-tool-xyz')).toBeUndefined()
+  it.skipIf(!fallbackBuilt)('during an outage a slug missing from the fallback is a server error, not a 404', async () => {
+    const { getTool, getTask } = await import('./catalog')
+    await expect(getTool('no-such-tool-xyz')).rejects.toMatchObject({ name: 'CatalogUnavailableError' })
+    await expect(getTask('no-such-task-xyz')).rejects.toMatchObject({ name: 'CatalogUnavailableError' })
   })
 
   it('without the fallback file, tasks still come from bundled seeds', async () => {

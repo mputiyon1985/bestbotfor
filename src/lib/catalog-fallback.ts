@@ -39,11 +39,21 @@ function remember(key: string, value: unknown) {
  * The fallback is never written into the Next data cache, so a short outage
  * cannot pin stale or empty data for the whole revalidate window.
  */
+export type ReadFallbackOptions = {
+  /**
+   * For single-item lookups: when the live read failed and the fallback has no
+   * row, throw CatalogUnavailableError (a server error) instead of returning
+   * null, so an outage never turns a live page into a 404.
+   */
+  missIsUnavailable?: boolean
+}
+
 export async function withReadFallback<Args extends unknown[], Result>(
   name: string,
   args: Args,
   read: (...args: Args) => Promise<Result>,
   seed?: () => Result | Promise<Result>,
+  options: ReadFallbackOptions = {},
 ): Promise<Result> {
   const key = keyFor(name, args)
   try {
@@ -61,11 +71,16 @@ export async function withReadFallback<Args extends unknown[], Result>(
       return value
     }
     if (seed) {
+      let value: Result
       try {
-        return await seed()
+        value = await seed()
       } catch (fallbackError) {
         console.error(`[catalog] fallback for "${name}" failed (${fallbackError instanceof Error ? fallbackError.name : 'unknown'})`)
+        throw new CatalogUnavailableError(name)
       }
+      // Fallback values are never remembered as last-good.
+      if (options.missIsUnavailable && (value === null || value === undefined)) throw new CatalogUnavailableError(name)
+      return value
     }
     throw new CatalogUnavailableError(name)
   }

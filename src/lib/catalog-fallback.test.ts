@@ -56,3 +56,22 @@ describe('control flow', () => {
     await expect(withReadFallback('t', [], async () => notFound(), () => 'seed')).rejects.toMatchObject({ digest: expect.stringContaining('404') })
   })
 })
+
+describe('fallback values', () => {
+  it('are never stored as last-good', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    expect(await withReadFallback('f', ['k'], blocked, () => 'from-fallback')).toBe('from-fallback')
+    // No live value was ever seen, so with no fallback the read must fail, not replay the fallback.
+    await expect(withReadFallback('f', ['k'], blocked)).rejects.toBeInstanceOf(CatalogUnavailableError)
+  })
+
+  it('missIsUnavailable turns an empty fallback into CatalogUnavailableError', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    await expect(withReadFallback('f', ['m'], blocked, () => null, { missIsUnavailable: true })).rejects.toBeInstanceOf(CatalogUnavailableError)
+    expect(await withReadFallback('f', ['n'], blocked, () => null)).toBeNull()
+  })
+
+  it('a live miss is still a normal null (404), even with missIsUnavailable', async () => {
+    expect(await withReadFallback('f', ['live'], async (_s: string) => null, () => null, { missIsUnavailable: true })).toBeNull()
+  })
+})

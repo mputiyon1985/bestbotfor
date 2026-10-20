@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { copyFileSync, existsSync } from 'node:fs'
+import { copyFileSync, existsSync, renameSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { createClient } from '@libsql/client'
@@ -22,7 +22,17 @@ let fallbackDb: Database | undefined
 export function openCatalogFallbackDb(source: string = CATALOG_FALLBACK_FILE, workDir: string = tmpdir()): Database | null {
   if (!existsSync(source)) return null
   const copy = path.join(workDir, `bbf-catalog-fallback-${process.pid}.db`)
-  if (!existsSync(copy)) copyFileSync(source, copy)
+  if (!existsSync(copy)) {
+    // Copy to a unique temp name, then rename: rename is atomic on one filesystem,
+    // so a crash mid-copy never leaves a truncated file at the final path.
+    const partial = `${copy}.${Date.now()}-${Math.random().toString(36).slice(2)}.partial`
+    try {
+      copyFileSync(source, partial)
+      renameSync(partial, copy)
+    } finally {
+      rmSync(partial, { force: true })
+    }
+  }
   const client = createClient({ url: `file:${copy}` })
   return drizzle(client, { schema }) as Database
 }

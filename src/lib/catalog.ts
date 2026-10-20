@@ -11,6 +11,7 @@ import type { QuizAnswers } from './validation'
 import { taskSeeds } from '@/data/catalog'
 import { CatalogUnavailableError, withReadFallback } from './catalog-fallback'
 import { getCatalogFallbackDb } from './catalog-fallback-db'
+import { catalogCacheKey } from './catalog-version'
 import type { Database } from './db'
 
 async function loadCatalog(): Promise<Catalog> {
@@ -37,7 +38,7 @@ async function readCatalog(db: Database): Promise<Catalog> {
  */
 export const CATALOG_REVALIDATE_SECONDS = 6 * 60 * 60
 
-const cachedCatalog = unstable_cache(loadCatalog, ['catalog-v4'], { revalidate: CATALOG_REVALIDATE_SECONDS })
+const cachedCatalog = unstable_cache(loadCatalog, catalogCacheKey('catalog-v4'), { revalidate: CATALOG_REVALIDATE_SECONDS })
 
 /** Runs a catalog reader against the bundled seed database. Used only after Turso fails. */
 function fromFallbackDb<Result>(read: (db: Database) => Promise<Result>): () => Promise<Result> {
@@ -66,17 +67,17 @@ const loadTool = catalogPageCache(
     const [tool] = await readToolsBySlugs(getDb(), [slug])
     return tool ?? null
   },
-  ['tool-by-slug-v1'],
+  catalogCacheKey('tool-by-slug-v1'),
 )
 
 const loadToolsBySlugs = catalogPageCache(
   async (slugs: string[]) => readToolsBySlugs(getDb(), slugs),
-  ['tools-by-slugs-v1'],
+  catalogCacheKey('tools-by-slugs-v1'),
 )
 
 const loadTask = catalogPageCache(
   async (slug: string) => readTask(getDb(), slug),
-  ['task-by-slug-v1'],
+  catalogCacheKey('task-by-slug-v1'),
 )
 
 async function readTask(db: Database, slug: string): Promise<CatalogTask | null> {
@@ -93,33 +94,33 @@ async function readTask(db: Database, slug: string): Promise<CatalogTask | null>
     return task ?? null
 }
 
-const loadTasks = catalogPageCache(async () => readTasks(getDb()), ['tasks-v1'])
+const loadTasks = catalogPageCache(async () => readTasks(getDb()), catalogCacheKey('tasks-v1'))
 
 const loadToolPage = catalogPageCache(
   async (page: number, category: string | null) => readToolPage(getDb(), page, category),
-  ['tool-page-v1'],
+  catalogCacheKey('tool-page-v1'),
 )
 
-const loadToolCategoryCounts = catalogPageCache(async () => readToolCategoryCounts(getDb()), ['tool-category-counts-v1'])
+const loadToolCategoryCounts = catalogPageCache(async () => readToolCategoryCounts(getDb()), catalogCacheKey('tool-category-counts-v1'))
 
 const loadTaskCandidates = catalogPageCache(
   async (taskSlug: string) => readTaskCandidates(getDb(), taskSlug),
-  ['task-candidates-v1'],
+  catalogCacheKey('task-candidates-v1'),
 )
 
 const loadSearch = catalogPageCache(
   async (query: string) => searchToolSummaries(getDb(), query),
-  ['tool-search-v1'],
+  catalogCacheKey('tool-search-v1'),
 )
 
 const loadPublicSlugs = catalogPageCache(
   async () => readPublicSlugs(getDb()),
-  ['public-slugs-v1'],
+  catalogCacheKey('public-slugs-v1'),
 )
 
 const loadToolSummaries = catalogPageCache(
   async () => readToolSummaries(getDb()),
-  ['tool-summaries-v1'],
+  catalogCacheKey('tool-summaries-v1'),
 )
 
 // React cache() dedupes within one request: generateMetadata and the page body
@@ -129,7 +130,9 @@ const loadToolSummaries = catalogPageCache(
 
 const getToolCached = cache(
   async (slug: string) =>
-    (await withReadFallback('tool', [slug], loadTool, fromFallbackDb(async (db) => (await readToolsBySlugs(db, [slug]))[0] ?? null))) ??
+    (await withReadFallback('tool', [slug], loadTool, fromFallbackDb(async (db) => (await readToolsBySlugs(db, [slug]))[0] ?? null), {
+      missIsUnavailable: true,
+    })) ??
     undefined,
 )
 export async function getTool(slug: string): Promise<CatalogTool | undefined> {
@@ -164,7 +167,9 @@ function withSeed<Result>(read: () => Promise<Result>, seed: () => Result): () =
 
 const getTaskCached = cache(
   async (slug: string) =>
-    (await withReadFallback('task', [slug], loadTask, withSeed(fromFallbackDb((db) => readTask(db, slug)), () => seedTask(slug)))) ??
+    (await withReadFallback('task', [slug], loadTask, withSeed(fromFallbackDb((db) => readTask(db, slug)), () => seedTask(slug)), {
+      missIsUnavailable: true,
+    })) ??
     undefined,
 )
 export async function getTask(slug: string): Promise<CatalogTask | undefined> {
@@ -189,7 +194,9 @@ export const listToolCategoryCounts = cache(() =>
 )
 
 export const listTaskCandidates = cache((taskSlug: string) =>
-  withReadFallback('task-candidates', [taskSlug], loadTaskCandidates, fromFallbackDb((db) => readTaskCandidates(db, taskSlug))),
+  withReadFallback('task-candidates', [taskSlug], loadTaskCandidates, fromFallbackDb((db) => readTaskCandidates(db, taskSlug)), {
+    missIsUnavailable: true,
+  }),
 )
 
 export async function recommendQuiz(answers: QuizAnswers) {
