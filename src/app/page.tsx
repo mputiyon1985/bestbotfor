@@ -26,7 +26,7 @@ const faqs = [
   {
     question: 'Do you earn money from the recommendations?',
     answer:
-      'Outbound buttons go to each tool’s own website. We are not passing an affiliate code today. If we join a program later, we may earn a commission, and the disclosure page says so. Payment does not buy a higher rank.',
+      'Most Visit buttons go straight to each tool’s own website. When a button uses an affiliate link, a note next to it says so, and we may earn a commission if you buy. Commissions and paid placements never buy a higher rank.',
   },
   {
     question: 'How current is the information?',

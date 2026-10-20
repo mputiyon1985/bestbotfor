@@ -5,6 +5,7 @@ import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { ProsConsSection, ScoreSection } from '@/components/editorial'
 import { JsonLd } from '@/components/json-ld'
+import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
 import { comparePairSeeds } from '@/data/catalog'
@@ -69,14 +70,11 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
         <Item label="Free tier" value={tool.hasFreeTier ? 'Yes' : 'No'} />
       </dl>
       <p>
-        <OutboundLink slug={tool.slug} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
+        <OutboundLink slug={tool.slug} affiliate={Boolean(tool.affiliate.affiliateUrl)} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
           Visit {tool.name}
         </OutboundLink>
       </p>
-      <p className="text-sm text-muted">
-        This button opens {tool.vendor}’s site. The address is the official URL in our catalog, not an affiliate link.{' '}
-        <Link href="/disclosure" className="underline">Disclosures</Link>.
-      </p>
+      <AffiliateDisclosure affiliate={Boolean(tool.affiliate.affiliateUrl)} vendor={tool.vendor} />
       {tool.affiliate.commissionNote ? (
         <p className="text-sm text-muted">Program note, copied from the vendor’s page: {tool.affiliate.commissionNote}</p>
       ) : null}

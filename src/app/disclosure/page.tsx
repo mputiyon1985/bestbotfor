@@ -22,13 +22,13 @@ export default function DisclosurePage() {
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Disclosures', path: '/disclosure' }]} />
       <h1 className="font-bold text-5xl">Disclosures</h1>
       <p>
-        BestBotFor may earn money if we later join an affiliate or referral program and you buy through a link we
-        control. That relationship would not change the editorial rank.
+        BestBotFor may earn a commission when you buy through an affiliate link. That relationship never changes the
+        editorial rank.
       </p>
       <p>
-        Today, every “Visit” button goes to the tool’s official website. We do not attach an affiliate code, and the
-        affiliate URL field in our database is unused. Some vendors publish a program. We have not applied, and we do
-        not claim a commission until a program is approved and a real tracking link is in use.
+        A “Visit” button uses an affiliate link only after a program has approved us and a real tracking link is in
+        place. Those buttons carry an “Affiliate link” note right next to them and are marked rel=&quot;sponsored&quot;.
+        Every other button goes to the tool’s official website with no affiliate code.
       </p>
       <p>
         Commission notes on a tool profile are copied from the vendor’s own page. If the vendor did not publish a rate,
