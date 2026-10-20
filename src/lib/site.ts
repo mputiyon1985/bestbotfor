@@ -37,3 +37,11 @@ export function absoluteUrl(pathname: string): string {
   const path = pathname.startsWith('/') ? pathname : `/${pathname}`
   return new URL(path, getSiteUrl()).toString()
 }
+
+/** Public business phone. Display form and E.164 for tel: links and JSON-LD. */
+export const BUSINESS_PHONE_DISPLAY = '(571) 279-8182'
+export const BUSINESS_PHONE_E164 = '+15712798182'
+export const BUSINESS_PHONE_HREF = `tel:${BUSINESS_PHONE_E164}`
+
+/** Impact.com site verification. Impact requires the `value` attribute, not `content`. */
+export const IMPACT_SITE_VERIFICATION = '2b9bb46d-ab24-4ccc-a8a5-93db997140b6'

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { pageMetadata } from '@/lib/metadata'
-import { TAGLINE } from '@/lib/site'
+import { BUSINESS_PHONE_DISPLAY, BUSINESS_PHONE_HREF, TAGLINE } from '@/lib/site'
 
 export const metadata: Metadata = pageMetadata({
   title: 'About',
@@ -27,6 +27,14 @@ export default function AboutPage() {
       <p>
         The catalog was reviewed on October 15, 2026. Product details change. Check the vendor’s site before you pay or
         install anything.
+      </p>
+      <h2 className="font-bold text-2xl">Contact</h2>
+      <p>
+        Call us at{' '}
+        <a className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4" href={BUSINESS_PHONE_HREF}>
+          {BUSINESS_PHONE_DISPLAY}
+        </a>
+        .
       </p>
     </article>
   )

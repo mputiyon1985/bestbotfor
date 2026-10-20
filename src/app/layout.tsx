@@ -15,7 +15,7 @@ import { secGpcOptOut } from '@/lib/gpc'
 import { isProductionDeployment } from '@/lib/indexing'
 import { organizationJsonLd, websiteJsonLd } from '@/lib/jsonld'
 import { homeDescription, homeTitle } from '@/lib/metadata'
-import { getSiteUrl, SITE_NAME, TAGLINE, TWITTER_SITE } from '@/lib/site'
+import { getSiteUrl, IMPACT_SITE_VERIFICATION, SITE_NAME, TAGLINE, TWITTER_SITE } from '@/lib/site'
 import { gaIdSchema } from '@/lib/validation'
 import './globals.css'
 
@@ -73,6 +73,9 @@ export const metadata: Metadata = {
   robots: isProductionDeployment() ? { index: true, follow: true } : { index: false, follow: false },
 }
 
+// Typed as a plain record because React's <meta> props do not declare `value`.
+const IMPACT_META_ATTRS: Record<string, string> = { value: IMPACT_SITE_VERIFICATION }
+
 export const dynamic = 'force-dynamic'
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
@@ -108,6 +111,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   return (
     <html lang="en-US" className={poppins.variable}>
+      <head>
+        {/* Impact requires value=, which the Metadata API cannot emit (it only writes content=). */}
+        <meta name="impact-site-verification" {...IMPACT_META_ATTRS} />
+      </head>
       <body className="antialiased">
         {shell}
         <script

@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { taskSeeds } from '@/data/catalog'
-import { TAGLINE } from '@/lib/site'
+import { BUSINESS_PHONE_DISPLAY, BUSINESS_PHONE_HREF, TAGLINE } from '@/lib/site'
 import { SOCIAL_LINK_REL, SOCIAL_LINKS } from '@/lib/social'
 import { BrandLockup } from './brand-lockup'
 import { CookieSettingsButton } from './cookie-settings-button'
@@ -13,6 +13,12 @@ export function SiteFooter() {
         <div>
           <BrandLockup />
           <p className="mt-3 text-sm text-muted">{TAGLINE}</p>
+          <p className="mt-3 text-sm">
+            <span className="font-semibold">Call us: </span>
+            <a className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4" href={BUSINESS_PHONE_HREF}>
+              {BUSINESS_PHONE_DISPLAY}
+            </a>
+          </p>
           <nav aria-label="Follow BestBotFor" className="mt-4">
             <h2 className="text-sm font-semibold">Follow</h2>
             <ul className="mt-2 text-sm">
