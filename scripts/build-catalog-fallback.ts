@@ -19,7 +19,8 @@ async function finish() {
   const client = createClient({ url: `file:${file}` })
   // A serverless filesystem is read-only, so the file must not need -wal/-shm sidecars.
   await client.execute('PRAGMA wal_checkpoint(TRUNCATE)')
-  await client.execute('PRAGMA journal_mode = DELETE')
+  const mode = await client.execute('PRAGMA journal_mode = DELETE')
+  if (String(mode.rows[0]?.journal_mode ?? '').toLowerCase() !== 'delete') throw new Error('Could not leave WAL mode')
   await client.execute('VACUUM')
   client.close()
   for (const suffix of ['-wal', '-shm']) if (existsSync(file + suffix)) rmSync(file + suffix)

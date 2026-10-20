@@ -136,13 +136,13 @@ export async function getTool(slug: string): Promise<CatalogTool | undefined> {
   return getToolCached(slug)
 }
 
-const getToolsBySlugsCached = cache((joined: string) => {
-  const slugs = joined === '' ? [] : joined.split('\n')
+const getToolsBySlugsCached = cache((key: string) => {
+  const slugs = JSON.parse(key) as string[]
   return withReadFallback('tools-by-slugs', [slugs], loadToolsBySlugs, fromFallbackDb((db) => readToolsBySlugs(db, slugs)))
 })
 export async function getToolsBySlugs(slugs: string[]): Promise<CatalogTool[]> {
-  // Arrays are compared by identity in cache(), so key on a stable string.
-  return getToolsBySlugsCached(slugs.join('\n'))
+  // Arrays are compared by identity in cache(), so key on a lossless string.
+  return getToolsBySlugsCached(JSON.stringify(slugs))
 }
 
 function seedTask(slug: string): CatalogTask | null {
@@ -155,7 +155,8 @@ function withSeed<Result>(read: () => Promise<Result>, seed: () => Result): () =
   return async () => {
     try {
       return await read()
-    } catch {
+    } catch (error) {
+      console.error(`[catalog] fallback DB read failed (${error instanceof Error ? error.name : 'unknown'}); using bundled task seeds`)
       return seed()
     }
   }

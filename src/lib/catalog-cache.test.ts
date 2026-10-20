@@ -38,9 +38,9 @@ describe('catalog reads when Turso is down', () => {
     expect((await listTasks()).length).toBeGreaterThan(10)
   })
 
-  it('an unknown slug in the fallback is still a 404 (undefined), not an error', async () => {
+  it.skipIf(!fallbackBuilt)('an unknown slug in the fallback is still a 404 (undefined), not an error', async () => {
     const { getTool } = await import('./catalog')
-    if (fallbackBuilt) expect(await getTool('no-such-tool-xyz')).toBeUndefined()
+    expect(await getTool('no-such-tool-xyz')).toBeUndefined()
   })
 
   it('without the fallback file, tasks still come from bundled seeds', async () => {
@@ -61,5 +61,24 @@ describe('catalog reads when Turso is down', () => {
     const { CATALOG_PAGE_REVALIDATE_SECONDS, CATALOG_REVALIDATE_SECONDS } = await import('./catalog')
     expect(CATALOG_PAGE_REVALIDATE_SECONDS).toBeGreaterThanOrEqual(3600)
     expect(CATALOG_REVALIDATE_SECONDS).toBeGreaterThanOrEqual(6 * 3600)
+  })
+})
+
+describe('fallback snapshot on a read-only filesystem', () => {
+  it.skipIf(!fallbackBuilt)('opens from a read-only directory via a temp copy and answers catalog reads', async () => {
+    const { mkdtempSync, copyFileSync, chmodSync } = await import('node:fs')
+    const { tmpdir } = await import('node:os')
+    const ro = mkdtempSync(path.join(tmpdir(), 'bbf-ro-'))
+    const src = path.join(ro, 'catalog-fallback.db')
+    copyFileSync(path.join(process.cwd(), 'data', 'catalog-fallback.db'), src)
+    chmodSync(ro, 0o555)
+    chmodSync(src, 0o444)
+    const work = mkdtempSync(path.join(tmpdir(), 'bbf-work-'))
+    const { openCatalogFallbackDb } = await vi.importActual<typeof import('./catalog-fallback-db')>('./catalog-fallback-db')
+    const { readToolsBySlugs } = await import('./catalog-read')
+    const db = openCatalogFallbackDb(src, work)
+    expect(db).not.toBeNull()
+    expect((await readToolsBySlugs(db!, ['cursor']))[0]?.slug).toBe('cursor')
+    chmodSync(ro, 0o755)
   })
 })

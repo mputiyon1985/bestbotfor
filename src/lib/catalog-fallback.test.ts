@@ -49,3 +49,10 @@ describe('withReadFallback', () => {
     expect(await withReadFallback('q', [500], blocked)).toBe(500)
   })
 })
+
+describe('control flow', () => {
+  it('rethrows Next notFound() instead of serving a fallback', async () => {
+    const { notFound } = await import('next/navigation')
+    await expect(withReadFallback('t', [], async () => notFound(), () => 'seed')).rejects.toMatchObject({ digest: expect.stringContaining('404') })
+  })
+})

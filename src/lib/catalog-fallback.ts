@@ -1,5 +1,7 @@
 import 'server-only'
 
+import { unstable_rethrow } from 'next/navigation'
+
 /**
  * Last-known-good values per read, kept in this server instance's memory.
  * Bounded so a stream of unique search queries cannot grow it without limit.
@@ -20,7 +22,7 @@ function keyFor(name: string, args: readonly unknown[]): string {
 }
 
 function remember(key: string, value: unknown) {
-  if (lastGood.has(key)) lastGood.delete(key)
+  lastGood.delete(key)
   lastGood.set(key, value)
   while (lastGood.size > MAX_ENTRIES) {
     const oldest = lastGood.keys().next().value
@@ -49,9 +51,15 @@ export async function withReadFallback<Args extends unknown[], Result>(
     remember(key, value)
     return value
   } catch (error) {
+    // notFound(), redirect() and dynamic-rendering bailouts are control flow, not DB errors.
+    unstable_rethrow(error)
     // Log the error class only: driver messages can include the database URL.
     console.error(`[catalog] read "${name}" failed (${error instanceof Error ? error.name : 'unknown'}); serving fallback`)
-    if (lastGood.has(key)) return lastGood.get(key) as Result
+    if (lastGood.has(key)) {
+      const value = lastGood.get(key) as Result
+      remember(key, value) // refresh recency so hot pages survive search churn
+      return value
+    }
     if (seed) {
       try {
         return await seed()
