@@ -57,6 +57,8 @@ const legacyAssetRedirects: { source: string; destination: string }[] = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Ship the seed-built catalog snapshot with every server function (read only after a Turso error).
+  outputFileTracingIncludes: { '/**': ['./data/catalog-fallback.db'] },
   // Inlined at build time so the test IP hook in src/lib/reviews/ip.ts is
   // compiled out unless this build was started with BBF_E2E_HOOKS=1.
   env: {
