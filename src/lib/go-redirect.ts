@@ -57,6 +57,8 @@ export async function resolveGoRedirect(input: {
   ip: string | null
   siteUrl: string
   seedUrl: string
+  /** Reviewed affiliate URL from the seed, used if the catalog read fails. */
+  seedAffiliateUrl?: string | null
   allowedHosts: readonly string[]
   deadlineMs?: number
   /** Incoming query string; only utm_* keys are carried to the destination. */
@@ -82,7 +84,7 @@ export async function resolveGoRedirect(input: {
   const decision = decideRedirect({
     tool: {
       url: record?.url ?? input.seedUrl,
-      affiliateUrl: record?.affiliateUrl ?? null,
+      affiliateUrl: record?.affiliateUrl ?? input.seedAffiliateUrl ?? null,
       allowedHosts: input.allowedHosts,
     },
   })
@@ -135,7 +137,13 @@ async function loadReviewedTool(
 export function servesAffiliateLink(slug: string, affiliateUrl: string | null | undefined): boolean {
   const reviewed = toolSeeds.find((item) => item.slug === slug)
   if (!reviewed) return false
-  return affiliateRedirectUrl(affiliateUrl, reviewed.allowedHosts) !== null
+  return affiliateRedirectUrl(effectiveAffiliateUrl(slug, affiliateUrl), reviewed.allowedHosts) !== null
+}
+
+/** The DB affiliate_url when set, else the reviewed one shipped in the seed. */
+export function effectiveAffiliateUrl(slug: string, dbAffiliateUrl: string | null | undefined): string | null {
+  if (dbAffiliateUrl) return dbAffiliateUrl
+  return toolSeeds.find((item) => item.slug === slug)?.affiliate.affiliateUrl ?? null
 }
 
 const UTM_KEY = /^utm_[a-z]{1,20}$/

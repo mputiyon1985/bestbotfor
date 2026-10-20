@@ -39,7 +39,7 @@ describe('category guides', () => {
 
   it('has no internal notes, commit ids, Fit % wording or a stale affiliate claim', () => {
     for (const guide of CATEGORY_GUIDES) {
-      expect(guide.body).not.toMatch(/qa-pr|Unresolved|Discrepancy|1c2f652|commit [0-9a-f]{7}|Fit %|% fit\b|Fit for this job|affiliate codes/)
+      expect(guide.body).not.toMatch(/verification flag|qa-pr|Unresolved|Discrepancy|1c2f652|commit [0-9a-f]{7}|Fit %|% fit\b|Fit for this job|affiliate codes/)
       expect(guide.body).toContain('may be affiliate links')
     }
   })
