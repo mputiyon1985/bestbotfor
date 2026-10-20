@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { getCategoryGuide } from '@/content/category-guides'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
@@ -120,6 +121,13 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
         </OutboundLink>
 {top.hasAffiliateLink ? <AffiliateDisclosure affiliate /> : null}
       </p>
+      {getCategoryGuide(task.slug) ? (
+        <p data-category-guide-link>
+          <Link href={guidePath(task.slug)} className="inline-flex min-h-11 items-center font-semibold underline">
+            Read the full guide: {getCategoryGuide(task.slug)?.heading}
+          </Link>
+        </p>
+      ) : null}
       <SponsoredPlacement placement={placement} />
       <div className="min-w-0 space-y-4">
         <p id="fit-legend" className="text-sm text-muted">{BEST_GUIDE_FIT_LEGEND}</p>
