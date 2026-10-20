@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SocialIconRow } from './social-icons'
 import { isClerkConfigured } from '@/lib/flags'
 import { BrandLockup } from './brand-lockup'
 import { MemberButtonSlot } from './member-button-slot'
@@ -62,6 +63,9 @@ export async function SiteHeader() {
                 <MemberButtonSlot />
               </div>
             ) : null}
+            <div aria-label="Follow BestBotFor" role="group" className="border-t border-line pt-2">
+              <SocialIconRow />
+            </div>
           </nav>
         </details>
       </div>
