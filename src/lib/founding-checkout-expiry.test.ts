@@ -345,11 +345,11 @@ describe('/sponsor price list at 5/5 (P3-2, P3-5)', () => {
     await close()
   })
 
-  it('an open page at 5/5 with no placement subscription says only "The prices above are …"', async () => {
+  it('an open page at 5/5 with no placement subscription says only "Prices above are current"', async () => {
     const { url, close } = await soldOutDb()
     const html = await sponsorHtml(url)
     expect(foundingLine(html)).toEqual(['Founding sponsor: Sold out. All 5 founding sponsor spots are taken.'])
-    expect(html).toContain('The prices above are the current list prices from server configuration.')
+    expect(html).toContain('Prices above are current.')
     expect(html).not.toContain('one-time and subscription')
     await close()
   })
@@ -357,7 +357,7 @@ describe('/sponsor price list at 5/5 (P3-2, P3-5)', () => {
   it('still says "one-time and subscription" at 5/5 when the placement subscription is listed, and at 4/5 for founding', async () => {
     const sold = await soldOutDb()
     setEnv({ VERCEL_ENV: 'preview', STRIPE_SECRET_KEY: testKey, ...PRICES, STRIPE_PRICE_PLACEMENT_SUBSCRIPTION: 'price_e2e_subscription' })
-    expect(await sponsorHtml(sold.url)).toContain('The prices above, one-time and subscription, are the current list prices')
+    expect(await sponsorHtml(sold.url)).toContain('Prices above, one-time and subscription, are current.')
     await sold.close()
 
     const open = await createTestDatabase()
@@ -365,7 +365,7 @@ describe('/sponsor price list at 5/5 (P3-2, P3-5)', () => {
     setEnv({ VERCEL_ENV: 'preview', STRIPE_SECRET_KEY: testKey, ...PRICES })
     const html = await sponsorHtml(open.url)
     expect(foundingLine(html)[0]).toContain('Limited to 5 founding sponsors.')
-    expect(html).toContain('The prices above, one-time and subscription, are the current list prices')
+    expect(html).toContain('Prices above, one-time and subscription, are current.')
     await open.close()
   })
 })
