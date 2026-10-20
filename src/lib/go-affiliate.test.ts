@@ -65,3 +65,11 @@ describe('/go affiliate routing', () => {
     expect(withUtmParams('https://cursor.com/', `?utm_term=${'a'.repeat(101)}`)).toBe('https://cursor.com/')
   })
 })
+
+describe('ElevenLabs affiliate host', () => {
+  it('allows try.elevenlabs.io for the affiliate URL only on ElevenLabs', () => {
+    expect(servesAffiliateLink('elevenlabs', 'https://try.elevenlabs.io/bestbotfor')).toBe(true)
+    expect(servesAffiliateLink('cursor', 'https://try.elevenlabs.io/bestbotfor')).toBe(false)
+    expect(servesAffiliateLink('elevenlabs', 'https://evil.try.elevenlabs.io/x')).toBe(false)
+  })
+})
