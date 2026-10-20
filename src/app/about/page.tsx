@@ -21,8 +21,8 @@ export default function AboutPage() {
       </p>
       <p>
         The rank starts from an editorial fit score for the job. Budget and experience shift that score by a fixed amount.
-        A tool does not rank higher because it has an affiliate program. We are not enrolled in those programs, and the
-        buttons on this site go to each company’s own website.
+        A tool does not rank higher because it has an affiliate program. Most buttons on this site go to each company’s
+        own website. When a button uses an affiliate link, a note next to it says so, and we may earn a commission.
       </p>
       <p>
         The catalog was reviewed on October 15, 2026. Product details change. Check the vendor’s site before you pay or
