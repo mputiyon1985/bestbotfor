@@ -27,6 +27,7 @@ import {
   sponsorReturnUrls,
 } from '@/lib/sponsor-return-url'
 import { getStripe } from '@/lib/stripe'
+import { newsletterSlotAvailable } from '@/lib/newsletter-slot-gate'
 
 export type SponsorFormState = { status: 'idle' | 'error'; message: string }
 
@@ -35,6 +36,9 @@ export async function sponsorCheckoutAction(_previous: SponsorFormState, formDat
 
   const parsed = parseSponsorCheckout(formData)
   if (!parsed.ok) return { status: 'error', message: parsed.message }
+  if (parsed.value.offering === 'newsletter_slot' && !(await newsletterSlotAvailable())) {
+    return { status: 'error', message: 'The newsletter slot is not open yet.' }
+  }
 
   const card = parsed.value.taskSlug ? await readSponsorCardForm(formData) : null
   if (card && !card.ok) return { status: 'error', message: card.message }

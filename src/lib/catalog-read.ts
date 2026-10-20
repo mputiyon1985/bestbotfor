@@ -1,4 +1,5 @@
 import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
+import { servesAffiliateLink } from './go-redirect'
 import type { Database } from './db/client'
 import { affiliatePrograms, tasks, toolProsCons, toolScores, toolTasks, tools } from './db/schema'
 import { listMatches } from './matches'
@@ -56,6 +57,8 @@ export type TaskCandidate = {
   lastVerifiedAt: string
   fitScore: number
   notes: string
+  /** True when affiliate_programs.affiliate_url is set (read only). */
+  hasAffiliateLink?: boolean
   editorial: EditorialScore | null
   pros: ProCon[]
   cons: ProCon[]
@@ -381,9 +384,11 @@ export async function readTaskCandidates(
       needsVerification: tools.needsVerification,
       fitScore: toolTasks.fitScore,
       notes: toolTasks.notes,
+      affiliateUrl: affiliatePrograms.affiliateUrl,
     })
     .from(toolTasks)
     .innerJoin(tools, eq(tools.id, toolTasks.toolId))
+    .leftJoin(affiliatePrograms, eq(affiliatePrograms.toolId, tools.id))
     .where(and(eq(toolTasks.taskId, task.id), eq(tools.status, 'active')))
 
   const ids = rows.map((row) => row.id)
@@ -409,6 +414,7 @@ export async function readTaskCandidates(
     lastVerifiedAt: row.lastVerifiedAt,
     fitScore: row.fitScore,
     notes: row.notes,
+    hasAffiliateLink: servesAffiliateLink(row.slug, row.affiliateUrl),
     ...(row.needsVerification
       ? { editorial: null, pros: [], cons: [], quizEligible: true }
       : editorialOf(scoreByTool.get(row.id), prosByTool.get(row.id), context)),

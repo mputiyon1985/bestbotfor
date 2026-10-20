@@ -18,7 +18,7 @@
 
 **Evidence, not opinion.** We keep the evidence and sources for each score on file and review them quarterly. Those records include leaderboards, official pricing and docs, tested reviews, app store pages and GitHub. We read forums for leads but never treat them as fact.
 
-**Money never buys a score.** Some links earn us a commission. That has no effect on ratings, rankings or which tools we cover.
+**Money never buys a score.** Visit buttons go to each tool's official website. If a button ever uses an affiliate link, a note right next to it says so, and we may earn a commission if you buy. That has no effect on ratings, rankings or which tools we cover.
 
 **Unrated tools.** If we can't find at least one tested review or measurable signal plus verified pricing, the tool stays listed without stars until we can.
 

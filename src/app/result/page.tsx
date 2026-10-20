@@ -7,6 +7,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { DailyBotCapture } from '@/components/daily-bot-capture'
 import { PickCapNotice } from '@/components/pick-cap-notice'
 import { JsonLd } from '@/components/json-ld'
+import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
 import { EditorialCompact } from '@/components/editorial'
@@ -198,9 +199,10 @@ export default async function ResultPage({
         <Fact label="Free tier" value={top.hasFreeTier ? 'Yes' : 'No'} />
       </dl>
       <div className="flex flex-wrap gap-3">
-        <OutboundLink slug={top.slug} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
+        <OutboundLink slug={top.slug} affiliate={Boolean(top.hasAffiliateLink)} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
           Visit {top.name}
         </OutboundLink>
+{top.hasAffiliateLink ? <AffiliateDisclosure affiliate /> : null}
         <Link href={`/tools/${top.slug}`} className="inline-flex min-h-12 items-center rounded-full border border-ink px-5 font-semibold">
           Read the profile
         </Link>
@@ -244,9 +246,10 @@ export default async function ResultPage({
                 <p className="mt-2 text-sm text-muted">{alt.reason}</p>
                 <EditorialCompact editorial={alt.editorial} pros={alt.pros} cons={alt.cons} />
                 <p className="mt-2 text-sm">{priceLabel(alt)}</p>
-                <OutboundLink slug={alt.slug} className="mt-3 inline-flex min-h-12 items-center font-semibold underline">
+                <OutboundLink slug={alt.slug} affiliate={Boolean(alt.hasAffiliateLink)} className="mt-3 inline-flex min-h-12 items-center font-semibold underline">
                   Visit {alt.name}
                 </OutboundLink>
+{alt.hasAffiliateLink ? <AffiliateDisclosure affiliate /> : null}
               </li>
             ))}
           </ul>
