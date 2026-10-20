@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { MATCH_FOR_ANSWERS_LABEL } from '@/lib/descriptions'
 import { cache } from 'react'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
@@ -278,8 +279,8 @@ export default async function ResultPage({
                 <dd className="break-words">{priceLabel(pick)}</dd>
                 <dt className="font-semibold">Experience</dt>
                 <dd>{skillLabel[pick.skillLevel]}</dd>
-                <dt className="font-semibold">Fit</dt>
-                <dd>{pick.fitScore}</dd>
+                <dt className="font-semibold">{MATCH_FOR_ANSWERS_LABEL}</dt>
+                <dd>{`${pick.fitScore}%`}</dd>
               </dl>
             </li>
           ))}
@@ -292,7 +293,7 @@ export default async function ResultPage({
                 <th scope="col" className="py-2 pr-3">Tool</th>
                 <th scope="col" className="py-2 pr-3">Price</th>
                 <th scope="col" className="py-2 pr-3">Experience</th>
-                <th scope="col" className="py-2">Fit</th>
+                <th scope="col" className="py-2">{MATCH_FOR_ANSWERS_LABEL}</th>
               </tr>
             </thead>
             <tbody>
@@ -308,7 +309,7 @@ export default async function ResultPage({
                   </th>
                   <td className="break-words py-3 pr-3">{priceLabel(pick)}</td>
                   <td className="break-words py-3 pr-3">{skillLabel[pick.skillLevel]}</td>
-                  <td className="py-3">{pick.fitScore}</td>
+                  <td className="py-3">{`${pick.fitScore}%`}</td>
                 </tr>
               ))}
             </tbody>

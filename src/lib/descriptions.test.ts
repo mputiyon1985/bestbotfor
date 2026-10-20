@@ -59,7 +59,7 @@ describe('meta descriptions', () => {
   })
 
   it('explains fit and lists more than the first five tools', () => {
-    expect(BEST_GUIDE_FIT_LEGEND).toBe('Fit = how well it matches this task')
+    expect(BEST_GUIDE_FIT_LEGEND).toMatch(/^Match = how well it fits this job\. Overall rating is separate/)
     expect(BEST_GUIDE_TOOL_COUNT).toBeGreaterThan(5)
   })
 
@@ -80,5 +80,21 @@ describe('meta descriptions', () => {
       expect(description.length, `${left}-vs-${right}`).toBeLessThanOrEqual(160)
       expect(description).not.toContain('third option')
     }
+  })
+})
+
+describe('match vs overall rating labels', () => {
+  it('names the two numbers differently and explains why they can differ', async () => {
+    const { MATCH_FOR_ANSWERS_LABEL, OVERALL_RATING_NOTE } = await import('./descriptions')
+    expect(MATCH_FOR_ANSWERS_LABEL).toBe('Match for your answers')
+    expect(OVERALL_RATING_NOTE).toMatch(/^Overall rating: rank and stars across the whole category\./)
+    expect(OVERALL_RATING_NOTE).toContain('for one job')
+  })
+  it('the result page and profile use them', async () => {
+    const { readFileSync } = await import('node:fs')
+    const read = (p: string) => readFileSync(new URL(`../../${p}`, import.meta.url), 'utf8')
+    expect(read('src/app/result/page.tsx').match(/\{MATCH_FOR_ANSWERS_LABEL\}/g)?.length).toBe(2)
+    expect(read('src/app/result/page.tsx')).not.toMatch(/>Fit</)
+    expect(read('src/components/editorial.tsx')).toContain('{OVERALL_RATING_NOTE}')
   })
 })

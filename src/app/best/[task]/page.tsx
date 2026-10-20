@@ -131,7 +131,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
                 </Link>
               </div>
               <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 text-sm">
-                <dt className="font-semibold" aria-describedby="fit-legend">Fit</dt>
+                <dt className="font-semibold" aria-describedby="fit-legend">Match</dt>
                 <dd><FitMatch score={tool.fitScore} /></dd>
                 <dt className="font-semibold">Price</dt>
                 <dd className="min-w-0 break-words">{priceLabel(tool)}</dd>
@@ -146,7 +146,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
             <thead>
               <tr className="border-b border-line">
                 <th scope="col" className="py-2 pr-3">Tool</th>
-                <th scope="col" aria-describedby="fit-legend" className="w-36 whitespace-nowrap py-2 pr-3">Fit</th>
+                <th scope="col" aria-describedby="fit-legend" className="w-36 whitespace-nowrap py-2 pr-3">Match</th>
                 <th scope="col" className="w-44 py-2 pr-3">Price</th>
                 <th scope="col" className="py-2">Why it is here</th>
               </tr>

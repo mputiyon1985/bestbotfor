@@ -1,3 +1,4 @@
+import { BEST_GUIDE_FIT_LEGEND } from '../src/lib/descriptions'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { BEST_GUIDE_TOOL_COUNT } from '../src/lib/descriptions'
 import { toolsForTask } from '../src/lib/recommend'
@@ -50,7 +51,7 @@ test.describe('best guide rankings', () => {
       const ranked = toolsForTask(catalog, 'coding')
       expect(ranked.length).toBeGreaterThan(BEST_GUIDE_TOOL_COUNT)
 
-      await expect(page.getByText('Fit = how well it matches this task', { exact: true })).toBeVisible()
+      await expect(page.getByText(BEST_GUIDE_FIT_LEGEND, { exact: true })).toBeVisible()
       await expectFitOnOneLine(page)
 
       const mobile = viewport.width < 768
@@ -69,8 +70,8 @@ test.describe('best guide rankings', () => {
       expect(Math.round(logoBox?.height ?? 0)).toBe(40)
 
       if (!mobile) {
-        const header = page.getByRole('columnheader', { name: 'Fit', exact: true })
-        await expectSingleLine(header, 'Fit header')
+        const header = page.getByRole('columnheader', { name: 'Match', exact: true })
+        await expectSingleLine(header, 'Match header')
         await expect(header).toHaveCSS('white-space', 'nowrap')
         await expect(header).toHaveAttribute('aria-describedby', 'fit-legend')
       }
