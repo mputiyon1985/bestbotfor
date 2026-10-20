@@ -31,14 +31,6 @@ function remember(key: string, value: unknown) {
   }
 }
 
-/**
- * Runs a (cached) catalog read. When it throws (e.g. Turso blocking reads at the
- * plan limit, or a network error), serve the last good value for the same
- * arguments, then the seed fallback (the bundled read-only catalog-fallback.db). Only when neither
- * exists does it throw CatalogUnavailableError, which the error boundary renders.
- * The fallback is never written into the Next data cache, so a short outage
- * cannot pin stale or empty data for the whole revalidate window.
- */
 export type ReadFallbackOptions = {
   /**
    * For single-item lookups: when the live read failed and the fallback has no
@@ -48,6 +40,14 @@ export type ReadFallbackOptions = {
   missIsUnavailable?: boolean
 }
 
+/**
+ * Runs a (cached) catalog read. When it throws (e.g. Turso blocking reads at the
+ * plan limit, or a network error), serve the last good value for the same
+ * arguments, then the seed fallback (the bundled read-only catalog-fallback.db). Only when neither
+ * exists does it throw CatalogUnavailableError, which the error boundary renders.
+ * The fallback is never written into the Next data cache, so a short outage
+ * cannot pin stale or empty data for the whole revalidate window.
+ */
 export async function withReadFallback<Args extends unknown[], Result>(
   name: string,
   args: Args,

@@ -16,3 +16,27 @@ export function catalogCacheVersion(env: Readonly<Record<string, string | undefi
 export function catalogCacheKey(name: string, env: Readonly<Record<string, string | undefined>> = process.env): string[] {
   return [name, `catalog-version:${catalogCacheVersion(env)}`]
 }
+
+let warnedLocal = false
+
+/**
+ * In production a 'local' version means neither VERCEL_GIT_COMMIT_SHA nor
+ * VERCEL_DEPLOYMENT_ID was usable, so catalog cache entries would be shared
+ * across deploys. Warn once per process; never throw.
+ */
+export function warnIfLocalCatalogVersionInProduction(
+  env: Readonly<Record<string, string | undefined>> = process.env,
+  warn: (message: string) => void = console.warn,
+): boolean {
+  if (warnedLocal) return false
+  if (env.VERCEL_ENV?.trim() !== 'production') return false
+  if (catalogCacheVersion(env) !== 'local') return false
+  warnedLocal = true
+  warn('[catalog] cache version resolved to "local" in production; catalog cache keys are not per-deploy')
+  return true
+}
+
+/** Test helper. */
+export function resetCatalogVersionWarningForTests() {
+  warnedLocal = false
+}
