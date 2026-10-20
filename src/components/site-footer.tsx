@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { taskSeeds } from '@/data/catalog'
 import { BUSINESS_PHONE_DISPLAY, BUSINESS_PHONE_HREF, TAGLINE } from '@/lib/site'
 import { SOCIAL_LINK_REL, SOCIAL_LINKS } from '@/lib/social'
+import { SocialIcon } from './social-icons'
 import { BrandLockup } from './brand-lockup'
 import { CookieSettingsButton } from './cookie-settings-button'
 import { SuggestSomethingLink } from './suggest-something'
@@ -21,16 +22,17 @@ export function SiteFooter() {
           </p>
           <nav aria-label="Follow BestBotFor" className="mt-4">
             <h2 className="text-sm font-semibold">Follow</h2>
-            <ul className="mt-2 text-sm">
+            <ul className="mt-2 flex gap-1 text-sm" data-social-icons>
               {SOCIAL_LINKS.map((link) => (
                 <li key={link.href}>
                   <a
-                    className="inline-flex min-h-11 scroll-mb-24 items-center underline-offset-4 hover:underline"
+                    className="inline-flex size-11 scroll-mb-24 items-center justify-center rounded-full text-muted hover:text-ink"
                     href={link.href}
                     rel={SOCIAL_LINK_REL}
                     aria-label={link.label}
+                    title={link.label}
                   >
-                    {link.name}
+                    <SocialIcon name={link.name} />
                   </a>
                 </li>
               ))}

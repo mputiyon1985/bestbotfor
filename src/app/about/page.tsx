@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { SocialIconRow } from '@/components/social-icons'
 import { EDITOR_BIO } from '@/content/category-guides'
 import { pageMetadata } from '@/lib/metadata'
 import { BUSINESS_PHONE_DISPLAY, BUSINESS_PHONE_HREF, TAGLINE } from '@/lib/site'
@@ -31,6 +32,10 @@ export default function AboutPage() {
       </p>
       <h2 className="font-bold text-2xl">Our editor</h2>
       <p data-editor-bio>{EDITOR_BIO}</p>
+      <h2 className="font-bold text-2xl">Follow us</h2>
+      <nav aria-label="Follow BestBotFor on social media">
+        <SocialIconRow className="-ml-3" />
+      </nav>
       <h2 className="font-bold text-2xl">Contact</h2>
       <p>
         Call us at{' '}
