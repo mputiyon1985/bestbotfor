@@ -24,8 +24,8 @@ describe('trust copy', () => {
   it('How We Rate no longer claims links earn a commission today', () => {
     expect(read('src/content/how-we-rate.md')).not.toContain('Some links earn us a commission')
   })
-  it('the Visit link stays rel="sponsored"', () => {
-    expect(read('src/components/outbound-link.tsx')).toContain('rel="sponsored nofollow noopener"')
+  it('the Visit link is rel="sponsored" only for affiliate links', () => {
+    expect(read('src/components/outbound-link.tsx')).toContain("rel={affiliate ? 'sponsored nofollow noopener' : 'nofollow noopener'}")
   })
   it('FAQ, About and Disclosures describe the near-button note', () => {
     for (const p of ['src/app/page.tsx', 'src/app/about/page.tsx', 'src/app/disclosure/page.tsx']) {

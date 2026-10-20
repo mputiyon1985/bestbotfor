@@ -12,13 +12,13 @@ export function OutboundLink({
   slug: string
   children: ReactNode
   className?: string
-  /** True when the tool has an affiliate_url. The link is rel="sponsored" either way. */
+  /** True when /go serves the affiliate URL. Only then is the link rel="sponsored". */
   affiliate?: boolean
 }) {
   return (
     <a
       href={`/go/${slug}`}
-      rel="sponsored nofollow noopener"
+      rel={affiliate ? 'sponsored nofollow noopener' : 'nofollow noopener'}
       className={className}
       data-affiliate={affiliate ? 'true' : undefined}
       onClick={() => track('affiliate_click', { tool: slug })}

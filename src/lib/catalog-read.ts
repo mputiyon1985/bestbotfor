@@ -1,4 +1,5 @@
 import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
+import { servesAffiliateLink } from './go-redirect'
 import type { Database } from './db/client'
 import { affiliatePrograms, tasks, toolProsCons, toolScores, toolTasks, tools } from './db/schema'
 import { listMatches } from './matches'
@@ -413,7 +414,7 @@ export async function readTaskCandidates(
     lastVerifiedAt: row.lastVerifiedAt,
     fitScore: row.fitScore,
     notes: row.notes,
-    hasAffiliateLink: Boolean(row.affiliateUrl),
+    hasAffiliateLink: servesAffiliateLink(row.slug, row.affiliateUrl),
     ...(row.needsVerification
       ? { editorial: null, pros: [], cons: [], quizEligible: true }
       : editorialOf(scoreByTool.get(row.id), prosByTool.get(row.id), context)),

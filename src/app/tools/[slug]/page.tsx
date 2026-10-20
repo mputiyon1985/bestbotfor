@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { servesAffiliateLink } from '@/lib/go-redirect'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
@@ -70,11 +71,11 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
         <Item label="Free tier" value={tool.hasFreeTier ? 'Yes' : 'No'} />
       </dl>
       <p>
-        <OutboundLink slug={tool.slug} affiliate={Boolean(tool.affiliate.affiliateUrl)} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
+        <OutboundLink slug={tool.slug} affiliate={servesAffiliateLink(tool.slug, tool.affiliate.affiliateUrl)} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
           Visit {tool.name}
         </OutboundLink>
       </p>
-      <AffiliateDisclosure affiliate={Boolean(tool.affiliate.affiliateUrl)} vendor={tool.vendor} />
+      <AffiliateDisclosure affiliate={servesAffiliateLink(tool.slug, tool.affiliate.affiliateUrl)} vendor={tool.vendor} />
       {tool.affiliate.commissionNote ? (
         <p className="text-sm text-muted">Program note, copied from the vendor’s page: {tool.affiliate.commissionNote}</p>
       ) : null}
