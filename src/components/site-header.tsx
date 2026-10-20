@@ -14,9 +14,8 @@ export async function SiteHeader() {
 
   const links = [
     { href: '/tools', label: 'Tools' },
-    { href: '/best/coding', label: 'Best for' },
-    { href: '/compare/cursor-vs-github-copilot', label: 'Compare' },
-    { href: '/pricing', label: 'Pricing' },
+    { href: '/best', label: 'Best for' },
+    { href: '/compare', label: 'Compare' },
     { href: '/newsletter', label: 'Newsletter' },
     { href: '/sponsor', label: 'Advertise' },
   ]

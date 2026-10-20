@@ -26,6 +26,7 @@ export const SITEMAP_STATIC_PATHS = [
   '/sponsor',
   '/tools',
   '/best',
+  '/compare',
   '/ai-loadout',
   ...GUIDES.map((guide) => guidePath(guide.slug)),
   ...CATEGORY_GUIDES.map((guide) => guidePath(guide.category)),
