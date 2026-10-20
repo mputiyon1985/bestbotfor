@@ -55,6 +55,7 @@ async function staticRobots(route: string): Promise<Metadata['robots']> {
     '/terms': () => import('@/app/terms/page'),
     '/pricing': () => import('@/app/pricing/page'),
     '/best': () => import('@/app/best/page'),
+    '/compare': () => import('@/app/compare/page'),
     '/ai-loadout': () => import('@/app/ai-loadout/page'),
   } as const
   const key = route as keyof typeof modules
