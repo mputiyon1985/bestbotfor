@@ -11,7 +11,7 @@ import type { QuizAnswers } from './validation'
 import { taskSeeds } from '@/data/catalog'
 import { CatalogUnavailableError, withReadFallback } from './catalog-fallback'
 import { getCatalogFallbackDb } from './catalog-fallback-db'
-import { catalogCacheKey } from './catalog-version'
+import { catalogCacheKey, warnIfLocalCatalogVersionInProduction } from './catalog-version'
 import type { Database } from './db'
 
 async function loadCatalog(): Promise<Catalog> {
@@ -37,6 +37,8 @@ async function readCatalog(db: Database): Promise<Catalog> {
  * background revalidation fails.
  */
 export const CATALOG_REVALIDATE_SECONDS = 6 * 60 * 60
+
+warnIfLocalCatalogVersionInProduction()
 
 const cachedCatalog = unstable_cache(loadCatalog, catalogCacheKey('catalog-v4'), { revalidate: CATALOG_REVALIDATE_SECONDS })
 
@@ -194,6 +196,8 @@ export const listToolCategoryCounts = cache(() =>
 )
 
 export const listTaskCandidates = cache((taskSlug: string) =>
+  // missIsUnavailable keeps /best/<task> from 404ing in an outage. The quiz result
+  // validates the task slug first and also needs the live DB, so it is unaffected.
   withReadFallback('task-candidates', [taskSlug], loadTaskCandidates, fromFallbackDb((db) => readTaskCandidates(db, taskSlug)), {
     missIsUnavailable: true,
   }),

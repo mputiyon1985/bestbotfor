@@ -12,6 +12,16 @@ import * as schema from './db/schema'
 export const CATALOG_FALLBACK_FILE = path.join(process.cwd(), 'data', 'catalog-fallback.db')
 
 let fallbackDb: Database | undefined
+const cleanupPaths = new Set<string>()
+
+function registerCleanup(file: string) {
+  if (cleanupPaths.size === 0) {
+    process.once('exit', () => {
+      for (const p of cleanupPaths) rmSync(p, { force: true })
+    })
+  }
+  cleanupPaths.add(file)
+}
 
 /**
  * Opens a private copy of the snapshot in the OS temp dir. The deployed bundle
@@ -21,6 +31,7 @@ let fallbackDb: Database | undefined
  */
 export function openCatalogFallbackDb(source: string = CATALOG_FALLBACK_FILE, workDir: string = tmpdir()): Database | null {
   if (!existsSync(source)) return null
+  // One file per process; removed on exit so long-lived self-hosted servers don't leave copies behind.
   const copy = path.join(workDir, `bbf-catalog-fallback-${process.pid}.db`)
   if (!existsSync(copy)) {
     // Copy to a unique temp name, then rename: rename is atomic on one filesystem,
@@ -33,6 +44,7 @@ export function openCatalogFallbackDb(source: string = CATALOG_FALLBACK_FILE, wo
       rmSync(partial, { force: true })
     }
   }
+  registerCleanup(copy)
   const client = createClient({ url: `file:${copy}` })
   return drizzle(client, { schema }) as Database
 }

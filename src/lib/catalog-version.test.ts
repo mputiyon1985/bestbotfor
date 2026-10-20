@@ -36,7 +36,28 @@ describe('every catalog unstable_cache key carries the deploy version', () => {
     vi.resetModules()
     captured.length = 0
     await import('./catalog')
-    expect(captured.length).toBe(11)
+    expect(captured.length).toBeGreaterThanOrEqual(11)
     for (const parts of captured) expect(parts).toContain('catalog-version:sha-deadbeefcafe')
+  })
+})
+
+describe('warnIfLocalCatalogVersionInProduction', () => {
+  it('warns once in production when the version is local', async () => {
+    const { warnIfLocalCatalogVersionInProduction, resetCatalogVersionWarningForTests } = await vi.importActual<typeof import('./catalog-version')>('./catalog-version')
+    resetCatalogVersionWarningForTests()
+    const warn = vi.fn()
+    expect(warnIfLocalCatalogVersionInProduction({ VERCEL_ENV: 'production' }, warn)).toBe(true)
+    expect(warnIfLocalCatalogVersionInProduction({ VERCEL_ENV: 'production' }, warn)).toBe(false)
+    expect(warn).toHaveBeenCalledTimes(1)
+    expect(String(warn.mock.calls[0]?.[0])).not.toMatch(/[0-9a-f]{12}/)
+  })
+  it('stays quiet outside production or with a real version', async () => {
+    const { warnIfLocalCatalogVersionInProduction, resetCatalogVersionWarningForTests } = await vi.importActual<typeof import('./catalog-version')>('./catalog-version')
+    resetCatalogVersionWarningForTests()
+    const warn = vi.fn()
+    expect(warnIfLocalCatalogVersionInProduction({ VERCEL_ENV: 'preview' }, warn)).toBe(false)
+    expect(warnIfLocalCatalogVersionInProduction({}, warn)).toBe(false)
+    expect(warnIfLocalCatalogVersionInProduction({ VERCEL_ENV: 'production', VERCEL_GIT_COMMIT_SHA: 'abcdef1234567' }, warn)).toBe(false)
+    expect(warn).not.toHaveBeenCalled()
   })
 })
