@@ -14,7 +14,7 @@ import { comparisonRows, comparisonSummary } from '@/lib/compare'
 import { compareCostAnswer, compareFaqs, compareView, type CompareView } from '@/lib/compare-copy'
 import { deepDive } from '@/lib/deep-dive'
 import { priceLabel, skillLabel } from '@/lib/format'
-import { breadcrumbJsonLd, faqJsonLd } from '@/lib/jsonld'
+import { breadcrumbJsonLd, faqJsonLd, itemListJsonLd } from '@/lib/jsonld'
 import { memberAccess } from '@/lib/members'
 import { compareDescription } from '@/lib/descriptions'
 import { pageMetadata } from '@/lib/metadata'
@@ -72,6 +72,7 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
   return (
     <article className="space-y-8">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
+      <JsonLd data={itemListJsonLd(heading, path, [a, b])} nonce={nonce} />
       <JsonLd data={faqJsonLd(faqs)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
       <div className="flex min-w-0 items-center gap-3">
