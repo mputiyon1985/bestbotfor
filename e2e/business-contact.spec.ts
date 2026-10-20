@@ -8,6 +8,9 @@ test('rendered HTML: one <head>, Impact meta with value= inside it, phone in foo
     expect(head).toContain('<meta name="impact-site-verification" value="2b9bb46d-ab24-4ccc-a8a5-93db997140b6"/>')
     expect(html).not.toMatch(/impact-site-verification"[^>]*content=/)
     expect(head).toMatch(/<title>[^<]+<\/title>/)
+    expect(head).toContain('<meta name="robots"')
+    expect(head).toContain('rel="canonical"')
+    expect(head).toContain('property="og:title"')
     expect(html).toContain('href="tel:+15712798182"')
     expect(html).toContain('"telephone":"+15712798182"')
   }

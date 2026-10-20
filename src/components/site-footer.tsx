@@ -15,7 +15,7 @@ export function SiteFooter() {
           <p className="mt-3 text-sm text-muted">{TAGLINE}</p>
           <p className="mt-3 text-sm">
             <span className="font-semibold">Call us: </span>
-            <a className="inline-flex min-h-11 items-center underline-offset-4 hover:underline" href={BUSINESS_PHONE_HREF}>
+            <a className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4" href={BUSINESS_PHONE_HREF}>
               {BUSINESS_PHONE_DISPLAY}
             </a>
           </p>
