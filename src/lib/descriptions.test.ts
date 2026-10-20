@@ -98,3 +98,12 @@ describe('match vs overall rating labels', () => {
     expect(read('src/components/editorial.tsx')).toContain('{OVERALL_RATING_NOTE}')
   })
 })
+
+describe('ai-loadout match label', () => {
+  it('reads "Match 87%" with no trailing "match"', async () => {
+    const { readFileSync } = await import('node:fs')
+    const src = readFileSync('src/app/ai-loadout/page.tsx', 'utf8')
+    expect(src).toContain('<span className="font-semibold">Match</span> {row.pick?.fitScore}%')
+    expect(src).not.toContain('% match')
+  })
+})

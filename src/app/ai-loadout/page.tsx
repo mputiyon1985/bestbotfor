@@ -57,7 +57,7 @@ export default async function AiLoadoutPage() {
                 {row.pick?.name}
               </Link>
               <p className="text-sm">
-                <span className="font-semibold">Match</span> {row.pick?.fitScore}% match
+                <span className="font-semibold">Match</span> {row.pick?.fitScore}%
               </p>
               <p className="mt-2 break-words text-sm">{row.pick?.notes}</p>
               <Link href={`/best/${row.taskSlug}`} className="mt-2 inline-flex min-h-11 items-center text-sm underline">
@@ -87,7 +87,7 @@ export default async function AiLoadoutPage() {
                       {row.pick?.name}
                     </Link>
                   </td>
-                  <td className="whitespace-nowrap py-3 pr-3">{row.pick?.fitScore}% match</td>
+                  <td className="whitespace-nowrap py-3 pr-3">{row.pick?.fitScore}%</td>
                   <td className="break-words py-3 pr-3">{row.pick?.notes}</td>
                   <td className="py-3">
                     <Link href={`/best/${row.taskSlug}`} className="inline-flex min-h-11 items-center break-words underline">
