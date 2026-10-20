@@ -3,7 +3,7 @@ import { comparePairSeeds } from '@/data/catalog'
 import { ALTERNATIVE_PAGES, alternativesPath } from '@/lib/alternatives'
 import { GUIDES, guidePath } from '@/content/guides'
 import { CATEGORY_GUIDES } from '@/content/category-guides'
-import { listPublicSlugs } from '@/lib/catalog'
+import { listPublicSlugs, listTaskCandidates } from '@/lib/catalog'
 import { getDb } from '@/lib/db'
 import { emptySitemapDates, latestIsoDate, readSitemapDates, SITEMAP_STATIC_LASTMOD, type SitemapDates } from '@/lib/sitemap-dates'
 import { getSiteUrl } from '@/lib/site'
@@ -69,7 +69,19 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   try {
     const catalog = await listPublicSlugs()
-    for (const slug of catalog.tasks) {
+    // Categories with no pick yet are noindex, so they are left out (cached reads, same as /best).
+    const listedTasks = await Promise.all(
+      catalog.tasks.map(async (slug) => {
+        try {
+          const loaded = await listTaskCandidates(slug)
+          return loaded && loaded.tools.length === 0 ? null : slug
+        } catch {
+          return slug
+        }
+      }),
+    )
+    for (const slug of listedTasks) {
+      if (!slug) continue
       entries.push({ url: new URL(`/best/${slug}`, site).toString(), lastModified: taskDate(slug), changeFrequency: 'weekly', priority: 0.8 })
     }
     // Free pages follow the same rule as their robots tag: listed only when every note is fresh.

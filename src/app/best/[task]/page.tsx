@@ -44,10 +44,14 @@ export async function generateMetadata({ params }: { params: Promise<{ task: str
   if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) notFound()
   const task = await getTask(slug)
   if (!task) notFound()
+  const loaded = await listTaskCandidates(slug).catch(() => null)
+  // Empty categories stay reachable but are noindex until they have a pick.
+  const empty = loaded !== null && loaded.tools.length === 0
   return pageMetadata({
     title: bestGuideTitle(task.name),
     description: bestGuideDescription(task.name),
     path: `/best/${task.slug}`,
+    ...(empty ? { noIndex: true, follow: true } : {}),
   })
 }
 
@@ -62,7 +66,8 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
   const task = loaded?.task
   const ranked = loaded?.tools ?? []
   const top = ranked[0]
-  if (!task || !top) notFound()
+  if (!task) notFound()
+  if (!top) return <EmptyBestPage name={task.name} />
   const nonce = headerStore.get('x-nonce')
   if (sponsoredCardIsVisible(placement)) {
     scheduleSponsorImpression({
@@ -230,5 +235,19 @@ function FitMatch({ score }: { score: number }) {
     <span className="inline-flex whitespace-nowrap rounded-full bg-mist px-2.5 py-1 text-sm font-semibold">
       {`${score}% match`}
     </span>
+  )
+}
+
+function EmptyBestPage({ name }: { name: string }) {
+  return (
+    <article className="space-y-6" data-best-empty>
+      <h1 className="font-bold text-5xl leading-tight">{bestGuideHeading(name)}</h1>
+      <p className="text-lg">We don’t have a pick for this job yet. We’re still reviewing tools for it.</p>
+      <p>
+        <Link href="/best" className="inline-flex min-h-11 items-center font-semibold underline">
+          See every job we cover
+        </Link>
+      </p>
+    </article>
   )
 }
