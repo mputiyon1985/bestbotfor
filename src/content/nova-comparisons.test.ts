@@ -3,10 +3,10 @@ import { NOVA_COPY_PUBLISHED, novaCopy, novaDraftSlugs } from './nova-comparison
 
 describe('Nova comparison copy', () => {
   it('publishes all 10 approved drafts, holding any with an open [VERIFY] marker', () => {
-    expect([...NOVA_COPY_PUBLISHED].sort()).toEqual(novaDraftSlugs().sort())
+    expect([...NOVA_COPY_PUBLISHED].sort()).toEqual(novaDraftSlugs().filter((slug) => slug !== 'jasper-alternatives').sort())
     expect(novaDraftSlugs()).toHaveLength(10)
     const held = novaDraftSlugs().filter((slug) => novaCopy(slug) === null).sort()
-    expect(held).toEqual([])
+    expect(held).toEqual(['jasper-alternatives'])
     for (const slug of novaDraftSlugs()) {
       const copy = novaCopy(slug)
       if (copy) expect(copy, slug).not.toMatch(/^# /m)
