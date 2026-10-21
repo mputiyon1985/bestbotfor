@@ -26,14 +26,14 @@ describe('/go affiliate routing', () => {
 
   it('redirects to a reviewed-host affiliate URL and labels it as affiliate', async () => {
     const outcome = await go(affiliate)
-    expect(outcome).toMatchObject({ status: 302, location: affiliate })
+    expect(outcome).toMatchObject({ status: 302, location: `${affiliate}&utm_source=bestbotfor&utm_medium=referral&utm_campaign=direct` })
     expect(servesAffiliateLink('cursor', affiliate)).toBe(true)
   })
 
   it('falls back to the official URL when unset or off the allowlist, and is not labelled affiliate', async () => {
     for (const value of [null, 'https://evil.example/aff']) {
       const outcome = await go(value)
-      expect(outcome).toMatchObject({ status: 302, location: new URL(cursor.url).toString() })
+      expect(outcome).toMatchObject({ status: 302, location: `${new URL(cursor.url).toString()}?utm_source=bestbotfor&utm_medium=referral&utm_campaign=direct` })
       expect(servesAffiliateLink('cursor', value)).toBe(false)
     }
     expect(servesAffiliateLink('not-a-tool', affiliate)).toBe(false)
