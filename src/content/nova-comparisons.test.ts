@@ -6,7 +6,7 @@ describe('Nova comparison copy', () => {
     expect([...NOVA_COPY_PUBLISHED].sort()).toEqual(novaDraftSlugs().sort())
     expect(novaDraftSlugs()).toHaveLength(10)
     const held = novaDraftSlugs().filter((slug) => novaCopy(slug) === null).sort()
-    expect(held).toEqual(['chatgpt-alternatives', 'otter-vs-fireflies', 'zapier-alternatives', 'zapier-vs-make'])
+    expect(held).toEqual([])
     for (const slug of novaDraftSlugs()) {
       const copy = novaCopy(slug)
       if (copy) expect(copy, slug).not.toMatch(/^# /m)
