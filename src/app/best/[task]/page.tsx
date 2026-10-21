@@ -37,6 +37,7 @@ import { BEST_HUB_PATH, LOADOUT_PATH, bestFreePath } from '@/lib/seo-pages'
 import { isFreePageTask } from '@/lib/free-plan'
 import { guidePath } from '@/content/guides'
 import { alternativesForTask, alternativesPath } from '@/lib/alternatives'
+import { seoMeta } from '@/content/seo-meta'
 
 export async function generateMetadata({ params }: { params: Promise<{ task: string }> }): Promise<Metadata> {
   const { task: slug } = await params
@@ -47,9 +48,11 @@ export async function generateMetadata({ params }: { params: Promise<{ task: str
   const loaded = await listTaskCandidates(slug).catch(() => null)
   // Empty categories stay reachable but are noindex until they have a pick.
   const empty = loaded !== null && loaded.tools.length === 0
+  const override = seoMeta(`/best/${task.slug}`)
   return pageMetadata({
-    title: bestGuideTitle(task.name),
-    description: bestGuideDescription(task.name),
+    title: override?.title ?? bestGuideTitle(task.name),
+    absoluteTitle: override ? true : undefined,
+    description: override?.description ?? bestGuideDescription(task.name),
     path: `/best/${task.slug}`,
     ...(empty ? { noIndex: true, follow: true } : {}),
   })

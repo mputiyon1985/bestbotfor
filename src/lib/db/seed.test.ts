@@ -385,7 +385,7 @@ describe('catalog seed', () => {
     try {
       const meta = await toolMetadata({ params: Promise.resolve({ slug: 'windsurf' }) })
       expect(meta.robots).toEqual({ index: true, follow: true })
-      expect(meta.title).toBe('Devin Desktop (formerly Windsurf)')
+      expect(meta.title).toEqual({ absolute: 'Devin Desktop (formerly Windsurf) Review (2026)' })
       expect(String(meta.alternates?.canonical)).toBe('https://bestbotfor.com/tools/windsurf')
     } finally {
       if (previousEnv === undefined) delete process.env.VERCEL_ENV
