@@ -179,6 +179,7 @@ describe('sqlite file directories', () => {
       '0021_subscriber_beehiiv_status.sql',
       '0022_suggestions.sql',
       '0023_subscriber_utm.sql',
+      '0024_deals.sql',
     ])
     const tables = await client.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('stripe_events', 'sponsorships') ORDER BY name",
@@ -286,6 +287,7 @@ describe('sqlite file directories', () => {
       '0021_subscriber_beehiiv_status.sql',
       '0022_suggestions.sql',
       '0023_subscriber_utm.sql',
+      '0024_deals.sql',
     ])
     const columns = await after.execute('PRAGMA table_info(sponsorships)')
     const beforeCols = before.rows.map((row) => ({
@@ -336,7 +338,7 @@ describe('sqlite file directories', () => {
     await applyMigrations(url)
     const again = createClient({ url })
     const count = await again.execute('SELECT COUNT(*) AS n FROM schema_migrations')
-    expect(Number(count.rows[0]?.n)).toBe(MAIN_MIGRATIONS.length + 15)
+    expect(Number(count.rows[0]?.n)).toBe(MAIN_MIGRATIONS.length + 16)
     const stillThere = await again.execute({
       sql: "SELECT id FROM schema_migrations WHERE id = '0005_sponsorships.sql'",
     })
@@ -617,6 +619,7 @@ describe('drizzle journal', () => {
     expect(idxOf('0021_subscriber_beehiiv_status')).toBe(19)
     expect(idxOf('0022_suggestions')).toBe(20)
     expect(idxOf('0023_subscriber_utm')).toBe(21)
+    expect(idxOf('0024_deals')).toBe(22)
     const migration = await readFile(path.join(process.cwd(), 'drizzle/0013_sponsorship_paid_at.sql'), 'utf8')
     const executable = executableSql(migration).toLowerCase()
     expect(executable).not.toContain('add column if not exists')
