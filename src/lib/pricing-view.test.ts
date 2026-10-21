@@ -13,7 +13,7 @@ describe('/pricing view', () => {
   it('uses the honest coming-soon copy with the newsletter signup and no buy-style copy', () => {
     expect(MEMBERS_COMING_SOON_COPY).toBe('Members: coming soon. Join The Daily Bot to hear first.')
     const source = readFileSync(path.join(process.cwd(), 'src/app/pricing/page.tsx'), 'utf8')
-    const branch = source.slice(source.indexOf("if (view === 'coming-soon')"), source.indexOf('return (', source.indexOf("if (view === 'coming-soon')") + 40))
+    const branch = source.slice(source.indexOf('if (!pricing.configured)'), source.indexOf('const { founding }'))
     expect(branch).toContain('<NewsletterForm')
     expect(branch).toContain('MEMBERS_COMING_SOON_COPY')
     expect(branch).not.toMatch(/checkout|subscribe|Sign in/i)
