@@ -24,20 +24,20 @@ describe('Oct 20 catalog fixes (seed is what prod re-seeds from)', () => {
     )
   })
 
-  it('Lindy: no free tier (7-day $50 credit trial), paid from $49.99', () => {
+  it('Lindy: no free tier (7-day $50 credit trial), paid from $29.99', () => {
     const lindy = seed('lindy')
-    expect([lindy.pricingModel, lindy.priceFromUsd, lindy.hasFreeTier]).toEqual(['paid', 49.99, false])
-    expect(priceLabel(lindy)).toBe('$49.99 and up')
+    expect([lindy.pricingModel, lindy.priceFromUsd, lindy.hasFreeTier]).toEqual(['paid', 29.99, false])
+    expect(priceLabel(lindy)).toBe('$29.99 and up')
   })
 
   it('pros/cons wording matches the vendor pages', () => {
     for (const file of ['src/data/scores-v2.3.csv', 'src/data/scores-pros-cons.csv']) {
       const csv = readFileSync(file, 'utf8')
-      expect(csv).toContain('Paid plans from $49.99 per user a month for 5,000 credits')
+      expect(csv).toContain('Paid plans from $29.99 per user a month for 3,000 credits')
       expect(csv).toContain('Free trial: $50 in credits for 7 days, no card needed')
       expect(csv).toContain('Premium plan at $25 a month billed yearly adds the Webflow CMS')
       expect(csv).toContain('Pro is $16.99 a month, or $8.33 a month billed annually')
-      expect(csv).not.toMatch(/Team plan from \$49\.99|CMS plan at \$25|\$8\.49 a month billed yearly/)
+      expect(csv).not.toMatch(/Team plan from \$49\.99|\$49\.99 per user|CMS plan at \$25|\$8\.49 a month billed yearly/)
     }
   })
 
