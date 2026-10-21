@@ -1,7 +1,7 @@
 import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
-import { isDealMember, isLiveDeal, liveDealViews, parseMemberPriceIds, safeDealUrl, type DealRow } from './deals-view'
+import { dealMemberPriceIds, isDealMember, isLiveDeal, liveDealViews, parseMemberPriceIds, safeDealUrl, type DealRow } from './deals-view'
 
 vi.mock('next/link', () => ({
   default: ({ href, children, ...rest }: { href: string; children: unknown }) => createElement('a', { href, ...rest }, children as never),
@@ -46,6 +46,14 @@ describe('deal membership gate', () => {
     expect(isDealMember({ ...base, subscriptions: [{ status: 'active', stripePriceId: 'price_sponsor' }] })).toBe(false)
     expect(isDealMember({ ...base, userId: null, subscriptions: [{ status: 'active', stripePriceId: 'price_abc' }] })).toBe(false)
     expect(isDealMember({ ...base, stripeConfigured: false, subscriptions: [{ status: 'active', stripePriceId: 'price_abc' }] })).toBe(false)
+  })
+})
+
+describe('deal gate uses the /pricing membership price IDs', () => {
+  it('unions STRIPE_PRICE_MEMBER_ANNUAL/MONTHLY and DEALS_MEMBER_PRICE_IDS; all unset = nobody', () => {
+    expect(dealMemberPriceIds({})).toEqual([])
+    expect(dealMemberPriceIds({ STRIPE_PRICE_MEMBER_ANNUAL: 'price_a', STRIPE_PRICE_MEMBER_MONTHLY: 'price_m' })).toEqual(['price_a', 'price_m'])
+    expect(dealMemberPriceIds({ STRIPE_PRICE_MEMBER_ANNUAL: 'price_a', DEALS_MEMBER_PRICE_IDS: 'price_a, price_x' })).toEqual(['price_a', 'price_x'])
   })
 })
 

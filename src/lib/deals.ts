@@ -5,7 +5,7 @@ import { unstable_cache } from 'next/cache'
 import { currentClerkUserId } from './members'
 import { getDb } from './db'
 import { deals, subscriptions } from './db/schema'
-import { DEALS_MEMBER_PRICE_IDS_ENV, isDealMember, liveDealViews, parseMemberPriceIds, type DealRow, type DealView } from './deals-view'
+import { dealMemberPriceIds, isDealMember, liveDealViews, type DealRow, type DealView } from './deals-view'
 import { isStripeConfigured } from './stripe'
 
 // One read per 5 minutes for every page; expiry is re-checked on each request.
@@ -26,7 +26,7 @@ async function loadDeals(): Promise<DealRow[]> {
 
 /** Fails closed: any error or an unset flag means not a member. */
 export async function isCurrentUserDealMember(): Promise<boolean> {
-  const memberPriceIds = parseMemberPriceIds(process.env[DEALS_MEMBER_PRICE_IDS_ENV])
+  const memberPriceIds = dealMemberPriceIds()
   if (memberPriceIds.length === 0 || !isStripeConfigured()) return false
   try {
     const userId = await currentClerkUserId()

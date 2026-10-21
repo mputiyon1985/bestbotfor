@@ -103,3 +103,12 @@ export function liveDealViews(rows: readonly DealRow[], member: boolean, now: nu
     .filter((deal) => isLiveDeal(deal, now) && (toolSlug === undefined || deal.toolSlug === toolSlug))
     .map((deal) => toDealView(deal, member))
 }
+
+/** Membership price env vars shared with /pricing (membership pricing PR). */
+export const MEMBERSHIP_PRICE_ENVS = ['STRIPE_PRICE_MEMBER_ANNUAL', 'STRIPE_PRICE_MEMBER_MONTHLY'] as const
+
+/** Price IDs that unlock deals: the /pricing membership prices plus any extra IDs in DEALS_MEMBER_PRICE_IDS. All unset = nobody. */
+export function dealMemberPriceIds(env: Record<string, string | undefined> = process.env): string[] {
+  const ids = [...MEMBERSHIP_PRICE_ENVS, DEALS_MEMBER_PRICE_IDS_ENV].flatMap((name) => parseMemberPriceIds(env[name]))
+  return [...new Set(ids)]
+}
