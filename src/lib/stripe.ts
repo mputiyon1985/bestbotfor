@@ -7,6 +7,7 @@ import {
   isTestSecretKey,
   secretKeyAllowed,
 } from './stripe-key'
+import { membershipConfigured } from './membership-plans'
 
 export { isTestSecretKey, STRIPE_API_VERSION } from './stripe-key'
 
@@ -36,7 +37,7 @@ export function isStripeConfigured(): boolean {
   if (!getStripe()) return false
   const webhook = process.env.STRIPE_WEBHOOK_SECRET?.trim() ?? ''
   const price = process.env.STRIPE_PRICE_ID?.trim() ?? ''
-  return webhook.length > 0 && price.startsWith('price_')
+  return webhook.length > 0 && (price.startsWith('price_') || membershipConfigured())
 }
 
 export function getStripe(): Stripe | null {
