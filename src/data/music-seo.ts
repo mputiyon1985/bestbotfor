@@ -167,7 +167,7 @@ export const musicSeoToolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
-  // pricing verified 2026-10-16 at https://www.semrush.com/kb/1011-subscriptions | budget fit: free | best for: seo,keyword-research,rank-tracking,site-audit
+  // pricing verified 2026-10-21 at https://www.semrush.com/prices/ (SEO $139.95/mo monthly, $117.33/mo annual; Free 10 reports/day) | budget fit: free | best for: seo,keyword-research,rank-tracking,site-audit
   tool({
     slug: 'semrush',
     name: 'Semrush',
@@ -176,9 +176,9 @@ export const musicSeoToolSeeds: ToolSeed[] = [
     allowedHosts: ['www.semrush.com'],
     category: 'SEO',
     shortDesc: 'An all-in-one SEO suite: keywords, rank tracking, audits, and AI visibility.',
-    longDesc: 'The broad platform for keyword research, competitors and site audits. A free account includes 1 project and 10 reports a day. Paid SEO plans start at $139/mo.',
+    longDesc: 'The broad platform for keyword research, competitors and site audits. A free account includes 1 project and 10 reports a day. Paid SEO plans start at $139.95/mo billed monthly.',
     pricingModel: 'freemium',
-    priceFromUsd: 139,
+    priceFromUsd: 139.95,
     hasFreeTier: true,
     skillLevel: 'intermediate',
     platforms: ['Web', 'API'],

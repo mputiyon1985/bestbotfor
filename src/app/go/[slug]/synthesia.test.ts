@@ -31,7 +31,7 @@ describe('/go/synthesia', () => {
   it('redirects to the reviewed affiliate URL with no DB affiliate_url', async () => {
     const res = await go()
     expect(res.status).toBe(302)
-    expect(res.headers.get('location')).toBe(AFFILIATE)
+    expect(res.headers.get('location')).toBe(`${AFFILIATE}&utm_source=bestbotfor&utm_medium=referral&utm_campaign=direct`)
     expect(servesAffiliateLink('synthesia', null)).toBe(true)
   })
 
@@ -43,7 +43,7 @@ describe('/go/synthesia', () => {
 
   it('a DB affiliate_url still wins, and an off-list one falls back to the official site', async () => {
     state.dbAffiliateUrl = 'https://evil.example/aff'
-    expect((await go()).headers.get('location')).toBe('https://www.synthesia.io/')
+    expect((await go()).headers.get('location')).toBe('https://www.synthesia.io/?utm_source=bestbotfor&utm_medium=referral&utm_campaign=direct')
   })
 })
 
@@ -51,7 +51,7 @@ describe('/go/elevenlabs', () => {
   it('redirects to the reviewed ElevenLabs affiliate URL', async () => {
     const res = await GET(new Request('https://bestbotfor.com/go/elevenlabs'), { params: Promise.resolve({ slug: 'elevenlabs' }) })
     expect(res.status).toBe(302)
-    expect(res.headers.get('location')).toBe('https://try.elevenlabs.io/8hbaa9knuwda')
+    expect(res.headers.get('location')).toBe('https://try.elevenlabs.io/8hbaa9knuwda?utm_source=bestbotfor&utm_medium=referral&utm_campaign=direct')
     expect(servesAffiliateLink('elevenlabs', null)).toBe(true)
   })
 })

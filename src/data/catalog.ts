@@ -856,15 +856,16 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['writesonic.com'],
     category: 'Writing',
     shortDesc: 'Writing and AI-search visibility tools for marketing pages.',
-    longDesc: 'Writesonic covers marketing drafts and a set of SEO helpers. It sits between a general chatbot and a dedicated SEO suite.',
-    pricingModel: 'freemium',
-    priceFromUsd: null,
-    hasFreeTier: true,
+    // Oct 21, 2026, writesonic.com/pricing: paid plans only, from $79/mo billed annually; 7-day free trial, no credit card.
+    longDesc: 'Writesonic covers marketing drafts and a set of SEO helpers. It sits between a general chatbot and a dedicated SEO suite. There is no free plan: a 7-day free trial needs no credit card, and paid plans start at $79 a month billed annually.',
+    pricingModel: 'paid',
+    priceFromUsd: 79,
+    hasFreeTier: false,
     skillLevel: 'beginner',
     platforms: ['Web'],
     lastVerifiedAt: REVIEWED,
     fits: [
-      { task: 'writing', score: 80, notes: 'Marketing drafts with a free way to start.' },
+      { task: 'writing', score: 80, notes: 'Marketing drafts, with a free trial (no card) to start.' },
       { task: 'seo', score: 70, notes: 'Includes search-oriented writing, short of a full SEO platform.' },
     ],
     affiliate: {
@@ -3379,6 +3380,7 @@ export const comparePairSeeds: ReadonlyArray<readonly [string, string]> = [
   ['fathom', 'fireflies'],
   ['lovable', 'v0'],
   ['assemblyai', 'deepgram'],
+  ['otter', 'fireflies'],
 ]
 
 /**
