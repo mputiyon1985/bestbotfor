@@ -28,6 +28,8 @@ import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/jsonld'
 import { pageMetadata } from '@/lib/metadata'
 import { slugSchema } from '@/lib/validation'
 import { alternativesCopy } from '@/content/alternatives-copy'
+import { novaCopy } from '@/content/nova-comparisons'
+import { GuideMarkdown } from '@/components/guide-markdown'
 
 type Props = {
   params: Promise<{ tool: string }>
@@ -77,6 +79,7 @@ export default async function AlternativesPage({ params, searchParams }: Props) 
   const reasons = subject.cons.slice(0, SWITCH_REASON_COUNT)
   const newsletterSource = alternativesNewsletterSource(subject.slug)
   const copy = alternativesCopy(subject.slug)
+  const nova = novaCopy(`${subject.slug}-alternatives`)
   return (
     <article className="space-y-8">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
@@ -162,6 +165,7 @@ export default async function AlternativesPage({ params, searchParams }: Props) 
           </ul>
         </section>
       ) : null}
+      {nova ? <GuideMarkdown markdown={nova} /> : null}
       {copy.note ? <p>{copy.note}</p> : null}
       <p>
         <Link className="underline" href={`/tools/${subject.slug}`}>{subject.name} profile</Link> ·{' '}

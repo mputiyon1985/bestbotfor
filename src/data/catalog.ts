@@ -3379,6 +3379,7 @@ export const comparePairSeeds: ReadonlyArray<readonly [string, string]> = [
   ['fathom', 'fireflies'],
   ['lovable', 'v0'],
   ['assemblyai', 'deepgram'],
+  ['otter', 'fireflies'],
 ]
 
 /**

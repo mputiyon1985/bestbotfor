@@ -39,6 +39,7 @@ describe('alternatives pages', () => {
       '/alternatives/heygen',
       '/alternatives/lovable',
       '/alternatives/fathom',
+      '/alternatives/surfer',
     ])
     for (const page of ALTERNATIVE_PAGES) {
       expect(toolsForTask(catalog, page.task).some((tool) => tool.slug === page.tool), page.tool).toBe(true)

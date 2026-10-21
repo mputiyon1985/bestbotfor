@@ -20,6 +20,8 @@ import { compareDescription } from '@/lib/descriptions'
 import { pageMetadata } from '@/lib/metadata'
 import { scoresPublished } from '@/lib/score-visibility'
 import { parseComparePair } from '@/lib/validation'
+import { novaCopy } from '@/content/nova-comparisons'
+import { GuideMarkdown } from '@/components/guide-markdown'
 
 export async function generateMetadata({ params }: { params: Promise<{ pair: string }> }): Promise<Metadata> {
   const { pair } = await params
@@ -68,6 +70,7 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
     }),
   })
   const notes = access.allowed ? deepDive(a, b) : null
+  const nova = novaCopy(`${a.slug}-vs-${b.slug}`)
 
   return (
     <article className="space-y-8">
@@ -116,6 +119,7 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
       ) : (
         <DailyBotCapture source="compare" />
       )}
+      {nova ? <GuideMarkdown markdown={nova} /> : null}
     </article>
   )
 }

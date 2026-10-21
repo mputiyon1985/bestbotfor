@@ -19,6 +19,7 @@ export const ALTERNATIVE_PAGES = [
   { tool: 'heygen', task: 'video' },
   { tool: 'lovable', task: 'vibe-coding' },
   { tool: 'fathom', task: 'meetings' },
+  { tool: 'surfer', task: 'seo' },
 ] as const
 
 export type AlternativePage = (typeof ALTERNATIVE_PAGES)[number]
