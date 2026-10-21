@@ -1,7 +1,8 @@
 import 'server-only'
 
 import { unstable_cache } from 'next/cache'
-import { foundingCouponId, foundingOffer, memberPriceId, type FoundingOffer, type MemberPlan } from './membership-plans'
+import { catalogCacheVersion } from './catalog-version'
+import { foundingCouponId, foundingOffer, memberPriceId, membershipPricingCacheKey, publicPriceCacheKey, type FoundingOffer, type MemberPlan } from './membership-plans'
 import { getStripe, stripePriceId } from './stripe'
 import { liveModeAllowed } from './stripe-key'
 
@@ -31,7 +32,11 @@ async function loadPriceById(priceId: string | null): Promise<PublicPrice> {
   }
 }
 
-export const getPublicPrice = unstable_cache(() => loadPriceById(stripePriceId()), ['stripe-public-price'], { revalidate: 3600 })
+/** Keyed on the price ID and deploy version, so an env swap never serves the old price. */
+export function getPublicPrice(): Promise<PublicPrice> {
+  const priceId = stripePriceId()
+  return unstable_cache(() => loadPriceById(priceId), publicPriceCacheKey(priceId, catalogCacheVersion()), { revalidate: 3600 })()
+}
 
 export type MembershipPricing =
   | { configured: false }
@@ -60,4 +65,6 @@ async function loadMembershipPricing(): Promise<MembershipPricing> {
 }
 
 /** Ten-minute cache: the founding seat count may lag a little; Stripe enforces max_redemptions itself. */
-export const getMembershipPricing = unstable_cache(loadMembershipPricing, ['stripe-membership-pricing'], { revalidate: 600 })
+export function getMembershipPricing(): Promise<MembershipPricing> {
+  return unstable_cache(loadMembershipPricing, membershipPricingCacheKey(catalogCacheVersion()), { revalidate: 600 })()
+}

@@ -87,3 +87,32 @@ export function foundingOffer(
   if (first <= 0 || first >= annualAmount) return closed
   return { open: true, firstYearAmount: first, remaining }
 }
+
+/**
+ * Cache keys for the Stripe price/coupon lookups. They include the configured IDs and the
+ * per-deploy catalog version, so an env swap (test -> live) or a deploy never serves old data.
+ */
+export function membershipPricingCacheKey(version: string, env: Env = process.env): string[] {
+  return [
+    'stripe-membership-pricing-v2',
+    `annual:${memberPriceId('annual', env) ?? 'none'}`,
+    `monthly:${memberPriceId('monthly', env) ?? 'none'}`,
+    `coupon:${foundingCouponId(env) ?? 'none'}`,
+    `catalog-version:${version}`,
+  ]
+}
+
+export function publicPriceCacheKey(priceId: string | null, version: string): string[] {
+  return ['stripe-public-price-v2', `price:${priceId ?? 'none'}`, `catalog-version:${version}`]
+}
+
+/**
+ * One founding seat per person: any earlier subscription on a membership price, by the same
+ * Clerk user or the same Stripe customer, in any status (including canceled), uses it up.
+ */
+export function hadMembershipBefore(
+  rows: ReadonlyArray<{ stripePriceId: string | null }>,
+  memberPriceIds: readonly string[],
+): boolean {
+  return rows.some((row) => row.stripePriceId != null && memberPriceIds.includes(row.stripePriceId))
+}

@@ -21,7 +21,7 @@ No trial on either price. No promotion codes. Checkout sets `managed_payments.en
 These IDs also unlock /deals (PR #120) once that merges; `DEALS_MEMBER_PRICE_IDS` can stay unset.
 
 ## Prerequisites the live page needs (already-existing gates, unchanged by this PR)
-- Live keys work only when `VERCEL_ENV=production` and `STRIPE_ALLOW_LIVE=true` (plus live `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`). If those are not set, /pricing keeps showing "coming soon" or "temporarily unavailable"; nothing is sold.
+- Live keys work only when `VERCEL_ENV=production` and `STRIPE_ALLOW_LIVE` set to the string true (plus live `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET`). If those are not set, /pricing keeps showing "coming soon" or "temporarily unavailable"; nothing is sold.
 - `scripts/setup-membership-stripe.ts` refuses live keys by design; create the live objects in the Dashboard or with a one-off reviewed command.
 
 ## Verify after applying
