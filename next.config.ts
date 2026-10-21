@@ -18,6 +18,7 @@ import {
   SVG_CONTENT_SECURITY_POLICY,
 } from './src/lib/brand'
 import { curatedCompareRedirects } from './src/data/compare-copy'
+import { EMAIL_ASSET_HEADERS, EMAIL_ASSET_SOURCE } from './src/lib/email-asset-headers'
 import { assertReviewHmacSecrets } from './src/lib/review-hmac-secrets'
 
 // Fail the build (and any later config load) before Next compiles pages.
@@ -85,6 +86,8 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: '/:path*', headers: securityHeaders },
+      // Must stay after the catch-all: Next applies the last matching value for a key.
+      { source: EMAIL_ASSET_SOURCE, headers: [...EMAIL_ASSET_HEADERS] },
       {
         source: '/:path*.svg',
         headers: [{ key: 'Content-Security-Policy', value: SVG_CONTENT_SECURITY_POLICY }],
