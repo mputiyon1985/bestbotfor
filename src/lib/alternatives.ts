@@ -13,6 +13,13 @@ export const ALTERNATIVE_PAGES = [
   { tool: 'zapier', task: 'automation' },
   { tool: 'cursor', task: 'coding' },
   { tool: 'elevenlabs', task: 'voice' },
+  // Oct 21, 2026 starters: one per job, built only from catalog fits, prices, pros and cons.
+  { tool: 'jasper', task: 'writing' },
+  { tool: 'perplexity', task: 'research' },
+  { tool: 'heygen', task: 'video' },
+  { tool: 'lovable', task: 'vibe-coding' },
+  { tool: 'fathom', task: 'meetings' },
+  { tool: 'surfer', task: 'seo' },
 ] as const
 
 export type AlternativePage = (typeof ALTERNATIVE_PAGES)[number]

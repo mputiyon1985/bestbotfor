@@ -27,6 +27,9 @@ import { budgetLabel, priceLabel, skillLabel } from '@/lib/format'
 import { breadcrumbJsonLd, itemListJsonLd } from '@/lib/jsonld'
 import { pageMetadata } from '@/lib/metadata'
 import { slugSchema } from '@/lib/validation'
+import { alternativesCopy } from '@/content/alternatives-copy'
+import { novaCopy } from '@/content/nova-comparisons'
+import { GuideMarkdown } from '@/components/guide-markdown'
 
 type Props = {
   params: Promise<{ tool: string }>
@@ -76,6 +79,8 @@ export default async function AlternativesPage({ params, searchParams }: Props) 
   const names = new Map(candidates.map((tool) => [tool.slug, tool.name]))
   const reasons = subject.cons.slice(0, SWITCH_REASON_COUNT)
   const newsletterSource = alternativesNewsletterSource(subject.slug)
+  const copy = alternativesCopy(subject.slug)
+  const nova = novaCopy(`${subject.slug}-alternatives`)
   return (
     <article className="space-y-8">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
@@ -87,6 +92,7 @@ export default async function AlternativesPage({ params, searchParams }: Props) 
           The closest {subject.name} alternative is {closest.name}. {closest.notes}
         </p>
       ) : null}
+      {copy.intro ? <p>{copy.intro}</p> : null}
       <nav aria-label="Budget" className="flex flex-wrap gap-2">
         {ALTERNATIVE_BUDGETS.map((option) => (
           <Link
@@ -160,6 +166,8 @@ export default async function AlternativesPage({ params, searchParams }: Props) 
           </ul>
         </section>
       ) : null}
+      {nova ? <GuideMarkdown markdown={nova} /> : null}
+      {copy.note ? <p>{copy.note}</p> : null}
       <p>
         <Link className="underline" href={`/tools/${subject.slug}`}>{subject.name} profile</Link> ·{' '}
         <Link className="underline" href={`/best/${task.slug}`}>{bestGuideHeading(task.name)}</Link>

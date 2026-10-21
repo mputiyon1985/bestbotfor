@@ -94,12 +94,13 @@ describe('curated compare copy', () => {
     ])
     const seeded = comparePairSeeds.map(([left, right]) => `${left}-vs-${right}`)
     for (const slug of compareCopy.map((entry) => entry.slug)) expect(seeded).toContain(slug)
-    expect(comparePairSeeds.slice(-4)).toEqual([
+    expect(comparePairSeeds.slice(-5, -1)).toEqual([
       ['granola', 'fathom'],
       ['fathom', 'fireflies'],
       ['lovable', 'v0'],
       ['assemblyai', 'deepgram'],
     ])
+    expect(comparePairSeeds.at(-1)).toEqual(['otter', 'fireflies'])
     expect(QUIZ_RESULT_COUNT).toBe(7)
   })
 
