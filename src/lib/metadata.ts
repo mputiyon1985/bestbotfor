@@ -10,6 +10,8 @@ export function pageMetadata(input: {
   description: string
   path: string
   absoluteTitle?: boolean
+  /** Off for noindex pages such as /search, where a self-canonical contradicts noindex. */
+  canonical?: boolean
   imagePath?: string
   noIndex?: boolean
   /** Used with noIndex. Off by default so error and search pages stay nofollow. */
@@ -26,7 +28,7 @@ export function pageMetadata(input: {
   return {
     title: input.absoluteTitle ? { absolute: title } : title,
     description,
-    alternates: { canonical },
+    alternates: input.canonical === false ? undefined : { canonical },
     pagination: previous || next ? { previous, next } : undefined,
     robots: pageRobots(input),
     openGraph: {

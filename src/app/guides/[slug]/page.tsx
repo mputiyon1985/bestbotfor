@@ -1,3 +1,4 @@
+import { seoMeta } from '@/content/seo-meta'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
@@ -21,7 +22,13 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params
   const categoryGuide = getCategoryGuide(slug)
   if (categoryGuide) {
-    return pageMetadata({ title: categoryGuide.title, description: categoryGuide.description, path: guidePath(slug) })
+    const override = seoMeta(guidePath(slug))
+    return pageMetadata({
+      title: override?.title ?? categoryGuide.title,
+      absoluteTitle: override ? true : undefined,
+      description: override?.description ?? categoryGuide.description,
+      path: guidePath(slug),
+    })
   }
   const guide = getGuide(slug)
   if (!guide) notFound()
