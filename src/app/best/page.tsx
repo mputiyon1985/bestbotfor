@@ -9,6 +9,7 @@ import { absoluteUrl } from '@/lib/site'
 import { breadcrumbJsonLd } from '@/lib/jsonld'
 import { pageMetadata } from '@/lib/metadata'
 import { guidePath } from '@/content/guides'
+import { getCategoryGuide } from '@/content/category-guides'
 import {
   BEST_HUB_DESCRIPTION,
   BEST_HUB_HEADING,
@@ -32,6 +33,7 @@ export default async function BestHubPage() {
     { name: 'Home', path: '/' },
     { name: 'Best by job', path: BEST_HUB_PATH },
   ]
+  // Categories with no pick yet are hidden here and from the ItemList (their pages are noindex).
   const listed = rows.filter((row) => row.pick)
   const itemList = {
     '@context': 'https://schema.org',
@@ -61,9 +63,16 @@ export default async function BestHubPage() {
             <Link href={`/best/${row.taskSlug}`} className="flex min-h-11 items-center break-words font-semibold underline">
               {bestGuideHeading(row.taskName)}
             </Link>
-            <p className="mt-1 text-sm text-muted">
-              {jobLabel(row.taskName)}: {row.pick?.name}
-            </p>
+            {row.pick ? (
+              <p className="mt-1 text-sm text-muted">
+                {jobLabel(row.taskName)}: {row.pick.name}
+              </p>
+            ) : null}
+            {getCategoryGuide(row.taskSlug) ? (
+              <Link href={guidePath(row.taskSlug)} className="mt-1 inline-flex min-h-11 items-center text-sm underline" data-guide-link>
+                Read the guide
+              </Link>
+            ) : null}
           </li>
         ))}
       </ul>

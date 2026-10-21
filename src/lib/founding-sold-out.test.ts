@@ -103,7 +103,7 @@ describe('founding sold-out auto-hide', () => {
     expect(html).toContain('Founding sponsor: $99 for 2 weeks, then $299/mo')
     expect(html).toContain(SPONSOR_FOUNDING_NOTICE)
 
-    expect(await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: 'req-5', now: T0 })).toEqual({ ok: true })
+    expect(await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: 'req-5', now: T0 })).toMatchObject({ ok: true })
     await close()
   })
 
@@ -137,7 +137,7 @@ describe('founding sold-out auto-hide', () => {
     expect(html).not.toContain('Become a founding sponsor')
     // The other offers are unaffected.
     expect(isDisabled(html.match(/<input[^>]*value="placement_weekly"[^>]*>/)?.[0] ?? '')).toBe(false)
-    expect(html.match(new RegExp(SPONSOR_OFFERING_NOT_CONFIGURED.replace(/\./g, '\\.'), 'g'))?.length ?? 0).toBe(1)
+    expect(html.match(new RegExp(SPONSOR_OFFERING_NOT_CONFIGURED.replace(/\./g, '\\.'), 'g'))?.length ?? 0).toBe(0) // the unconfigured monthly subscription is hidden, not labeled
 
     // Server side: a new founding checkout is refused before any Stripe session.
     expect(await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'founding_sponsor', requestKey: 'req-6', now: T0 })).toEqual({
@@ -145,7 +145,7 @@ describe('founding sold-out auto-hide', () => {
       message: FOUNDING_SOLD_OUT,
     })
     // A one-time placement on the same page is still sold.
-    expect(await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'placement_weekly', requestKey: 'req-w', now: T0 })).toEqual({ ok: true })
+    expect(await claimSponsorSlot(db, { taskSlug: 'coding', offering: 'placement_weekly', requestKey: 'req-w', now: T0 })).toMatchObject({ ok: true })
     await close()
   })
 
@@ -206,9 +206,7 @@ describe('founding sold-out auto-hide', () => {
     const reopened = await sponsorHtml(url)
     expect(isDisabled(foundingRadio(reopened))).toBe(false)
     expect(reopened).not.toContain(SPONSOR_SOLD_OUT_LABEL)
-    expect(await claimSponsorSlot(db, { taskSlug: 'chat', offering: 'founding_sponsor', requestKey: 'req-next', now: T0 + 3_600_001 })).toEqual({
-      ok: true,
-    })
+    expect(await claimSponsorSlot(db, { taskSlug: 'chat', offering: 'founding_sponsor', requestKey: 'req-next', now: T0 + 3_600_001 })).toMatchObject({ ok: true })
     await close()
   })
 

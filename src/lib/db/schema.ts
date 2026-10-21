@@ -121,6 +121,12 @@ export const subscribers = sqliteTable('subscribers', {
   status: text('status').notNull().default('pending'),
   /** Set when the row becomes `syncing`. Null means a crash left no clock, so reconcile treats it as stale. */
   syncingStartedAt: integer('syncing_started_at'),
+  /** First-touch tags from the signup form, written once when the row is created. Null when none were recorded. */
+  utmSource: text('utm_source'),
+  utmMedium: text('utm_medium'),
+  utmCampaign: text('utm_campaign'),
+  utmContent: text('utm_content'),
+  landingPath: text('landing_path'),
 })
 
 export const subscriptions = sqliteTable(
@@ -535,3 +541,23 @@ export const webhookEvents = sqliteTable('webhook_events', {
   type: text('type').notNull(),
   processedAt: integer('processed_at').notNull(),
 })
+
+/** Member deal codes (0024). `code` and `deal_url` are members-only and never leave the server for others. */
+export const deals = sqliteTable(
+  'deals',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    toolSlug: text('tool_slug').notNull(),
+    vendor: text('vendor').notNull(),
+    title: text('title').notNull(),
+    discountText: text('discount_text').notNull(),
+    code: text('code'),
+    dealUrl: text('deal_url'),
+    terms: text('terms'),
+    startsAt: integer('starts_at'),
+    expiresAt: integer('expires_at'),
+    active: integer('active', { mode: 'boolean' }).notNull().default(false),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [index('deals_tool_slug_idx').on(table.toolSlug)],
+)

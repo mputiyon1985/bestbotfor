@@ -72,7 +72,7 @@ describe('catalog seed', () => {
     expect(toolRows.find((row) => row.slug === 'semrush')).toMatchObject({
       pricingModel: 'freemium',
       hasFreeTier: true,
-      priceFromUsd: 139,
+      priceFromUsd: 139.95,
     })
   })
 
@@ -138,7 +138,7 @@ describe('catalog seed', () => {
     expect(toolSeeds.find((item) => item.slug === 'semrush')).toMatchObject({
       pricingModel: 'freemium',
       hasFreeTier: true,
-      priceFromUsd: 139,
+      priceFromUsd: 139.95,
     })
     expect(toolSeeds.find((item) => item.slug === 'soundraw')?.priceFromUsd).toBe(16.99)
     expect(toolSeeds.find((item) => item.slug === 'neuronwriter')?.priceFromUsd).toBe(23)

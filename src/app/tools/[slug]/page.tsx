@@ -1,10 +1,14 @@
 import type { Metadata } from 'next'
+import { DealList } from '@/components/deal-card'
+import { loadDealViews } from '@/lib/deals'
+import { servesAffiliateLink } from '@/lib/go-redirect'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { ProsConsSection, ScoreSection } from '@/components/editorial'
 import { JsonLd } from '@/components/json-ld'
+import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
 import { comparePairSeeds } from '@/data/catalog'
@@ -15,6 +19,7 @@ import { breadcrumbJsonLd, softwareJsonLd } from '@/lib/jsonld'
 import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
 import { pageMetadata } from '@/lib/metadata'
 import { slugSchema } from '@/lib/validation'
+import { toolMetaDescription, toolMetaTitle } from '@/lib/tool-meta'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
@@ -24,8 +29,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const tool = await getTool(slug)
   if (!tool) notFound()
   return pageMetadata({
-    title: tool.name,
-    description: `${tool.name} by ${tool.vendor}: ${tool.shortDesc}`,
+    title: toolMetaTitle(tool),
+    absoluteTitle: true,
+    description: toolMetaDescription(tool),
     path: `/tools/${tool.slug}`,
   })
 }
@@ -38,7 +44,12 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
     if (right === slug) return [left]
     return []
   })
-  const [tool, partners, headerStore] = await Promise.all([getTool(slug), getToolsBySlugs(partnerSlugs), headers()])
+  const [tool, partners, headerStore, toolDeals] = await Promise.all([
+    getTool(slug),
+    getToolsBySlugs(partnerSlugs),
+    headers(),
+    loadDealViews(slug),
+  ])
   if (!tool) notFound()
   const nonce = headerStore.get('x-nonce')
   const comparisons = comparePairSeeds.filter(([left, right]) => left === tool.slug || right === tool.slug)
@@ -69,14 +80,17 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
         <Item label="Free tier" value={tool.hasFreeTier ? 'Yes' : 'No'} />
       </dl>
       <p>
-        <OutboundLink slug={tool.slug} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
+        <OutboundLink slug={tool.slug} affiliate={servesAffiliateLink(tool.slug, tool.affiliate.affiliateUrl)} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
           Visit {tool.name}
         </OutboundLink>
       </p>
-      <p className="text-sm text-muted">
-        This button opens {tool.vendor}’s site. The address is the official URL in our catalog, not an affiliate link.{' '}
-        <Link href="/disclosure" className="underline">Disclosures</Link>.
-      </p>
+      <AffiliateDisclosure affiliate={servesAffiliateLink(tool.slug, tool.affiliate.affiliateUrl)} vendor={tool.vendor} />
+      {toolDeals.views.length > 0 ? (
+        <section aria-labelledby="tool-deals" className="space-y-3" data-tool-deals>
+          <h2 id="tool-deals" className="font-semibold text-2xl">Member deal</h2>
+          <DealList deals={toolDeals.views} />
+        </section>
+      ) : null}
       {tool.affiliate.commissionNote ? (
         <p className="text-sm text-muted">Program note, copied from the vendor’s page: {tool.affiliate.commissionNote}</p>
       ) : null}

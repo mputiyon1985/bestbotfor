@@ -18,6 +18,7 @@ import {
   SVG_CONTENT_SECURITY_POLICY,
 } from './src/lib/brand'
 import { curatedCompareRedirects } from './src/data/compare-copy'
+import { EMAIL_ASSET_HEADERS, EMAIL_ASSET_SOURCE } from './src/lib/email-asset-headers'
 import { assertReviewHmacSecrets } from './src/lib/review-hmac-secrets'
 
 // Fail the build (and any later config load) before Next compiles pages.
@@ -57,6 +58,8 @@ const legacyAssetRedirects: { source: string; destination: string }[] = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Ship the seed-built catalog snapshot with every server function (read only after a Turso error).
+  outputFileTracingIncludes: { '/**': ['./data/catalog-fallback.db'] },
   // Inlined at build time so the test IP hook in src/lib/reviews/ip.ts is
   // compiled out unless this build was started with BBF_E2E_HOOKS=1.
   env: {
@@ -71,11 +74,20 @@ const nextConfig: NextConfig = {
       ...legacyAssetRedirects.map((redirect) => ({ ...redirect, permanent: true as const })),
       ...curatedCompareRedirects(),
       { source: '/tools/devin-desktop', destination: '/tools/windsurf', statusCode: 301 as const },
+      // Category merge Oct 20, 2026: "Coding" (Cursor only) folded into "Coding assistant".
+      {
+        source: '/tools',
+        has: [{ type: 'query' as const, key: 'category', value: 'coding' }],
+        destination: '/tools?category=coding-assistant',
+        statusCode: 301 as const,
+      },
     ]
   },
   async headers() {
     return [
       { source: '/:path*', headers: securityHeaders },
+      // Must stay after the catch-all: Next applies the last matching value for a key.
+      { source: EMAIL_ASSET_SOURCE, headers: [...EMAIL_ASSET_HEADERS] },
       {
         source: '/:path*.svg',
         headers: [{ key: 'Content-Security-Policy', value: SVG_CONTENT_SECURITY_POLICY }],

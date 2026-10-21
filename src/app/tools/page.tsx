@@ -2,7 +2,10 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { cache } from 'react'
 import { notFound } from 'next/navigation'
+import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { JsonLd } from '@/components/json-ld'
+import { itemListJsonLd } from '@/lib/jsonld'
 import { ToolLogo } from '@/components/tool-logo'
 import { listToolCategoryCounts, listToolPage } from '@/lib/catalog'
 import { pageMetadata } from '@/lib/metadata'
@@ -104,11 +107,21 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 }
 
 export default async function ToolsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const { resolved, listing } = await loadToolsIndex(toolsCacheKey(await searchParams))
+  const [{ resolved, listing }, headerStore] = await Promise.all([
+    loadToolsIndex(toolsCacheKey(await searchParams)),
+    headers(),
+  ])
   const selected = resolved.selected
+  const nonce = headerStore.get('x-nonce')
 
   return (
     <div className="space-y-8">
+      {!resolved.unknown && listing && listing.tools.length > 0 ? (
+        <JsonLd
+          data={itemListJsonLd(selected ? `${selected.name} tools` : 'AI tools', toolsPath(selected?.slug ?? null, listing.page), listing.tools)}
+          nonce={nonce}
+        />
+      ) : null}
       <Breadcrumbs
         items={[
           { name: 'Home', path: '/' },

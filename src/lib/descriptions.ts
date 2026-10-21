@@ -3,8 +3,16 @@ const OWN_PICK = ' Or get your own pick in 30 seconds.'
 /** Tools a best-of guide lists before linking to the full match list. */
 export const BEST_GUIDE_TOOL_COUNT = 10
 
-/** Visible explanation of the Fit column. Not a hover-only tooltip. */
-export const BEST_GUIDE_FIT_LEGEND = 'Fit = how well it matches this task'
+/** Visible explanation of the match column. Not a hover-only tooltip. */
+export const BEST_GUIDE_FIT_LEGEND =
+  'Match = how well it fits this job. Overall rating is separate: a tool’s rank and stars across its whole category.'
+
+/** Result page column: the quiz match, which depends on the visitor's answers. */
+export const MATCH_FOR_ANSWERS_LABEL = 'Match for your answers'
+
+/** Tool profile: the editorial rating is category-wide, not per job, so it can differ from a match %. */
+export const OVERALL_RATING_NOTE =
+  'Overall rating: rank and stars across the whole category. A match % on guides and results is for one job and your answers, so a tool can be a top match and still rank lower overall.'
 
 const TASK_GERUNDS: Record<string, string> = {
   add: 'adding',

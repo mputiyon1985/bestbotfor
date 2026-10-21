@@ -3,13 +3,15 @@ import { OG_IMAGE_PATH } from './brand'
 import { isProductionDeployment } from './indexing'
 import { POLICY_PAGES_LAWYER_APPROVED } from './review-flags'
 import { omitScoreText } from './score-visibility'
-import { absoluteUrl, getSiteUrl, SITE_NAME, TAGLINE } from './site'
+import { absoluteUrl, getSiteUrl, SITE_NAME, TAGLINE, TWITTER_SITE } from './site'
 
 export function pageMetadata(input: {
   title: string
   description: string
   path: string
   absoluteTitle?: boolean
+  /** Off for noindex pages such as /search, where a self-canonical contradicts noindex. */
+  canonical?: boolean
   imagePath?: string
   noIndex?: boolean
   /** Used with noIndex. Off by default so error and search pages stay nofollow. */
@@ -26,7 +28,7 @@ export function pageMetadata(input: {
   return {
     title: input.absoluteTitle ? { absolute: title } : title,
     description,
-    alternates: { canonical },
+    alternates: input.canonical === false ? undefined : { canonical },
     pagination: previous || next ? { previous, next } : undefined,
     robots: pageRobots(input),
     openGraph: {
@@ -40,6 +42,7 @@ export function pageMetadata(input: {
     },
     twitter: {
       card: 'summary_large_image',
+      site: TWITTER_SITE,
       title: branded,
       description,
       images: [{ url: image, width: 1200, height: 630, alt: title }],

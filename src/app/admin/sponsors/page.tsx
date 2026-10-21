@@ -4,6 +4,7 @@ import { SponsorCardQueue, SponsorRefundQueue } from '@/components/sponsor-card-
 import { adminHomePath, requireAdmin } from '@/lib/admin'
 import { getDb } from '@/lib/db'
 import { adminSponsorsEnabled } from '@/lib/flags'
+import { foundingFoundersOverCap, type PaidFounder } from '@/lib/sponsor-availability'
 import { listPendingSponsorCards, listRefundPendingSponsorCards } from '@/lib/sponsor-card'
 import { listSponsorPlacementCounts, type SponsorPlacementCount } from '@/lib/sponsor-impressions'
 
@@ -15,6 +16,14 @@ export default async function SponsorCardsPage() {
   const db = getDb()
   const cards = await listPendingSponsorCards(db)
   const refunds = await listRefundPendingSponsorCards(db)
+  let overCap: PaidFounder[] = []
+  let overCapUnavailable = false
+  try {
+    overCap = await foundingFoundersOverCap(db)
+  } catch (error) {
+    console.error('founding cap lookup failed', error instanceof Error ? error.name : 'error')
+    overCapUnavailable = true
+  }
   let counts: SponsorPlacementCount[] = []
   let countsUnavailable = false
   try {
@@ -34,6 +43,26 @@ export default async function SponsorCardsPage() {
       ) : null}
       <h1 className="font-bold text-5xl">Sponsor tool cards</h1>
       <p>Nothing is public until you approve the name, logo, text, and URL of the version you are looking at.</p>
+      {overCapUnavailable ? <p role="alert">The founding cap check is unavailable.</p> : null}
+      {overCap.length > 0 ? (
+        <section role="alert" className="space-y-2 border border-danger p-3">
+          <h2 className="font-bold text-3xl">Founding cap exceeded</h2>
+          <p>
+            More than 5 founding sponsors have paid. These founders paid after the first 5. Nothing was refunded
+            automatically: Mark decides to refund or honor each one. Do not approve their tool cards until he does.
+          </p>
+          <ul className="list-disc pl-5">
+            {overCap.map((founder) => (
+              <li key={founder.id}>
+                {founder.company ?? 'No company'}
+                {founder.taskSlug ? ` · /best/${founder.taskSlug}` : ''}
+                {` · ${founder.sessionId}`}
+                {` · paid ${new Date(founder.paidAt).toISOString()}`}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       {cards.length === 0 ? <p>No tool cards are waiting for review.</p> : <SponsorCardQueue cards={cards} />}
       <h2 className="font-bold text-3xl">Refunds</h2>
       <p>Refund the payment in the Stripe dashboard, then mark the card refunded. A partial refund still hides the placement.</p>

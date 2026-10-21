@@ -1,19 +1,21 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { MATCH_FOR_ANSWERS_LABEL } from '@/lib/descriptions'
 import { cache } from 'react'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { DailyBotCapture } from '@/components/daily-bot-capture'
 import { PickCapNotice } from '@/components/pick-cap-notice'
 import { JsonLd } from '@/components/json-ld'
+import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
 import { EditorialCompact } from '@/components/editorial'
-import { recommendQuiz } from '@/lib/catalog'
+import { listTaskCandidates, recommendQuiz } from '@/lib/catalog'
 import { matchBudgetLabel, matchesPath, seeAllMatchesLabel } from '@/lib/matches'
 import { allMatchesRequest, resultRequestStatus, searchParamsToUrl } from '@/lib/result-request'
 import { resultMissMetadata } from '@/lib/result-http'
-import { matchesPageTitle, matchesRobots, quizResultRobots, quizResultTitle } from '@/lib/result-index'
+import { matchesCanonicalPath, matchesPageTitle, matchesRobots, quizResultRobots, quizResultTitle } from '@/lib/result-index'
 import { AllMatches } from './all-matches'
 import NotFoundPage from '../not-found'
 import { getDb } from '@/lib/db'
@@ -61,6 +63,12 @@ const loadResult = cache(async function loadResult(key: string): Promise<ResultL
   return { kind: 'quiz', answers: parsed.data, result }
 })
 
+/** /best/<task> renders only when the task has at least one active match (see src/app/best/[task]/page.tsx). */
+async function bestPageExists(taskSlug: string): Promise<boolean> {
+  const loaded = await listTaskCandidates(taskSlug)
+  return (loaded?.tools.length ?? 0) > 0
+}
+
 export async function generateMetadata({
   searchParams,
 }: {
@@ -78,8 +86,8 @@ export async function generateMetadata({
   }
   if (loaded.kind === 'matches') {
     const { loaded: matches } = loaded
-    const path = matchesPath(matches.task.slug, matches.budget, matches.page)
-    const robots = matchesRobots(matches.budget)
+    const path = matchesCanonicalPath(matches.task.slug, matches.budget, matches.page, await bestPageExists(matches.task.slug))
+    const robots = matchesRobots()
     const title = matchesPageTitle(matches.task.name, matches.budget, matches.page)
     return pageMetadata({
       title,
@@ -191,9 +199,10 @@ export default async function ResultPage({
         <Fact label="Free tier" value={top.hasFreeTier ? 'Yes' : 'No'} />
       </dl>
       <div className="flex flex-wrap gap-3">
-        <OutboundLink slug={top.slug} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
+        <OutboundLink slug={top.slug} affiliate={Boolean(top.hasAffiliateLink)} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
           Visit {top.name}
         </OutboundLink>
+{top.hasAffiliateLink ? <AffiliateDisclosure affiliate /> : null}
         <Link href={`/tools/${top.slug}`} className="inline-flex min-h-12 items-center rounded-full border border-ink px-5 font-semibold">
           Read the profile
         </Link>
@@ -237,9 +246,10 @@ export default async function ResultPage({
                 <p className="mt-2 text-sm text-muted">{alt.reason}</p>
                 <EditorialCompact editorial={alt.editorial} pros={alt.pros} cons={alt.cons} />
                 <p className="mt-2 text-sm">{priceLabel(alt)}</p>
-                <OutboundLink slug={alt.slug} className="mt-3 inline-flex min-h-12 items-center font-semibold underline">
+                <OutboundLink slug={alt.slug} affiliate={Boolean(alt.hasAffiliateLink)} className="mt-3 inline-flex min-h-12 items-center font-semibold underline">
                   Visit {alt.name}
                 </OutboundLink>
+{alt.hasAffiliateLink ? <AffiliateDisclosure affiliate /> : null}
               </li>
             ))}
           </ul>
@@ -272,8 +282,8 @@ export default async function ResultPage({
                 <dd className="break-words">{priceLabel(pick)}</dd>
                 <dt className="font-semibold">Experience</dt>
                 <dd>{skillLabel[pick.skillLevel]}</dd>
-                <dt className="font-semibold">Fit</dt>
-                <dd>{pick.fitScore}</dd>
+                <dt className="font-semibold">{MATCH_FOR_ANSWERS_LABEL}</dt>
+                <dd>{`${pick.fitScore}%`}</dd>
               </dl>
             </li>
           ))}
@@ -286,7 +296,7 @@ export default async function ResultPage({
                 <th scope="col" className="py-2 pr-3">Tool</th>
                 <th scope="col" className="py-2 pr-3">Price</th>
                 <th scope="col" className="py-2 pr-3">Experience</th>
-                <th scope="col" className="py-2">Fit</th>
+                <th scope="col" className="py-2">{MATCH_FOR_ANSWERS_LABEL}</th>
               </tr>
             </thead>
             <tbody>
@@ -302,7 +312,7 @@ export default async function ResultPage({
                   </th>
                   <td className="break-words py-3 pr-3">{priceLabel(pick)}</td>
                   <td className="break-words py-3 pr-3">{skillLabel[pick.skillLevel]}</td>
-                  <td className="py-3">{pick.fitScore}</td>
+                  <td className="py-3">{`${pick.fitScore}%`}</td>
                 </tr>
               ))}
             </tbody>

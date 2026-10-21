@@ -53,7 +53,7 @@ describe('resolveGoRedirect', () => {
         return tool()
       },
     })
-    expect(outcome).toMatchObject({ status: 302, location: 'https://cursor.com/', click: { toolId: 7 } })
+    expect(outcome).toMatchObject({ status: 302, location: 'https://cursor.com/?utm_source=bestbotfor&utm_medium=referral&utm_campaign=direct', click: { toolId: 7 } })
     expect(clicks).toBe(1)
     if (outcome.status === 302) expect(outcome.click?.page).toBe('direct')
   })
@@ -79,7 +79,7 @@ describe('resolveGoRedirect', () => {
       loadTool: () => new Promise(() => {}),
     })
     expect(Date.now() - started).toBeLessThan(400)
-    expect(hung).toEqual({ status: 302, location: 'https://cursor.com/', click: null })
+    expect(hung).toEqual({ status: 302, location: 'https://cursor.com/?utm_source=bestbotfor&utm_medium=referral&utm_campaign=direct', click: null })
     expect(error).toHaveBeenCalledWith('go rate limit failed', 'deadline')
     expect(error).toHaveBeenCalledWith('go catalog failed', 'deadline')
     error.mockRestore()

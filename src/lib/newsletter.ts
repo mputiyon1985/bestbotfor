@@ -3,11 +3,13 @@ import { createBeehiivSubscription, isBeehiivConfigured } from './beehiiv'
 import type { Database } from './db/client'
 import { subscribers } from './db/schema'
 import { absoluteUrl } from './site'
+import type { FirstTouch } from './first-touch'
 import { ACTION_LIMITS, allowRate } from './action-limit'
 import { newsletterReferringPath, type NewsletterSource } from './newsletter-source'
 import { emailSchema, newsletterFieldsSchema } from './validation'
 import {
   finishSubscriberSync,
+  attributionColumns,
   holdSubscriberForBeehiiv,
   releaseSubscriberHold,
 } from './newsletter-backfill'
@@ -75,6 +77,8 @@ export async function subscribeToNewsletter(input: {
   db: Database
   rateKey: string
   source?: NewsletterSource
+  /** Sanitized first-touch record from the form, or null. */
+  firstTouch?: FirstTouch | null
   fetchImpl?: typeof fetch
   now?: number
 }): Promise<NewsletterResult> {
@@ -119,7 +123,13 @@ export async function subscribeToNewsletter(input: {
   }
 
   if (isBeehiivConfigured()) {
-    const held = await holdSubscriberForBeehiiv(input.db, normalized, input.now ?? Date.now(), input.fetchImpl)
+    const held = await holdSubscriberForBeehiiv(
+      input.db,
+      normalized,
+      input.now ?? Date.now(),
+      input.fetchImpl,
+      input.firstTouch ?? null,
+    )
     if (held.kind === 'done') return { status: 'success', message: SYNCED_SUCCESS, tracked: false }
     if (held.kind === 'opted_out') {
       return { status: 'error', message: ADD_FAILED, tracked: false }
@@ -136,6 +146,7 @@ export async function subscribeToNewsletter(input: {
     const remote = await createBeehiivSubscription({
       email: normalized,
       referringSite: absoluteUrl(newsletterReferringPath(input.source ?? 'newsletter')),
+      firstTouch: input.firstTouch ?? null,
       fetchImpl: input.fetchImpl,
     })
     if (!remote.ok) {
@@ -158,6 +169,7 @@ export async function subscribeToNewsletter(input: {
     destination: 'local',
     beehiivId: null,
     status: PENDING_SUBSCRIBER_STATUS,
+    ...attributionColumns(input.firstTouch),
   })
   return { status: 'success', message: PENDING_SUCCESS, tracked: false }
 }

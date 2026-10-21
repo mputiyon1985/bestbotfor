@@ -7,17 +7,25 @@ export type RedirectTool = {
 }
 
 /**
- * The only redirect target is the tool's official URL, and only when its host
- * is on that tool's reviewed list. Caller-supplied query keys are ignored.
- * affiliateUrl is accepted so tests can prove it is never used.
+ * Redirect to the tool's affiliate URL when one is stored and its host is on
+ * the tool's reviewed list; otherwise to the official URL under the same rule.
+ * Caller-supplied query keys are ignored.
  */
 export function decideRedirect(input: {
   tool: RedirectTool | null
-}): { type: 'redirect'; url: string } | { type: 'not_found' } {
+}): { type: 'redirect'; url: string; affiliate: boolean } | { type: 'not_found' } {
   if (!input.tool) return { type: 'not_found' }
+  const affiliate = affiliateRedirectUrl(input.tool.affiliateUrl, input.tool.allowedHosts)
+  if (affiliate) return { type: 'redirect', url: affiliate, affiliate: true }
   const safe = officialHttpsUrl(input.tool.url, input.tool.allowedHosts)
   if (!safe) return { type: 'not_found' }
-  return { type: 'redirect', url: safe }
+  return { type: 'redirect', url: safe, affiliate: false }
+}
+
+/** The affiliate URL /go will serve, or null when it is unset or fails the allowlist. */
+export function affiliateRedirectUrl(value: string | null | undefined, allowedHosts: readonly string[]): string | null {
+  if (!value) return null
+  return officialHttpsUrl(value, allowedHosts)
 }
 
 /**

@@ -155,7 +155,7 @@ export const toolSeeds: ToolSeed[] = [
     vendor: 'Anysphere',
     url: 'https://cursor.com',
     allowedHosts: ['cursor.com'],
-    category: 'Coding',
+    category: 'Coding assistant',
     shortDesc: 'An AI code editor for working inside a repository you already have.',
     longDesc:
       'Cursor is a desktop editor with chat, inline edits, and agents that can read the project. It is for people who want the model in the editor, not a separate chat tab. Current plans are Free $0, Plus $8 (Grok models only), and Premium $30 (third-party models billed extra). Pro $20 is for legacy subscribers only.',
@@ -545,10 +545,10 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['www.lindy.ai'],
     category: 'Agent builder',
     shortDesc: 'Build an assistant that handles a repeatable job in plain language.',
-    longDesc: 'Lindy is positioned for people who want an agent without standing up an automation server. You describe the job. It is less flexible than a self-hosted workflow tool.',
-    pricingModel: 'freemium',
-    priceFromUsd: null,
-    hasFreeTier: true,
+    longDesc: 'Lindy is positioned for people who want an agent without standing up an automation server. You describe the job. It is less flexible than a self-hosted workflow tool. New accounts get $50 in credits for 7 days; paid plans start at $29.99 per user a month for 3,000 credits.',
+    pricingModel: 'paid',
+    priceFromUsd: 29.99,
+    hasFreeTier: false,
     skillLevel: 'beginner',
     platforms: ['Web'],
     lastVerifiedAt: REVIEWED,
@@ -563,7 +563,7 @@ export const toolSeeds: ToolSeed[] = [
     name: 'ElevenLabs',
     vendor: 'ElevenLabs',
     url: 'https://elevenlabs.io',
-    allowedHosts: ['elevenlabs.io'],
+    allowedHosts: ['elevenlabs.io', 'try.elevenlabs.io'],
     category: 'Voice',
     shortDesc: 'Text-to-speech and voice tools with a wide set of voices.',
     longDesc: 'ElevenLabs is the usual pick when the job is a natural voiceover from a script. You stay in control of the script. It does not edit the picture.',
@@ -583,6 +583,7 @@ export const toolSeeds: ToolSeed[] = [
       sourceUrl: 'https://elevenlabs.io/affiliates',
       status: 'available',
       commissionNote: '22% for 12 months (PartnerStack), as stated on the affiliates page.',
+      affiliateUrl: 'https://try.elevenlabs.io/8hbaa9knuwda',
     },
   }),
   tool({
@@ -617,7 +618,7 @@ export const toolSeeds: ToolSeed[] = [
     name: 'Synthesia',
     vendor: 'Synthesia',
     url: 'https://www.synthesia.io',
-    allowedHosts: ['www.synthesia.io'],
+    allowedHosts: ['www.synthesia.io', 'synthesia.io'],
     category: 'AI video',
     shortDesc: 'Turns a script into a presenter-style video.',
     longDesc:
@@ -637,6 +638,7 @@ export const toolSeeds: ToolSeed[] = [
       sourceUrl: 'https://www.synthesia.io/partners/affiliates',
       status: 'available',
       commissionNote: '25% with a 60-day cookie, as stated on the affiliates page.',
+      affiliateUrl: 'https://www.synthesia.io?via=mark-putiyon',
     },
   }),
   tool({
@@ -854,15 +856,16 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['writesonic.com'],
     category: 'Writing',
     shortDesc: 'Writing and AI-search visibility tools for marketing pages.',
-    longDesc: 'Writesonic covers marketing drafts and a set of SEO helpers. It sits between a general chatbot and a dedicated SEO suite.',
-    pricingModel: 'freemium',
-    priceFromUsd: null,
-    hasFreeTier: true,
+    // Oct 21, 2026, writesonic.com/pricing: paid plans only, from $79/mo billed annually; 7-day free trial, no credit card.
+    longDesc: 'Writesonic covers marketing drafts and a set of SEO helpers. It sits between a general chatbot and a dedicated SEO suite. There is no free plan: a 7-day free trial needs no credit card, and paid plans start at $79 a month billed annually.',
+    pricingModel: 'paid',
+    priceFromUsd: 79,
+    hasFreeTier: false,
     skillLevel: 'beginner',
     platforms: ['Web'],
     lastVerifiedAt: REVIEWED,
     fits: [
-      { task: 'writing', score: 80, notes: 'Marketing drafts with a free way to start.' },
+      { task: 'writing', score: 80, notes: 'Marketing drafts, with a free trial (no card) to start.' },
       { task: 'seo', score: 70, notes: 'Includes search-oriented writing, short of a full SEO platform.' },
     ],
     affiliate: {
@@ -3377,6 +3380,7 @@ export const comparePairSeeds: ReadonlyArray<readonly [string, string]> = [
   ['fathom', 'fireflies'],
   ['lovable', 'v0'],
   ['assemblyai', 'deepgram'],
+  ['otter', 'fireflies'],
 ]
 
 /**

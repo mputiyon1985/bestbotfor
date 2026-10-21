@@ -11,7 +11,6 @@ import {
 } from '@/lib/sponsor-offerings'
 import { resetStripeCache } from '@/lib/stripe'
 import {
-  FOUNDING_SPONSOR_LIMIT,
   SPONSOR_CANCEL_LINE,
   SPONSOR_PAYMENT_LINK_HOST,
   SPONSOR_PAYMENT_LINKS,
@@ -61,7 +60,7 @@ async function pageHtml(env: Partial<Record<(typeof ENV_KEYS)[number], string | 
 
 describe('sponsor payment links', () => {
   it('points only at Stripe-hosted https Payment Links', async () => {
-    expect(SPONSOR_PAYMENT_LINKS.map((link) => link.id)).toEqual(['founding_sponsor', 'sponsor_monthly'])
+    expect(SPONSOR_PAYMENT_LINKS.map((link) => link.id)).toEqual(['sponsor_monthly'])
     for (const link of SPONSOR_PAYMENT_LINKS) {
       const url = new URL(link.url)
       expect(url.protocol).toBe('https:')
@@ -71,12 +70,8 @@ describe('sponsor payment links', () => {
     }
   })
 
-  it('states the founding terms as a price lock with a 5-sponsor cap', async () => {
-    const [founding, monthly] = SPONSOR_PAYMENT_LINKS
-    expect(FOUNDING_SPONSOR_LIMIT).toBe(5)
-    expect(founding.terms).toBe(
-      '$99 for the first 2 weeks, then $299/mo. Price locked at $299/mo for 6 months. Cancel anytime. Limited to 5 sponsors.',
-    )
+  it('states the Monthly terms with no commitment', async () => {
+    const [monthly] = SPONSOR_PAYMENT_LINKS
     expect(monthly.terms).toBe('$299/mo. Cancel anytime.')
     for (const link of SPONSOR_PAYMENT_LINKS) expect(link.terms.toLowerCase()).not.toContain('commitment')
   })
@@ -136,45 +131,38 @@ describe('sponsor payment links', () => {
     }
   })
 
-  describe('founding go-live gate', () => {
+  describe('retired founding Payment Link', () => {
     const live = { VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }
-    const [foundingLink, monthlyLink] = SPONSOR_PAYMENT_LINKS
+    // Deactivated in Stripe at the 2026-10-19 go-live and removed from the code (Sentinel P3-6 on #97).
+    const RETIRED_FOUNDING_LINK = { id: 'plink_1URylTIJUbygfAuc07cebXfn', url: 'https://buy.stripe.com/fZudRabMce0q5BoebyfrW04' }
+    const [monthlyLink] = SPONSOR_PAYMENT_LINKS
     const foundingRadio = (html: string) => html.match(/<input[^>]*value="founding_sponsor"[^>]*>/)?.[0] ?? ''
 
-    it('shows the founding Payment Link while the in-app founding Prices are not set', async () => {
-      const html = await pageHtml({ ...live, STRIPE_PRICE_FOUNDING_MONTHLY: undefined, STRIPE_PRICE_FOUNDING_SETUP: undefined })
-      expect(html).toContain(`href="${foundingLink.url}"`)
-      expect(html).toContain(foundingLink.cta)
-      expect(html).toContain(`href="${monthlyLink.url}"`)
-      expect(foundingRadio(html)).toContain('disabled')
-    })
-
-    it('still shows the founding Payment Link when only one founding Price is set', async () => {
-      for (const env of [
-        { STRIPE_PRICE_FOUNDING_MONTHLY: 'price_founding_monthly_test', STRIPE_PRICE_FOUNDING_SETUP: undefined },
-        { STRIPE_PRICE_FOUNDING_MONTHLY: undefined, STRIPE_PRICE_FOUNDING_SETUP: 'price_founding_setup_test' },
-      ]) {
-        const html = await pageHtml({ ...live, ...env })
-        expect(html).toContain(`href="${foundingLink.url}"`)
-        expect(foundingRadio(html)).toContain('disabled')
+    it('is not in the link list', () => {
+      for (const link of SPONSOR_PAYMENT_LINKS) {
+        expect(link.paymentLinkId).not.toBe(RETIRED_FOUNDING_LINK.id)
+        expect(link.url).not.toBe(RETIRED_FOUNDING_LINK.url)
+        expect(link.title).not.toContain('Founding')
       }
     })
 
-    it('hides the founding Payment Link and shows the in-app founding offer once the founding Prices are set', async () => {
-      const html = await pageHtml({
-        ...live,
-        STRIPE_PRICE_FOUNDING_MONTHLY: 'price_founding_monthly_test',
-        STRIPE_PRICE_FOUNDING_SETUP: 'price_founding_setup_test',
-      })
-      expect(html).not.toContain(foundingLink.url)
-      expect(html).not.toContain(foundingLink.paymentLinkId)
-      expect(html).not.toContain(foundingLink.cta)
-      expect(html).toContain(`href="${monthlyLink.url}"`)
-      expect(html).toContain(monthlyLink.cta)
-      expect(html).toContain(SPONSOR_CANCEL_LINE)
-      const radio = foundingRadio(html)
-      expect(radio).not.toBe('')
-      expect(radio).not.toContain('disabled')
+    it('never comes back on live /sponsor, whichever founding Prices are set (a rollback shows no dead link)', async () => {
+      for (const env of [
+        { STRIPE_PRICE_FOUNDING_MONTHLY: undefined, STRIPE_PRICE_FOUNDING_SETUP: undefined },
+        { STRIPE_PRICE_FOUNDING_MONTHLY: 'price_founding_monthly_test', STRIPE_PRICE_FOUNDING_SETUP: undefined },
+        { STRIPE_PRICE_FOUNDING_MONTHLY: undefined, STRIPE_PRICE_FOUNDING_SETUP: 'price_founding_setup_test' },
+        { STRIPE_PRICE_FOUNDING_MONTHLY: 'price_founding_monthly_test', STRIPE_PRICE_FOUNDING_SETUP: 'price_founding_setup_test' },
+      ]) {
+        const html = await pageHtml({ ...live, ...env })
+        expect(html).not.toContain(RETIRED_FOUNDING_LINK.url)
+        expect(html).not.toContain(RETIRED_FOUNDING_LINK.id)
+        expect(html).not.toContain('Become a founding sponsor')
+        expect(html).toContain(`href="${monthlyLink.url}"`)
+        expect(html).toContain(SPONSOR_CANCEL_LINE)
+        const configured = Boolean(env.STRIPE_PRICE_FOUNDING_MONTHLY && env.STRIPE_PRICE_FOUNDING_SETUP)
+        expect(foundingRadio(html)).not.toBe('')
+        expect(foundingRadio(html).includes('disabled')).toBe(!configured)
+      }
     })
   })
 
@@ -196,11 +184,11 @@ describe('sponsor payment links', () => {
         expect(subscriptionLine(html)).toEqual([])
         expect(foundingLine(html)).toEqual([])
         expect(html).toContain('Featured placement: $299 for one month.')
-        expect(html).toContain('The prices above are the current list prices from server configuration.')
+        expect(html).toContain('Prices above are current.')
         expect(html).not.toContain('one-time and subscription')
       }
       const html = await pageHtml({ ...live, ...unset })
-      // The founding Payment Link card and its terms still show on live production.
+      // The Monthly Payment Link card (the only one left) and its terms still show on live production.
       expect(html).toContain(`href="${SPONSOR_PAYMENT_LINKS[0].url}"`)
       expect(html).toContain(SPONSOR_PAYMENT_LINKS[0].terms)
     })
@@ -218,7 +206,8 @@ describe('sponsor payment links', () => {
       }
       const html = await pageHtml({ ...live, ...unset, STRIPE_PRICE_PLACEMENT_SUBSCRIPTION: 'sub_not_a_price' })
       expect(subscriptionLine(html)).toEqual([])
-      expect(radio(html, 'placement_subscription')).toContain('disabled')
+      // An unconfigured monthly subscription is left off the form entirely.
+      expect(radio(html, 'placement_subscription')).toBe('')
     })
 
     it('lists each subscription line once its Prices are set, matching its radio', async () => {
@@ -226,7 +215,7 @@ describe('sponsor payment links', () => {
       expect(subscriptionLine(subOnly)).toEqual([`Featured placement, monthly subscription: $299/mo. ${OFFERING_SUBSCRIPTION_NOTICE}`])
       expect(foundingLine(subOnly)).toEqual([])
       expect(radio(subOnly, 'placement_subscription')).not.toContain('disabled')
-      expect(subOnly).toContain('The prices above, one-time and subscription, are the current list prices from server configuration.')
+      expect(subOnly).toContain('Prices above, one-time and subscription, are current.')
 
       const both = await pageHtml({
         ...live,
@@ -251,7 +240,10 @@ describe('sponsor payment links', () => {
               STRIPE_PRICE_FOUNDING_MONTHLY: monthly,
               STRIPE_PRICE_FOUNDING_SETUP: setup,
             })
-            expect(subscriptionLine(html).length).toBe(radio(html, 'placement_subscription').includes('disabled') ? 0 : 1)
+            // The subscription radio is either enabled with its line, or absent with no line.
+            const subRadio = radio(html, 'placement_subscription')
+            expect(subRadio).not.toContain('disabled')
+            expect(subscriptionLine(html).length).toBe(subRadio ? 1 : 0)
             expect(foundingLine(html).length).toBe(radio(html, 'founding_sponsor').includes('disabled') ? 0 : 1)
           }
     })
@@ -274,15 +266,17 @@ describe('sponsor payment links', () => {
       expect(html).not.toContain(SPONSOR_PAYMENT_LINK_HOST)
     })
 
-    it('on closed production lists configured lines like the one-time prices, with no form and no radio', async () => {
+    it('on closed production lists the configured subscription line like the one-time prices, no founding line, no form and no radio', async () => {
       const closed = await pageHtml({ VERCEL_ENV: 'production', STRIPE_SECRET_KEY: testKey, ...allSet })
       expect(closed).not.toContain('Continue to checkout')
       expect(radio(closed, 'placement_subscription')).toBe('')
       expect(radio(closed, 'founding_sponsor')).toBe('')
       expect(subscriptionLine(closed)).toHaveLength(1)
-      expect(foundingLine(closed)).toHaveLength(1)
+      // The founding line is listed only where it can be bought (Sentinel P3-2 on #97).
+      expect(foundingLine(closed)).toEqual([])
+      expect(closed).not.toContain('Limited to 5')
       expect(closed).toContain('Featured placement: $299 for one month.')
-      expect(closed).toContain('The prices above, one-time and subscription, are the current list prices from server configuration.')
+      expect(closed).toContain('Prices above, one-time and subscription, are current.')
       const unsetClosed = await pageHtml({ VERCEL_ENV: 'production', STRIPE_SECRET_KEY: testKey, ...unset })
       expect(subscriptionLine(unsetClosed)).toEqual([])
       expect(foundingLine(unsetClosed)).toEqual([])
@@ -298,7 +292,7 @@ describe('sponsor payment links', () => {
       return html.slice(label, html.indexOf('</label>', start)).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
     }
 
-    it('shows a disabled monthly or Founding option with its title and no price or terms', async () => {
+    it('hides an unconfigured monthly subscription and shows a disabled Founding option with no price or terms', async () => {
       const html = await pageHtml({
         ...live,
         STRIPE_PRICE_PLACEMENT_MONTHLY: 'price_month_test',
@@ -306,7 +300,8 @@ describe('sponsor payment links', () => {
         STRIPE_PRICE_FOUNDING_MONTHLY: 'price_founding_monthly_test',
         STRIPE_PRICE_FOUNDING_SETUP: undefined,
       })
-      expect(option(html, 'placement_subscription')).toBe(`Featured placement, monthly subscription ${SPONSOR_OFFERING_NOT_CONFIGURED}`)
+      expect(option(html, 'placement_subscription')).toBe('')
+      expect(html).not.toContain('Featured placement, monthly subscription')
       expect(option(html, 'founding_sponsor')).toBe(`Founding sponsor ${SPONSOR_OFFERING_NOT_CONFIGURED}`)
       for (const id of ['placement_subscription', 'founding_sponsor']) {
         expect(option(html, id)).not.toContain('$')

@@ -14,12 +14,14 @@ import { comparisonRows, comparisonSummary } from '@/lib/compare'
 import { compareCostAnswer, compareFaqs, compareView, type CompareView } from '@/lib/compare-copy'
 import { deepDive } from '@/lib/deep-dive'
 import { priceLabel, skillLabel } from '@/lib/format'
-import { breadcrumbJsonLd, faqJsonLd } from '@/lib/jsonld'
+import { breadcrumbJsonLd, faqJsonLd, itemListJsonLd } from '@/lib/jsonld'
 import { memberAccess } from '@/lib/members'
 import { compareDescription } from '@/lib/descriptions'
 import { pageMetadata } from '@/lib/metadata'
 import { scoresPublished } from '@/lib/score-visibility'
 import { parseComparePair } from '@/lib/validation'
+import { novaCopy } from '@/content/nova-comparisons'
+import { GuideMarkdown } from '@/components/guide-markdown'
 
 export async function generateMetadata({ params }: { params: Promise<{ pair: string }> }): Promise<Metadata> {
   const { pair } = await params
@@ -68,10 +70,12 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
     }),
   })
   const notes = access.allowed ? deepDive(a, b) : null
+  const nova = novaCopy(`${a.slug}-vs-${b.slug}`)
 
   return (
     <article className="space-y-8">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
+      <JsonLd data={itemListJsonLd(heading, path, [a, b])} nonce={nonce} />
       <JsonLd data={faqJsonLd(faqs)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
       <div className="flex min-w-0 items-center gap-3">
@@ -115,6 +119,7 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
       ) : (
         <DailyBotCapture source="compare" />
       )}
+      {nova ? <GuideMarkdown markdown={nova} /> : null}
     </article>
   )
 }

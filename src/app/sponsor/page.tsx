@@ -4,6 +4,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { SponsorCheckoutNotice } from '@/components/sponsor-checkout-notice'
 import { SponsorForm } from '@/components/sponsor-form'
 import { SponsorPaymentLinks } from '@/components/sponsor-payment-links'
+import { SPONSOR_PAYMENT_LINKS_NOTE } from '@/lib/sponsor-payment-links'
 import { pageMetadata } from '@/lib/metadata'
 import { foundingSoldOutNow } from '@/lib/sponsor-availability'
 import { SPONSOR_CONTACT_EMAIL, SPONSOR_CONTACT_MAILTO, sponsorCheckoutSurface } from '@/lib/sponsor-checkout-gate'
@@ -21,6 +22,8 @@ import {
   sponsorPriceLabel,
 } from '@/lib/sponsor-offerings'
 import { stripeKeyMode } from '@/lib/stripe'
+import { visibleSponsorOfferings } from '@/lib/sponsor-visible-offerings'
+import { newsletterSlotAvailable } from '@/lib/newsletter-slot-gate'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,14 +42,16 @@ export function generateMetadata(): Metadata {
 export default async function SponsorPage() {
   const surface = sponsorCheckoutSurface()
   const mode = stripeKeyMode()
-  // Go-live gate: once the in-app founding Prices are set, the founding Payment
-  // Link is hidden so both founding offers never show together (shared cap of 5).
+  // The founding offer is in-app only. Its Payment Link was retired from the
+  // code after the 2026-10-19 go-live (it is inactive in Stripe).
   const inAppFounding = sponsorOfferingConfigured('founding_sponsor')
   // Sold out: the shared founding count (paid unrefunded founding rows, founding
   // link first-period rows, and live founding checkout holds) has reached the cap.
   // The database is read only when the founding offer could otherwise be bought.
   const foundingSoldOut = surface !== 'closed' && mode !== 'off' && inAppFounding ? await foundingSoldOutNow() : false
-  const offerings = SPONSOR_OFFERINGS.map((offering) => {
+  // Hidden until the newsletter has subscribers (fails closed on a read error).
+  const newsletterOpen = await newsletterSlotAvailable()
+  const offerings = SPONSOR_OFFERINGS.filter((offering) => newsletterOpen || offering.id !== 'newsletter_slot').map((offering) => {
     const soldOut = offering.id === 'founding_sponsor' && foundingSoldOut
     const available = surface !== 'closed' && mode !== 'off' && sponsorOfferingConfigured(offering.id) && !soldOut
     // A disabled option is sent without its price or terms, so the form cannot show them.
@@ -72,7 +77,14 @@ export default async function SponsorPage() {
   // The price list names a subscription offer only once its Prices are set, the
   // same check that enables its radio, so the list never offers a disabled option.
   const listSubscription = Boolean(subscriptionOffering) && sponsorOfferingConfigured('placement_subscription')
-  const listFounding = Boolean(foundingOffering) && inAppFounding
+  // The founding line is listed only where the offer can be bought (checkout
+  // open with a usable key), the same place its sold-out count is read. A closed
+  // or keyless page at 5/5 would otherwise list a founding price and "Limited to
+  // 5" for spots that are gone.
+  const listFounding = Boolean(foundingOffering) && inAppFounding && surface !== 'closed' && mode !== 'off'
+  // "one-time and subscription" only while a subscription price is listed. A
+  // sold-out founding line carries no price.
+  const listsSubscriptionPrice = listSubscription || (listFounding && !foundingSoldOut)
 
   return (
     <article className="max-w-2xl space-y-6">
@@ -80,7 +92,9 @@ export default async function SponsorPage() {
       <h1 className="font-bold text-5xl">Sponsor</h1>
       <SponsorCheckoutNotice surface={surface} />
       <p>
-        Buy a featured tool slot on one /best/[task] page, or a sponsor mention in one newsletter issue.
+        {newsletterOpen
+          ? 'Buy a featured tool slot on one /best/[task] page, or a sponsor mention in one newsletter issue.'
+          : 'Buy a featured tool slot on one /best/[task] page.'}
         {surface === 'closed' ? null : ' Payment happens on Stripe’s hosted checkout page. This site does not collect card numbers.'}
       </p>
       <ul className="list-disc space-y-2 pl-5">
@@ -90,9 +104,11 @@ export default async function SponsorPage() {
         <li>
           Featured placement: {month} for one month. {SPONSOR_ONE_TIME_NOTICE}
         </li>
-        <li>
-          Newsletter sponsor slot: {issue} per issue. {SPONSOR_ONE_TIME_NOTICE}
-        </li>
+        {newsletterOpen ? (
+          <li>
+            Newsletter sponsor slot: {issue} per issue. {SPONSOR_ONE_TIME_NOTICE}
+          </li>
+        ) : null}
         {listSubscription ? (
           <li>
             Featured placement, monthly subscription: {subscription}. {SPONSOR_SUBSCRIPTION_NOTICE}
@@ -109,15 +125,18 @@ export default async function SponsorPage() {
           </li>
         ) : null}
       </ul>
+      {listFounding && !foundingSoldOut ? (
+        <p>
+          The founding offer is a discounted founding test: a lower rate for our first {FOUNDING_SPONSOR_CAP} sponsors
+          while we prove out results together.
+        </p>
+      ) : null}
       <p className="text-sm text-muted">
-        {listSubscription || listFounding
-          ? 'The prices above, one-time and subscription, are the current list prices from server configuration.'
-          : 'The prices above are the current list prices from server configuration.'}{' '}
-        They can be changed there.
-        {surface === 'live' ? ' The Payment Links below are separate Stripe links with their own prices set in Stripe.' : null}
-        {surface === 'closed' ? null : ' The form does not send an amount. Checkout charges the Stripe price configured on the server.'}
+        {listsSubscriptionPrice ? 'Prices above, one-time and subscription, are current.' : 'Prices above are current.'}
+        {surface === 'live' ? ` ${SPONSOR_PAYMENT_LINKS_NOTE}` : null}
+        {surface === 'closed' ? null : " You’ll see the final price on Stripe’s checkout page before you pay."}
       </p>
-      {surface === 'live' ? <SponsorPaymentLinks hideFounding={inAppFounding} /> : null}
+      {surface === 'live' ? <SponsorPaymentLinks /> : null}
       {surface === 'live' ? (
         <p>
           Questions or custom deals?{' '}
@@ -126,7 +145,7 @@ export default async function SponsorPage() {
           </a>
         </p>
       ) : null}
-      {surface === 'closed' ? null : <SponsorForm offerings={offerings} tasks={tasks} />}
+      {surface === 'closed' ? null : <SponsorForm offerings={visibleSponsorOfferings(offerings)} tasks={tasks} />}
     </article>
   )
 }

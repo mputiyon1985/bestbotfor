@@ -110,7 +110,7 @@ describe('GET /go/[slug]', () => {
   it('still rate-limits, loads the catalog, and records a click', async () => {
     const response = await GET(request('GET', 'cursor', '?ref=evil'), context())
     expect(response.status).toBe(302)
-    expect(response.headers.get('location')).toBe('https://cursor.com/download')
+    expect(response.headers.get('location')).toBe('https://cursor.com/download?utm_source=bestbotfor&utm_medium=referral&utm_campaign=direct')
     expect(response.headers.get('location')).not.toContain('evil')
     expect(calls.limit).toBe(1)
     expect(calls.tool).toBe(1)
@@ -125,7 +125,7 @@ describe('GET /go/[slug]', () => {
     try {
       const response = await GET(request('GET'), context())
       expect(response.status).toBe(302)
-      expect(response.headers.get('location')).toBe('https://cursor.com/')
+      expect(response.headers.get('location')).toBe('https://cursor.com/?utm_source=bestbotfor&utm_medium=referral&utm_campaign=direct')
       expect(error).toHaveBeenCalledWith('go rate limit failed', 'deadline')
       expect(error).toHaveBeenCalledWith('go catalog failed', 'deadline')
       expect(jobs).toEqual([])

@@ -164,6 +164,11 @@ export function withoutSecondaryMarker(text: string): string {
   return text.replaceAll(SECONDARY_MARKER, '')
 }
 
+/** Drop one trailing period so FAQ joins do not read "credits.." when a cell already ends with ".". */
+function stripTrailingPeriod(text: string): string {
+  return text.endsWith('.') ? text.slice(0, -1) : text
+}
+
 export function compareCostAnswer(
   view: CompareView | null,
   fallback: { nameA: string; priceA: string; nameB: string; priceB: string },
@@ -171,8 +176,8 @@ export function compareCostAnswer(
   const paid = view?.rows.find((row) => row.label === 'Paid from')
   const raw =
     view && paid
-      ? `${view.nameA}: ${paid.a}. ${view.nameB}: ${paid.b}. Confirm the current price on each site.`
-      : `${fallback.nameA}: ${fallback.priceA}. ${fallback.nameB}: ${fallback.priceB}. Confirm the current price on each site.`
+      ? `${view.nameA}: ${stripTrailingPeriod(paid.a)}. ${view.nameB}: ${stripTrailingPeriod(paid.b)}. Confirm the current price on each site.`
+      : `${fallback.nameA}: ${stripTrailingPeriod(fallback.priceA)}. ${fallback.nameB}: ${stripTrailingPeriod(fallback.priceB)}. Confirm the current price on each site.`
   return withoutSecondaryMarker(raw)
 }
 

@@ -21,11 +21,29 @@ function isLiveKey(value: string): boolean {
 export function startStripeMock(port: number): Promise<StripeMock> {
   const sessions = new Map<string, { body: string; payload: string }>()
   const requests: Array<Record<string, string>> = []
+  // Checkout creates for an email armed with POST /__lose_response: Stripe makes
+  // and stores the session, but the response is lost (a 500 the client must not
+  // retry on its own). A retry with the same key and body gets the stored session.
+  const loseResponse = new Map<string, number>()
+  // Every create for an armed email, with its idempotency key and session id.
+  // /__reset does not clear this, so a parallel spec's reset cannot drop it.
+  const history: Array<Record<string, string>> = []
 
   const server = createServer(async (request, response) => {
     const url = new URL(request.url ?? '/', 'http://127.0.0.1')
     if (request.method === 'GET' && url.pathname === '/__requests') {
       sendJson(response, 200, requests)
+      return
+    }
+    if (request.method === 'POST' && url.pathname === '/__lose_response') {
+      const email = url.searchParams.get('email') ?? ''
+      loseResponse.set(email, Number(url.searchParams.get('times') ?? '1'))
+      sendJson(response, 200, { ok: true })
+      return
+    }
+    if (request.method === 'GET' && url.pathname === '/__history') {
+      const email = url.searchParams.get('email') ?? ''
+      sendJson(response, 200, history.filter((item) => item['metadata[email]'] === email))
       return
     }
     if (request.method === 'POST' && url.pathname === '/__reset') {
@@ -47,9 +65,15 @@ export function startStripeMock(port: number): Promise<StripeMock> {
       requests.push(params)
       const idempotency = request.headers['idempotency-key']
       const key = typeof idempotency === 'string' ? idempotency : ''
+      const email = params['metadata[email]'] ?? ''
+      const armed = loseResponse.has(email)
       const cached = key ? sessions.get(key) : undefined
+      const record = (outcome: string, sessionId: string) => {
+        if (armed) history.push({ ...params, __idempotency_key: key, __outcome: outcome, __session_id: sessionId })
+      }
       if (cached) {
         if (cached.body !== body) {
+          record('idempotency_error', '')
           sendJson(response, 400, {
             error: {
               type: 'idempotency_error',
@@ -58,6 +82,7 @@ export function startStripeMock(port: number): Promise<StripeMock> {
           })
           return
         }
+        record('replayed', String((JSON.parse(cached.payload) as { id: string }).id))
         response.writeHead(200, { 'content-type': 'application/json' })
         response.end(cached.payload)
         return
@@ -72,6 +97,15 @@ export function startStripeMock(port: number): Promise<StripeMock> {
         status: 'open',
       })
       if (key) sessions.set(key, { body, payload })
+      const lose = loseResponse.get(email) ?? 0
+      if (lose > 0) {
+        loseResponse.set(email, lose - 1)
+        record('created_response_lost', id)
+        response.writeHead(500, { 'content-type': 'application/json', 'stripe-should-retry': 'false' })
+        response.end(JSON.stringify({ error: { type: 'api_error', message: 'mock: session created, response lost' } }))
+        return
+      }
+      record('created', id)
       response.writeHead(200, { 'content-type': 'application/json' })
       response.end(payload)
       return

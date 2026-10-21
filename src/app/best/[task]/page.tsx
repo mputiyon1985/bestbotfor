@@ -1,10 +1,12 @@
 import type { Metadata } from 'next'
+import { getCategoryGuide } from '@/content/category-guides'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { DailyBotCapture } from '@/components/daily-bot-capture'
 import { JsonLd } from '@/components/json-ld'
+import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
 import { SponsoredPlacement, sponsoredCardIsVisible } from '@/components/sponsored-placement'
@@ -35,6 +37,7 @@ import { BEST_HUB_PATH, LOADOUT_PATH, bestFreePath } from '@/lib/seo-pages'
 import { isFreePageTask } from '@/lib/free-plan'
 import { guidePath } from '@/content/guides'
 import { alternativesForTask, alternativesPath } from '@/lib/alternatives'
+import { seoMeta } from '@/content/seo-meta'
 
 export async function generateMetadata({ params }: { params: Promise<{ task: string }> }): Promise<Metadata> {
   const { task: slug } = await params
@@ -42,10 +45,16 @@ export async function generateMetadata({ params }: { params: Promise<{ task: str
   if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) notFound()
   const task = await getTask(slug)
   if (!task) notFound()
+  const loaded = await listTaskCandidates(slug).catch(() => null)
+  // Empty categories stay reachable but are noindex until they have a pick.
+  const empty = loaded !== null && loaded.tools.length === 0
+  const override = seoMeta(`/best/${task.slug}`)
   return pageMetadata({
-    title: bestGuideTitle(task.name),
-    description: bestGuideDescription(task.name),
+    title: override?.title ?? bestGuideTitle(task.name),
+    absoluteTitle: override ? true : undefined,
+    description: override?.description ?? bestGuideDescription(task.name),
     path: `/best/${task.slug}`,
+    ...(empty ? { noIndex: true, follow: true } : {}),
   })
 }
 
@@ -60,7 +69,8 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
   const task = loaded?.task
   const ranked = loaded?.tools ?? []
   const top = ranked[0]
-  if (!task || !top) notFound()
+  if (!task) notFound()
+  if (!top) return <EmptyBestPage name={task.name} />
   const nonce = headerStore.get('x-nonce')
   if (sponsoredCardIsVisible(placement)) {
     scheduleSponsorImpression({
@@ -114,10 +124,18 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
       </p>
       <p className="text-sm text-muted">Last reviewed {verified}. Prices change, so confirm them on the vendor’s site.</p>
       <p>
-        <OutboundLink slug={top.slug} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
+        <OutboundLink slug={top.slug} affiliate={Boolean(top.hasAffiliateLink)} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
           Visit {top.name}
         </OutboundLink>
+{top.hasAffiliateLink ? <AffiliateDisclosure affiliate /> : null}
       </p>
+      {getCategoryGuide(task.slug) ? (
+        <p data-category-guide-link>
+          <Link href={guidePath(task.slug)} className="inline-flex min-h-11 items-center font-semibold underline">
+            Read the full guide: {getCategoryGuide(task.slug)?.heading}
+          </Link>
+        </p>
+      ) : null}
       <SponsoredPlacement placement={placement} />
       <div className="min-w-0 space-y-4">
         <p id="fit-legend" className="text-sm text-muted">{BEST_GUIDE_FIT_LEGEND}</p>
@@ -131,7 +149,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
                 </Link>
               </div>
               <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 text-sm">
-                <dt className="font-semibold" aria-describedby="fit-legend">Fit</dt>
+                <dt className="font-semibold" aria-describedby="fit-legend">Match</dt>
                 <dd><FitMatch score={tool.fitScore} /></dd>
                 <dt className="font-semibold">Price</dt>
                 <dd className="min-w-0 break-words">{priceLabel(tool)}</dd>
@@ -146,7 +164,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
             <thead>
               <tr className="border-b border-line">
                 <th scope="col" className="py-2 pr-3">Tool</th>
-                <th scope="col" aria-describedby="fit-legend" className="w-36 whitespace-nowrap py-2 pr-3">Fit</th>
+                <th scope="col" aria-describedby="fit-legend" className="w-36 whitespace-nowrap py-2 pr-3">Match</th>
                 <th scope="col" className="w-44 py-2 pr-3">Price</th>
                 <th scope="col" className="py-2">Why it is here</th>
               </tr>
@@ -220,5 +238,19 @@ function FitMatch({ score }: { score: number }) {
     <span className="inline-flex whitespace-nowrap rounded-full bg-mist px-2.5 py-1 text-sm font-semibold">
       {`${score}% match`}
     </span>
+  )
+}
+
+function EmptyBestPage({ name }: { name: string }) {
+  return (
+    <article className="space-y-6" data-best-empty>
+      <h1 className="font-bold text-5xl leading-tight">{bestGuideHeading(name)}</h1>
+      <p className="text-lg">We don’t have a pick for this job yet. We’re still reviewing tools for it.</p>
+      <p>
+        <Link href="/best" className="inline-flex min-h-11 items-center font-semibold underline">
+          See every job we cover
+        </Link>
+      </p>
+    </article>
   )
 }

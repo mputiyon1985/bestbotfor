@@ -148,6 +148,20 @@
       "when": 1792192000000,
       "tag": "0022_suggestions",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1792193000000,
+      "tag": "0023_subscriber_utm",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1792194000000,
+      "tag": "0024_deals",
+      "breakpoints": true
     }
   ]
 }
