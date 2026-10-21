@@ -83,7 +83,7 @@ describe('stripe key policy', () => {
     const portal = readFileSync(path.join(process.cwd(), 'src/app/members/actions.ts'), 'utf8')
     expect(checkout.indexOf('const stripe = getStripe()')).toBeGreaterThan(-1)
     expect(checkout.indexOf('const stripe = getStripe()')).toBeLessThan(checkout.indexOf('membershipConfigured()'))
-    expect(checkout.indexOf('membershipConfigured()')).toBeLessThan(checkout.indexOf('sessions.create'))
+    expect(checkout.indexOf('membershipConfigured()')).toBeLessThan(checkout.indexOf('createMembershipSession(stripe'))
     expect(checkout).toContain("if (!stripe || !userId || !plan || !membershipConfigured()) redirect('/pricing')")
     expect(portal.indexOf('const stripe = getStripe()')).toBeGreaterThan(-1)
     expect(portal.indexOf('const stripe = getStripe()')).toBeLessThan(portal.indexOf('sessions.create'))
