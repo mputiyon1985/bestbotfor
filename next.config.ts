@@ -73,6 +73,13 @@ const nextConfig: NextConfig = {
       ...legacyAssetRedirects.map((redirect) => ({ ...redirect, permanent: true as const })),
       ...curatedCompareRedirects(),
       { source: '/tools/devin-desktop', destination: '/tools/windsurf', statusCode: 301 as const },
+      // Category merge Oct 20, 2026: "Coding" (Cursor only) folded into "Coding assistant".
+      {
+        source: '/tools',
+        has: [{ type: 'query' as const, key: 'category', value: 'coding' }],
+        destination: '/tools?category=coding-assistant',
+        statusCode: 301 as const,
+      },
     ]
   },
   async headers() {
