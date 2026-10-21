@@ -1,6 +1,6 @@
 import 'server-only'
 
-import { eq } from 'drizzle-orm'
+import { eq, or } from 'drizzle-orm'
 import { isClerkConfigured } from './clerk'
 import { getDb } from './db'
 import { savedPicks, subscriptions } from './db/schema'
@@ -46,4 +46,10 @@ export async function savePickForUser(userId: string, answers: QuizAnswers, unli
 export async function stripeCustomerIdForUser(userId: string): Promise<string | null> {
   const rows = await getDb().select().from(subscriptions).where(eq(subscriptions.clerkUserId, userId))
   return rows.find((row) => row.stripeCustomerId)?.stripeCustomerId ?? null
+}
+
+/** Price IDs of every subscription this Clerk user or Stripe customer has had, any status. */
+export async function subscriptionPriceHistory(userId: string, customer: string | null): Promise<Array<{ stripePriceId: string | null }>> {
+  const where = customer ? or(eq(subscriptions.clerkUserId, userId), eq(subscriptions.stripeCustomerId, customer)) : eq(subscriptions.clerkUserId, userId)
+  return getDb().select({ stripePriceId: subscriptions.stripePriceId }).from(subscriptions).where(where)
 }

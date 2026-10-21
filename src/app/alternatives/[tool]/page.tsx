@@ -52,6 +52,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
   const { subject, task } = await load(slug)
   return pageMetadata({
     title: alternativesTitle(subject.name),
+    absoluteTitle: true,
     description: alternativesDescription(subject.name, slug === 'cursor' ? task.name : undefined),
     path: alternativesPath(subject.slug),
     // Budget chips repeat the canonical list with rows removed, like /result budget filters.

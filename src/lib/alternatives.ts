@@ -43,7 +43,7 @@ export function alternativesForTask(taskSlug: string): AlternativePage | undefin
 }
 
 export function alternativesTitle(toolName: string): string {
-  return `${toolName} Alternatives: The Best Picks by Budget (2026)`
+  return `${toolName} Alternatives (2026): Best Picks by Budget`
 }
 
 export function alternativesHeading(toolName: string): string {

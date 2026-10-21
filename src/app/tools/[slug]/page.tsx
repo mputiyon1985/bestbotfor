@@ -17,6 +17,7 @@ import { breadcrumbJsonLd, softwareJsonLd } from '@/lib/jsonld'
 import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
 import { pageMetadata } from '@/lib/metadata'
 import { slugSchema } from '@/lib/validation'
+import { toolMetaDescription, toolMetaTitle } from '@/lib/tool-meta'
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params
@@ -26,8 +27,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const tool = await getTool(slug)
   if (!tool) notFound()
   return pageMetadata({
-    title: tool.name,
-    description: `${tool.name} by ${tool.vendor}: ${tool.shortDesc}`,
+    title: toolMetaTitle(tool),
+    absoluteTitle: true,
+    description: toolMetaDescription(tool),
     path: `/tools/${tool.slug}`,
   })
 }

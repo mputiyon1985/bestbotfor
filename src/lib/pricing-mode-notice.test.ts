@@ -57,6 +57,6 @@ describe('/pricing Stripe mode notice', () => {
     const page = readFileSync(path.join(process.cwd(), 'src/app/pricing/page.tsx'), 'utf8')
     expect(page).toContain('<StripeTestModeNotice />')
     expect(page).not.toContain('Stripe test mode')
-    expect(page).toContain('const price = await getPublicPrice()')
+    expect(page).toContain('getMembershipPricing()')
   })
 })

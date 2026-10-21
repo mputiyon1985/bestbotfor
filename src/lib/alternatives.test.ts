@@ -55,7 +55,7 @@ describe('alternatives pages', () => {
       expect(alternativesTitle(tool.name).length).toBeLessThanOrEqual(SEO_TITLE_MAX)
       expect(alternativesDescription(tool.name, task.name).length).toBeLessThanOrEqual(SEO_DESCRIPTION_MAX)
     }
-    expect(alternativesTitle('ChatGPT')).toBe('ChatGPT Alternatives: The Best Picks by Budget (2026)')
+    expect(alternativesTitle('ChatGPT')).toBe('ChatGPT Alternatives (2026): Best Picks by Budget')
     expect(alternativesDescription('ChatGPT')).toBe(
       'The best ChatGPT alternatives, ranked by fit and filtered by budget. Free options included. Or get your pick in 30 seconds.',
     )

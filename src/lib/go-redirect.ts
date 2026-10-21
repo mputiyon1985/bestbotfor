@@ -4,6 +4,7 @@ import { isDeadline, withDeadline } from './deadline'
 import { countryCode, hashIp, sameOriginPath } from './ip'
 import { affiliateRedirectUrl, decideRedirect } from './redirect'
 import { slugSchema } from './validation'
+import { outboundPageType, withOutboundUtm } from './outbound-utm'
 
 export const GO_DB_BUDGET_MS = 800
 
@@ -94,17 +95,18 @@ export async function resolveGoRedirect(input: {
 
   const purpose = input.headers.get('purpose')
   const prefetch = input.headers.get('next-router-prefetch')
+  const page = sameOriginPath(input.headers.get('referer'), input.siteUrl)
   const click =
     record && purpose !== 'prefetch' && prefetch !== '1'
       ? {
           toolId: record.id,
-          page: sameOriginPath(input.headers.get('referer'), input.siteUrl),
+          page,
           country: countryCode(input.headers),
           ipHash: hashIp(input.ip),
         }
       : null
 
-  return { status: 302, location: withUtmParams(decision.url, input.search ?? ''), click }
+  return { status: 302, location: withOutboundUtm(withUtmParams(decision.url, input.search ?? ''), outboundPageType(page)), click }
 }
 
 async function rateLimitAllows(limit: () => Promise<{ ok: boolean }>, deadlineMs: number): Promise<boolean> {
