@@ -32,9 +32,30 @@ describe('preview indexing', () => {
     process.env.VERCEL_ENV = 'production'
     const production = robots()
     const rules = Array.isArray(production.rules) ? production.rules : [production.rules]
-    expect(rules.some((rule) => rule.userAgent === '*' && rule.allow === '/')).toBe(true)
+    expect(rules.some((rule) => rule.userAgent === '*' && [rule.allow].flat().includes('/'))).toBe(true)
     expect(production.sitemap).toContain('/sitemap.xml')
     expect(JSON.stringify(production.rules)).toContain('"/admin"')
+  })
+
+  it('lets every crawler fetch /api/og share images while the rest of /api/ stays disallowed', () => {
+    process.env.VERCEL_ENV = 'production'
+    const production = robots()
+    const rules = Array.isArray(production.rules) ? production.rules : [production.rules]
+    expect(rules.map((rule) => rule.userAgent)).toEqual(['*', 'GPTBot', 'ClaudeBot', 'PerplexityBot', 'Google-Extended'])
+    for (const rule of rules) {
+      expect([rule.allow].flat(), String(rule.userAgent)).toEqual(['/', '/api/og'])
+      expect([rule.disallow].flat(), String(rule.userAgent)).toEqual([
+        '/go/',
+        '/api/',
+        '/members',
+        '/admin',
+        '/sign-in',
+        '/sign-up',
+      ])
+    }
+
+    process.env.VERCEL_ENV = 'preview'
+    expect(JSON.stringify(robots().rules)).not.toContain('/api/og')
   })
 
   it('puts noindex on page metadata outside production', () => {
