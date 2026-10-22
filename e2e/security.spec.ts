@@ -1,6 +1,7 @@
 import { request as httpRequest } from 'node:http'
 import { expect, test } from '@playwright/test'
 import { homeDescription, homeTitle, notFoundDescription, notFoundTitle } from '../src/lib/metadata'
+import { CATALOG_TOOL_COUNT } from '../src/lib/seo-pages'
 import { toolCategories } from '../src/lib/tool-index'
 import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
 
@@ -184,7 +185,7 @@ test('the tools index is served and still rejects an unsafe slug', async () => {
   const index = await rawStatus('/tools')
   expect(index.status).toBe(200)
   expect(index.body).toContain('Tools')
-  expect(index.body).toContain(`${catalog.tools.length} tools. Page 1 of`)
+  expect(index.body).toContain(`${CATALOG_TOOL_COUNT} tools. Page 1 of`)
   expect(index.body).not.toContain('not a tool in the catalog')
 
   const filtered = await rawStatus(`/tools?category=${category.slug}`)

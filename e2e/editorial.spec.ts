@@ -65,6 +65,8 @@ test('unrated tools hide the score and keep pros and cons', async ({ page }) => 
   expect(unratedSlugs).toHaveLength(100)
   for (const slug of unratedSlugs) {
     const tool = toolSeeds.find((item) => item.slug === slug)
+    // Unlisted tools (Mercury 3) keep their record but have no public page.
+    if (tool?.unlisted) continue
     const v1 = editorialSeeds.find((row) => row.slug === slug)
     await page.goto(`/tools/${slug}`)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(tool?.name ?? slug)
