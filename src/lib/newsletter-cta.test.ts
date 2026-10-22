@@ -31,9 +31,12 @@ function memoryStorage() {
 }
 
 describe('newsletterCtaEnabled', () => {
-  it('ships off in production and fails closed', () => {
-    expect(NEWSLETTER_CTA_PRODUCTION_LAUNCH).toBe(false)
-    expect(newsletterCtaEnabled({ newsletterCta: 'on', vercelEnv: 'production' })).toBe(false)
+  it('is launched in production but still needs NEWSLETTER_CTA=on, and fails closed', () => {
+    expect(NEWSLETTER_CTA_PRODUCTION_LAUNCH).toBe(true)
+    expect(newsletterCtaEnabled({ newsletterCta: 'on', vercelEnv: 'production' })).toBe(true)
+    expect(newsletterCtaEnabled({ newsletterCta: undefined, vercelEnv: 'production' })).toBe(false)
+    expect(newsletterCtaEnabled({ newsletterCta: '', vercelEnv: 'production' })).toBe(false)
+    expect(newsletterCtaEnabled({ newsletterCta: 'on', vercelEnv: 'production' }, false)).toBe(false)
     expect(newsletterCtaEnabled({ newsletterCta: 'on', vercelEnv: undefined })).toBe(false)
     expect(newsletterCtaEnabled({ newsletterCta: 'true', vercelEnv: 'preview' })).toBe(false)
     expect(newsletterCtaEnabled({ newsletterCta: '', vercelEnv: 'test' })).toBe(false)

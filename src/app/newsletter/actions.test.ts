@@ -66,10 +66,18 @@ describe('subscribeAction cta_path (newsletter CTA)', () => {
   })
 
   it('ignores cta_path when the flag is off', async () => {
-    process.env.NEWSLETTER_CTA = 'on'
+    delete process.env.NEWSLETTER_CTA
     process.env.VERCEL_ENV = 'production'
     subscribeToNewsletter.mockResolvedValue({ status: 'success', message: 'ok', tracked: false })
     await subscribeAction(idle, form({ email: 'a@example.com', source: 'best', cta_path: '/best/music' }))
     expect(subscribeToNewsletter.mock.calls[0]?.[0]).toMatchObject({ referringPath: undefined })
+  })
+
+  it('accepts cta_path in production once launched and NEWSLETTER_CTA=on', async () => {
+    process.env.NEWSLETTER_CTA = 'on'
+    process.env.VERCEL_ENV = 'production'
+    subscribeToNewsletter.mockResolvedValue({ status: 'success', message: 'ok', tracked: false })
+    await subscribeAction(idle, form({ email: 'a@example.com', source: 'best', cta_path: '/best/music' }))
+    expect(subscribeToNewsletter.mock.calls[0]?.[0]).toMatchObject({ referringPath: '/best/music' })
   })
 })
