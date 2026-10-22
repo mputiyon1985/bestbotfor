@@ -63,10 +63,9 @@ test('a scored tool shows fractional stars, the rubric, and no review schema', a
 test('unrated tools hide the score and keep pros and cons', async ({ page }) => {
   test.setTimeout(180_000)
   expect(unratedSlugs).toHaveLength(100)
-  for (const slug of unratedSlugs) {
+  const unlisted = new Set(toolSeeds.filter((item) => item.unlisted).map((item) => item.slug))
+  for (const slug of unratedSlugs.filter((item) => !unlisted.has(item))) {
     const tool = toolSeeds.find((item) => item.slug === slug)
-    // Unlisted tools (Mercury 3) keep their record but have no public page.
-    if (tool?.unlisted) continue
     const v1 = editorialSeeds.find((row) => row.slug === slug)
     await page.goto(`/tools/${slug}`)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(tool?.name ?? slug)
@@ -124,9 +123,8 @@ test('result cards show a compact pros list only for tools that have one', async
   const perplexityCard = page.getByRole('listitem').filter({
     has: page.getByRole('heading', { level: 3, name: 'Perplexity', exact: true }),
   })
-  await expect(perplexityCard).toBeVisible()
-  await expect(perplexityCard.getByText('Pros:', { exact: false })).toHaveCount(0)
-  await expect(perplexityCard.getByRole('img', { name: /Rated/ })).toHaveCount(0)
+  // Perplexity is unrated, so it is never a quiz match.
+  await expect(perplexityCard).toHaveCount(0)
 })
 
 test('windsurf stays at its slug, cursor and relevance show the reviewed prices, and source columns stay off the page', async ({ page }) => {
@@ -254,6 +252,18 @@ test('a single-tool category hides the rank and a note shows when it is filled',
   expect(html).not.toContain('pcmag.com')
   expect(html).not.toContain('evidence.jsonl')
   expect(html).not.toContain('chatgpt.com/pricing')
+})
+
+test('unlisted tools have no page, no /go redirect and no sitemap entry', async ({ page, request }) => {
+  const tool = await page.goto('/tools/mercury-inception')
+  expect(tool?.status()).toBe(404)
+  const go = await request.get('/go/mercury-inception', { maxRedirects: 0 })
+  expect(go.status()).toBe(404)
+  const sitemap = await request.get('/sitemap.xml')
+  expect(sitemap.status()).toBe(200)
+  const xml = await sitemap.text()
+  expect(xml).toContain('/tools/twinmind')
+  expect(xml).not.toContain('mercury-inception')
 })
 
 test('archived tools stay live, show the notice, and stay off quiz results', async ({ page }) => {
