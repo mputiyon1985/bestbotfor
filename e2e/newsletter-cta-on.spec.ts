@@ -83,7 +83,10 @@ test('submitting posts the page path and utm tags and shows an inline thank-you'
   await expect(inline(page).locator('input[name="first_touch"]')).toHaveValue(/utm_source/)
   await inline(page).getByLabel('Email address').fill('cta-e2e@example.com')
   await inline(page).getByRole('button', { name: 'Send me The Daily Bot' }).click()
-  await expect(inline(page).locator('[data-newsletter-cta-thanks]')).toHaveText('Almost done. Check your inbox.')
+  // The e2e server has no Beehiiv key, so this is the pending path: show the server's message, not "Check your inbox".
+  const thanks = inline(page).locator('[data-newsletter-cta-thanks]')
+  await expect(thanks).toHaveText("You'll get a confirmation email when The Daily Bot launches.")
+  await expect(thanks).not.toContainText('Check your inbox')
   await expect(inline(page).locator('form')).toHaveCount(0)
   expect(new URL(page.url()).pathname).toBe(path)
   const posted = bodies.find((body) => body.includes('cta-e2e@example.com')) ?? ''

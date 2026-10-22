@@ -8,6 +8,7 @@ import { FirstTouchField } from '@/components/first-touch-field'
 import { NEWSLETTER_CTA_COPY } from '@/data/newsletter-cta-copy'
 import {
   dismissNewsletterCta,
+  newsletterCtaThanks,
   isNewsletterCtaDismissed,
   scrolledPastThreshold,
 } from '@/lib/newsletter-cta'
@@ -94,7 +95,7 @@ export function NewsletterCta({ path, source }: { path: string; source: Newslett
         <p className="mt-2 max-w-xl text-muted">{NEWSLETTER_CTA_COPY.sub}</p>
         <div className="mt-4 max-w-xl">
           {done ? (
-            <p role="status" data-newsletter-cta-thanks>{NEWSLETTER_CTA_COPY.thanks}</p>
+            <p role="status" data-newsletter-cta-thanks>{newsletterCtaThanks(done.message)}</p>
           ) : (
             <>
               <CtaForm variant="inline" path={path} source={source} onSuccess={onSuccess} />
