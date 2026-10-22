@@ -1,12 +1,21 @@
 import type { Metadata } from 'next'
+import { getCategoryGuide } from '@/content/category-guides'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { DailyBotCapture } from '@/components/daily-bot-capture'
+import { NewsletterCta } from '@/components/newsletter-cta'
+import { newsletterCtaEnabled } from '@/lib/flags'
 import { JsonLd } from '@/components/json-ld'
+import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
+import { SponsoredPlacement, sponsoredCardIsVisible } from '@/components/sponsored-placement'
+import { scheduleSponsorImpression } from '@/lib/sponsor-impressions'
+import { readActiveBestPlacement } from '@/lib/best-placement'
 import { getTask, listTaskCandidates } from '@/lib/catalog'
+import { getDb } from '@/lib/db'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
 import { breadcrumbJsonLd, faqJsonLd, itemListJsonLd } from '@/lib/jsonld'
 import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
@@ -26,6 +35,11 @@ import {
 import { matchesPath } from '@/lib/matches'
 import { pageMetadata } from '@/lib/metadata'
 import { slugSchema } from '@/lib/validation'
+import { BEST_HUB_PATH, LOADOUT_PATH, bestFreePath } from '@/lib/seo-pages'
+import { isFreePageTask } from '@/lib/free-plan'
+import { guidePath } from '@/content/guides'
+import { alternativesForTask, alternativesPath } from '@/lib/alternatives'
+import { seoMeta } from '@/content/seo-meta'
 
 export async function generateMetadata({ params }: { params: Promise<{ task: string }> }): Promise<Metadata> {
   const { task: slug } = await params
@@ -33,22 +47,46 @@ export async function generateMetadata({ params }: { params: Promise<{ task: str
   if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) notFound()
   const task = await getTask(slug)
   if (!task) notFound()
+  const loaded = await listTaskCandidates(slug).catch(() => null)
+  // Empty categories stay reachable but are noindex until they have a pick.
+  const empty = loaded !== null && loaded.tools.length === 0
+  const override = seoMeta(`/best/${task.slug}`)
   return pageMetadata({
-    title: bestGuideTitle(task.name),
-    description: bestGuideDescription(task.name),
+    title: override?.title ?? bestGuideTitle(task.name),
+    absoluteTitle: override ? true : undefined,
+    description: override?.description ?? bestGuideDescription(task.name),
     path: `/best/${task.slug}`,
+    ...(empty ? { noIndex: true, follow: true } : {}),
   })
 }
 
 export default async function BestPage({ params }: { params: Promise<{ task: string }> }) {
   const { task: slug } = await params
   if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) notFound()
-  const [loaded, headerStore] = await Promise.all([listTaskCandidates(slug), headers()])
+  const [loaded, headerStore, placement] = await Promise.all([
+    listTaskCandidates(slug),
+    headers(),
+    readActiveBestPlacement(() => getDb(), slug),
+  ])
   const task = loaded?.task
   const ranked = loaded?.tools ?? []
   const top = ranked[0]
-  if (!task || !top) notFound()
+  if (!task) notFound()
+  if (!top) return <EmptyBestPage name={task.name} />
   const nonce = headerStore.get('x-nonce')
+  if (sponsoredCardIsVisible(placement)) {
+    scheduleSponsorImpression({
+      db: getDb(),
+      sponsorshipId: placement.sponsorshipId,
+      now: Date.now(),
+      method: headerStore.get('x-bbf-method'),
+      userAgent: headerStore.get('user-agent'),
+      purpose: headerStore.get('purpose'),
+      secPurpose: headerStore.get('sec-purpose'),
+      routerPrefetch: headerStore.get('next-router-prefetch') ?? headerStore.get('next-router-segment-prefetch'),
+      middlewarePrefetch: headerStore.get('x-middleware-prefetch'),
+    })
+  }
   const verified = formatUsDate(top.lastVerifiedAt)
   const freeOption = ranked.find((tool) => tool.hasFreeTier)
   const faqs = [
@@ -73,7 +111,10 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
   ]
   const shown = ranked.slice(0, BEST_GUIDE_TOOL_COUNT)
   const listLabel = `Tools ranked for ${taskGerund(task.name)}`
+  const alternativesPage = alternativesForTask(task.slug)
+  const alternatives = alternativesPage ? ranked.find((tool) => tool.slug === alternativesPage.tool) : undefined
 
+  const cta = newsletterCtaEnabled()
   return (
     <article className="space-y-8">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
@@ -86,10 +127,20 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
       </p>
       <p className="text-sm text-muted">Last reviewed {verified}. Prices change, so confirm them on the vendor’s site.</p>
       <p>
-        <OutboundLink slug={top.slug} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
+        <OutboundLink slug={top.slug} affiliate={Boolean(top.hasAffiliateLink)} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
           Visit {top.name}
         </OutboundLink>
+{top.hasAffiliateLink ? <AffiliateDisclosure affiliate /> : null}
       </p>
+      {cta ? <NewsletterCta path={`/best/${task.slug}`} source="best" /> : null}
+      {getCategoryGuide(task.slug) ? (
+        <p data-category-guide-link>
+          <Link href={guidePath(task.slug)} className="inline-flex min-h-11 items-center font-semibold underline">
+            Read the full guide: {getCategoryGuide(task.slug)?.heading}
+          </Link>
+        </p>
+      ) : null}
+      <SponsoredPlacement placement={placement} />
       <div className="min-w-0 space-y-4">
         <p id="fit-legend" className="text-sm text-muted">{BEST_GUIDE_FIT_LEGEND}</p>
         <ul aria-label={listLabel} className="grid gap-3 md:hidden">
@@ -102,7 +153,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
                 </Link>
               </div>
               <dl className="mt-3 grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-2 text-sm">
-                <dt className="font-semibold" aria-describedby="fit-legend">Fit</dt>
+                <dt className="font-semibold" aria-describedby="fit-legend">Match</dt>
                 <dd><FitMatch score={tool.fitScore} /></dd>
                 <dt className="font-semibold">Price</dt>
                 <dd className="min-w-0 break-words">{priceLabel(tool)}</dd>
@@ -117,7 +168,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
             <thead>
               <tr className="border-b border-line">
                 <th scope="col" className="py-2 pr-3">Tool</th>
-                <th scope="col" aria-describedby="fit-legend" className="w-36 whitespace-nowrap py-2 pr-3">Fit</th>
+                <th scope="col" aria-describedby="fit-legend" className="w-36 whitespace-nowrap py-2 pr-3">Match</th>
                 <th scope="col" className="w-44 py-2 pr-3">Price</th>
                 <th scope="col" className="py-2">Why it is here</th>
               </tr>
@@ -146,6 +197,9 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
             See all matches
           </Link>
         </p>
+        <p className="text-sm text-muted">
+          <Link href="/sponsor" className="underline underline-offset-4">Feature your tool here</Link>
+        </p>
       </div>
       <section>
         <h2 className="font-semibold text-3xl">Questions</h2>
@@ -161,6 +215,24 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
       <p className="text-sm text-muted">
         Want this personalized? <Link className="underline" href="/">Get your own pick in 30 seconds</Link>: answer three questions.
       </p>
+      <nav aria-label="More guides" className="text-sm text-muted">
+        <ul className="flex flex-wrap gap-x-6">
+          {isFreePageTask(task.slug) ? (
+            <li><Link className="inline-flex min-h-11 items-center underline" href={bestFreePath(task.slug)}>Only want free tools?</Link></li>
+          ) : null}
+          <li><Link className="inline-flex min-h-11 items-center underline" href={guidePath('how-to-choose-an-ai-tool')}>New to this? How to choose an AI tool</Link></li>
+          <li><Link className="inline-flex min-h-11 items-center underline" href={LOADOUT_PATH}>Get the AI Loadout</Link></li>
+          {alternatives ? (
+            <li>
+              <Link className="inline-flex min-h-11 items-center underline" href={alternativesPath(alternatives.slug)}>
+                {`${alternatives.name} alternatives`}
+              </Link>
+            </li>
+          ) : null}
+          <li><Link className="inline-flex min-h-11 items-center underline" href={BEST_HUB_PATH}>Every job</Link></li>
+        </ul>
+      </nav>
+      {cta ? null : <DailyBotCapture source="best" />}
     </article>
   )
 }
@@ -170,5 +242,19 @@ function FitMatch({ score }: { score: number }) {
     <span className="inline-flex whitespace-nowrap rounded-full bg-mist px-2.5 py-1 text-sm font-semibold">
       {`${score}% match`}
     </span>
+  )
+}
+
+function EmptyBestPage({ name }: { name: string }) {
+  return (
+    <article className="space-y-6" data-best-empty>
+      <h1 className="font-bold text-5xl leading-tight">{bestGuideHeading(name)}</h1>
+      <p className="text-lg">We don’t have a pick for this job yet. We’re still reviewing tools for it.</p>
+      <p>
+        <Link href="/best" className="inline-flex min-h-11 items-center font-semibold underline">
+          See every job we cover
+        </Link>
+      </p>
+    </article>
   )
 }

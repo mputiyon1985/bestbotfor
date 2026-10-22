@@ -1,4 +1,9 @@
+import { createHash } from 'node:crypto'
+import type { Client } from '@libsql/client'
+import { configureFileDatabase, limiterClientFor } from './db/client'
+import { isDeadline, withDeadline } from './deadline'
 import type { Database } from './db'
+import { RESULT_WINDOW_PURGE_INTERVAL_MS } from './rate-windows'
 
 /**
  * One SQLite statement inserts or increments the window. Concurrent requests
@@ -82,29 +87,135 @@ export function consumeLocalRateLimit(
 }
 
 /**
- * Shared row write for after the response. A slow or failed write must not
- * decide the status: the in-memory counter already did.
+ * Cap for the shared /result increment. Same-region Turso answers well inside
+ * this. A slower store falls back to the in-memory window instead of holding
+ * the page for the gate's 3s budget.
  */
-export function persistResultRateLimit(
+export const RESULT_SHARED_LIMIT_MS = 400
+
+function sharedLimitBudget(override?: number): number {
+  if (override !== undefined) return override
+  const fromEnv = Number(process.env.RESULT_SHARED_LIMIT_MS)
+  if (Number.isFinite(fromEnv) && fromEnv >= 50 && fromEnv <= 1_000) return fromEnv
+  return RESULT_SHARED_LIMIT_MS
+}
+
+function resultWindowBucket(key: string, windowStart: number): string {
+  return createHash('sha256').update(`bestbotfor-result-window|${key}|${windowStart}`).digest('hex')
+}
+
+function windowEnd(now: number, windowMs: number): { start: number; end: number } {
+  const start = Math.floor(now / windowMs) * windowMs
+  return { start, end: start + windowMs }
+}
+
+function isSqliteBusy(error: unknown): boolean {
+  const code = typeof error === 'object' && error && 'code' in error ? String(error.code) : ''
+  const message = error instanceof Error ? `${error.name} ${error.message}` : ''
+  return /SQLITE_BUSY|SQLITE_LOCKED|database is locked/i.test(`${code} ${message}`)
+}
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
+let writeChain: Promise<unknown> = Promise.resolve()
+
+/** One write at a time in this process. Two servers then contend, not eight statements. */
+function enqueueWrite<T>(work: () => Promise<T>): Promise<T> {
+  const run = writeChain.then(work, work)
+  writeChain = run.then(
+    () => undefined,
+    () => undefined,
+  )
+  return run
+}
+
+async function limiterClient(db: Database): Promise<Client> {
+  const client = limiterClientFor(db.$client)
+  await configureFileDatabase(client)
+  return client
+}
+
+async function insertResultWindow(db: Database, bucket: string, expiresAt: number, limit: number): Promise<{ ok: boolean; resetAt: number }> {
+  const client = await limiterClient(db)
+  const result = await enqueueWrite(() => client.execute({
+    sql: `
+      INSERT INTO result_rate_windows (bucket, count, expires_at)
+      VALUES (?, 1, ?)
+      ON CONFLICT(bucket) DO UPDATE SET
+        count = result_rate_windows.count + 1
+      RETURNING count
+    `,
+    args: [bucket, expiresAt],
+  }))
+  const count = Number(result.rows[0]?.count ?? 0)
+  if (!Number.isFinite(count) || count <= 0) return { ok: false, resetAt: expiresAt }
+  return { ok: count <= limit, resetAt: expiresAt }
+}
+
+/**
+ * Atomic fixed-window increment. Null means the store did not answer in time
+ * or threw. Callers then use the in-memory window. A brief lock is retried
+ * inside the same budget so SQLITE_BUSY is not treated as "store down".
+ */
+export async function consumeSharedResultWindow(
   db: Database,
   key: string,
   limit: number,
   windowMs: number,
   now = Date.now(),
-): Promise<void> {
-  return consumeRateLimit(db, key, limit, windowMs, now).then(
-    () => undefined,
-    (error: unknown) => {
+  budgetMs = sharedLimitBudget(),
+): Promise<{ ok: boolean; resetAt: number } | null> {
+  const { start, end } = windowEnd(now, windowMs)
+  const bucket = resultWindowBucket(key, start)
+  const deadline = Date.now() + budgetMs
+  while (Date.now() < deadline) {
+    const remaining = deadline - Date.now()
+    try {
+      return await withDeadline(insertResultWindow(db, bucket, end, limit), remaining)
+    } catch (error) {
+      if (isDeadline(error)) return null
+      if (isSqliteBusy(error) && Date.now() < deadline) {
+        await delay(Math.min(20, deadline - Date.now()))
+        continue
+      }
       console.error('result rate store failed', error instanceof Error ? error.name : 'error')
-    },
-  )
+      return null
+    }
+  }
+  return null
 }
 
 /**
- * Count in memory first, then write the shared row.
- * Callers fail open when this promise throws or passes its deadline: a stuck
- * write must not hide a quiz the catalog already found. Requests over the
- * in-process limit return before that write, so the burst is still rejected.
+ * Delete windows that have already closed. Not part of the allow/deny decision.
+ * Failures are logged and swallowed so waitUntil cannot fail the response.
+ */
+export async function purgeExpiredResultWindows(db: Database, now = Date.now()): Promise<void> {
+  try {
+    const client = await limiterClient(db)
+    await client.execute({
+      sql: 'DELETE FROM result_rate_windows WHERE expires_at <= ?',
+      args: [now],
+    })
+  } catch (error) {
+    console.error('result rate purge failed', error instanceof Error ? error.name : 'error')
+  }
+}
+
+let lastResultWindowPurge = 0
+
+/** At most one cleanup per process per minute, so a burst does not queue a delete per request. */
+export function scheduleResultWindowPurge(db: Database, now = Date.now()): Promise<void> {
+  if (now - lastResultWindowPurge < RESULT_WINDOW_PURGE_INTERVAL_MS) return Promise.resolve()
+  lastResultWindowPurge = now
+  return purgeExpiredResultWindows(db, now)
+}
+
+/**
+ * The shared fixed window decides when it answers inside the short budget.
+ * Over the in-process limit, return immediately and skip that write.
+ * A slow or failed store logs and uses the in-memory window so a valid quiz still renders.
  */
 export async function consumeResultRateLimit(
   db: Database,
@@ -112,11 +223,16 @@ export async function consumeResultRateLimit(
   limit: number,
   windowMs: number,
   now = Date.now(),
+  sharedBudgetMs = sharedLimitBudget(),
 ): Promise<{ ok: boolean; resetAt: number }> {
   const local = consumeLocalRateLimit(key, limit, windowMs, now)
   if (!local.ok) return local
-  const shared = await consumeRateLimit(db, key, limit, windowMs, now)
-  return { ok: shared.ok, resetAt: shared.resetAt }
+  const shared = await consumeSharedResultWindow(db, key, limit, windowMs, now, sharedBudgetMs)
+  if (!shared) {
+    console.error('result rate limit fell back to memory')
+    return local
+  }
+  return shared
 }
 
 /** Seconds for a Retry-After header. At least one second, rounded up. */

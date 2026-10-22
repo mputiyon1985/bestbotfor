@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 
 /**
- * Playwright starts with VERCEL_ENV=preview and USER_RATINGS blank, so the
+ * Playwright starts with VERCEL_ENV=test and USER_RATINGS blank, so the
  * ratings flag is off. The proxy answers these paths with a plain-text 404
  * before the members sign-in redirect. Case and percent-encoding are the same gate.
  * The editorial heading is "Our rating" after #34.
@@ -18,6 +18,9 @@ const HIDDEN_ROUTES = [
   '/admin/vendor-domains',
   '/admin/sponsor-links',
   '/admin/mfa-required',
+  '/admin/sponsors',
+  '/Admin/Sponsors',
+  '/admin/%73ponsors',
   '/api/tools/chatgpt/reviews',
   '/review-guidelines',
   '/how-user-ratings-work',
@@ -64,7 +67,7 @@ test('privacy, terms, and disclosure omit the ratings draft while the flag is of
     }
   }
   const privacy = await (await request.get('/privacy')).text()
-  expect(privacy).toContain('It was last updated on October 17, 2026.')
+  expect(privacy).toContain('It was last updated on October 19, 2026.')
   expect(privacy).not.toContain('ratings and reviews section')
   const terms = await (await request.get('/terms')).text()
   expect(terms).toContain('Last updated October 15, 2026.')

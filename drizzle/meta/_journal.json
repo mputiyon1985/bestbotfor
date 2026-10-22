@@ -1,0 +1,167 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1792094604000,
+      "tag": "0001_init",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1792103459000,
+      "tag": "0002_catalog_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792147220000,
+      "tag": "0003_tool_tasks_unique",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1792153399000,
+      "tag": "0004_retire_quiz_fits",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1792167027000,
+      "tag": "0005_tool_scores_pros_cons",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1792167027000,
+      "tag": "0006_tool_needs_verification",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1792172114000,
+      "tag": "0007_drop_non_forge_scores",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1792179423000,
+      "tag": "0008_ratings_v23",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1792179424000,
+      "tag": "0009_sponsorships",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1792182000000,
+      "tag": "0011_user_reviews",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1792183000000,
+      "tag": "0012_result_rate_windows",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1792184000000,
+      "tag": "0013_sponsorship_paid_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1792185000000,
+      "tag": "0014_sponsorship_creatives",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1792186000000,
+      "tag": "0015_sponsorship_slot_claims",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "6",
+      "when": 1792187000000,
+      "tag": "0016_sponsorship_card_review",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "6",
+      "when": 1792188000000,
+      "tag": "0017_sponsorship_daily_counts",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1792188000000,
+      "tag": "0018_retention_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1792189000000,
+      "tag": "0019_subscriber_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1792190000000,
+      "tag": "0020_subscriber_syncing_started",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1792191000000,
+      "tag": "0021_subscriber_beehiiv_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1792192000000,
+      "tag": "0022_suggestions",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1792193000000,
+      "tag": "0023_subscriber_utm",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1792194000000,
+      "tag": "0024_deals",
+      "breakpoints": true
+    }
+  ]
+}

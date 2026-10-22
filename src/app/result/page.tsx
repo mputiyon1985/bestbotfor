@@ -1,25 +1,31 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
+import { MATCH_FOR_ANSWERS_LABEL } from '@/lib/descriptions'
 import { cache } from 'react'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { DailyBotCapture } from '@/components/daily-bot-capture'
+import { PickCapNotice } from '@/components/pick-cap-notice'
 import { JsonLd } from '@/components/json-ld'
+import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
 import { EditorialCompact } from '@/components/editorial'
-import { recommendQuiz } from '@/lib/catalog'
+import { listTaskCandidates, recommendQuiz } from '@/lib/catalog'
 import { matchBudgetLabel, matchesPath, seeAllMatchesLabel } from '@/lib/matches'
 import { allMatchesRequest, resultRequestStatus, searchParamsToUrl } from '@/lib/result-request'
 import { resultMissMetadata } from '@/lib/result-http'
-import { matchesPageTitle, matchesRobots, quizResultRobots, quizResultTitle } from '@/lib/result-index'
+import { matchesCanonicalPath, matchesPageTitle, matchesRobots, quizResultRobots, quizResultTitle } from '@/lib/result-index'
 import { AllMatches } from './all-matches'
 import NotFoundPage from '../not-found'
 import { getDb } from '@/lib/db'
 import { budgetLabel, budgetPhrase, fewStrongOptionsLabel, overBudgetLabel, priceLabel, skillLabel, skillPhrase } from '@/lib/format'
 import { QUIZ_ALTERNATIVE_COUNT } from '@/lib/scoring'
 import { breadcrumbJsonLd } from '@/lib/jsonld'
-import { memberAccess } from '@/lib/members'
+import { currentClerkUserId, memberAccess } from '@/lib/members'
 import { pageMetadata } from '@/lib/metadata'
+import { FREE_ACCOUNT_PROMPT, pickSaverFromAccess } from '@/lib/pick-save'
+import { savePickSignUpHref } from '@/lib/save-pick-prompt'
 import { absoluteUrl } from '@/lib/site'
 import { firstString, quizSchema, type QuizAnswers } from '@/lib/validation'
 import { savePickAction } from './actions'
@@ -57,6 +63,12 @@ const loadResult = cache(async function loadResult(key: string): Promise<ResultL
   return { kind: 'quiz', answers: parsed.data, result }
 })
 
+/** /best/<task> renders only when the task has at least one active match (see src/app/best/[task]/page.tsx). */
+async function bestPageExists(taskSlug: string): Promise<boolean> {
+  const loaded = await listTaskCandidates(taskSlug)
+  return (loaded?.tools.length ?? 0) > 0
+}
+
 export async function generateMetadata({
   searchParams,
 }: {
@@ -74,8 +86,8 @@ export async function generateMetadata({
   }
   if (loaded.kind === 'matches') {
     const { loaded: matches } = loaded
-    const path = matchesPath(matches.task.slug, matches.budget, matches.page)
-    const robots = matchesRobots(matches.budget)
+    const path = matchesCanonicalPath(matches.task.slug, matches.budget, matches.page, await bestPageExists(matches.task.slug))
+    const robots = matchesRobots()
     const title = matchesPageTitle(matches.task.name, matches.budget, matches.page)
     return pageMetadata({
       title,
@@ -146,16 +158,19 @@ export default async function ResultPage({
   const [top, ...alternatives] = result.picks
   if (!top) {
     return (
-      <div>
+      <div className="space-y-8">
         <h1 className="font-bold text-4xl">{fewStrongOptionsLabel}</h1>
         <p className="mt-3 text-muted">Try a nearby job from the list on the home page.</p>
         <Link href="/" className="mt-6 inline-flex min-h-12 items-center font-semibold underline">
           Start over
         </Link>
+        <DailyBotCapture source="result" />
       </div>
     )
   }
   const access = await memberAccess()
+  const saveAccess = pickSaverFromAccess(access, access.allowed ? null : await currentClerkUserId())
+  const saveLimited = firstString(params.save) === 'limit'
   const sharePath = `/result?${new URLSearchParams(answers).toString()}`
   const crumbs = [
     { name: 'Home', path: '/' },
@@ -184,15 +199,17 @@ export default async function ResultPage({
         <Fact label="Free tier" value={top.hasFreeTier ? 'Yes' : 'No'} />
       </dl>
       <div className="flex flex-wrap gap-3">
-        <OutboundLink slug={top.slug} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
+        <OutboundLink slug={top.slug} affiliate={Boolean(top.hasAffiliateLink)} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
           Visit {top.name}
         </OutboundLink>
+{top.hasAffiliateLink ? <AffiliateDisclosure affiliate /> : null}
         <Link href={`/tools/${top.slug}`} className="inline-flex min-h-12 items-center rounded-full border border-ink px-5 font-semibold">
           Read the profile
         </Link>
       </div>
 
-      {access.allowed ? (
+      {saveLimited ? <PickCapNotice /> : null}
+      {saveAccess.ok ? (
         <form action={savePickAction} className="flex flex-wrap items-center gap-3">
           <input type="hidden" name="task" value={answers.task} />
           <input type="hidden" name="budget" value={answers.budget} />
@@ -202,13 +219,14 @@ export default async function ResultPage({
           </button>
         </form>
       ) : (
-        <p className="text-sm text-muted">
-          <Link href={access.reason === 'unauthenticated' ? '/sign-in' : '/pricing'} className="font-semibold underline">
-            Members
-          </Link>{' '}
-          can save this pick.
+        <p>
+          <Link href={savePickSignUpHref(sharePath)} className="inline-flex min-h-11 items-center font-semibold underline">
+            {FREE_ACCOUNT_PROMPT}
+          </Link>
         </p>
       )}
+
+      <DailyBotCapture source="result" />
 
       <section aria-labelledby="alternatives-heading">
         <h2 id="alternatives-heading" className="font-semibold text-3xl">Alternatives</h2>
@@ -228,9 +246,10 @@ export default async function ResultPage({
                 <p className="mt-2 text-sm text-muted">{alt.reason}</p>
                 <EditorialCompact editorial={alt.editorial} pros={alt.pros} cons={alt.cons} />
                 <p className="mt-2 text-sm">{priceLabel(alt)}</p>
-                <OutboundLink slug={alt.slug} className="mt-3 inline-flex min-h-12 items-center font-semibold underline">
+                <OutboundLink slug={alt.slug} affiliate={Boolean(alt.hasAffiliateLink)} className="mt-3 inline-flex min-h-12 items-center font-semibold underline">
                   Visit {alt.name}
                 </OutboundLink>
+{alt.hasAffiliateLink ? <AffiliateDisclosure affiliate /> : null}
               </li>
             ))}
           </ul>
@@ -263,8 +282,8 @@ export default async function ResultPage({
                 <dd className="break-words">{priceLabel(pick)}</dd>
                 <dt className="font-semibold">Experience</dt>
                 <dd>{skillLabel[pick.skillLevel]}</dd>
-                <dt className="font-semibold">Fit</dt>
-                <dd>{pick.fitScore}</dd>
+                <dt className="font-semibold">{MATCH_FOR_ANSWERS_LABEL}</dt>
+                <dd>{`${pick.fitScore}%`}</dd>
               </dl>
             </li>
           ))}
@@ -277,7 +296,7 @@ export default async function ResultPage({
                 <th scope="col" className="py-2 pr-3">Tool</th>
                 <th scope="col" className="py-2 pr-3">Price</th>
                 <th scope="col" className="py-2 pr-3">Experience</th>
-                <th scope="col" className="py-2">Fit</th>
+                <th scope="col" className="py-2">{MATCH_FOR_ANSWERS_LABEL}</th>
               </tr>
             </thead>
             <tbody>
@@ -293,7 +312,7 @@ export default async function ResultPage({
                   </th>
                   <td className="break-words py-3 pr-3">{priceLabel(pick)}</td>
                   <td className="break-words py-3 pr-3">{skillLabel[pick.skillLevel]}</td>
-                  <td className="py-3">{pick.fitScore}</td>
+                  <td className="py-3">{`${pick.fitScore}%`}</td>
                 </tr>
               ))}
             </tbody>
@@ -307,7 +326,7 @@ export default async function ResultPage({
       </p>
       <p className="text-sm text-muted">
         The button goes to the tool’s own site. We are not adding an affiliate code. See the{' '}
-        <Link href="/disclosure" className="underline">affiliate disclosure</Link>.
+        <Link href="/disclosure" className="underline">Disclosures</Link>.
       </p>
     </article>
   )

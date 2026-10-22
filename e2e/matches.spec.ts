@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test'
-import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
+import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'
 import { listMatches, MATCHES_PAGE_SIZE, matchesPath, seeAllMatchesLabel } from '../src/lib/matches'
 import { paginationItems, showingLabel } from '../src/lib/pagination'
 import type { ScoreableTool } from '../src/lib/scoring'
 
 function candidates(task: string): ScoreableTool[] {
-  return catalogFromSeeds().tools.flatMap((tool) => {
+  return listedCatalogFromSeeds().tools.flatMap((tool) => {
     const fit = tool.fits.find((item) => item.taskSlug === task)
     if (!fit) return []
     return [
@@ -19,6 +19,7 @@ function candidates(task: string): ScoreableTool[] {
         fitScore: fit.score,
         notes: fit.notes,
         quizEligible: tool.quizEligible,
+        editorial: tool.editorial,
       },
     ]
   })
@@ -35,7 +36,7 @@ test('the quiz links to every match and the pages stay in rank order', async ({ 
   await expect(page).toHaveURL(/\/result\?task=chat&view=all$/)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Chat and brainstorm matches')
   await expect(page).toHaveTitle('Chat and brainstorm matches · BestBotFor')
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/result\?task=chat&view=all$/)
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/best\/chat$/)
   await expect(page.locator('link[rel="next"]')).toHaveAttribute('href', /\/result\?task=chat&view=all&page=2$/)
   await expect(page.locator('link[rel="prev"]')).toHaveCount(0)
 
@@ -53,7 +54,7 @@ test('the quiz links to every match and the pages stay in rank order', async ({ 
 
   await page.getByRole('link', { name: 'Next page' }).click()
   await expect(page).toHaveURL(/\/result\?task=chat&view=all&page=2$/)
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/result\?task=chat&view=all&page=2$/)
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/best\/chat$/)
   await expect(page.locator('link[rel="prev"]')).toHaveAttribute('href', /\/result\?task=chat&view=all$/)
   await expect(page.getByText(showingLabel(2, MATCHES_PAGE_SIZE, matches.length))).toBeVisible()
   const pageTwo = page.getByRole('list', { name: 'Matches' })
@@ -82,7 +83,7 @@ test('the see-all link keeps the quiz budget', async ({ page }) => {
   await expect(page).toHaveTitle(/Make music: /)
 })
 
-test('a budget filter is a real link and keeps its own canonical', async ({ browser }) => {
+test('a budget filter is a real link and canonicalizes to the task guide', async ({ browser }) => {
   const context = await browser.newContext({ javaScriptEnabled: false })
   const page = await context.newPage()
   try {
@@ -96,17 +97,17 @@ test('a budget filter is a real link and keeps its own canonical', async ({ brow
     await expect(page).toHaveURL(/\/result\?task=music&view=all&budget=free$/)
     await expect(page.getByRole('heading', { level: 1 })).toHaveText('Make music matches, free only')
     await expect(page).toHaveTitle('Make music matches, free only · BestBotFor')
-    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/result\?task=music&view=all&budget=free$/)
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/best\/music$/)
     await expect(page.getByRole('heading', { level: 2, name: 'SOUNDRAW', exact: true })).toHaveCount(0)
 
     await page.goto(matchesPath('music', 'low', 1))
-    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/result\?task=music&view=all&budget=low$/)
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/best\/music$/)
     await expect(page.getByRole('heading', { level: 2, name: 'SOUNDRAW', exact: true })).toBeVisible()
 
     const codingLow = listMatches(candidates('coding'), 'low')
     expect(codingLow.length).toBeGreaterThan(MATCHES_PAGE_SIZE)
     await page.goto(matchesPath('coding', 'low', 2))
-    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/result\?task=coding&view=all&budget=low&page=2$/)
+    await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/best\/coding$/)
     await expect(page.locator('link[rel="prev"]')).toHaveAttribute('href', /\/result\?task=coding&view=all&budget=low$/)
   } finally {
     await context.close()
@@ -130,7 +131,7 @@ test('numbered pages cover the ends and the last page', async ({ page }) => {
   await nav.getByRole('link', { name: `Page ${pageCount}` }).click()
   await expect(page).toHaveURL(new RegExp(`/result\\?task=coding&view=all&page=${pageCount}$`))
   await expect(page.getByText(showingLabel(pageCount, MATCHES_PAGE_SIZE, matches.length))).toBeVisible()
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', new RegExp(`/result\\?task=coding&view=all&page=${pageCount}$`))
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/best\/coding$/)
   await expect(page.locator('link[rel="prev"]')).toHaveAttribute('href', new RegExp(`/result\\?task=coding&view=all&page=${pageCount - 1}$`))
   await expect(page.locator('link[rel="next"]')).toHaveCount(0)
   const lastWindow = paginationItems(pageCount, pageCount)
@@ -145,10 +146,10 @@ test('numbered pages cover the ends and the last page', async ({ page }) => {
 
 test('page=1 shares the unpaged canonical, and bad pages are 404', async ({ page, request }) => {
   await page.goto('/result?task=chat&view=all&page=1')
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/result\?task=chat&view=all$/)
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/best\/chat$/)
 
   await page.goto('/result?task=chat&view=all&budget=any')
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/result\?task=chat&view=all$/)
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/best\/chat$/)
 
   const missing = [
     '/result?task=chat&view=all&page=0',

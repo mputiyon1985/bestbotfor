@@ -9,22 +9,22 @@ describe('result fault injection', () => {
     }
   })
 
-  it('denies an unset or unknown env even when RESULT_FAULTS=1', () => {
-    for (const vercelEnv of [undefined, '', 'development', 'staging', 'Production']) {
+  it('denies preview, production, and an unset env even when RESULT_FAULTS=1', () => {
+    for (const vercelEnv of [undefined, '', 'preview', 'staging', 'Production']) {
       expect(acceptResultFault('lookup-throw', { faults: '1', vercelEnv, nodeEnv: 'production' }), String(vercelEnv)).toBe('')
-      expect(acceptResultFault('db-down', { faults: '1', vercelEnv, nodeEnv: undefined }), String(vercelEnv)).toBe('')
+      expect(acceptResultFault('db-down', { faults: '1', vercelEnv, nodeEnv: 'test' }), String(vercelEnv)).toBe('')
     }
-    expect(acceptResultFault('lookup-throw', { faults: '1', vercelEnv: 'preview', nodeEnv: 'production' })).toBe('lookup-throw')
-    expect(acceptResultFault('lookup-throw', { faults: undefined, vercelEnv: 'preview', nodeEnv: 'test' })).toBe('')
-    expect(acceptResultFault('lookup-throw', { faults: '0', vercelEnv: 'preview', nodeEnv: 'test' })).toBe('')
+    expect(acceptResultFault('lookup-throw', { faults: '1', nodeEnv: 'test' })).toBe('')
+    expect(acceptResultFault('lookup-throw', { faults: undefined, vercelEnv: 'test', nodeEnv: 'production' })).toBe('')
+    expect(acceptResultFault('lookup-throw', { faults: '0', vercelEnv: 'development', nodeEnv: 'test' })).toBe('')
   })
 
-  it('honors a known fault for NODE_ENV=test or VERCEL_ENV=preview when RESULT_FAULTS=1', () => {
-    expect(acceptResultFault('lookup-throw', { faults: '1', nodeEnv: 'test' })).toBe('lookup-throw')
-    expect(acceptResultFault('db-down', { faults: '1', vercelEnv: 'preview', nodeEnv: 'production' })).toBe('db-down')
-    expect(acceptResultFault(' lookup-slow ', { faults: '1', nodeEnv: 'test' })).toBe('lookup-slow')
-    expect(acceptResultFault('not-a-fault', { faults: '1', nodeEnv: 'test' })).toBe('')
-    expect(acceptResultFault(null, { faults: '1', vercelEnv: 'preview' })).toBe('')
+  it('honors a known fault only when VERCEL_ENV is development or test and RESULT_FAULTS=1', () => {
+    expect(acceptResultFault('lookup-throw', { faults: '1', vercelEnv: 'development', nodeEnv: 'production' })).toBe('lookup-throw')
+    expect(acceptResultFault('db-down', { faults: '1', vercelEnv: 'test', nodeEnv: 'production' })).toBe('db-down')
+    expect(acceptResultFault(' lookup-slow ', { faults: '1', vercelEnv: 'test' })).toBe('lookup-slow')
+    expect(acceptResultFault('not-a-fault', { faults: '1', vercelEnv: 'development' })).toBe('')
+    expect(acceptResultFault(null, { faults: '1', vercelEnv: 'test' })).toBe('')
   })
 
   it('fails the page read only for db-down, and leaves a normal read alone', async () => {

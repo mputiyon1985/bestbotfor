@@ -1,18 +1,21 @@
 import type { ReactNode } from 'react'
 import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
-import { Analytics } from '@vercel/analytics/next'
 import { headers } from 'next/headers'
 import { ClerkShell } from '@/components/clerk-shell'
 import { ConsentBanner } from '@/components/consent-banner'
 import { JsonLd } from '@/components/json-ld'
+import { SiteAnalytics } from '@/components/site-analytics'
+import { FirstTouchCapture } from '@/components/first-touch-capture'
 import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
+import { SuggestionDialog, SuggestSomethingLink } from '@/components/suggest-something'
 import { APPLE_TOUCH_ICON_PATH, BRAND, OG_IMAGE_PATH } from '@/lib/brand'
+import { secGpcOptOut } from '@/lib/gpc'
 import { isProductionDeployment } from '@/lib/indexing'
 import { organizationJsonLd, websiteJsonLd } from '@/lib/jsonld'
 import { homeDescription, homeTitle } from '@/lib/metadata'
-import { getSiteUrl, SITE_NAME, TAGLINE } from '@/lib/site'
+import { getSiteUrl, IMPACT_SITE_VERIFICATION, SITE_NAME, TAGLINE, TWITTER_SITE } from '@/lib/site'
 import { gaIdSchema } from '@/lib/validation'
 import './globals.css'
 
@@ -65,15 +68,20 @@ export const metadata: Metadata = {
     type: 'website',
     images: [ogImage],
   },
-  twitter: { card: 'summary_large_image', title: homeTitle, description: TAGLINE, images: [ogImage] },
+  twitter: { card: 'summary_large_image', site: TWITTER_SITE, title: homeTitle, description: TAGLINE, images: [ogImage] },
   verification: googleVerification ? { google: googleVerification } : undefined,
   robots: isProductionDeployment() ? { index: true, follow: true } : { index: false, follow: false },
 }
 
+// Typed as a plain record because React's <meta> props do not declare `value`.
+const IMPACT_META_ATTRS: Record<string, string> = { value: IMPACT_SITE_VERIFICATION }
+
 export const dynamic = 'force-dynamic'
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const nonce = (await headers()).get('x-nonce')
+  const headerStore = await headers()
+  const nonce = headerStore.get('x-nonce')
+  const secGpc = secGpcOptOut(headerStore.get('sec-gpc'))
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ''
 
   const content = (
@@ -81,12 +89,17 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       <SiteHeader />
       <main id="main" className="mx-auto min-h-[70vh] min-w-0 max-w-5xl px-4 pt-14 pb-10 md:py-10">
         {children}
+        <div id="suggest-something" className="mt-12 scroll-mb-24">
+          <SuggestSomethingLink className="inline-flex min-h-11 items-center gap-2 font-semibold underline-offset-4 hover:underline" />
+        </div>
       </main>
       <SiteFooter />
-      <ConsentBanner gaId={gaId.success ? gaId.data : null} />
+      <SuggestionDialog />
+      <ConsentBanner gaId={gaId.success ? gaId.data : null} secGpc={secGpc} />
       <JsonLd data={websiteJsonLd()} nonce={nonce} />
       <JsonLd data={organizationJsonLd()} nonce={nonce} />
-      <Analytics />
+      <SiteAnalytics secGpc={secGpc} />
+      <FirstTouchCapture />
     </>
   )
 
@@ -98,6 +111,10 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
 
   return (
     <html lang="en-US" className={poppins.variable}>
+      <head>
+        {/* Impact requires value=, which the Metadata API cannot emit (it only writes content=). */}
+        <meta name="impact-site-verification" {...IMPACT_META_ATTRS} />
+      </head>
       <body className="antialiased">
         {shell}
         <script

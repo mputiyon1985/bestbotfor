@@ -7,8 +7,8 @@ const FAULT_SET = new Set<string>(RESULT_FAULTS)
 
 /**
  * Playwright sets RESULT_FAULTS=1 and sends x-bbf-result-fault.
- * The header is honored only for an explicit test runtime: NODE_ENV=test,
- * or VERCEL_ENV=preview. Production, an unset env, and any other env deny it.
+ * The header is honored only when VERCEL_ENV is development or test.
+ * Preview, production, an unset env, and any other env deny it.
  */
 export function acceptResultFault(
   header: string | null,
@@ -16,9 +16,7 @@ export function acceptResultFault(
 ): ResultFault {
   if (env.faults !== '1') return ''
   const vercelEnv = env.vercelEnv?.trim()
-  if (vercelEnv === 'production') return ''
-  const allowed = env.nodeEnv === 'test' || vercelEnv === 'preview'
-  if (!allowed) return ''
+  if (vercelEnv !== 'development' && vercelEnv !== 'test') return ''
   const value = (header ?? '').trim()
   return FAULT_SET.has(value) ? (value as ResultFault) : ''
 }

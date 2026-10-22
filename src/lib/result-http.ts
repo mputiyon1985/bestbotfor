@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFoundDescription, notFoundTitle } from './metadata'
 import { retryAfterSeconds } from './rate-limit'
+import { TWITTER_SITE } from './site'
 
 const ROBOTS = 'noindex, nofollow'
 
@@ -26,6 +27,7 @@ export function resultMissMetadata(): Metadata {
     },
     twitter: {
       card: 'summary',
+      site: TWITTER_SITE,
       title: { absolute: notFoundTitle },
       description: notFoundDescription,
     },

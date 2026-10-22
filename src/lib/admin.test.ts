@@ -3,7 +3,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { adminGuardGaps } from '../../scripts/check-member-routes'
 import { isAdminPath } from './admin-path'
-import { adminAllowlist, decideAdminAccess, decideAdminStepUp, type AdminPrincipal } from './admin'
+import { adminAllowlist, adminHomePath, decideAdminAccess, decideAdminStepUp, type AdminPrincipal } from './admin'
 
 const allow = adminAllowlist('user_admin')
 
@@ -74,5 +74,33 @@ describe('admin access', () => {
     expect(isAdminPath('/%')).toBe(false)
     expect(isAdminPath('/administrator')).toBe(false)
     expect(isAdminPath('/tools/chatgpt')).toBe(false)
+    expect(isAdminPath('/admin/sponsors')).toBe(true)
+  })
+
+  it('sends an admin home to ratings when that flag is on, otherwise to the sponsor queue', () => {
+    const previousRatings = process.env.USER_RATINGS
+    const previousSponsors = process.env.ADMIN_SPONSORS
+    const previousVercel = process.env.VERCEL_ENV
+    process.env.VERCEL_ENV = 'test'
+    delete process.env.USER_RATINGS
+    delete process.env.ADMIN_SPONSORS
+    expect(adminHomePath()).toBe('/admin')
+    process.env.ADMIN_SPONSORS = 'on'
+    expect(adminHomePath()).toBe('/admin/sponsors')
+    process.env.USER_RATINGS = 'on'
+    expect(adminHomePath()).toBe('/admin')
+    process.env.ADMIN_SPONSORS = 'off'
+    expect(adminHomePath()).toBe('/admin')
+    if (previousRatings === undefined) delete process.env.USER_RATINGS
+    else process.env.USER_RATINGS = previousRatings
+    if (previousSponsors === undefined) delete process.env.ADMIN_SPONSORS
+    else process.env.ADMIN_SPONSORS = previousSponsors
+    if (previousVercel === undefined) delete process.env.VERCEL_ENV
+    else process.env.VERCEL_ENV = previousVercel
+    const source = readFileSync(path.join(process.cwd(), 'src/lib/admin.ts'), 'utf8')
+    expect(source).toContain('adminAllowlist(')
+    expect(source).toContain("reason: 'mfa-required'")
+    expect(source).toContain('strictMfaFresh(')
+    expect(source).toContain("reverificationError('strict_mfa')")
   })
 })

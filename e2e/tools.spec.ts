@@ -1,13 +1,16 @@
 import { expect, test, type Locator } from '@playwright/test'
 import { comparePairSeeds, toolSeeds } from '../src/data/catalog'
-import { TOOLS_PAGE_SIZE } from '../src/lib/catalog-read'
 import { TOOL_LOGO_MARK_FILL, TOOL_LOGO_SIZE } from '../src/lib/logo-source'
 import { BEST_GUIDE_TOOL_COUNT } from '../src/lib/descriptions'
 import { toolsForTask } from '../src/lib/recommend'
 import { categorySlug, toolCategories } from '../src/lib/tool-index'
-import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
+import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'
 
-const catalog = catalogFromSeeds()
+const catalog = listedCatalogFromSeeds()
+
+// Mirrors TOOLS_PAGE_SIZE in src/lib/catalog-read.ts, which imports 'server-only'
+// and cannot load in Playwright. src/lib/catalog-read.test.ts pins the value.
+const TOOLS_PAGE_SIZE = 24
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -81,7 +84,7 @@ test('filters by a catalog category with a shareable URL and without JavaScript'
 test('each real tools page has its own canonical, and pages past the end are 404', async ({ page, request }) => {
   const pages = pageCount(catalog.tools.length)
   expect(pages).toBeGreaterThan(1)
-  expect(pages).toBeLessThan(8)
+  expect(pages).toBeLessThan(10)
 
   await page.goto('/tools')
   const firstCanonical = await page.locator('link[rel="canonical"]').getAttribute('href')
@@ -114,7 +117,6 @@ test('each real tools page has its own canonical, and pages past the end are 404
 
   const pastLast = [
     `/tools?page=${pages + 1}`,
-    '/tools?page=8',
     '/tools?page=99',
     '/tools?page=0',
     '/tools?page=-1',
@@ -311,9 +313,9 @@ test('best, compare, tool profiles, and the sitemap follow the seed', async ({ p
   if (!task || !top) return
 
   await page.goto(`/best/${task.slug}`)
-  await expect(page).toHaveTitle('Best AI for writing code · BestBotFor')
-  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', 'Best AI for writing code | BestBotFor')
-  await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', 'Best AI for writing code | BestBotFor')
+  await expect(page).toHaveTitle('Best AI for coding (2026): Our Pick + Free Options')
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', 'Best AI for coding (2026): Our Pick + Free Options | BestBotFor')
+  await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', 'Best AI for coding (2026): Our Pick + Free Options | BestBotFor')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Best AI tool for writing code')
   await expect(page.getByText(`The best AI tool for writing code is ${top.name}.`)).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Best for writing code')
