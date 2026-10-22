@@ -74,3 +74,9 @@ describe('catalog queries', () => {
     await close()
   })
 })
+
+describe('TOOLS_PAGE_SIZE', () => {
+  it('matches the copy in e2e/tools.spec.ts', () => {
+    expect(TOOLS_PAGE_SIZE).toBe(24)
+  })
+})
