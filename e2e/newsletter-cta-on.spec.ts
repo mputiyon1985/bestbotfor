@@ -106,3 +106,38 @@ test('the privacy policy names the CTA pages while the flag is on', async ({ pag
   await page.goto('/privacy')
   await expect(page.getByText(/or any page under \/compare\/, \/alternatives\/, \/best\/, or \/guides\//)).toBeVisible()
 })
+
+test('the bar sits at the end of <body>, never covers the footer, and its dismiss button shows focus', async ({ page }) => {
+  await page.goto('/best/music')
+  await scrollTo(page, 0.5)
+  await expect(bar(page)).toBeVisible()
+  const last = await page.evaluate(() => {
+    const kids = Array.from(document.body.children).filter((el) => el.tagName !== 'SCRIPT' && el.tagName !== 'NEXT-ROUTE-ANNOUNCER')
+    return kids.at(-1)?.getAttribute('data-newsletter-cta')
+  })
+  expect(last).toBe('bar')
+  const footerFirst = await page.evaluate(() => {
+    const footer = document.querySelector('footer')
+    const b = document.querySelector('[data-newsletter-cta="bar"]')
+    return Boolean(footer && b && footer.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+  expect(footerFirst).toBe(true)
+  await scrollTo(page, 1)
+  // Scrolling may be smooth; wait until the page reaches the bottom, then the footer must end above the bar.
+  await expect
+    .poll(() => page.evaluate(() => Math.ceil(window.scrollY + window.innerHeight) >= document.documentElement.scrollHeight - 1))
+    .toBe(true)
+  const gap = await page.evaluate(() => {
+    const footer = document.querySelector('footer')!.getBoundingClientRect()
+    const b = document.querySelector('[data-newsletter-cta="bar"]')!.getBoundingClientRect()
+    return b.top - footer.bottom
+  })
+  expect(gap).toBeGreaterThanOrEqual(-1)
+  const dismiss = page.locator('[data-newsletter-cta-dismiss]')
+  await dismiss.focus()
+  await page.keyboard.press('Shift+Tab')
+  await page.keyboard.press('Tab')
+  await expect(dismiss).toBeFocused()
+  const outline = await dismiss.evaluate((el) => getComputedStyle(el).outlineStyle)
+  expect(outline).not.toBe('none')
+})
