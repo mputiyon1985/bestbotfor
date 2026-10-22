@@ -1,8 +1,11 @@
-/** Placeholder copy for the newsletter CTA. Final copy comes from Nova and needs Mark's approval. */
+/** Newsletter CTA copy: Nova's final option A (weekly, Thursdays), approved by Mark Oct 22, 2026. */
 export const NEWSLETTER_CTA_COPY = {
-  headline: 'Get one AI pick a week',
-  sub: 'The Daily Bot: the right AI for one job, every Thursday. Free.',
-  button: 'Subscribe',
+  headline: 'Get the right AI, every Thursday',
+  sub: 'The Daily Bot: one short email a week with new picks, price changes and tools worth a look. Free.',
+  button: 'Send me The Daily Bot',
+  finePrint: 'No spam. Unsubscribe anytime.',
+  stickyBar: 'The right AI in 30 seconds, and in your inbox every Thursday.',
+  thanks: 'Almost done. Check your inbox.',
   emailLabel: 'Email address',
   dismissLabel: 'Dismiss newsletter signup',
 } as const

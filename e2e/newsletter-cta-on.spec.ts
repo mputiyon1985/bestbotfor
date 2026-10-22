@@ -29,9 +29,9 @@ for (const { path } of PAGES) {
   test(`${path} shows one inline CTA under the verdict and no other Daily Bot form`, async ({ page }) => {
     await page.goto(path)
     await expect(inline(page)).toHaveCount(1)
-    await expect(inline(page).getByRole('heading', { name: 'Get one AI pick a week' })).toBeVisible()
-    await expect(inline(page).getByText('The Daily Bot: the right AI for one job, every Thursday. Free.')).toBeVisible()
-    await expect(inline(page).getByRole('button', { name: 'Subscribe' })).toBeVisible()
+    await expect(inline(page).getByRole('heading', { name: 'Get the right AI, every Thursday' })).toBeVisible()
+    await expect(inline(page).getByText('The Daily Bot: one short email a week with new picks, price changes and tools worth a look. Free.')).toBeVisible()
+    await expect(inline(page).getByRole('button', { name: 'Send me The Daily Bot' })).toBeVisible()
     await expect(page.getByRole('region', { name: 'The Daily Bot' })).toHaveCount(0)
     await expect(page.getByRole('region', { name: /The Daily Bot (after the table|at the end of the page)/ })).toHaveCount(0)
     const h1 = await page.getByRole('heading', { level: 1 }).boundingBox()
@@ -82,8 +82,11 @@ test('submitting posts the page path and utm tags and shows an inline thank-you'
   })
   await expect(inline(page).locator('input[name="first_touch"]')).toHaveValue(/utm_source/)
   await inline(page).getByLabel('Email address').fill('cta-e2e@example.com')
-  await inline(page).getByRole('button', { name: 'Subscribe' }).click()
-  await expect(inline(page).locator('[data-newsletter-cta-thanks]')).toBeVisible()
+  await inline(page).getByRole('button', { name: 'Send me The Daily Bot' }).click()
+  // The e2e server has no Beehiiv key, so this is the pending path: show the server's message, not "Check your inbox".
+  const thanks = inline(page).locator('[data-newsletter-cta-thanks]')
+  await expect(thanks).toHaveText("You'll get a confirmation email when The Daily Bot launches.")
+  await expect(thanks).not.toContainText('Check your inbox')
   await expect(inline(page).locator('form')).toHaveCount(0)
   expect(new URL(page.url()).pathname).toBe(path)
   const posted = bodies.find((body) => body.includes('cta-e2e@example.com')) ?? ''
@@ -97,7 +100,7 @@ test('submitting posts the page path and utm tags and shows an inline thank-you'
 test('an invalid email shows an error inline and keeps the form', async ({ page }) => {
   await page.goto('/guides/how-to-choose-an-ai-tool')
   await inline(page).getByLabel('Email address').fill('nope')
-  await inline(page).getByRole('button', { name: 'Subscribe' }).click()
+  await inline(page).getByRole('button', { name: 'Send me The Daily Bot' }).click()
   await expect(inline(page).getByText('Enter a valid email address.')).toBeVisible()
   await expect(inline(page).locator('form')).toHaveCount(1)
 })
