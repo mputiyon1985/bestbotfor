@@ -117,7 +117,6 @@ test('each real tools page has its own canonical, and pages past the end are 404
 
   const pastLast = [
     `/tools?page=${pages + 1}`,
-    `/tools?page=${pages + 1}`,
     '/tools?page=99',
     '/tools?page=0',
     '/tools?page=-1',
