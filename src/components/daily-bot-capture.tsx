@@ -1,3 +1,4 @@
+import { ReadIssueOneLink } from './daily-bot-issue-link'
 import { NewsletterForm } from './newsletter-form'
 import type { NewsletterSource } from '@/lib/newsletter-source'
 
@@ -8,8 +9,8 @@ export function DailyBotCapture({ source }: { source: Exclude<NewsletterSource, 
         The Daily Bot
       </h2>
       <p className="mt-2 max-w-xl text-muted">
-        A free AI newsletter: what launched, what changed price, and which bot we’d pick. First issue coming soon. We store your email.
-        When the digest is connected to Beehiiv, that is where it is sent. Unsubscribe anytime.
+        A free AI newsletter: what launched, what changed price, and which bot we’d pick. Goes out weekly on Thursdays. <ReadIssueOneLink />. We store your email.
+        Unsubscribe anytime.
       </p>
       <div className="mt-4 max-w-xl">
         <NewsletterForm source={source} />

@@ -2,6 +2,21 @@
  * Newsletter CTA helpers (inline box + sticky bar). Pure, safe on server and client.
  */
 
+import { NEWSLETTER_CTA_COPY } from '@/data/newsletter-cta-copy'
+import { RACE_SUCCESS, SYNCED_SUCCESS } from './newsletter-status'
+
+/**
+ * The CTA thank-you line. Nova's "check your inbox" copy is only true when Beehiiv
+ * accepted the address and a confirmation email is on its way (synced, or another
+ * request is already adding it). Every other success (pending: no Beehiiv key, or the
+ * address is already pending; honeypot) shows the server's own message.
+ */
+export function newsletterCtaThanks(serverMessage: string): string {
+  return serverMessage === SYNCED_SUCCESS || serverMessage === RACE_SUCCESS
+    ? NEWSLETTER_CTA_COPY.thanks
+    : serverMessage
+}
+
 export const NEWSLETTER_CTA_DISMISS_KEY = 'bbf_newsletter_cta_dismissed'
 export const NEWSLETTER_CTA_DISMISS_DAYS = 7
 export const NEWSLETTER_CTA_DISMISS_MS = NEWSLETTER_CTA_DISMISS_DAYS * 24 * 60 * 60 * 1000

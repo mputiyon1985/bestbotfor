@@ -99,7 +99,7 @@ function checkedDateValue(label: string): number {
 export const COMPARE_SECONDARY_NOTE =
   "[S] = secondary source (third party), not read directly on the vendor's page."
 
-export const COMPARE_DIGEST_FINE_PRINT = 'Free AI newsletter, first issue coming soon. Unsubscribe anytime.'
+export const COMPARE_DIGEST_FINE_PRINT = 'Free AI newsletter. Goes out weekly on Thursdays. Unsubscribe anytime.'
 
 const catalogSource = 'BestBotFor catalog: src/data/scores-v2.3.csv (Our rating, category rank) and live /best pages (fit %), read Oct 17, 2026'
 

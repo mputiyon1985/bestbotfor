@@ -62,7 +62,7 @@ test('a scored tool shows fractional stars, the rubric, and no review schema', a
 
 test('unrated tools hide the score and keep pros and cons', async ({ page }) => {
   test.setTimeout(180_000)
-  expect(unratedSlugs).toHaveLength(106)
+  expect(unratedSlugs).toHaveLength(103)
   const unlisted = new Set(toolSeeds.filter((item) => item.unlisted).map((item) => item.slug))
   for (const slug of unratedSlugs.filter((item) => !unlisted.has(item))) {
     const tool = toolSeeds.find((item) => item.slug === slug)
@@ -124,8 +124,9 @@ test('result cards show a compact pros list only for tools that have one', async
     has: page.getByRole('heading', { level: 3, name: 'Perplexity', exact: true }),
   })
   await expect(perplexityCard).toBeVisible()
-  await expect(perplexityCard.getByText('Pros:', { exact: false })).toHaveCount(0)
-  await expect(perplexityCard.getByRole('img', { name: /Rated/ })).toHaveCount(0)
+  // rated 3.9 in the 2026-10-22 quiz-pick batch
+  await expect(perplexityCard.getByText('Pros:', { exact: false })).toBeVisible()
+  await expect(perplexityCard.getByRole('img', { name: ratingAriaLabel(3.9) })).toBeVisible()
 })
 
 test('windsurf stays at its slug, cursor and relevance show the reviewed prices, and source columns stay off the page', async ({ page }) => {

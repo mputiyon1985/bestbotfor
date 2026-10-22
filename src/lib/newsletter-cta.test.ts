@@ -9,6 +9,7 @@ import {
   NEWSLETTER_CTA_DISMISS_MS,
   dismissNewsletterCta,
   isNewsletterCtaDismissed,
+  newsletterCtaThanks,
   parseNewsletterCtaPath,
   scrolledPastThreshold,
 } from './newsletter-cta'
@@ -16,6 +17,7 @@ import { NEWSLETTER_CTA_PRODUCTION_LAUNCH } from './review-flags'
 import { NEWSLETTER_SIGNUP_PARAGRAPH, newsletterSignupParagraph } from './privacy-copy'
 import { absoluteUrl } from './site'
 import { subscribeToNewsletter } from './newsletter'
+import { PENDING_SUCCESS, RACE_SUCCESS, SYNCED_SUCCESS } from './newsletter-status'
 import { createTestDatabase } from '@/test/db'
 
 function memoryStorage() {
@@ -29,9 +31,12 @@ function memoryStorage() {
 }
 
 describe('newsletterCtaEnabled', () => {
-  it('ships off in production and fails closed', () => {
-    expect(NEWSLETTER_CTA_PRODUCTION_LAUNCH).toBe(false)
-    expect(newsletterCtaEnabled({ newsletterCta: 'on', vercelEnv: 'production' })).toBe(false)
+  it('is launched in production but still needs NEWSLETTER_CTA=on, and fails closed', () => {
+    expect(NEWSLETTER_CTA_PRODUCTION_LAUNCH).toBe(true)
+    expect(newsletterCtaEnabled({ newsletterCta: 'on', vercelEnv: 'production' })).toBe(true)
+    expect(newsletterCtaEnabled({ newsletterCta: undefined, vercelEnv: 'production' })).toBe(false)
+    expect(newsletterCtaEnabled({ newsletterCta: '', vercelEnv: 'production' })).toBe(false)
+    expect(newsletterCtaEnabled({ newsletterCta: 'on', vercelEnv: 'production' }, false)).toBe(false)
     expect(newsletterCtaEnabled({ newsletterCta: 'on', vercelEnv: undefined })).toBe(false)
     expect(newsletterCtaEnabled({ newsletterCta: 'true', vercelEnv: 'preview' })).toBe(false)
     expect(newsletterCtaEnabled({ newsletterCta: '', vercelEnv: 'test' })).toBe(false)
@@ -83,11 +88,14 @@ describe('scrolledPastThreshold', () => {
 })
 
 describe('copy', () => {
-  it('keeps the placeholder copy in one constants file', () => {
+  it('uses the final option A copy from one constants file', () => {
     expect(NEWSLETTER_CTA_COPY).toMatchObject({
-      headline: 'Get one AI pick a week',
-      sub: 'The Daily Bot: the right AI for one job, every Thursday. Free.',
-      button: 'Subscribe',
+      headline: 'Get the right AI, every Thursday',
+      sub: 'The Daily Bot: one short email a week with new picks, price changes and tools worth a look. Free.',
+      button: 'Send me The Daily Bot',
+      finePrint: 'No spam. Unsubscribe anytime.',
+      stickyBar: 'The right AI in 30 seconds, and in your inbox every Thursday.',
+      thanks: 'Almost done. Check your inbox.',
     })
   })
 })
@@ -161,6 +169,36 @@ describe('subscribeToNewsletter referringPath', () => {
       utm_medium: 'social',
       utm_campaign: 'oct',
     })
+    await close()
+  })
+})
+
+describe('newsletterCtaThanks', () => {
+  it('shows the check-your-inbox copy only on the confirm-email paths', () => {
+    expect(newsletterCtaThanks(SYNCED_SUCCESS)).toBe(NEWSLETTER_CTA_COPY.thanks)
+    expect(newsletterCtaThanks(RACE_SUCCESS)).toBe(NEWSLETTER_CTA_COPY.thanks)
+  })
+
+  it('shows the server message on the pending path', () => {
+    expect(newsletterCtaThanks(PENDING_SUCCESS)).toBe(PENDING_SUCCESS)
+    expect(newsletterCtaThanks(PENDING_SUCCESS)).not.toContain('Check your inbox')
+  })
+
+  it('pending signup (no Beehiiv key) ends on the server message, not the inbox copy', async () => {
+    delete process.env.BEEHIIV_API_KEY
+    delete process.env.BEEHIIV_PUBLICATION_ID
+    const { db, close } = await createTestDatabase()
+    const result = await subscribeToNewsletter({
+      email: 'cta-pending@example.com',
+      honeypot: '',
+      source: 'compare',
+      referringPath: '/compare/chatgpt-vs-claude',
+      db,
+      rateKey: 'newsletter-cta-pending',
+      now: 1_000,
+    })
+    expect(result).toMatchObject({ status: 'success', message: PENDING_SUCCESS })
+    expect(newsletterCtaThanks(result.message)).toBe(PENDING_SUCCESS)
     await close()
   })
 })

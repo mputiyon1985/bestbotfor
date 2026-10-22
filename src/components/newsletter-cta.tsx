@@ -8,6 +8,7 @@ import { FirstTouchField } from '@/components/first-touch-field'
 import { NEWSLETTER_CTA_COPY } from '@/data/newsletter-cta-copy'
 import {
   dismissNewsletterCta,
+  newsletterCtaThanks,
   isNewsletterCtaDismissed,
   scrolledPastThreshold,
 } from '@/lib/newsletter-cta'
@@ -94,9 +95,12 @@ export function NewsletterCta({ path, source }: { path: string; source: Newslett
         <p className="mt-2 max-w-xl text-muted">{NEWSLETTER_CTA_COPY.sub}</p>
         <div className="mt-4 max-w-xl">
           {done ? (
-            <p role="status" data-newsletter-cta-thanks>{done.message}</p>
+            <p role="status" data-newsletter-cta-thanks>{newsletterCtaThanks(done.message)}</p>
           ) : (
-            <CtaForm variant="inline" path={path} source={source} onSuccess={onSuccess} />
+            <>
+              <CtaForm variant="inline" path={path} source={source} onSuccess={onSuccess} />
+              <p className="mt-2 text-sm text-muted" data-newsletter-cta-fineprint>{NEWSLETTER_CTA_COPY.finePrint}</p>
+            </>
           )}
         </div>
       </section>
@@ -113,7 +117,7 @@ export function NewsletterCta({ path, source }: { path: string; source: Newslett
           className="fixed inset-x-0 bottom-0 z-40 border-t border-line bg-card px-4 py-2 shadow-lg"
         >
           <div className="mx-auto flex max-w-5xl items-center gap-3">
-            <p className="hidden min-w-0 flex-1 font-semibold md:block">{NEWSLETTER_CTA_COPY.headline}</p>
+            <p className="hidden min-w-0 flex-1 font-semibold md:block">{NEWSLETTER_CTA_COPY.stickyBar}</p>
             <div className="min-w-0 flex-1">
               <CtaForm variant="bar" path={path} source={source} onSuccess={onSuccess} />
             </div>

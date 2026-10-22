@@ -20,7 +20,7 @@ export const SCORE_WEIGHTS = {
 export const UNMAINTAINED_NOTICE = 'Unmaintained (repo archived)'
 
 /** Categories with a single rated tool. Their rank line is not shown. */
-export const SINGLE_TOOL_CATEGORIES = ['backend', 'design', 'games', 'productivity'] as const
+export const SINGLE_TOOL_CATEGORIES = ['backend', 'games', 'productivity'] as const
 
 export type Rubric = {
   features: number
