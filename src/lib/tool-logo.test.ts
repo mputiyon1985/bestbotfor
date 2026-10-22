@@ -13,21 +13,18 @@ type ManifestEntry = { slug: string; sourceUrl: string; fetchedAt: string }
 
 const manifest = manifestJson as ManifestEntry[]
 const MISSING = [
-  'amp',
+  'aider',
   'band',
   'bits',
   'causo',
   'composio',
-  'copy-ai',
   'cutbay',
   'dadan',
-  'factory',
   'fastlane',
   'mercury-inception',
   'midjourney',
   'mintlify',
   'mistral-voxtral',
-  'napkin-ai',
   'needle',
   'notif',
   'omnara',
@@ -41,8 +38,8 @@ const MISSING = [
   'twinmind',
   'useit-studio',
 ]
-const LOW_RES = ['clearscope', 'clipdrop', 'jules', 'letsenhance', 'neuronwriter', 'wolfram-alpha']
-const HOSTED = 151
+const LOW_RES = ['clearscope', 'clipdrop', 'hailuo', 'jules', 'letsenhance', 'neuronwriter', 'tldv', 'wolfram-alpha']
+const HOSTED = 162
 const monogramOverrides = new Set<string>(MONOGRAM_OVERRIDES)
 
 function sourceFiles(directory: string): string[] {
@@ -86,8 +83,8 @@ describe('tool logos', () => {
     const sources = await readSources()
     const bySlug = new Map(sources.map((row) => [row.slug, row]))
     expect(sources).toHaveLength(toolSeeds.length)
-    expect(sources.filter((row) => row.status === 'ok')).toHaveLength(152)
-    expect(sources.filter((row) => row.status === 'low_res')).toHaveLength(6)
+    expect(sources.filter((row) => row.status === 'ok')).toHaveLength(163)
+    expect(sources.filter((row) => row.status === 'low_res')).toHaveLength(8)
     const missing = sources.filter((row) => row.status === 'missing').map((row) => row.slug).sort()
     expect(missing).toEqual(MISSING)
     const lowRes = sources.filter((row) => row.status === 'low_res').map((row) => row.slug).sort()

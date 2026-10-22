@@ -280,7 +280,7 @@ describe('catalog seed', () => {
     const csvSlugs = ratingSeeds.map((row) => row.slug).sort()
     const v1Slugs = new Set(editorialSeeds.map((row) => row.slug))
     expect(ratingSeeds).toHaveLength(91)
-    expect(unratedSlugs).toHaveLength(94)
+    expect(unratedSlugs).toHaveLength(104)
     expect(rated).toEqual(csvSlugs)
     expect(new Set(rated)).toEqual(new Set(csvSlugs))
     expect(csvSlugs).toContain('cursor')

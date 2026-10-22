@@ -47,8 +47,33 @@ const USER_AGENTS = [
 ]
 const CACHE_ROOT = process.env.LOGO_FETCH_CACHE === '0' ? null : path.join('/tmp', 'tool-logo-cache-v2')
 
-const MISSING_SLUGS = ['midjourney'] as const
-const LOW_RES_SLUGS = ['clearscope', 'clipdrop', 'jules', 'letsenhance', 'neuronwriter', 'wolfram-alpha'] as const
+const MISSING_SLUGS = [
+  'aider',
+  'band',
+  'bits',
+  'causo',
+  'composio',
+  'cutbay',
+  'dadan',
+  'fastlane',
+  'mercury-inception',
+  'midjourney',
+  'mintlify',
+  'mistral-voxtral',
+  'needle',
+  'notif',
+  'omnara',
+  'opposable',
+  'playad',
+  'radaric',
+  'runinfra',
+  'sponkly',
+  'supercmo',
+  'tend',
+  'twinmind',
+  'useit-studio',
+] as const
+const LOW_RES_SLUGS = ['clearscope', 'clipdrop', 'hailuo', 'jules', 'letsenhance', 'neuronwriter', 'tldv', 'wolfram-alpha'] as const
 
 /**
  * Pass 2 eyeball. The playgroundai GitHub org avatar is a cartoon person in a
@@ -70,9 +95,9 @@ export const NEUTRAL_TILE_FILL = '#a8a8b6'
 /** Deepgram's safari pinned-tab SVG is one black shape with a cutout waveform. */
 export const NEUTRAL_TILE_SLUGS = ['deepgram'] as const
 
-const OK_COUNT = 152
-const LOW_RES_COUNT = 6
-const MISSING_COUNT = 1
+const OK_COUNT = 163
+const LOW_RES_COUNT = 8
+const MISSING_COUNT = 24
 
 type LogoStatus = 'ok' | 'low_res' | 'missing'
 
