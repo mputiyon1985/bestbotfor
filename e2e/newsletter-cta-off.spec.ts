@@ -9,6 +9,6 @@ for (const path of ['/compare/chatgpt-vs-claude', '/alternatives/chatgpt', '/bes
     await page.waitForTimeout(200)
     await expect(page.locator('[data-newsletter-cta]')).toHaveCount(0)
     await expect(page.locator('input[name="cta_path"]')).toHaveCount(0)
-    await expect(page.getByRole('heading', { name: 'Get one AI pick a week' })).toHaveCount(0)
+    await expect(page.getByRole('heading', { name: 'Get the right AI, every Thursday' })).toHaveCount(0)
   })
 }

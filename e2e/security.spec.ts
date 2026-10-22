@@ -1,8 +1,9 @@
 import { request as httpRequest } from 'node:http'
 import { expect, test } from '@playwright/test'
 import { homeDescription, homeTitle, notFoundDescription, notFoundTitle } from '../src/lib/metadata'
+import { CATALOG_TOOL_COUNT } from '../src/lib/seo-pages'
 import { toolCategories } from '../src/lib/tool-index'
-import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
+import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'
 
 function documentTitle(html: string): string {
   return html.match(/<title>([^<]*)<\/title>/)?.[1] ?? ''
@@ -176,7 +177,7 @@ test('a missing page is the not-found screen, not the home page', async () => {
 })
 
 test('the tools index is served and still rejects an unsafe slug', async () => {
-  const catalog = catalogFromSeeds()
+  const catalog = listedCatalogFromSeeds()
   const category = toolCategories(catalog.tools)[0]
   expect(category).toBeTruthy()
   if (!category) return
@@ -184,7 +185,7 @@ test('the tools index is served and still rejects an unsafe slug', async () => {
   const index = await rawStatus('/tools')
   expect(index.status).toBe(200)
   expect(index.body).toContain('Tools')
-  expect(index.body).toContain(`${catalog.tools.length} tools. Page 1 of`)
+  expect(index.body).toContain(`${CATALOG_TOOL_COUNT} tools. Page 1 of`)
   expect(index.body).not.toContain('not a tool in the catalog')
 
   const filtered = await rawStatus(`/tools?category=${category.slug}`)

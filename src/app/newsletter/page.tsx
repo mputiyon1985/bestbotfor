@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { ReadIssueOneLink } from '@/components/daily-bot-issue-link'
 import { NewsletterForm } from '@/components/newsletter-form'
 import { pageMetadata } from '@/lib/metadata'
 
 export const metadata: Metadata = pageMetadata({
   title: 'The Daily Bot',
-  description: 'Free AI newsletter, first issue coming soon. Unsubscribe anytime.',
+  description: 'Free AI newsletter. Goes out weekly on Thursdays. Unsubscribe anytime.',
   path: '/newsletter',
 })
 
@@ -15,10 +16,12 @@ export default function NewsletterPage() {
     <article className="max-w-xl space-y-4">
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Newsletter', path: '/newsletter' }]} />
       <h1 className="font-bold text-5xl">The Daily Bot</h1>
-      <p className="text-lg text-muted">Free AI newsletter, first issue coming soon. Unsubscribe anytime.</p>
+      <p className="text-lg text-muted">
+        Free AI newsletter. Goes out weekly on Thursdays. <ReadIssueOneLink />. Unsubscribe anytime.
+      </p>
       <p>
-        A short, plain-English note on AI tools and agents: what launched, what changed price, and which bot we’d pick. We store your email on our servers. When the digest is
-        connected to Beehiiv, that is where the issues are sent. If Beehiiv asks you to confirm, check your inbox.
+        A short, plain-English note on AI tools and agents: what launched, what changed price, and which bot we’d pick. We store your email on our servers.
+        If Beehiiv asks you to confirm, check your inbox.
       </p>
       <NewsletterForm source="newsletter" />
       <p className="text-sm text-muted">

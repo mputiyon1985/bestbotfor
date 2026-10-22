@@ -4,9 +4,9 @@ import { TOOL_LOGO_MARK_FILL, TOOL_LOGO_SIZE } from '../src/lib/logo-source'
 import { BEST_GUIDE_TOOL_COUNT } from '../src/lib/descriptions'
 import { toolsForTask } from '../src/lib/recommend'
 import { categorySlug, toolCategories } from '../src/lib/tool-index'
-import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
+import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'
 
-const catalog = catalogFromSeeds()
+const catalog = listedCatalogFromSeeds()
 
 // Mirrors TOOLS_PAGE_SIZE in src/lib/catalog-read.ts, which imports 'server-only'
 // and cannot load in Playwright. src/lib/catalog-read.test.ts pins the value.

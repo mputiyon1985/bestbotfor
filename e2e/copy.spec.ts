@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { PICKER_QUESTIONS } from '../src/components/picker-form'
 import { recommend } from '../src/lib/recommend'
-import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
+import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'
 
 const answers = { task: 'chat', budget: 'any', skill: 'beginner' } as const
 
@@ -48,7 +48,7 @@ test('how it works names the same three questions as the picker', async ({ page 
 })
 
 test('the scripted picker reaches a result within a few seconds', async ({ page }) => {
-  const pick = recommend(catalogFromSeeds(), answers)?.picks[0]
+  const pick = recommend(listedCatalogFromSeeds(), answers)?.picks[0]
   expect(pick).toBeTruthy()
   if (!pick) return
 

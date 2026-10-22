@@ -3,9 +3,9 @@ import { freePlanNotes } from '../src/data/free-plan-notes'
 import { FREE_PAGE_TASKS, FREE_PAGE_TOOL_COUNT } from '../src/lib/free-plan'
 import { buildFreePage } from '../src/lib/free-page'
 import { toolsForTask } from '../src/lib/recommend'
-import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
+import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'
 
-const catalog = catalogFromSeeds()
+const catalog = listedCatalogFromSeeds()
 
 test.describe('best free pages', () => {
   test.beforeEach(async ({ context }) => {

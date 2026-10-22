@@ -2,9 +2,9 @@ import { expect, test } from '@playwright/test'
 import { ALTERNATIVE_PAGES, comparePairsFor, rankAlternatives } from '../src/lib/alternatives'
 import { ALTERNATIVES_NEWSLETTER_TOOLS } from '../src/lib/newsletter-source'
 import { toolsForTask } from '../src/lib/recommend'
-import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
+import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'
 
-const catalog = catalogFromSeeds()
+const catalog = listedCatalogFromSeeds()
 
 test.describe('alternatives pages', () => {
   test.beforeEach(async ({ context }) => {

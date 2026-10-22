@@ -25,6 +25,11 @@
     "fetchedAt": "2026-10-16"
   },
   {
+    "slug": "amp",
+    "sourceUrl": "https://ampcode.com/app-icon.svg?v=4",
+    "fetchedAt": "2026-10-22"
+  },
+  {
     "slug": "anyword",
     "sourceUrl": "https://cdn.prod.website-files.com/65a5365ee6f4219bc2d2f822/65d85069221f999621761943_Group%201261159146.png",
     "fetchedAt": "2026-10-16"
@@ -135,6 +140,11 @@
     "fetchedAt": "2026-10-22"
   },
   {
+    "slug": "copy-ai",
+    "sourceUrl": "https://cdn.prod.website-files.com/628288c5cd3e8411b90a36a4/6793eea6a090d6d2f4fa5570_favicon_256x256%20(2).png",
+    "fetchedAt": "2026-10-22"
+  },
+  {
     "slug": "craft",
     "sourceUrl": "https://www.craft.do/images/favicon-large.png",
     "fetchedAt": "2026-10-16"
@@ -148,6 +158,11 @@
     "slug": "cursor",
     "sourceUrl": "https://cursor.com/marketing-static/favicon-light.svg",
     "fetchedAt": "2026-10-16"
+  },
+  {
+    "slug": "d-id",
+    "sourceUrl": "https://www.d-id.com/wp-content/uploads/2024/10/D-ID-logo-350x350-1-300x300.png",
+    "fetchedAt": "2026-10-22"
   },
   {
     "slug": "dadan",
@@ -183,6 +198,11 @@
     "slug": "exa",
     "sourceUrl": "https://docs.exa.ai/docs/_mintlify/favicons/exa-52/IXdJPX9fh2ANJEqv/_generated/favicon/android-chrome-192x192.png",
     "fetchedAt": "2026-10-17"
+  },
+  {
+    "slug": "factory",
+    "sourceUrl": "https://factory.com/favicon.svg",
+    "fetchedAt": "2026-10-22"
   },
   {
     "slug": "fastlane",
@@ -238,6 +258,11 @@
     "slug": "gemini-code-assist",
     "sourceUrl": "https://www.gstatic.com/images/branding/productlogos/gemini_2025/v1/web-96dp/logo_gemini_2025_color_2x_web_96dp.png",
     "fetchedAt": "2026-10-17"
+  },
+  {
+    "slug": "getimg",
+    "sourceUrl": "https://getimg.ai/icons/favicon.svg?v=20260703",
+    "fetchedAt": "2026-10-22"
   },
   {
     "slug": "github-copilot",
@@ -320,6 +345,11 @@
     "fetchedAt": "2026-10-16"
   },
   {
+    "slug": "jetbrains-ai",
+    "sourceUrl": "https://www.jetbrains.com/icon-512.png?r=1234",
+    "fetchedAt": "2026-10-22"
+  },
+  {
     "slug": "julius-ai",
     "sourceUrl": "https://julius.ai/favicon.ico?23f30d1c0141030b",
     "fetchedAt": "2026-10-16"
@@ -355,9 +385,19 @@
     "fetchedAt": "2026-10-16"
   },
   {
+    "slug": "kling",
+    "sourceUrl": "https://s16-kling.klingai.com/kos/s101/nlav112918/kling-homepage-aio/logo-180x180.png",
+    "fetchedAt": "2026-10-22"
+  },
+  {
     "slug": "krea",
     "sourceUrl": "https://www.krea.ai/favicon/favicon-192-dark.png",
     "fetchedAt": "2026-10-16"
+  },
+  {
+    "slug": "krisp",
+    "sourceUrl": "https://krisp.ai/wp-content/uploads/2023/12/cropped-favicon-1-192x192.png",
+    "fetchedAt": "2026-10-22"
   },
   {
     "slug": "lalal-ai",
@@ -403,6 +443,11 @@
     "slug": "luma-dream-machine",
     "sourceUrl": "https://cdn-luma.com/public/captures.lumalabs.ai/images/logo.svg",
     "fetchedAt": "2026-10-17"
+  },
+  {
+    "slug": "magnific",
+    "sourceUrl": "https://media.magnific.com/magnific-favicons/favicon.svg?v=2",
+    "fetchedAt": "2026-10-22"
   },
   {
     "slug": "make",
@@ -458,6 +503,11 @@
     "slug": "n8n",
     "sourceUrl": "https://n8n.io/apple-touch-icon.png",
     "fetchedAt": "2026-10-16"
+  },
+  {
+    "slug": "napkin-ai",
+    "sourceUrl": "https://www.napkin.ai/apple-touch-icon.png?v=2",
+    "fetchedAt": "2026-10-22"
   },
   {
     "slug": "needle",
@@ -798,6 +848,11 @@
     "slug": "vidnoz",
     "sourceUrl": "https://www.vidnoz.com/touch-icon-ios/touch-icon-iphone-retina.png",
     "fetchedAt": "2026-10-16"
+  },
+  {
+    "slug": "voiceflow",
+    "sourceUrl": "https://www.voiceflow.com/webclip.png",
+    "fetchedAt": "2026-10-22"
   },
   {
     "slug": "voicemaker",

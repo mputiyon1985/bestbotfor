@@ -2,9 +2,9 @@ import { BEST_GUIDE_FIT_LEGEND } from '../src/lib/descriptions'
 import { expect, test, type Locator, type Page } from '@playwright/test'
 import { BEST_GUIDE_TOOL_COUNT } from '../src/lib/descriptions'
 import { toolsForTask } from '../src/lib/recommend'
-import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
+import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'
 
-const catalog = catalogFromSeeds()
+const catalog = listedCatalogFromSeeds()
 
 /** Vertical span of the text, so a single line stays within one line box. */
 async function textLineHeight(locator: Locator) {
