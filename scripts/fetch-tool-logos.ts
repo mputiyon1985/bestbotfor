@@ -47,7 +47,7 @@ const USER_AGENTS = [
 ]
 const CACHE_ROOT = process.env.LOGO_FETCH_CACHE === '0' ? null : path.join('/tmp', 'tool-logo-cache-v2')
 
-const MISSING_SLUGS = ['aider', 'midjourney'] as const
+const MISSING_SLUGS = ['aider', 'gamma', 'midjourney', 'nightcafe', 'quillbot'] as const
 const LOW_RES_SLUGS = ['clearscope', 'clipdrop', 'cutbay', 'hailuo', 'jules', 'letsenhance', 'neuronwriter', 'tldv', 'wolfram-alpha'] as const
 
 /**
@@ -70,9 +70,9 @@ export const NEUTRAL_TILE_FILL = '#a8a8b6'
 /** Deepgram's safari pinned-tab SVG is one black shape with a cutout waveform. */
 export const NEUTRAL_TILE_SLUGS = ['deepgram'] as const
 
-const OK_COUNT = 184
+const OK_COUNT = 187
 const LOW_RES_COUNT = 9
-const MISSING_COUNT = 2
+const MISSING_COUNT = 5
 
 type LogoStatus = 'ok' | 'low_res' | 'missing'
 
