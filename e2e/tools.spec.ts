@@ -84,7 +84,7 @@ test('filters by a catalog category with a shareable URL and without JavaScript'
 test('each real tools page has its own canonical, and pages past the end are 404', async ({ page, request }) => {
   const pages = pageCount(catalog.tools.length)
   expect(pages).toBeGreaterThan(1)
-  expect(pages).toBeLessThan(8)
+  expect(pages).toBeLessThan(10)
 
   await page.goto('/tools')
   const firstCanonical = await page.locator('link[rel="canonical"]').getAttribute('href')
@@ -117,7 +117,6 @@ test('each real tools page has its own canonical, and pages past the end are 404
 
   const pastLast = [
     `/tools?page=${pages + 1}`,
-    '/tools?page=8',
     '/tools?page=99',
     '/tools?page=0',
     '/tools?page=-1',

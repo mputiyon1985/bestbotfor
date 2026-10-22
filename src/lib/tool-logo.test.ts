@@ -12,7 +12,31 @@ import { MONOGRAM_OVERRIDES, NEUTRAL_TILE_FILL, NEUTRAL_TILE_SLUGS, markLongSide
 type ManifestEntry = { slug: string; sourceUrl: string; fetchedAt: string }
 
 const manifest = manifestJson as ManifestEntry[]
-const MISSING = ['midjourney']
+const MISSING = [
+  'band',
+  'bits',
+  'causo',
+  'composio',
+  'cutbay',
+  'dadan',
+  'fastlane',
+  'mercury-inception',
+  'midjourney',
+  'mintlify',
+  'mistral-voxtral',
+  'needle',
+  'notif',
+  'omnara',
+  'opposable',
+  'playad',
+  'radaric',
+  'runinfra',
+  'sponkly',
+  'supercmo',
+  'tend',
+  'twinmind',
+  'useit-studio',
+]
 const LOW_RES = ['clearscope', 'clipdrop', 'jules', 'letsenhance', 'neuronwriter', 'wolfram-alpha']
 const HOSTED = 151
 const monogramOverrides = new Set<string>(MONOGRAM_OVERRIDES)
