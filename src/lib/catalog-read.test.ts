@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { affiliatePrograms, tasks, toolTasks, tools } from './db/schema'
 import { readTaskCandidates, readToolCategoryCounts, readToolPage, searchToolSummaries, TOOLS_PAGE_SIZE } from './catalog-read'
@@ -77,6 +79,9 @@ describe('catalog queries', () => {
 
 describe('TOOLS_PAGE_SIZE', () => {
   it('matches the copy in e2e/tools.spec.ts', () => {
-    expect(TOOLS_PAGE_SIZE).toBe(24)
+    const spec = readFileSync(path.join(process.cwd(), 'e2e/tools.spec.ts'), 'utf8')
+    const match = /const TOOLS_PAGE_SIZE = (\d+)/.exec(spec)
+    expect(match, 'e2e/tools.spec.ts must declare const TOOLS_PAGE_SIZE = <number>').not.toBeNull()
+    expect(Number(match?.[1])).toBe(TOOLS_PAGE_SIZE)
   })
 })
