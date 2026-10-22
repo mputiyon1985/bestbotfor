@@ -8,11 +8,25 @@ async function seed(db: Awaited<ReturnType<typeof createTestDatabase>>['db']) {
   await db.insert(tools).values([
     toolRow(1, 'alpha', 'Alpha'),
     toolRow(2, 'archived', 'Archived Tool'),
+    toolRow(3, 'unrated', 'Unrated Tool'),
   ])
   await db.insert(toolTasks).values([
     { toolId: 1, taskId: 1, fitScore: 80, notes: 'Alpha fits chat.' },
     { toolId: 2, taskId: 1, fitScore: 99, notes: 'Archived still fits on paper.' },
+    { toolId: 3, taskId: 1, fitScore: 95, notes: 'Unrated: no editorial score, so never a quiz match.' },
   ])
+  await db.insert(toolScores).values({
+    toolId: 1,
+    features: 4,
+    value: 4,
+    ease: 4,
+    quality: 4,
+    overall: 4,
+    rationale: 'Rated.',
+    sources: '[]',
+    reviewedAt: '2026-10-16',
+    quizEligible: true,
+  })
   await db.insert(toolScores).values({
     toolId: 2,
     features: 1,

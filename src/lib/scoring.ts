@@ -26,6 +26,22 @@ export type ScoreableTool = {
   notes: string
   /** False drops the tool from the quiz pick and its alternatives. Omitted means eligible. */
   quizEligible?: boolean
+  /**
+   * Editorial score. Null means unrated: the tool never appears in quiz
+   * matching (picks, all matches, or rankings built on them) and stays only on
+   * its category page, labeled Unrated. Omitted (bare test fixtures) is not
+   * treated as unrated.
+   */
+  editorial?: unknown
+}
+
+/**
+ * Quiz matching gate. A tool qualifies only with a fit at or above the
+ * minimum, quiz eligibility, and an editorial rating (no made-up match score
+ * for unrated tools).
+ */
+export function isQuizMatchable(tool: Pick<ScoreableTool, 'fitScore' | 'quizEligible' | 'editorial'>): boolean {
+  return tool.fitScore >= MIN_QUIZ_FIT_SCORE && tool.quizEligible !== false && tool.editorial !== null
 }
 
 export type RankedTool = ScoreableTool & {
@@ -137,7 +153,7 @@ export function selectQuizPicks<T extends ScoreableTool>(
   tools: T[],
   answers: { budget: RankBudget; skill: Skill },
 ): QuizPick<T>[] {
-  const qualified = tools.filter((tool) => tool.fitScore >= MIN_QUIZ_FIT_SCORE && tool.quizEligible !== false)
+  const qualified = tools.filter(isQuizMatchable)
   return rankTools(qualified, answers)
     .slice(0, QUIZ_RESULT_COUNT)
     .map((tool) => ({

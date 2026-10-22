@@ -302,8 +302,10 @@ describe('Our rating', () => {
     expect(catalog.tools.find((tool) => tool.slug === 'semantic-scholar')?.pros).toEqual([])
     expect(catalog.tools.find((tool) => tool.slug === 'semantic-scholar')?.cons).toEqual([])
     expect(supplementalProsConsSeeds.map((row) => row.slug).sort()).toEqual(['composio', 'cursor', 'mistral-voxtral', 'omnara', 'twinmind', 'windsurf'])
-    const perplexity = chat?.picks.find((pick) => pick.slug === 'perplexity')
-    expect(perplexity?.tool.editorial).toBeNull()
-    expect(chat?.picks.some((pick) => pick.tool.editorial)).toBe(true)
+    // Perplexity is unrated: kept on its category page, never a quiz match.
+    expect(catalog.tools.find((tool) => tool.slug === 'perplexity')?.editorial).toBeNull()
+    expect(chat?.picks.some((pick) => pick.slug === 'perplexity')).toBe(false)
+    expect(chat?.picks.length).toBeGreaterThan(0)
+    expect(chat?.picks.every((pick) => pick.tool.editorial !== null)).toBe(true)
   })
 })
