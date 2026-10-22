@@ -13,17 +13,21 @@ type ManifestEntry = { slug: string; sourceUrl: string; fetchedAt: string }
 
 const manifest = manifestJson as ManifestEntry[]
 const MISSING = [
+  'amp',
   'band',
   'bits',
   'causo',
   'composio',
+  'copy-ai',
   'cutbay',
   'dadan',
+  'factory',
   'fastlane',
   'mercury-inception',
   'midjourney',
   'mintlify',
   'mistral-voxtral',
+  'napkin-ai',
   'needle',
   'notif',
   'omnara',

@@ -3,6 +3,7 @@ import { elevenlabsMusicFit, musicSeoToolSeeds } from './music-seo'
 
 const REVIEWED = '2026-10-15'
 const SCOUTED_2026_10_22 = '2026-10-22'
+const FRESHNESS_2026_10_22 = '2026-10-22'
 
 const none: AffiliateSeed = {
   hasProgram: false,
@@ -710,6 +711,7 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
+  // pricing verified 2026-10-22 at https://pictory.ai/pricing | paid; Starter $25/mo billed annually ($29 monthly); 14-day free trial only
   tool({
     slug: 'pictory',
     name: 'Pictory',
@@ -719,12 +721,12 @@ export const toolSeeds: ToolSeed[] = [
     category: 'AI video',
     shortDesc: 'Turns a blog post or script into a narrated video with stock visuals.',
     longDesc: 'Pictory is a shortcut from text to a social or marketing video. The look is assembled, not filmed. Use a generative video tool when you need original motion.',
-    pricingModel: 'freemium',
-    priceFromUsd: null,
+    pricingModel: 'paid',
+    priceFromUsd: 25,
     hasFreeTier: false,
     skillLevel: 'beginner',
     platforms: ['Web'],
-    lastVerifiedAt: '2026-10-18',
+    lastVerifiedAt: '2026-10-22',
     fits: [
       { task: 'video', score: 74, notes: 'Text to a stock-style video for marketing.' },
     ],
@@ -1403,6 +1405,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // pricing verified 2026-10-15 at https://ai.google.dev/pricing | budget fit: free | best for: prototyping, gemini, api
+  // pricing checked 2026-10-22 at https://ai.google.dev/pricing | AI Studio use is free; Gemini API has Free + Paid tiers -> freemium (editorial call)
   tool({
     slug: 'google-ai-studio',
     name: 'Google AI Studio',
@@ -1412,7 +1415,7 @@ export const toolSeeds: ToolSeed[] = [
     category: 'Vibe coding',
     shortDesc: 'Google’s browser workspace for trying Gemini models and prototyping apps.',
     longDesc: 'A free place to test prompts and prototypes before you pay for the API. Free-tier content may be used to improve Google’s products.',
-    pricingModel: 'free',
+    pricingModel: 'freemium',
     priceFromUsd: null,
     hasFreeTier: true,
     skillLevel: 'beginner',
@@ -3511,6 +3514,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Voice | scout rating 4.2 (not shown) | pricing: API usage: Mini Transcribe 3 $0.0035/min; Realtime Transcribe $0.008/min; Small Transcribe $0.004/min; Mini TTS 3 $13 pe
+  // pricing source: Mistral API price table https://mistral.ai/pricing#api-pricing (not the Le Chat plans on the same page); keep paid until the Voxtral API rate is re-verified
   tool({
     slug: 'mistral-voxtral',
     name: 'Mistral Voxtral 3',
@@ -3776,6 +3780,83 @@ export const toolSeeds: ToolSeed[] = [
     fits: [],
     affiliate: { ...none, status: 'verify' },
   }),
+  // freshness 2026-10-22 (Forge) | new tools, unrated, official domains only, no affiliate links
+  tool({
+    slug: 'amp',
+    name: 'Amp',
+    vendor: 'Amp',
+    url: 'https://ampcode.com',
+    allowedHosts: ['ampcode.com'],
+    category: 'Coding assistant',
+    shortDesc: 'A coding agent with a free Hobby plan and paid plans for hosted cloud runners.',
+    longDesc: 'Amp is a coding agent. The free Hobby plan lets you bring your own model keys or existing ChatGPT and Claude subscriptions and run self-hosted runners at no charge. The Individual plan, from $20 a month, adds Amp-hosted cloud runtime.',
+    pricingModel: 'freemium',
+    priceFromUsd: 20,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['Web', 'CLI'],
+    lastVerifiedAt: FRESHNESS_2026_10_22,
+    fits: [],
+    affiliate: { ...none, status: 'verify' },
+  }),
+  // source: https://ampcode.com/pricing (Hobby Free; Individual $20/mo)
+  tool({
+    slug: 'factory',
+    name: 'Factory',
+    vendor: 'Factory',
+    url: 'https://factory.ai',
+    allowedHosts: ['factory.ai'],
+    category: 'Coding assistant',
+    shortDesc: 'Software development agents ("Droids") for individuals and teams.',
+    longDesc: 'Factory sells agent-native software development agents it calls Droids. Plans start at Pro for $20 a month, with Plus at $100 and Max at $200 for more usage. Teams pay $60 a month per team plus $40 per seat.',
+    pricingModel: 'paid',
+    priceFromUsd: 20,
+    hasFreeTier: false,
+    skillLevel: 'pro',
+    platforms: ['Web', 'CLI'],
+    lastVerifiedAt: FRESHNESS_2026_10_22,
+    fits: [],
+    affiliate: { ...none, status: 'verify' },
+  }),
+  // source: https://factory.ai/pricing
+  tool({
+    slug: 'napkin-ai',
+    name: 'Napkin AI',
+    vendor: 'Napkin',
+    url: 'https://www.napkin.ai',
+    allowedHosts: ['napkin.ai', 'www.napkin.ai'],
+    category: 'Design',
+    shortDesc: 'Turns text into diagrams, visuals and presentation slides.',
+    longDesc: 'Napkin generates visuals from your text, and Slides (in beta) turns ideas into decks. The Free Forever plan includes 500 AI credits a week, with Napkin branding on visuals. Plus costs $9 per person a month for 10,000 credits a month.',
+    pricingModel: 'freemium',
+    priceFromUsd: 9,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['Web'],
+    lastVerifiedAt: FRESHNESS_2026_10_22,
+    fits: [],
+    affiliate: { ...none, status: 'verify' },
+  }),
+  // source: https://www.napkin.ai/pricing
+  tool({
+    slug: 'copy-ai',
+    name: 'Copy.ai',
+    vendor: 'CopyAI, Inc.',
+    url: 'https://www.copy.ai',
+    allowedHosts: ['copy.ai', 'www.copy.ai'],
+    category: 'Writing',
+    shortDesc: 'A go-to-market AI platform for sales and marketing copy and workflows.',
+    longDesc: 'Copy.ai positions itself as a go-to-market AI platform with chat and workflows on OpenAI, Anthropic and Gemini models. Self-serve plans start at $29 a month, or $24 a month billed annually. Growth is $1,000 a month and Enterprise is custom.',
+    pricingModel: 'paid',
+    priceFromUsd: 24,
+    hasFreeTier: false, // pricing page shows no $0 plan today; "Try for free" CTA only — verify
+    skillLevel: 'beginner',
+    platforms: ['Web'],
+    lastVerifiedAt: FRESHNESS_2026_10_22,
+    fits: [],
+    affiliate: { ...none, status: 'verify' },
+  }),
+  // source: https://www.copy.ai/prices
   ...musicSeoToolSeeds,
 ]
 
