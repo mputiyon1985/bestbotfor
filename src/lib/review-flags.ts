@@ -40,8 +40,8 @@ export const POLICY_PAGES_LAWYER_APPROVED: boolean = false
 /**
  * Production launch switch for the newsletter CTA (inline box + sticky bar)
  * on /compare/*, /alternatives/*, /best/*, and /guides/* pages.
- * Ships false. Production stays off until Mark approves the copy and Sentinel
- * passes it, and a launch PR sets this to true, even when NEWSLETTER_CTA is on.
- * A code constant, same as SHOW_SCORES.
+ * Launched: Mark approved option A copy (#141) and the prod go-live on 2026-10-22.
+ * Production also needs NEWSLETTER_CTA=on in the Vercel production env; this
+ * constant alone does not turn the CTA on. A code constant, same as SHOW_SCORES.
  */
-export const NEWSLETTER_CTA_PRODUCTION_LAUNCH: boolean = false
+export const NEWSLETTER_CTA_PRODUCTION_LAUNCH: boolean = true
