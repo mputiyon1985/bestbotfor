@@ -140,6 +140,11 @@
     "fetchedAt": "2026-10-22"
   },
   {
+    "slug": "consensus",
+    "sourceUrl": "https://consensus.app/favicon.svg",
+    "fetchedAt": "2026-10-22"
+  },
+  {
     "slug": "copy-ai",
     "sourceUrl": "https://cdn.prod.website-files.com/628288c5cd3e8411b90a36a4/6793eea6a090d6d2f4fa5570_favicon_256x256%20(2).png",
     "fetchedAt": "2026-10-22"
@@ -258,6 +263,11 @@
     "slug": "gemini-code-assist",
     "sourceUrl": "https://www.gstatic.com/images/branding/productlogos/gemini_2025/v1/web-96dp/logo_gemini_2025_color_2x_web_96dp.png",
     "fetchedAt": "2026-10-17"
+  },
+  {
+    "slug": "genspark",
+    "sourceUrl": "https://www.genspark.ai/apple-touch-icon.png",
+    "fetchedAt": "2026-10-22"
   },
   {
     "slug": "getimg",
@@ -453,6 +463,11 @@
     "slug": "make",
     "sourceUrl": "https://cdn.prod.website-files.com/6a294495bc84130c6dd0c4fd/6a7b9441756d01907cfc9bc0_favicon-32x32.png",
     "fetchedAt": "2026-10-16"
+  },
+  {
+    "slug": "manus",
+    "sourceUrl": "https://manus.im/icon.svg?icon.2kbcs13ndm9it.svg",
+    "fetchedAt": "2026-10-22"
   },
   {
     "slug": "marketmuse",

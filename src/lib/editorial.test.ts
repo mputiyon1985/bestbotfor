@@ -49,14 +49,14 @@ describe('Our rating', () => {
 
   it('accepts the checked seed and rejects invented or incomplete rows', () => {
     expect(ratingSeeds).toHaveLength(95)
-    expect(unratedSlugs).toHaveLength(100)
+    expect(unratedSlugs).toHaveLength(106)
     expect(ratingSeeds.find((row) => row.slug === 'grok')?.rationale).toBe('')
     expect(ratingSeeds.find((row) => row.slug === 'semantic-scholar')?.rationale).toBe('')
     expect(unratedSlugs).not.toContain('cursor')
     expect(unratedSlugs).not.toContain('windsurf')
     expect(unratedSlugs).toContain('perplexity')
     expect(unratedSlugs).toContain('se-ranking')
-    expect(toolSeeds).toHaveLength(195)
+    expect(toolSeeds).toHaveLength(201)
     const rated = new Set(ratingSeeds.map((row) => row.slug))
     expect([...slugs].filter((slug) => !rated.has(slug)).sort()).toEqual([...unratedSlugs])
     expect(JSON.stringify(ratingSeeds)).not.toContain('pcmag.com')
