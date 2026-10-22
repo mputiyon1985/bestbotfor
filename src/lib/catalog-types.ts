@@ -11,6 +11,25 @@ export type AffiliateSeed = {
   sourceUrl: string | null
   status: AffiliateStatus
   commissionNote: string | null
+  /**
+   * Reviewed affiliate link shipped in code. Used by /go only when the DB has no
+   * affiliate_url, and only if it passes the tool's allowedHosts. The seed script
+   * still never writes it to the DB.
+   */
+  affiliateUrl?: string
+}
+
+/**
+ * Free-plan catalog fields for /best/[task]/free. All three are required for a
+ * tool to count as documented; see src/lib/free-plan.ts for the index rule.
+ */
+export type FreePlanFields = {
+  /** One or two sentences on what the free plan includes and its key limits. */
+  freePlanNote: string
+  /** The vendor's own pricing or plan page (https). */
+  freePlanSource: string
+  /** ISO date (YYYY-MM-DD, ET) the source was last checked. */
+  freePlanCheckedAt: string
 }
 
 export type TaskSeed = {
@@ -40,6 +59,19 @@ export type ToolSeed = {
   affiliate: AffiliateSeed
   /** The public name and URL still need a fresh check. No editorial score is shown. */
   needsVerification?: boolean
+  /**
+   * Kept in the catalog seed but left off every public surface: the seed writes
+   * tools.status = 'unlisted', so site pages, search, the quiz and the sitemap
+   * (all filter status = 'active') skip it, and /go/<slug> answers 404.
+   */
+  unlisted?: boolean
+  /**
+   * ET date the tool joined the catalog. Set for tools added in #138 (bot scout
+   * 2026-10-22) or later. Those tools need an editorial rating to appear in
+   * quiz matching (see src/lib/quiz-gate.ts); tools without it keep the
+   * original quiz behavior.
+   */
+  addedAt?: string
 }
 
 export type CatalogTask = TaskSeed
@@ -67,7 +99,7 @@ export type CatalogTool = {
   platforms: string[]
   lastVerifiedAt: string
   fits: CatalogFit[]
-  affiliate: AffiliateSeed & { affiliateUrl: string | null }
+  affiliate: Omit<AffiliateSeed, 'affiliateUrl'> & { affiliateUrl: string | null }
   /** Null when this tool has no verified editorial score. */
   editorial: EditorialScore | null
   pros: ProCon[]

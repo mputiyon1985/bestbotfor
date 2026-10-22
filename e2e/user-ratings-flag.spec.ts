@@ -18,6 +18,9 @@ const HIDDEN_ROUTES = [
   '/admin/vendor-domains',
   '/admin/sponsor-links',
   '/admin/mfa-required',
+  '/admin/sponsors',
+  '/Admin/Sponsors',
+  '/admin/%73ponsors',
   '/api/tools/chatgpt/reviews',
   '/review-guidelines',
   '/how-user-ratings-work',
@@ -64,7 +67,7 @@ test('privacy, terms, and disclosure omit the ratings draft while the flag is of
     }
   }
   const privacy = await (await request.get('/privacy')).text()
-  expect(privacy).toContain('It was last updated on October 17, 2026.')
+  expect(privacy).toContain('It was last updated on October 19, 2026.')
   expect(privacy).not.toContain('ratings and reviews section')
   const terms = await (await request.get('/terms')).text()
   expect(terms).toContain('Last updated October 15, 2026.')

@@ -1,4 +1,5 @@
 import { and, asc, count, eq, inArray, sql } from 'drizzle-orm'
+import { servesAffiliateLink } from './go-redirect'
 import type { Database } from './db/client'
 import { affiliatePrograms, tasks, toolProsCons, toolScores, toolTasks, tools } from './db/schema'
 import { listMatches } from './matches'
@@ -35,6 +36,8 @@ export type ToolSummary = {
   vendor: string
   category: string
   shortDesc: string
+  /** False when the tool has no editorial score; the tools index labels it Unrated. */
+  rated?: boolean
 }
 
 export type ToolPage = {
@@ -56,6 +59,8 @@ export type TaskCandidate = {
   lastVerifiedAt: string
   fitScore: number
   notes: string
+  /** True when affiliate_programs.affiliate_url is set (read only). */
+  hasAffiliateLink?: boolean
   editorial: EditorialScore | null
   pros: ProCon[]
   cons: ProCon[]
@@ -322,29 +327,34 @@ export async function readToolPage(db: Database, page: number, category: string 
     vendor: tools.vendor,
     category: tools.category,
     shortDesc: tools.shortDesc,
+    needsVerification: tools.needsVerification,
+    scoreToolId: toolScores.toolId,
   }
-  const [countRows, rows] = await Promise.all([
-    db.select({ total: count() }).from(tools).where(where),
+  const selectPage = (offset: number) =>
     db
       .select(pageSelect)
       .from(tools)
+      .leftJoin(toolScores, eq(toolScores.toolId, tools.id))
       .where(where)
       .orderBy(asc(tools.name))
       .limit(TOOLS_PAGE_SIZE)
-      .offset((requested - 1) * TOOLS_PAGE_SIZE),
+      .offset(offset)
+  const summarize = (rows: Awaited<ReturnType<typeof selectPage>>): ToolSummary[] =>
+    rows.map(({ needsVerification, scoreToolId, ...row }) => ({
+      ...row,
+      // Same rule as editorialOf: a score row and no pending verification.
+      rated: scoreToolId != null && !needsVerification,
+    }))
+  const [countRows, rows] = await Promise.all([
+    db.select({ total: count() }).from(tools).where(where),
+    selectPage((requested - 1) * TOOLS_PAGE_SIZE),
   ])
   const total = Number(countRows[0]?.total ?? 0)
   const pageCount = Math.max(1, Math.ceil(total / TOOLS_PAGE_SIZE))
   const current = Math.min(requested, pageCount)
-  if (current === requested) return { tools: rows, total, page: current, pageSize: TOOLS_PAGE_SIZE, pageCount }
-  const clamped = await db
-    .select(pageSelect)
-    .from(tools)
-    .where(where)
-    .orderBy(asc(tools.name))
-    .limit(TOOLS_PAGE_SIZE)
-    .offset((current - 1) * TOOLS_PAGE_SIZE)
-  return { tools: clamped, total, page: current, pageSize: TOOLS_PAGE_SIZE, pageCount }
+  if (current === requested) return { tools: summarize(rows), total, page: current, pageSize: TOOLS_PAGE_SIZE, pageCount }
+  const clamped = await selectPage((current - 1) * TOOLS_PAGE_SIZE)
+  return { tools: summarize(clamped), total, page: current, pageSize: TOOLS_PAGE_SIZE, pageCount }
 }
 
 export async function readTaskCandidates(
@@ -381,9 +391,11 @@ export async function readTaskCandidates(
       needsVerification: tools.needsVerification,
       fitScore: toolTasks.fitScore,
       notes: toolTasks.notes,
+      affiliateUrl: affiliatePrograms.affiliateUrl,
     })
     .from(toolTasks)
     .innerJoin(tools, eq(tools.id, toolTasks.toolId))
+    .leftJoin(affiliatePrograms, eq(affiliatePrograms.toolId, tools.id))
     .where(and(eq(toolTasks.taskId, task.id), eq(tools.status, 'active')))
 
   const ids = rows.map((row) => row.id)
@@ -409,6 +421,7 @@ export async function readTaskCandidates(
     lastVerifiedAt: row.lastVerifiedAt,
     fitScore: row.fitScore,
     notes: row.notes,
+    hasAffiliateLink: servesAffiliateLink(row.slug, row.affiliateUrl),
     ...(row.needsVerification
       ? { editorial: null, pros: [], cons: [], quizEligible: true }
       : editorialOf(scoreByTool.get(row.id), prosByTool.get(row.id), context)),

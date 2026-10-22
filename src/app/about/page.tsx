@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { SocialIconRow } from '@/components/social-icons'
+import { EDITOR_BIO } from '@/content/category-guides'
 import { pageMetadata } from '@/lib/metadata'
-import { TAGLINE } from '@/lib/site'
+import { BUSINESS_PHONE_DISPLAY, BUSINESS_PHONE_HREF, TAGLINE } from '@/lib/site'
 
 export const metadata: Metadata = pageMetadata({
   title: 'About',
@@ -21,12 +23,26 @@ export default function AboutPage() {
       </p>
       <p>
         The rank starts from an editorial fit score for the job. Budget and experience shift that score by a fixed amount.
-        A tool does not rank higher because it has an affiliate program. We are not enrolled in those programs, and the
-        buttons on this site go to each company’s own website.
+        A tool does not rank higher because it has an affiliate program. Most buttons on this site go to each company’s
+        own website. When a button uses an affiliate link, a note next to it says so, and we may earn a commission.
       </p>
       <p>
         The catalog was reviewed on October 15, 2026. Product details change. Check the vendor’s site before you pay or
         install anything.
+      </p>
+      <h2 className="font-bold text-2xl">Our editor</h2>
+      <p data-editor-bio>{EDITOR_BIO}</p>
+      <h2 className="font-bold text-2xl">Follow us</h2>
+      <nav aria-label="Follow BestBotFor on social media">
+        <SocialIconRow className="-ml-3" />
+      </nav>
+      <h2 className="font-bold text-2xl">Contact</h2>
+      <p>
+        Call us at{' '}
+        <a className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4" href={BUSINESS_PHONE_HREF}>
+          {BUSINESS_PHONE_DISPLAY}
+        </a>
+        .
       </p>
     </article>
   )

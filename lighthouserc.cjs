@@ -6,9 +6,8 @@ module.exports = {
     collect: {
       url: [
         `${base}/`,
-        `${base}/result?task=chat&view=all`,
-        `${base}/result?task=seo&view=all`,
         `${base}/best/coding`,
+        `${base}/best/seo`,
         `${base}/tools`,
         `${base}/tools/chatgpt`,
       ],

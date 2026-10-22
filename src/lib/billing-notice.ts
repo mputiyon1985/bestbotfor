@@ -14,6 +14,7 @@ export function billingNoticeQuery(decision: DeniedRateLimit): 'rate' | 'unavail
 export function checkoutNoticeMessage(notice: string): string | null {
   if (notice === 'unavailable') return 'Checkout is temporarily unavailable. Try again.'
   if (notice === 'rate') return 'Too many checkout attempts from this account. Try again in an hour.'
+  if (notice === 'founding-closed') return 'The founding offer has just closed. You can still join at the regular price.'
   return null
 }
 

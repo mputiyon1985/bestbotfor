@@ -1,5 +1,7 @@
 import Link from 'next/link'
+import { DailyBotCapture } from '@/components/daily-bot-capture'
 import { JsonLd } from '@/components/json-ld'
+import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
 import { OutboundLink } from '@/components/outbound-link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { ToolLogo } from '@/components/tool-logo'
@@ -14,7 +16,7 @@ import type { EditorialScore, ProCon } from '@/lib/editorial'
 import type { QuizPick, RankBudget, ScoreableTool } from '@/lib/scoring'
 
 type MatchTool = QuizPick<
-  ScoreableTool & { shortDesc?: string; editorial?: EditorialScore | null; pros?: ProCon[]; cons?: ProCon[] }
+  ScoreableTool & { shortDesc?: string; hasAffiliateLink?: boolean; editorial?: EditorialScore | null; pros?: ProCon[]; cons?: ProCon[] }
 >
 
 export function AllMatches({
@@ -84,9 +86,10 @@ export function AllMatches({
               <p className="mt-2 text-sm text-muted">{tool.reason}</p>
               <EditorialCompact editorial={tool.editorial} pros={tool.pros} cons={tool.cons} />
               <p className="mt-2 text-sm">{priceLabel(tool)}</p>
-              <OutboundLink slug={tool.slug} className="mt-3 inline-flex min-h-12 items-center font-semibold underline">
+              <OutboundLink slug={tool.slug} affiliate={Boolean(tool.hasAffiliateLink)} className="mt-3 inline-flex min-h-12 items-center font-semibold underline">
                 Visit {tool.name}
               </OutboundLink>
+{tool.hasAffiliateLink ? <AffiliateDisclosure affiliate /> : null}
             </li>
           ))}
         </ul>
@@ -128,6 +131,7 @@ export function AllMatches({
           ) : null}
         </div>
       </nav>
+      <DailyBotCapture source="result" />
     </article>
   )
 }

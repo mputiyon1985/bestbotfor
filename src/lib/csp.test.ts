@@ -26,4 +26,24 @@ describe('content security policy', () => {
     expect(headers['X-Frame-Options']).toBe('DENY')
     expect(headers['Referrer-Policy']).toBe('strict-origin-when-cross-origin')
   })
+
+  it('allows the Clerk production custom domains and keeps *.clerk.com', () => {
+    const policy = buildContentSecurityPolicy('n', false)
+    const directive = (name: string) => {
+      const found = policy.split('; ').find((d) => d.startsWith(`${name} `))
+      expect(found, name).toBeDefined()
+      return found!.split(' ').slice(1)
+    }
+    for (const name of ['script-src', 'connect-src', 'img-src', 'frame-src']) {
+      expect(directive(name)).toContain('https://clerk.bestbotfor.com')
+    }
+    expect(directive('frame-src')).toContain('https://accounts.bestbotfor.com')
+    expect(directive('form-action')).toEqual(["'self'", 'https://accounts.bestbotfor.com'])
+    expect(directive('script-src')).toContain('https://*.clerk.com')
+    expect(directive('connect-src')).toContain('https://*.clerk.com')
+    expect(directive('worker-src')).toEqual(["'self'", 'blob:'])
+    expect(directive('script-src')).not.toContain("'unsafe-inline'")
+    expect(policy).not.toMatch(/https:\/\/\*\.bestbotfor\.com/)
+    expect(directive('default-src')).toEqual(["'self'"])
+  })
 })

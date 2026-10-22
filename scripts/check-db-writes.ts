@@ -5,15 +5,42 @@ const ALLOWED = new Set([
   'src/lib/rate-limit.ts',
   'src/lib/db/client.ts',
   'src/lib/newsletter.ts',
+  'src/lib/suggestions.ts',
+  // Pending Beehiiv backfill claims a row before the call, then marks it synced.
+  'src/lib/newsletter-backfill.ts',
   'src/lib/stripe-webhook.ts',
+  // Sponsor tool cards, their review audit log, and the checkout slot claim.
+  'src/lib/sponsor-card.ts',
+  'src/lib/sponsor-availability.ts',
+  // Daily placement impression and Sponsored-card click totals. No visitor identifier.
+  'src/lib/sponsor-impressions.ts',
   'src/lib/members.ts',
+  'src/lib/pick-save.ts',
   'src/app/go/[slug]/route.ts',
   'src/lib/db/migrate.ts',
   'scripts/seed.ts',
   'scripts/migrate.ts',
+  'scripts/a2-catalog-corrections.ts',
+  // Prebuild step. Only touches the local file data/catalog-fallback.db built from
+  // bundled seeds, never a hosted DB: PRAGMA wal_checkpoint, journal_mode = DELETE
+  // and VACUUM so the file is readable on a read-only serverless filesystem.
+  'scripts/build-catalog-fallback.ts',
   'drizzle/0004_retire_quiz_fits.sql',
   'drizzle/0007_drop_non_forge_scores.sql',
+  // Sponsorship rows are inserted from src/lib/stripe-webhook.ts.
+  // 0009 is reviewed DDL for stripe_events and sponsorships.
+  'drizzle/0009_sponsorships.sql',
   'drizzle/0011_user_reviews.sql',
+  'drizzle/0019_subscriber_status.sql',
+  // Daily retention cron. Deletes rate_limits rows whose reset_at is more
+  // than 24 hours old, including rows left under a previous HMAC key, and
+  // result_rate_windows rows whose expires_at is more than 24 hours old.
+  // Those are the quiz /result rows written by consumeResultRateLimit.
+  // Clears clicks.ip_hash after 90 days. Clears suggestions.email after 90
+  // days and deletes suggestion rows after 24 months. The flag fails closed, production
+  // stays off until DATA_RETENTION_PRODUCTION_LAUNCH, and dry-run is the default.
+  // No other cron route may write.
+  'src/app/api/cron/data-retention/route.ts',
 ])
 
 const ROOTS = ['src', 'scripts', 'drizzle']

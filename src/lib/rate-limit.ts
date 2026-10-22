@@ -3,6 +3,7 @@ import type { Client } from '@libsql/client'
 import { configureFileDatabase, limiterClientFor } from './db/client'
 import { isDeadline, withDeadline } from './deadline'
 import type { Database } from './db'
+import { RESULT_WINDOW_PURGE_INTERVAL_MS } from './rate-windows'
 
 /**
  * One SQLite statement inserts or increments the window. Concurrent requests
@@ -228,7 +229,6 @@ export async function purgeExpiredResultWindows(db: Database, now = Date.now()):
   }
 }
 
-const RESULT_WINDOW_PURGE_INTERVAL_MS = 60_000
 let lastResultWindowPurge = 0
 
 /** At most one cleanup per process per minute, so a burst does not queue a delete per request. */

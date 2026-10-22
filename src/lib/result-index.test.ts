@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { taskSeeds } from '@/data/catalog'
 import {
-  indexableMatchPath,
+  matchesCanonicalPath,
   matchesPageTitle,
   matchesRobots,
   quizResultRobots,
@@ -14,20 +14,16 @@ describe('result indexing', () => {
     const budgets = ['free', 'low', 'any'] as const
     const skills = ['beginner', 'intermediate', 'pro'] as const
     expect(taskSeeds.length * budgets.length * skills.length).toBe(153)
-    for (const budget of ['free', 'low'] as const) {
-      expect(matchesRobots(budget)).toEqual({ index: false, follow: true })
-    }
   })
 
-  it('keeps the unfiltered match list indexable and is the only sitemap entry', () => {
-    expect(matchesRobots('any')).toEqual({ index: true, follow: true })
+  it('noindexes every match list and canonicalizes it to the task guide', () => {
+    expect(matchesRobots()).toEqual({ index: false, follow: true })
     for (const task of taskSeeds) {
-      const path = indexableMatchPath(task.slug)
-      expect(path).toBe(`/result?task=${task.slug}&view=all`)
-      expect(path).not.toContain('budget=')
-      expect(path).not.toContain('skill=')
-      expect(path).not.toContain('page=')
+      expect(matchesCanonicalPath(task.slug, 'any', 1, true)).toBe(`/best/${task.slug}`)
+      expect(matchesCanonicalPath(task.slug, 'low', 2, true)).toBe(`/best/${task.slug}`)
     }
+    // A task with no /best guide keeps its own canonical rather than pointing at a 404.
+    expect(matchesCanonicalPath('chat', 'any', 1, false)).toBe('/result?task=chat&view=all')
   })
 })
 

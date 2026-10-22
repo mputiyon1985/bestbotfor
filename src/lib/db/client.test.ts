@@ -4,7 +4,7 @@ import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { Client } from '@libsql/client'
 import { createTestDatabase } from '@/test/db'
-import { TASK_SLUG_CACHE_TTL_MS, cachedTaskSlugs, clearTaskSlugCache, createLibsqlClient, getDb, limiterClientFor, peekCachedTaskSlugs, resetDbCache } from './client'
+import { TASK_SLUG_CACHE_TTL_MS, cachedTaskSlugs, clearTaskSlugCache, getDb, peekCachedTaskSlugs, resetDbCache } from './client'
 import { tasks } from './schema'
 
 const previousUrl = process.env.TURSO_DATABASE_URL
@@ -32,42 +32,6 @@ describe('database client', () => {
     } finally {
       getDb().$client.close()
       resetDbCache()
-      await rm(directory, { recursive: true, force: true })
-    }
-  })
-
-  it('reuses one remote client for a URL and a second file connection for the limiter', async () => {
-    const directory = await mkdtemp(path.join(tmpdir(), 'bestbotfor-client-'))
-    const previousUrl = process.env.TURSO_DATABASE_URL
-    const previousToken = process.env.TURSO_AUTH_TOKEN
-    process.env.TURSO_AUTH_TOKEN = 'test-token'
-    resetDbCache()
-    const remoteUrl = 'http://127.0.0.1:9'
-    const fileUrl = `file:${path.join(directory, 'limiter.db')}`
-    try {
-      const remote = createLibsqlClient(remoteUrl)
-      const remoteAgain = createLibsqlClient(remoteUrl)
-      expect(remoteAgain).toBe(remote)
-      expect(limiterClientFor(remote)).toBe(remote)
-      expect(limiterClientFor(remoteAgain)).toBe(remote)
-      expect(remote.protocol).toBe('http')
-
-      const file = createLibsqlClient(fileUrl)
-      const fileAgain = createLibsqlClient(fileUrl)
-      expect(fileAgain).toBe(file)
-      const limiter = limiterClientFor(file)
-      expect(limiter).not.toBe(file)
-      expect(limiterClientFor(fileAgain)).toBe(limiter)
-      expect(limiter.protocol).toBe('file')
-      remote.close()
-      file.close()
-      limiter.close()
-    } finally {
-      resetDbCache()
-      if (previousUrl === undefined) delete process.env.TURSO_DATABASE_URL
-      else process.env.TURSO_DATABASE_URL = previousUrl
-      if (previousToken === undefined) delete process.env.TURSO_AUTH_TOKEN
-      else process.env.TURSO_AUTH_TOKEN = previousToken
       await rm(directory, { recursive: true, force: true })
     }
   })

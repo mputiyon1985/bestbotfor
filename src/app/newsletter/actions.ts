@@ -3,16 +3,25 @@
 import { headers } from 'next/headers'
 import { getDb } from '@/lib/db'
 import { clientIp, rateLimitKey } from '@/lib/ip'
+import { parseFirstTouch } from '@/lib/first-touch'
+import { parseNewsletterSource } from '@/lib/newsletter-source'
+import { newsletterCtaEnabled } from '@/lib/flags'
+import { parseNewsletterCtaPath } from '@/lib/newsletter-cta'
 import { subscribeToNewsletter, type NewsletterResult } from '@/lib/newsletter'
 
 export type NewsletterState = NewsletterResult | { status: 'idle'; message: string; tracked: boolean }
 
 export async function subscribeAction(_previous: NewsletterState, formData: FormData): Promise<NewsletterState> {
   const headerStore = await headers()
+  // The CTA's page path is honored only while the flag is on; otherwise the fixed source path is used.
+  const ctaPath = newsletterCtaEnabled() ? parseNewsletterCtaPath(formData.get('cta_path')) : null
   try {
     return await subscribeToNewsletter({
       email: String(formData.get('email') ?? ''),
       honeypot: String(formData.get('company_website') ?? ''),
+      source: parseNewsletterSource(String(formData.get('source') ?? '')),
+      firstTouch: parseFirstTouch(formData.get('first_touch')),
+      referringPath: ctaPath ?? undefined,
       db: getDb(),
       rateKey: rateLimitKey(clientIp(headerStore), 'newsletter'),
     })

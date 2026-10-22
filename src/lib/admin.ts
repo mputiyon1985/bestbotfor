@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import { reverificationError } from '@clerk/nextjs/server'
-import { isClerkConfigured } from './flags'
+import { adminSponsorsEnabled, isClerkConfigured, userRatingsEnabled } from './flags'
 
 /**
  * Clerk `strict_mfa` is multi-factor within 10 minutes.
@@ -88,6 +88,17 @@ async function readAdminPrincipal(): Promise<AdminPrincipal> {
   }
 }
 
+/**
+ * Where an admin who already has MFA lands.
+ * Ratings home wins when that flag is on. Otherwise the sponsor queue.
+ * The allowlist and MFA checks are unchanged.
+ */
+export function adminHomePath(): string {
+  if (userRatingsEnabled()) return '/admin'
+  if (adminSponsorsEnabled()) return '/admin/sponsors'
+  return '/admin'
+}
+
 /** 404 for everyone except an allowlisted admin whose session already used a second factor. */
 export async function requireAdmin(): Promise<{ userId: string }> {
   const decision = decideAdminAccess(await readAdminPrincipal(), adminAllowlist())
@@ -110,7 +121,7 @@ export async function assertAdminArea(): Promise<void> {
 /** Setup page. Anyone else 404s. An admin who already satisfies the guard goes back to /admin. */
 export async function requireMfaSetupPage(): Promise<void> {
   const decision = decideAdminAccess(await readAdminPrincipal(), adminAllowlist())
-  if (decision.ok) redirect('/admin')
+  if (decision.ok) redirect(adminHomePath())
   if (decision.reason !== 'mfa-required') notFound()
 }
 

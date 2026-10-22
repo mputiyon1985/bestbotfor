@@ -67,12 +67,12 @@ describe('catalog seed', () => {
 
     const expectedFits = toolSeeds.reduce((sum, tool) => sum + tool.fits.length, 0)
     expect(fitRows).toHaveLength(expectedFits)
-    expect(toolRows.every((row) => row.status === 'active')).toBe(true)
+    expect(toolRows.filter((row) => row.status !== 'active').map((row) => [row.slug, row.status])).toEqual([['mercury-inception', 'unlisted']])
     expect(toolRows.find((row) => row.slug === 'soundraw')?.priceFromUsd).toBe(16.99)
     expect(toolRows.find((row) => row.slug === 'semrush')).toMatchObject({
       pricingModel: 'freemium',
       hasFreeTier: true,
-      priceFromUsd: 139,
+      priceFromUsd: 139.95,
     })
   })
 
@@ -138,7 +138,7 @@ describe('catalog seed', () => {
     expect(toolSeeds.find((item) => item.slug === 'semrush')).toMatchObject({
       pricingModel: 'freemium',
       hasFreeTier: true,
-      priceFromUsd: 139,
+      priceFromUsd: 139.95,
     })
     expect(toolSeeds.find((item) => item.slug === 'soundraw')?.priceFromUsd).toBe(16.99)
     expect(toolSeeds.find((item) => item.slug === 'neuronwriter')?.priceFromUsd).toBe(23)
@@ -151,7 +151,7 @@ describe('catalog seed', () => {
 
     for (const task of taskSeeds) {
       const ranked = toolsForTask(catalog, task.slug)
-      const fitted = toolSeeds.filter((tool) => tool.fits.some((fit) => fit.task === task.slug))
+      const fitted = toolSeeds.filter((tool) => !tool.unlisted && tool.fits.some((fit) => fit.task === task.slug))
       expect(ranked, task.slug).toHaveLength(fitted.length)
       const qualified = fitted.filter((tool) => (tool.fits.find((fit) => fit.task === task.slug)?.score ?? 0) >= MIN_QUIZ_FIT_SCORE)
       for (const budget of budgets) {

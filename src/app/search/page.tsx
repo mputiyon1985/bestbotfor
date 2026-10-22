@@ -19,6 +19,7 @@ export async function generateMetadata({
     description: 'Search the BestBotFor catalog by tool name, vendor, or job. Or answer three questions and get the right AI in 30 seconds.',
     path,
     noIndex: true,
+    canonical: false,
   })
 }
 

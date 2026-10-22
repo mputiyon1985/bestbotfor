@@ -25,16 +25,18 @@ export function quizResultRobots(): RobotsDirective {
 }
 
 /**
- * Budget filters repeat the unfiltered list with rows removed. Page 1 of the
- * unfiltered list is the indexable URL. Later pages of that list stay
- * indexable and point at each other with rel next/prev.
+ * Every match list (any budget, any page) is a longer copy of the task's
+ * /best/<task> guide. It stays out of the index and out of the sitemap, and
+ * its links are still followed.
  */
-export function matchesRobots(budget: RankBudget): RobotsDirective {
-  if (budget !== 'any') return { index: false, follow: true }
-  return { index: true, follow: true }
+export function matchesRobots(): RobotsDirective {
+  return { index: false, follow: true }
 }
 
-/** Sitemap entry: unfiltered match list, page 1, with no budget parameter. */
-export function indexableMatchPath(taskSlug: string): string {
-  return matchesPath(taskSlug, 'any', 1)
+/**
+ * Canonical for a match list: the task's /best guide when that guide exists
+ * (the task has at least one match to lead it), else the list itself.
+ */
+export function matchesCanonicalPath(taskSlug: string, budget: RankBudget, page: number, hasBestPage: boolean): string {
+  return hasBestPage ? `/best/${taskSlug}` : matchesPath(taskSlug, budget, page)
 }

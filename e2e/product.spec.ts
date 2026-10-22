@@ -19,7 +19,7 @@ test('cookie settings reopens the banner', async ({ page, context }) => {
   await expect(page.getByRole('region', { name: 'Analytics cookies' })).toBeVisible()
 })
 
-test('pricing says checkout is test mode', async ({ page }) => {
+test('pricing says checkout is test mode with the test key', async ({ page }) => {
   const notice = page.getByRole('main').getByRole('alert')
   await page.goto('/pricing')
   await expect(page.getByRole('note')).toContainText('Stripe test mode')

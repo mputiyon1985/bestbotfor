@@ -1,20 +1,22 @@
+import { rateLimitRetentionKept } from './privacy-copy'
+
 /**
  * Draft lawyer-review package for user ratings (spec 10.1–10.3 and plan A15).
  * Pages render these strings only while userRatingsEnabled() is true.
  */
 
 export const LAWYER_REVIEW_NOTICE =
-  'Pending lawyer review. This draft is not legal advice and is not in effect until that review is recorded.'
+  'Lawyer review of the ratings drafts and the base policy pages was recorded on October 17, 2026. The written sign-off is a pending link. User ratings are not launched, so this copy is not in effect yet.'
 
-export const PRIVACY_UPDATED = 'October 17, 2026'
+export const PRIVACY_UPDATED = 'October 19, 2026'
 
 export const PRIVACY_UPDATED_WITH_RATINGS =
-  'October 17, 2026. The ratings and reviews section below is draft copy pending lawyer review.'
+  `${PRIVACY_UPDATED}. Lawyer review of the ratings and reviews section was recorded on October 17, 2026. The section is not in effect until user ratings launch.`
 
 export const TERMS_UPDATED = 'October 15, 2026'
 
 export const TERMS_UPDATED_WITH_RATINGS =
-  'October 17, 2026. The link to the review guidelines is draft copy pending lawyer review.'
+  'October 17, 2026. Lawyer review of the review-guidelines link was recorded that day. That link is not in effect until user ratings launch.'
 
 export const ATTESTATION =
   "I'm rating this tool from my own experience. I don't work for [Vendor] and I'm not posting on its behalf. Nobody paid me or gave me anything for this rating, and nobody asked me to make it positive or negative. If I have any other connection to [Vendor], I've described it above."
@@ -95,8 +97,8 @@ export const RETENTION_ROWS = [
   { data: 'Reports', kept: '1 year after resolution. The reporter id is replaced with a keyed hash after 180 days' },
   { data: 'Moderation audit rows', kept: '2 years. Reason codes and admin notes only, not the rating text' },
   { data: 'Account-deletion tombstones', kept: '2 years' },
-  { data: 'Rate-limit rows', kept: 'Their window only' },
-] as const
+  { data: 'Rate-limit rows', kept: rateLimitRetentionKept() },
+]
 
 export const TERMS_RATINGS_PARAGRAPH =
   'User ratings, while that feature is on, are your statements about a tool. They have to follow the review guidelines. You can delete a rating you posted. We may refuse or remove a rating for the reasons on that page. Advertisers cannot edit, remove, or reorder ratings.'
