@@ -83,11 +83,14 @@ describe('scrolledPastThreshold', () => {
 })
 
 describe('copy', () => {
-  it('keeps the placeholder copy in one constants file', () => {
+  it('uses the final option A copy from one constants file', () => {
     expect(NEWSLETTER_CTA_COPY).toMatchObject({
-      headline: 'Get one AI pick a week',
-      sub: 'The Daily Bot: the right AI for one job, every Thursday. Free.',
-      button: 'Subscribe',
+      headline: 'Get the right AI, every Thursday',
+      sub: 'The Daily Bot: one short email a week with new picks, price changes and tools worth a look. Free.',
+      button: 'Send me The Daily Bot',
+      finePrint: 'No spam. Unsubscribe anytime.',
+      stickyBar: 'The right AI in 30 seconds, and in your inbox every Thursday.',
+      thanks: 'Almost done. Check your inbox.',
     })
   })
 })
