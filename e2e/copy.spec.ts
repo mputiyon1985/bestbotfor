@@ -10,7 +10,6 @@ test('sub-page Open Graph and Twitter titles include the brand', async ({ page }
     ['/about', 'About'],
     ['/tools', 'Tools'],
     ['/pricing', 'Pricing'],
-    ['/best/music', 'Best AI for making music'],
   ] as const
   for (const [path, title] of cases) {
     await page.goto(path)
@@ -19,6 +18,12 @@ test('sub-page Open Graph and Twitter titles include the brand', async ({ page }
     await expect(page.locator('meta[name="twitter:title"]'), path).toHaveAttribute('content', branded)
     await expect(page, path).toHaveTitle(`${title} · BestBotFor`)
   }
+  // /best pages use an absolute SEO title (src/content/seo-meta.ts); social titles still carry the brand.
+  const music = 'Best AI music generators (2026): Our Pick + Free Options'
+  await page.goto('/best/music')
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', `${music} | BestBotFor`)
+  await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', `${music} | BestBotFor`)
+  await expect(page).toHaveTitle(music)
 })
 
 test('pages publish og:url as the absolute canonical', async ({ page }) => {

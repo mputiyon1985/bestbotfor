@@ -314,9 +314,9 @@ test('best, compare, tool profiles, and the sitemap follow the seed', async ({ p
   if (!task || !top) return
 
   await page.goto(`/best/${task.slug}`)
-  await expect(page).toHaveTitle('Best AI for writing code · BestBotFor')
-  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', 'Best AI for writing code | BestBotFor')
-  await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', 'Best AI for writing code | BestBotFor')
+  await expect(page).toHaveTitle('Best AI for coding (2026): Our Pick + Free Options')
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', 'Best AI for coding (2026): Our Pick + Free Options | BestBotFor')
+  await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', 'Best AI for coding (2026): Our Pick + Free Options | BestBotFor')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Best AI tool for writing code')
   await expect(page.getByText(`The best AI tool for writing code is ${top.name}.`)).toBeVisible()
   await expect(page.getByRole('navigation', { name: 'Breadcrumb' })).toContainText('Best for writing code')

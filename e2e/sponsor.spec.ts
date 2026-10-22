@@ -25,10 +25,9 @@ test('sponsor page creates a hosted checkout session from the server price', asy
   await expect(page.getByRole('listitem').filter({ hasText: 'Featured placement: $299 for one month.' })).toContainText(
     'One-time payment, no auto-renewal.',
   )
-  await expect(page.getByRole('listitem').filter({ hasText: 'Newsletter sponsor slot: $49 per issue.' })).toContainText(
-    'One-time payment, no auto-renewal.',
-  )
-  await expect(page.getByRole('radio', { name: /One-time payment, no auto-renewal/ })).toHaveCount(3)
+  // The e2e DB has no synced subscribers, so the newsletter slot stays hidden (src/lib/newsletter-slot-gate.ts).
+  await expect(page.getByRole('listitem').filter({ hasText: 'Newsletter sponsor slot' })).toHaveCount(0)
+  await expect(page.getByRole('radio', { name: /One-time payment, no auto-renewal/ })).toHaveCount(2)
   await expect(page.getByText('Your company name is published with a Sponsored label.')).toBeVisible()
   await expect(page.getByText(SPONSOR_REVIEW_NOTICE)).toBeVisible()
 
