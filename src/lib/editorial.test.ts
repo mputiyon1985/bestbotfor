@@ -194,7 +194,8 @@ describe('Our rating', () => {
     expect(relevance?.longDesc).toContain('Pro is $19 a month billed yearly')
 
     const catalog = catalogFromSeeds()
-    for (const slug of unratedSlugs) {
+    const unlisted = new Set(toolSeeds.filter((item) => item.unlisted).map((item) => item.slug))
+    for (const slug of unratedSlugs.filter((item) => !unlisted.has(item))) {
       const tool = catalog.tools.find((item) => item.slug === slug)
       const v1 = editorialSeeds.find((row) => row.slug === slug)
       expect(tool?.editorial, slug).toBeNull()

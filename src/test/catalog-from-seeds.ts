@@ -42,7 +42,9 @@ export function catalogFromSeeds(): Catalog {
     affiliate: { ...tool.affiliate, affiliateUrl: null },
     ...(tool.needsVerification ? { editorial: null, pros: [], cons: [], quizEligible: true } : editorialFor(tool.slug)),
   }))
-  return { tasks: taskSeeds, tools }
+  // Unlisted tools are seeded with status 'unlisted', which every public read skips.
+  const unlisted = new Set(toolSeeds.filter((tool) => tool.unlisted).map((tool) => tool.slug))
+  return { tasks: taskSeeds, tools: tools.filter((tool) => !unlisted.has(tool.slug)) }
 }
 
 function editorialFor(slug: string): Pick<CatalogTool, 'editorial' | 'pros' | 'cons' | 'quizEligible'> {

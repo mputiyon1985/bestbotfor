@@ -151,7 +151,7 @@ describe('catalog seed', () => {
 
     for (const task of taskSeeds) {
       const ranked = toolsForTask(catalog, task.slug)
-      const fitted = toolSeeds.filter((tool) => tool.fits.some((fit) => fit.task === task.slug))
+      const fitted = toolSeeds.filter((tool) => !tool.unlisted && tool.fits.some((fit) => fit.task === task.slug))
       expect(ranked, task.slug).toHaveLength(fitted.length)
       const qualified = fitted.filter((tool) => (tool.fits.find((fit) => fit.task === task.slug)?.score ?? 0) >= MIN_QUIZ_FIT_SCORE)
       for (const budget of budgets) {
