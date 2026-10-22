@@ -3,8 +3,7 @@ import { fewStrongOptionsLabel, overBudgetLabel, priceLabel } from '../src/lib/f
 import { recommend } from '../src/lib/recommend'
 import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
 
-// Chat has six rated matches since unrated tools left the quiz; coding still fills seven.
-const answers = { task: 'coding', budget: 'any', skill: 'beginner' } as const
+const answers = { task: 'chat', budget: 'any', skill: 'beginner' } as const
 
 test('three questions produce one pick and six alternatives', async ({ page }) => {
   const result = recommend(catalogFromSeeds(), answers)
@@ -39,7 +38,7 @@ test('three questions produce one pick and six alternatives', async ({ page }) =
 })
 
 test('a free budget labels the best fits that sit just over budget', async ({ page }) => {
-  const tight = { task: 'design', budget: 'free', skill: 'beginner' } as const
+  const tight = { task: 'seo', budget: 'free', skill: 'beginner' } as const
   const result = recommend(catalogFromSeeds(), tight)
   const alternatives = result?.picks.slice(1) ?? []
   const over = alternatives.filter((pick) => pick.budgetFit === 'over')
@@ -82,16 +81,20 @@ test('a short list says few strong options exist', async ({ page }) => {
   await expect(list.getByText(fewStrongOptionsLabel)).toBeVisible()
 })
 
-test('a low budget leaves unrated SOUNDRAW out of the music results', async ({ page }) => {
+test('a low budget keeps SOUNDRAW in the music results', async ({ page }) => {
   const answers = { task: 'music', budget: 'low', skill: 'beginner' } as const
   const result = recommend(catalogFromSeeds(), answers)
-  expect(result?.picks.length).toBeGreaterThan(0)
-  expect(result?.picks.some((pick) => pick.slug === 'soundraw')).toBe(false)
-  expect(result?.picks.every((pick) => pick.tool.editorial !== null)).toBe(true)
+  const soundraw = result?.picks.find((pick) => pick.slug === 'soundraw')
+  expect(soundraw?.budgetFit).toBe('within')
+  expect(soundraw?.priceFromUsd).toBe(16.99)
   expect(result?.picks.some((pick) => pick.slug === 'lalal-ai')).toBe(false)
   expect(result?.picks[0]?.reason).not.toContain('the music tool')
+  if (!soundraw) return
 
   await page.goto(`/result?task=${answers.task}&budget=${answers.budget}&skill=${answers.skill}`)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText(result?.picks[0]?.name ?? '')
-  await expect(page.getByRole('heading', { name: 'SOUNDRAW', exact: true })).toHaveCount(0)
+  const item = page.getByRole('listitem').filter({
+    has: page.getByRole('heading', { level: 3, name: 'SOUNDRAW', exact: true }),
+  })
+  await expect(item.getByText(priceLabel(soundraw), { exact: true })).toBeVisible()
+  await expect(item.getByText(overBudgetLabel)).toHaveCount(0)
 })

@@ -145,25 +145,15 @@ describe('catalog seed', () => {
     expect(toolSeeds.find((item) => item.slug === 'luma-dream-machine')?.priceFromUsd).toBe(30)
     expect(toolSeeds.find((item) => item.slug === 'aiva')?.priceFromUsd).toBeNull()
     const musicLow = recommend(catalog, { task: 'music', budget: 'low', skill: 'beginner' })
-    // Soundraw is unrated, so it never appears in quiz matching.
-    expect(catalog.tools.find((tool) => tool.slug === 'soundraw')?.editorial).toBeNull()
-    expect(musicLow?.picks.some((pick) => pick.slug === 'soundraw')).toBe(false)
-    expect(musicLow?.picks.every((pick) => pick.tool.editorial !== null)).toBe(true)
+    const soundraw = musicLow?.picks.find((pick) => pick.slug === 'soundraw')
+    expect(soundraw?.budgetFit).toBe('within')
     expect(musicLow?.picks.some((pick) => pick.slug === 'lalal-ai')).toBe(false)
 
     for (const task of taskSeeds) {
       const ranked = toolsForTask(catalog, task.slug)
       const fitted = toolSeeds.filter((tool) => !tool.unlisted && tool.fits.some((fit) => fit.task === task.slug))
       expect(ranked, task.slug).toHaveLength(fitted.length)
-      const qualified = fitted.filter((tool) => {
-        const read = catalog.tools.find((item) => item.slug === tool.slug)
-        // Unrated tools (no editorial score) and quiz-ineligible tools never reach the quiz.
-        return (
-          (tool.fits.find((fit) => fit.task === task.slug)?.score ?? 0) >= MIN_QUIZ_FIT_SCORE &&
-          read?.editorial != null &&
-          read.quizEligible !== false
-        )
-      })
+      const qualified = fitted.filter((tool) => (tool.fits.find((fit) => fit.task === task.slug)?.score ?? 0) >= MIN_QUIZ_FIT_SCORE)
       for (const budget of budgets) {
         for (const skill of skills) {
           const result = recommend(catalog, { task: task.slug, budget, skill })

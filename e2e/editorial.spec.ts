@@ -123,8 +123,9 @@ test('result cards show a compact pros list only for tools that have one', async
   const perplexityCard = page.getByRole('listitem').filter({
     has: page.getByRole('heading', { level: 3, name: 'Perplexity', exact: true }),
   })
-  // Perplexity is unrated, so it is never a quiz match.
-  await expect(perplexityCard).toHaveCount(0)
+  await expect(perplexityCard).toBeVisible()
+  await expect(perplexityCard.getByText('Pros:', { exact: false })).toHaveCount(0)
+  await expect(perplexityCard.getByRole('img', { name: /Rated/ })).toHaveCount(0)
 })
 
 test('windsurf stays at its slug, cursor and relevance show the reviewed prices, and source columns stay off the page', async ({ page }) => {

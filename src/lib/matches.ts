@@ -24,7 +24,7 @@ export function seeAllMatchesLabel(count: number): string {
 /**
  * Every quiz-eligible tool that clears the minimum fit, ranked like the quiz
  * for this budget. Free and low keep only tools inside that budget. Any keeps
- * the full eligible list. Archived and unrated tools stay on their own pages.
+ * the full eligible list. Archived tools, and new unrated ones (quiz-gate.ts), stay on their own pages.
  */
 export function listMatches<T extends ScoreableTool>(tools: T[], budget: RankBudget): QuizPick<T>[] {
   const qualified = tools.filter(isQuizMatchable)

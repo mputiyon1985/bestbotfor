@@ -1,4 +1,5 @@
 import { skillLabel } from './format'
+import { quizNeedsRating } from './quiz-gate'
 import type { Budget, Skill } from './validation'
 
 /** All-matches uses the same budgets as the quiz. */
@@ -27,21 +28,21 @@ export type ScoreableTool = {
   /** False drops the tool from the quiz pick and its alternatives. Omitted means eligible. */
   quizEligible?: boolean
   /**
-   * Editorial score. Null means unrated: the tool never appears in quiz
-   * matching (picks, all matches, or rankings built on them) and stays only on
-   * its category page, labeled Unrated. Omitted (bare test fixtures) is not
-   * treated as unrated.
+   * Editorial score; null means unrated. Only matters for tools added in #138
+   * or later (quiz-gate.ts): those are left out of quiz matching while unrated
+   * and stay on their category page, labeled Unrated.
    */
   editorial?: unknown
 }
 
 /**
- * Quiz matching gate. A tool qualifies only with a fit at or above the
- * minimum, quiz eligibility, and an editorial rating (no made-up match score
- * for unrated tools).
+ * Quiz matching gate: the minimum fit and quiz eligibility, plus an editorial
+ * rating for tools added in #138 or later (no made-up match score for new
+ * unrated tools). Older tools keep their original behavior.
  */
-export function isQuizMatchable(tool: Pick<ScoreableTool, 'fitScore' | 'quizEligible' | 'editorial'>): boolean {
-  return tool.fitScore >= MIN_QUIZ_FIT_SCORE && tool.quizEligible !== false && tool.editorial !== null
+export function isQuizMatchable(tool: Pick<ScoreableTool, 'slug' | 'fitScore' | 'quizEligible' | 'editorial'>): boolean {
+  if (tool.fitScore < MIN_QUIZ_FIT_SCORE || tool.quizEligible === false) return false
+  return !(quizNeedsRating(tool.slug) && tool.editorial == null)
 }
 
 export type RankedTool = ScoreableTool & {
