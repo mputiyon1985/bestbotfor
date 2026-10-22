@@ -48,13 +48,13 @@ describe('Our rating', () => {
   })
 
   it('accepts the checked seed and rejects invented or incomplete rows', () => {
-    expect(ratingSeeds).toHaveLength(95)
-    expect(unratedSlugs).toHaveLength(86)
+    expect(ratingSeeds).toHaveLength(98)
+    expect(unratedSlugs).toHaveLength(83)
     expect(ratingSeeds.find((row) => row.slug === 'grok')?.rationale).toBe('')
     expect(ratingSeeds.find((row) => row.slug === 'semantic-scholar')?.rationale).toBe('')
     expect(unratedSlugs).not.toContain('cursor')
     expect(unratedSlugs).not.toContain('windsurf')
-    expect(unratedSlugs).toContain('perplexity')
+    expect(unratedSlugs).not.toContain('perplexity')
     expect(unratedSlugs).toContain('se-ranking')
     expect(toolSeeds).toHaveLength(181)
     const rated = new Set(ratingSeeds.map((row) => row.slug))
@@ -229,11 +229,27 @@ describe('Our rating', () => {
     expect(grokTool?.editorial?.tied).toBe(true)
     expect(catalog.tools.find((tool) => tool.slug === 'claude')?.editorial?.tied).toBe(false)
 
-    for (const slug of ['supabase', 'beautiful-ai', 'inworld', 'craft']) {
+    for (const slug of ['supabase', 'inworld', 'craft']) {
       const tool = catalog.tools.find((item) => item.slug === slug)
       expect(tool?.editorial?.hideRank, slug).toBe(true)
       expect(tool?.editorial?.categoryRankDisplay, slug).toMatch(/#1 of 1 in /)
     }
+    // 2026-10-22 quiz-pick ratings: Perplexity leads Research, Canva leads Design, Surfer is #3 in SEO
+    const rankOf = (slug: string) => catalog.tools.find((tool) => tool.slug === slug)?.editorial?.categoryRankDisplay
+    expect(rankOf('perplexity')).toBe('#1 of 6 in Research')
+    expect(rankOf('semantic-scholar')).toBe('#2 of 6 in Research')
+    expect(rankOf('elicit')).toBe('#3 of 6 in Research')
+    expect(rankOf('canva')).toBe('#1 of 2 in Design')
+    expect(rankOf('beautiful-ai')).toBe('#2 of 2 in Design')
+    expect(catalog.tools.find((tool) => tool.slug === 'beautiful-ai')?.editorial?.hideRank).toBe(false)
+    expect(rankOf('ahrefs')).toBe('#1 of 3 in SEO')
+    expect(rankOf('semrush')).toBe('#2 of 3 in SEO')
+    expect(rankOf('surfer')).toBe('#3 of 3 in SEO')
+    expect(catalog.tools.find((tool) => tool.slug === 'perplexity')?.editorial?.overall).toBe(3.9)
+    expect(catalog.tools.find((tool) => tool.slug === 'canva')?.editorial?.overall).toBe(4)
+    expect(catalog.tools.find((tool) => tool.slug === 'surfer')?.editorial?.overall).toBe(3.6)
+    expect(catalog.tools.find((tool) => tool.slug === 'soundraw')?.editorial).toBeNull()
+    expect(catalog.tools.find((tool) => tool.slug === 'soundraw')?.priceFromUsd).toBe(16.99)
     expect(catalog.tools.find((tool) => tool.slug === 'craft')?.category).toBe('Productivity')
     expect(catalog.tools.find((tool) => tool.slug === 'se-ranking')?.category).toBe('SEO')
     expect(toolSeeds.find((tool) => tool.slug === 'se-ranking')?.fits[0]?.task).toBe('seo')
@@ -301,9 +317,9 @@ describe('Our rating', () => {
     expect(grok?.tool.cons).toEqual([])
     expect(catalog.tools.find((tool) => tool.slug === 'semantic-scholar')?.pros).toEqual([])
     expect(catalog.tools.find((tool) => tool.slug === 'semantic-scholar')?.cons).toEqual([])
-    expect(supplementalProsConsSeeds.map((row) => row.slug).sort()).toEqual(['composio', 'cursor', 'mistral-voxtral', 'omnara', 'twinmind', 'windsurf'])
+    expect(supplementalProsConsSeeds.map((row) => row.slug).sort()).toEqual(['canva', 'composio', 'cursor', 'mistral-voxtral', 'omnara', 'perplexity', 'twinmind', 'windsurf'])
     const perplexity = chat?.picks.find((pick) => pick.slug === 'perplexity')
-    expect(perplexity?.tool.editorial).toBeNull()
+    expect(perplexity?.tool.editorial?.overall).toBe(3.9)
     expect(chat?.picks.some((pick) => pick.tool.editorial)).toBe(true)
   })
 })

@@ -55,7 +55,9 @@ describe('unrated tools and the quiz', () => {
 
   it('leaves pre-existing unrated tools in the quiz (Perplexity in Research)', () => {
     const perplexity = catalog.tools.find((tool) => tool.slug === 'perplexity')
-    expect(perplexity?.editorial).toBeNull()
+    expect(perplexity?.editorial?.overall).toBe(3.9)
+    expect(catalog.tools.find((tool) => tool.slug === 'soundraw')?.editorial).toBeNull()
+    for (const slug of ['canva', 'surfer']) expect(ratingRequiredSlugs.has(slug), slug).toBe(false)
     const research = recommend(catalog, { task: 'research', budget: 'any', skill: 'beginner' })
     expect(research?.picks.some((pick) => pick.slug === 'perplexity')).toBe(true)
     const chat = recommend(catalog, { task: 'chat', budget: 'any', skill: 'beginner' })
