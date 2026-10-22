@@ -6,6 +6,7 @@ import { hasDotSegment } from '@/lib/dot-segment'
 import { buildContentSecurityPolicy, securityHeaders } from '@/lib/csp'
 import { getDb, peekCachedTaskSlugs } from '@/lib/db/client'
 import { isAdminPath } from '@/lib/admin-path'
+import { isJunkPath } from '@/lib/junk-path'
 import { adminSponsorsEnabled, isAdminMfaPath, isClerkConfigured, isRatingsPath, isSponsorsAdminPath, userRatingsEnabled } from '@/lib/flags'
 import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from '@/lib/indexing'
 import { clientIp, rateLimitKey } from '@/lib/ip'
@@ -224,7 +225,22 @@ async function gateResult(request: NextRequest, event: NextFetchEvent): Promise<
   return null
 }
 
+/** Scanner probes get a cacheable bare 404 before any other work. */
+function rejectJunkPath(request: NextRequest): NextResponse | null {
+  if (!isJunkPath(request.nextUrl.pathname)) return null
+  return new NextResponse('Not found.', {
+    status: 404,
+    headers: {
+      'content-type': 'text/plain; charset=utf-8',
+      'cache-control': 'public, max-age=3600, s-maxage=86400',
+      'x-robots-tag': 'noindex, nofollow',
+    },
+  })
+}
+
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  const junk = rejectJunkPath(request)
+  if (junk) return junk
   const malformed = rejectMalformedEncoding(request)
   if (malformed) return malformed
   const hiddenRatings = rejectHiddenRatings(request)

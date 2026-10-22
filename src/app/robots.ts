@@ -2,7 +2,8 @@ import type { MetadataRoute } from 'next'
 import { isProductionDeployment } from '@/lib/indexing'
 import { getSiteUrl } from '@/lib/site'
 
-export const dynamic = 'force-dynamic'
+/** No DB reads; rebuilt daily (env-based, so each deploy gets its own copy). */
+export const revalidate = 86400
 
 export default function robots(): MetadataRoute.Robots {
   if (!isProductionDeployment()) {

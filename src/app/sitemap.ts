@@ -11,7 +11,12 @@ import { loadFreePage } from '@/lib/free-page-data'
 import { isFreePageTask } from '@/lib/free-plan'
 import { bestFreePath } from '@/lib/seo-pages'
 
-export const dynamic = 'force-dynamic'
+/**
+ * Was force-dynamic, which ran the uncached readSitemapDates() join on every
+ * crawler hit. Now ISR: built once, regenerated at most daily. Read failures
+ * still fall back to SITEMAP_STATIC_LASTMOD and the static path list.
+ */
+export const revalidate = 86400
 
 /** Static sitemap paths. /search stays off this list because that page is noindex. */
 export const SITEMAP_STATIC_PATHS = [
