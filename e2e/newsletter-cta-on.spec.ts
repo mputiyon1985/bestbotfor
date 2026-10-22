@@ -30,7 +30,7 @@ for (const { path } of PAGES) {
     await page.goto(path)
     await expect(inline(page)).toHaveCount(1)
     await expect(inline(page).getByRole('heading', { name: 'Get the right AI, every Thursday' })).toBeVisible()
-    await expect(inline(page).getByText('The Daily Bot: the right AI for one job, every Thursday. Free.')).toBeVisible()
+    await expect(inline(page).getByText('The Daily Bot: one short email a week with new picks, price changes and tools worth a look. Free.')).toBeVisible()
     await expect(inline(page).getByRole('button', { name: 'Send me The Daily Bot' })).toBeVisible()
     await expect(page.getByRole('region', { name: 'The Daily Bot' })).toHaveCount(0)
     await expect(page.getByRole('region', { name: /The Daily Bot (after the table|at the end of the page)/ })).toHaveCount(0)
