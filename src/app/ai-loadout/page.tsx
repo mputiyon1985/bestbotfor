@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { ReadIssueOneLink } from '@/components/daily-bot-issue-link'
 import { JsonLd } from '@/components/json-ld'
 import { NewsletterForm } from '@/components/newsletter-form'
 import { bestGuideHeading } from '@/lib/descriptions'
@@ -104,7 +105,7 @@ export default async function AiLoadoutPage() {
         <h2 id="loadout-pdf" className="font-semibold text-3xl">Get the PDF + The Daily Bot</h2>
         <p className="mt-2 max-w-xl text-muted">
           The one-page PDF is free to download below, no signup needed.
-          The Daily Bot: Free AI newsletter, first issue coming soon.
+          The Daily Bot: Free AI newsletter. Goes out weekly on Thursdays. <ReadIssueOneLink />.
           If you subscribe, we store your email. Unsubscribe anytime.
         </p>
         <div className="mt-4 max-w-xl">
