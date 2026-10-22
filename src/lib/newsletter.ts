@@ -77,6 +77,8 @@ export async function subscribeToNewsletter(input: {
   db: Database
   rateKey: string
   source?: NewsletterSource
+  /** Exact in-scope page path from the newsletter CTA. Overrides the source's fixed path for referring_site. */
+  referringPath?: string
   /** Sanitized first-touch record from the form, or null. */
   firstTouch?: FirstTouch | null
   fetchImpl?: typeof fetch
@@ -145,7 +147,7 @@ export async function subscribeToNewsletter(input: {
     }
     const remote = await createBeehiivSubscription({
       email: normalized,
-      referringSite: absoluteUrl(newsletterReferringPath(input.source ?? 'newsletter')),
+      referringSite: absoluteUrl(input.referringPath ?? newsletterReferringPath(input.source ?? 'newsletter')),
       firstTouch: input.firstTouch ?? null,
       fetchImpl: input.fetchImpl,
     })

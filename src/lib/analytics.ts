@@ -10,6 +10,8 @@ const PARAM_RULES: Record<string, RegExp> = {
   skill: /^(beginner|intermediate|pro)$/,
   tool: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
   method: /^[a-z0-9]+(?:-[a-z0-9]+)*$/,
+  // Signup source: a fixed source slug or an in-scope page path. Never an email or query.
+  source: /^\/?[a-z0-9]+(?:[-/][a-z0-9]+)*$/,
 }
 
 /**

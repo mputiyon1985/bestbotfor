@@ -1,4 +1,4 @@
-import { ADMIN_SPONSORS_PRODUCTION_LAUNCH, USER_RATINGS_PRODUCTION_LAUNCH } from './review-flags'
+import { ADMIN_SPONSORS_PRODUCTION_LAUNCH, NEWSLETTER_CTA_PRODUCTION_LAUNCH, USER_RATINGS_PRODUCTION_LAUNCH } from './review-flags'
 
 /** Safe to import from proxy. Does not touch Clerk or the database at runtime. */
 export function isClerkConfigured(): boolean {
@@ -73,6 +73,30 @@ export function adminSponsorsEnabled(
   productionLaunch: boolean = ADMIN_SPONSORS_PRODUCTION_LAUNCH,
 ): boolean {
   return enabledInVercelEnv(env.adminSponsors, env.vercelEnv, productionLaunch)
+}
+
+export type NewsletterCtaEnv = {
+  /** NEWSLETTER_CTA. Only the exact value "on" enables the CTA. */
+  newsletterCta?: string
+  /** VERCEL_ENV. Only preview, development, and test are on. Unset and unknown are off. */
+  vercelEnv?: string
+}
+
+/**
+ * Fail closed. The newsletter CTA (inline box + sticky bar) on /compare/*,
+ * /alternatives/*, /best/*, and /guides/* renders only when NEWSLETTER_CTA is
+ * exactly "on" and VERCEL_ENV is preview, development, or test.
+ * Production stays off unless NEWSLETTER_CTA_PRODUCTION_LAUNCH is true.
+ * While this is false the server also ignores the CTA's page-path field.
+ */
+export function newsletterCtaEnabled(
+  env: NewsletterCtaEnv = {
+    newsletterCta: process.env.NEWSLETTER_CTA,
+    vercelEnv: process.env.VERCEL_ENV,
+  },
+  productionLaunch: boolean = NEWSLETTER_CTA_PRODUCTION_LAUNCH,
+): boolean {
+  return enabledInVercelEnv(env.newsletterCta, env.vercelEnv, productionLaunch)
 }
 
 const RATINGS_EXACT_PATHS = new Set([

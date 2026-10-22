@@ -6,6 +6,7 @@ const ratingsOnUrl = 'http://127.0.0.1:3001'
 const sponsorsOnUrl = 'http://127.0.0.1:3002'
 const freePlanHooksUrl = 'http://127.0.0.1:3003'
 const foundingCapUrl = 'http://127.0.0.1:3004'
+const newsletterCtaOnUrl = 'http://127.0.0.1:3005'
 const sitePort = new URL(siteUrl).port || '3000'
 const e2eStripeKey = ['sk', 'test', 'e2e', 'placeholder'].join('_')
 const e2eWebhookSecret = ['whsec', 'e2e', 'placeholder'].join('_')
@@ -52,7 +53,7 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      testIgnore: ['**/user-ratings-on.spec.ts', '**/admin-sponsors-on.spec.ts', '**/free-pages-hooks.spec.ts', '**/founding-cap.spec.ts', '**/sponsor-unconfigured.spec.ts'],
+      testIgnore: ['**/user-ratings-on.spec.ts', '**/admin-sponsors-on.spec.ts', '**/free-pages-hooks.spec.ts', '**/founding-cap.spec.ts', '**/sponsor-unconfigured.spec.ts', '**/newsletter-cta-on.spec.ts'],
       use: { ...devices['Desktop Chrome'], baseURL: siteUrl },
     },
     {
@@ -78,6 +79,12 @@ export default defineConfig({
       testMatch: ['**/founding-cap.spec.ts', '**/sponsor-unconfigured.spec.ts'],
       use: { ...devices['Desktop Chrome'], baseURL: foundingCapUrl },
     },
+    {
+      // NEWSLETTER_CTA=on with its own server and database file.
+      name: 'newsletter-cta-on',
+      testMatch: '**/newsletter-cta-on.spec.ts',
+      use: { ...devices['Desktop Chrome'], baseURL: newsletterCtaOnUrl },
+    },
   ],
   webServer: [
     {
@@ -92,6 +99,7 @@ export default defineConfig({
         // Blank keeps user ratings off. VERCEL_ENV=test still allows result faults.
         USER_RATINGS: '',
         ADMIN_SPONSORS: '',
+        NEWSLETTER_CTA: '',
         NEXT_PUBLIC_SITE_URL: siteUrl,
         // This run is the loopback host. Sponsor checkout must return here, not to production.
         VERCEL_BRANCH_URL: siteUrl,
@@ -179,6 +187,22 @@ export default defineConfig({
         STRIPE_API_HOST: '127.0.0.1',
         STRIPE_API_PORT: '12111',
         STRIPE_ALLOW_LIVE: 'false',
+      },
+    },
+    {
+      command: 'tsx scripts/prepare-db.ts && npm run start',
+      url: newsletterCtaOnUrl,
+      reuseExistingServer: false,
+      timeout: 120_000,
+      env: {
+        ...sharedEnv,
+        PORT: '3005',
+        TURSO_DATABASE_URL: 'file:./data/e2e-newsletter-cta-on.db',
+        USER_RATINGS: '',
+        ADMIN_SPONSORS: '',
+        NEWSLETTER_CTA: 'on',
+        NEXT_PUBLIC_SITE_URL: newsletterCtaOnUrl,
+        ...keylessStripeEnv,
       },
     },
   ],

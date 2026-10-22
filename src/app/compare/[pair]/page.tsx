@@ -5,6 +5,8 @@ import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { CompareNewsletter, Inline } from '@/components/compare-newsletter'
 import { DailyBotCapture } from '@/components/daily-bot-capture'
+import { NewsletterCta } from '@/components/newsletter-cta'
+import { newsletterCtaEnabled } from '@/lib/flags'
 import { JsonLd } from '@/components/json-ld'
 import { ToolLogo } from '@/components/tool-logo'
 import { reversedCuratedComparePath } from '@/data/compare-copy'
@@ -71,6 +73,8 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
   })
   const notes = access.allowed ? deepDive(a, b) : null
   const nova = novaCopy(`${a.slug}-vs-${b.slug}`)
+  // Flag on: the CTA replaces the page's other Daily Bot forms, so there is one inline signup.
+  const cta = newsletterCtaEnabled()
 
   return (
     <article className="space-y-8">
@@ -84,10 +88,11 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
         <h1 className="min-w-0 font-bold text-5xl leading-tight">{heading}</h1>
       </div>
       {view ? (
-        <CuratedBody view={view} />
+        <CuratedBody view={view} ctaPath={cta ? path : null} />
       ) : (
         <>
           <p className="text-lg">{summary}</p>
+          {cta ? <NewsletterCta path={path} source="compare" /> : null}
           <AutoTable a={a} b={b} rows={rows} />
           <p className="text-sm">
             <Link className="underline" href={`/tools/${a.slug}`}>{a.name} profile</Link>
@@ -114,7 +119,7 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
           </Link>
         </section>
       )}
-      {view ? (
+      {cta ? null : view ? (
         <CompareNewsletter idSuffix="end" cta={view.cta} label="The Daily Bot at the end of the page" />
       ) : (
         <DailyBotCapture source="compare" />
@@ -124,13 +129,14 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
   )
 }
 
-function CuratedBody({ view }: { view: CompareView }) {
+function CuratedBody({ view, ctaPath }: { view: CompareView; ctaPath: string | null }) {
   return (
     <>
       <p className="text-lg">
         <Inline text={view.verdict} />
       </p>
       <p className="text-sm text-muted italic">{view.checkedLine}</p>
+      {ctaPath ? <NewsletterCta path={ctaPath} source="compare" /> : null}
       <div className="grid gap-6 md:grid-cols-2">
         <section>
           <h2 className="font-semibold text-3xl">{view.pickAHeading}</h2>
@@ -151,7 +157,7 @@ function CuratedBody({ view }: { view: CompareView }) {
       </div>
       <CuratedTable view={view} />
       {view.secondaryNote ? <p className="text-sm text-muted">{view.secondaryNote}</p> : null}
-      <CompareNewsletter idSuffix="after-table" cta={view.cta} label="The Daily Bot after the table" />
+      {ctaPath ? null : <CompareNewsletter idSuffix="after-table" cta={view.cta} label="The Daily Bot after the table" />}
       <p className="text-sm">
         <Link className="underline" href="/">find the right AI in 30 seconds</Link>
       </p>

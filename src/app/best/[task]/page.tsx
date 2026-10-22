@@ -5,6 +5,8 @@ import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { DailyBotCapture } from '@/components/daily-bot-capture'
+import { NewsletterCta } from '@/components/newsletter-cta'
+import { newsletterCtaEnabled } from '@/lib/flags'
 import { JsonLd } from '@/components/json-ld'
 import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
 import { OutboundLink } from '@/components/outbound-link'
@@ -112,6 +114,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
   const alternativesPage = alternativesForTask(task.slug)
   const alternatives = alternativesPage ? ranked.find((tool) => tool.slug === alternativesPage.tool) : undefined
 
+  const cta = newsletterCtaEnabled()
   return (
     <article className="space-y-8">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
@@ -129,6 +132,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
         </OutboundLink>
 {top.hasAffiliateLink ? <AffiliateDisclosure affiliate /> : null}
       </p>
+      {cta ? <NewsletterCta path={`/best/${task.slug}`} source="best" /> : null}
       {getCategoryGuide(task.slug) ? (
         <p data-category-guide-link>
           <Link href={guidePath(task.slug)} className="inline-flex min-h-11 items-center font-semibold underline">
@@ -228,7 +232,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
           <li><Link className="inline-flex min-h-11 items-center underline" href={BEST_HUB_PATH}>Every job</Link></li>
         </ul>
       </nav>
-      <DailyBotCapture source="best" />
+      {cta ? null : <DailyBotCapture source="best" />}
     </article>
   )
 }

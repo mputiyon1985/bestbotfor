@@ -5,6 +5,8 @@ import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { DailyBotCapture } from '@/components/daily-bot-capture'
+import { NewsletterCta } from '@/components/newsletter-cta'
+import { newsletterCtaEnabled } from '@/lib/flags'
 import { JsonLd } from '@/components/json-ld'
 import { getGuide, guidePath } from '@/content/guides'
 import { EDITOR_BYLINE, categoryGuideArticleJsonLd, getCategoryGuide, type CategoryGuide } from '@/content/category-guides'
@@ -56,6 +58,7 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
     dateModified: guide.updatedAt,
     publisher: { '@type': 'Organization', name: SITE_NAME },
   }
+  const cta = newsletterCtaEnabled()
   return (
     <article className="max-w-2xl space-y-6">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
@@ -65,6 +68,7 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
       <h1 className="font-bold text-5xl leading-tight">{guide.heading}</h1>
       <p className="text-lg">{guide.answer}</p>
       <p className="text-sm text-muted">Updated {formatUsDate(guide.updatedAt)}.</p>
+      {cta ? <NewsletterCta path={path} source="guides" /> : null}
       {guide.sections.map((section) => (
         <section key={section.id} aria-labelledby={`guide-${section.id}`} className="space-y-3">
           <h2 id={`guide-${section.id}`} className="font-semibold text-3xl">{section.heading}</h2>
@@ -131,7 +135,7 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
       <p className="text-sm text-muted">
         Want every pick on one page? <Link className="underline" href={LOADOUT_PATH}>Get the AI Loadout</Link>.
       </p>
-      <DailyBotCapture source="guides" />
+      {cta ? null : <DailyBotCapture source="guides" />}
     </article>
   )
 }
@@ -144,6 +148,7 @@ function CategoryGuidePage({ guide, nonce }: { guide: CategoryGuide; nonce: stri
     ...(task ? [{ name: bestGuideHeading(task.name), path: `/best/${task.slug}` }] : []),
     { name: 'Guide', path },
   ]
+  const cta = newsletterCtaEnabled()
   return (
     <article className="max-w-2xl space-y-4" data-category-guide={guide.category}>
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
@@ -154,7 +159,8 @@ function CategoryGuidePage({ guide, nonce }: { guide: CategoryGuide; nonce: stri
         <span data-byline>{EDITOR_BYLINE}</span>. Checked {formatUsDate(guide.checked)}.
       </p>
       <GuideMarkdown markdown={guide.body} />
-      <DailyBotCapture source="guides" />
+      {/* No verdict on category guides: the CTA takes the Daily Bot form's place after the body. */}
+      {cta ? <NewsletterCta path={path} source="guides" /> : <DailyBotCapture source="guides" />}
     </article>
   )
 }
