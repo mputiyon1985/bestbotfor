@@ -102,3 +102,5 @@ curl --path-as-is -s 'https://bestbotfor.com/go/%2e%2e' | head
 ## Deploy
 
 Set the environment variables above on the host. Use a Turso database URL and `TURSO_AUTH_TOKEN`. Set `NEXT_PUBLIC_SITE_URL=https://bestbotfor.com`. Run `npm run build`. The build applies migrations and seeds the catalog before `next build`.
+
+<!-- CI probe 2026-10-21: no-op, safe to remove -->
