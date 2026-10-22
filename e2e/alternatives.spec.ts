@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { ALTERNATIVE_PAGES, comparePairsFor, rankAlternatives } from '../src/lib/alternatives'
+import { ALTERNATIVES_NEWSLETTER_TOOLS } from '../src/lib/newsletter-source'
 import { toolsForTask } from '../src/lib/recommend'
 import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
 
@@ -15,7 +16,7 @@ test.describe('alternatives pages', () => {
       const tool = catalog.tools.find((item) => item.slug === spec.tool)!
       const response = await page.goto(`/alternatives/${spec.tool}`)
       expect(response?.status()).toBe(200)
-      await expect(page).toHaveTitle(`${tool.name} Alternatives: The Best Picks by Budget (2026) · BestBotFor`)
+      await expect(page).toHaveTitle(`${tool.name} Alternatives (2026): Best Picks by Budget`)
       await expect(page.getByRole('heading', { level: 1 })).toHaveText(`${tool.name} alternatives`)
       await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', new RegExp(`/alternatives/${spec.tool}$`))
       const expected = rankAlternatives(toolsForTask(catalog, spec.task), spec.tool, 'any')
@@ -30,7 +31,9 @@ test.describe('alternatives pages', () => {
       }
       await expect(page.locator(`a[href="/best/${spec.task}"]`).first()).toBeVisible()
       await expect(page.getByText('Sponsored', { exact: true })).toHaveCount(0)
-      await expect(page.locator(`input[name="source"][value="alternatives-${spec.tool}"]`)).toHaveCount(1)
+      // Only pages with their own newsletter source (named in the privacy policy) show the signup.
+      const hasSignup = (ALTERNATIVES_NEWSLETTER_TOOLS as readonly string[]).includes(spec.tool)
+      await expect(page.locator(`input[name="source"][value="alternatives-${spec.tool}"]`)).toHaveCount(hasSignup ? 1 : 0)
     })
   }
 

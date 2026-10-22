@@ -14,7 +14,8 @@ test('devin desktop redirects permanently to windsurf', async ({ request }) => {
 test('the go route redirects only to the official tool URL', async ({ request }) => {
   const response = await request.get('/go/chatgpt?next=https://evil.example&ref=affiliate', { maxRedirects: 0 })
   expect(response.status()).toBe(302)
-  expect(response.headers().location).toBe('https://chatgpt.com/')
+  // Only the allowlisted URL plus BestBotFor's own UTM tags; next= and ref= are dropped.
+  expect(response.headers().location).toBe('https://chatgpt.com/?utm_source=bestbotfor&utm_medium=referral&utm_campaign=direct')
 })
 
 test('an unknown tool is not redirected', async ({ request }) => {
