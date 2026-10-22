@@ -87,17 +87,27 @@ export function consumeLocalRateLimit(
 }
 
 /**
- * Cap for the shared /result increment. Same-region Turso answers well inside
- * this. A slower store falls back to the in-memory window instead of holding
- * the page for the gate's 3s budget.
+ * Cap for the shared /result increment. Production Turso from this app's
+ * region often answers around 470ms, and the first request on a cold
+ * connection can take longer. 400ms missed that budget and every request
+ * fell back to the per-instance window. 1000ms still returns before the
+ * gate's 3s limit budget. Override with RESULT_SHARED_LIMIT_MS.
  */
-export const RESULT_SHARED_LIMIT_MS = 400
+export const RESULT_SHARED_LIMIT_MS = 1_000
 
-function sharedLimitBudget(override?: number): number {
+const RESULT_SHARED_LIMIT_MIN_MS = 50
+const RESULT_SHARED_LIMIT_MAX_MS = 2_500
+
+/** Budget for one shared increment. An override wins. A bad env value uses the default. */
+export function resultSharedLimitMs(override?: number): number {
   if (override !== undefined) return override
-  const fromEnv = Number(process.env.RESULT_SHARED_LIMIT_MS)
-  if (Number.isFinite(fromEnv) && fromEnv >= 50 && fromEnv <= 1_000) return fromEnv
-  return RESULT_SHARED_LIMIT_MS
+  const raw = process.env.RESULT_SHARED_LIMIT_MS
+  if (raw === undefined || raw.trim() === '') return RESULT_SHARED_LIMIT_MS
+  const fromEnv = Number(raw)
+  if (!Number.isFinite(fromEnv) || fromEnv < RESULT_SHARED_LIMIT_MIN_MS || fromEnv > RESULT_SHARED_LIMIT_MAX_MS) {
+    return RESULT_SHARED_LIMIT_MS
+  }
+  return fromEnv
 }
 
 function resultWindowBucket(key: string, windowStart: number): string {
@@ -154,6 +164,10 @@ async function insertResultWindow(db: Database, bucket: string, expiresAt: numbe
   return { ok: count <= limit, resetAt: expiresAt }
 }
 
+type SharedWindowResult =
+  | { ok: boolean; resetAt: number }
+  | { fallback: 'timeout' | 'error'; errorName?: string }
+
 /**
  * Atomic fixed-window increment. Null means the store did not answer in time
  * or threw. Callers then use the in-memory window. A brief lock is retried
@@ -165,8 +179,21 @@ export async function consumeSharedResultWindow(
   limit: number,
   windowMs: number,
   now = Date.now(),
-  budgetMs = sharedLimitBudget(),
+  budgetMs = resultSharedLimitMs(),
 ): Promise<{ ok: boolean; resetAt: number } | null> {
+  const result = await readSharedResultWindow(db, key, limit, windowMs, now, budgetMs)
+  if ('fallback' in result) return null
+  return result
+}
+
+async function readSharedResultWindow(
+  db: Database,
+  key: string,
+  limit: number,
+  windowMs: number,
+  now: number,
+  budgetMs: number,
+): Promise<SharedWindowResult> {
   const { start, end } = windowEnd(now, windowMs)
   const bucket = resultWindowBucket(key, start)
   const deadline = Date.now() + budgetMs
@@ -175,16 +202,15 @@ export async function consumeSharedResultWindow(
     try {
       return await withDeadline(insertResultWindow(db, bucket, end, limit), remaining)
     } catch (error) {
-      if (isDeadline(error)) return null
+      if (isDeadline(error)) return { fallback: 'timeout' }
       if (isSqliteBusy(error) && Date.now() < deadline) {
         await delay(Math.min(20, deadline - Date.now()))
         continue
       }
-      console.error('result rate store failed', error instanceof Error ? error.name : 'error')
-      return null
+      return { fallback: 'error', errorName: error instanceof Error ? error.name : 'Error' }
     }
   }
-  return null
+  return { fallback: 'timeout' }
 }
 
 /**
@@ -212,8 +238,43 @@ export function scheduleResultWindowPurge(db: Database, now = Date.now()): Promi
   return purgeExpiredResultWindows(db, now)
 }
 
+let resultRateFallbacks = 0
+
+/** How many shared /result decisions in this process used the memory window. */
+export function resultRateFallbackCount(): number {
+  return resultRateFallbacks
+}
+
+/** Test isolation. The process count is not reset in production. */
+export function resetResultRateFallbackCount(): void {
+  resultRateFallbacks = 0
+}
+
 /**
- * The shared fixed window decides when it answers inside the short budget.
+ * One JSON line for a log drain. No IP, bucket, or key: those are secrets or
+ * personal data. `count` is the process-local total, so an alert can fire on
+ * the event name.
+ */
+function recordResultRateFallback(input: {
+  reason: 'timeout' | 'error'
+  elapsedMs: number
+  budgetMs: number
+  errorName?: string
+}): void {
+  resultRateFallbacks += 1
+  const line: Record<string, string | number> = {
+    event: 'result_rate_limit_fallback',
+    reason: input.reason,
+    elapsedMs: input.elapsedMs,
+    budgetMs: input.budgetMs,
+    count: resultRateFallbacks,
+  }
+  if (input.errorName) line.errorName = input.errorName
+  console.error(JSON.stringify(line))
+}
+
+/**
+ * The shared fixed window decides when it answers inside the budget.
  * Over the in-process limit, return immediately and skip that write.
  * A slow or failed store logs and uses the in-memory window so a valid quiz still renders.
  */
@@ -223,13 +284,19 @@ export async function consumeResultRateLimit(
   limit: number,
   windowMs: number,
   now = Date.now(),
-  sharedBudgetMs = sharedLimitBudget(),
+  sharedBudgetMs = resultSharedLimitMs(),
 ): Promise<{ ok: boolean; resetAt: number }> {
   const local = consumeLocalRateLimit(key, limit, windowMs, now)
   if (!local.ok) return local
-  const shared = await consumeSharedResultWindow(db, key, limit, windowMs, now, sharedBudgetMs)
-  if (!shared) {
-    console.error('result rate limit fell back to memory')
+  const started = Date.now()
+  const shared = await readSharedResultWindow(db, key, limit, windowMs, now, sharedBudgetMs)
+  if ('fallback' in shared) {
+    recordResultRateFallback({
+      reason: shared.fallback,
+      elapsedMs: Date.now() - started,
+      budgetMs: sharedBudgetMs,
+      errorName: shared.errorName,
+    })
     return local
   }
   return shared
