@@ -279,8 +279,8 @@ describe('catalog seed', () => {
     const rated = scores.map((row) => idToSlug.get(row.toolId)).sort()
     const csvSlugs = ratingSeeds.map((row) => row.slug).sort()
     const v1Slugs = new Set(editorialSeeds.map((row) => row.slug))
-    expect(ratingSeeds).toHaveLength(95)
-    expect(unratedSlugs).toHaveLength(100)
+    expect(ratingSeeds).toHaveLength(98)
+    expect(unratedSlugs).toHaveLength(97)
     expect(rated).toEqual(csvSlugs)
     expect(new Set(rated)).toEqual(new Set(csvSlugs))
     expect(csvSlugs).toContain('cursor')
@@ -305,22 +305,24 @@ describe('catalog seed', () => {
     expect(scores.some((row) => row.toolId === chatgpt.id)).toBe(true)
     const kept = keptProsConsSeeds.length
     const removedSlugs = editorialSeeds.filter((row) => !csvSlugs.includes(row.slug))
-    expect(kept).toBe(87)
-    expect(removedSlugs).toHaveLength(59)
+    expect(kept).toBe(88)
+    expect(removedSlugs).toHaveLength(58)
     expect(ratingSeeds.filter((row) => !v1Slugs.has(row.slug)).map((row) => row.slug).sort()).toEqual([
+      'canva',
       'composio',
       'cursor',
       'grok',
       'mistral-voxtral',
       'omnara',
+      'perplexity',
       'semantic-scholar',
       'twinmind',
       'windsurf',
     ])
     const keptPoints = keptProsConsSeeds.reduce((total, row) => total + row.pros.length + row.cons.length, 0)
     const unratedPoints = removedSlugs.reduce((total, row) => total + row.pros.length + row.cons.length, 0)
-    expect(keptPoints).toBe(439)
-    expect(unratedPoints).toBe(296)
+    expect(keptPoints).toBe(444)
+    expect(unratedPoints).toBe(291)
     expect(points).toHaveLength(keptPoints + unratedPoints + pointTotal(supplementalProsConsSeeds))
 
     for (const slug of unratedSlugs) {
@@ -377,7 +379,7 @@ describe('catalog seed', () => {
     const fresh = await seed()
     expect(fresh).toEqual({
       scoresInserted: 0,
-      scoresUpdated: 95,
+      scoresUpdated: 98,
       scoresRemoved: 0,
       prosInserted: 0,
       prosUpdated: prosConsTotal,
@@ -401,7 +403,7 @@ describe('catalog seed', () => {
     await useTempDatabase()
     const fresh = await seed()
     expect(fresh).toEqual({
-      scoresInserted: 95,
+      scoresInserted: 98,
       scoresUpdated: 0,
       scoresRemoved: 0,
       prosInserted: prosConsTotal,
@@ -441,9 +443,9 @@ describe('catalog seed', () => {
     process.env.SEED_PRUNE = '1'
     const fromV1 = await seed()
     expect(fromV1).toEqual({
-      scoresInserted: 8,
-      scoresUpdated: 87,
-      scoresRemoved: 59,
+      scoresInserted: 10,
+      scoresUpdated: 88,
+      scoresRemoved: 58,
       prosInserted: pointTotal(supplementalProsConsSeeds),
       prosUpdated: pointTotal(editorialSeeds),
       prosRemoved: 0,
@@ -451,10 +453,10 @@ describe('catalog seed', () => {
 
     const cursor = bySlug.get('cursor')
     const windsurf = bySlug.get('windsurf')
-    const perplexity = bySlug.get('perplexity')
+    const unratedTool = bySlug.get('dadan')
     const relevance = bySlug.get('relevance-ai')
-    expect(cursor && windsurf && perplexity && relevance).toBeTruthy()
-    if (!cursor || !windsurf || !perplexity || !relevance) return
+    expect(cursor && windsurf && unratedTool && relevance).toBeTruthy()
+    if (!cursor || !windsurf || !unratedTool || !relevance) return
     const stale = {
       features: 1,
       value: 1,
@@ -467,7 +469,7 @@ describe('catalog seed', () => {
     }
     await db.update(toolScores).set(stale).where(eq(toolScores.toolId, cursor.id))
     await db.update(toolScores).set(stale).where(eq(toolScores.toolId, windsurf.id))
-    await db.insert(toolScores).values({ toolId: perplexity.id, ...stale })
+    await db.insert(toolScores).values({ toolId: unratedTool.id, ...stale })
     await db.insert(toolScores).values({ toolId: relevance.id, ...stale })
     await db
       .update(toolProsCons)
@@ -478,17 +480,17 @@ describe('catalog seed', () => {
       .set({ body: 'Stale windsurf pro that the next seed replaces.', sourceUrl: 'https://stale.example/windsurf' })
       .where(and(eq(toolProsCons.toolId, windsurf.id), eq(toolProsCons.kind, 'pro'), eq(toolProsCons.position, 1)))
     await db.insert(toolProsCons).values({
-      toolId: perplexity.id,
+      toolId: unratedTool.id,
       kind: 'pro',
       position: 1,
       body: 'Stale unrated pro that must stay.',
-      sourceUrl: 'https://stale.example/perplexity',
+      sourceUrl: 'https://stale.example/dadan',
     })
 
     const replaced = await seed()
     expect(replaced).toEqual({
       scoresInserted: 0,
-      scoresUpdated: 95,
+      scoresUpdated: 98,
       scoresRemoved: 2,
       prosInserted: 0,
       prosUpdated: prosConsTotal,
@@ -509,7 +511,7 @@ describe('catalog seed', () => {
         expect(bodies, slug).toContain(point.text)
       }
     }
-    expect(points.some((row) => row.toolId === perplexity.id && row.body === 'Stale unrated pro that must stay.')).toBe(true)
+    expect(points.some((row) => row.toolId === unratedTool.id && row.body === 'Stale unrated pro that must stay.')).toBe(true)
     for (const slug of ['cursor', 'windsurf'] as const) {
       const tool = bySlug.get(slug)
       const score = scores.find((row) => row.toolId === tool?.id)

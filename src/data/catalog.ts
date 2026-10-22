@@ -108,6 +108,7 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: none,
   }),
+  // pricing verified 2026-10-22 at https://www.perplexity.ai/pro | freemium; Pro $17/mo billed annually (monthly-billed price not shown)
   tool({
     slug: 'perplexity',
     name: 'Perplexity',
@@ -116,13 +117,13 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['www.perplexity.ai'],
     category: 'Search assistant',
     shortDesc: 'A search assistant that answers with sources you can click.',
-    longDesc: 'Perplexity is built for questions that need current sources. You get a short answer and links, then you can ask follow-ups. It is weaker as a long-form writing studio.',
+    longDesc: 'Perplexity is built for questions that need current sources. You get a short answer and links, then you can ask follow-ups. It is weaker as a long-form writing studio. Search is free; Pro is $17 a month, billed annually (monthly-billed price not shown).',
     pricingModel: 'freemium',
-    priceFromUsd: null,
+    priceFromUsd: 17,
     hasFreeTier: true,
     skillLevel: 'beginner',
     platforms: ['Web', 'iOS', 'Android'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: '2026-10-22',
     fits: [
       { task: 'research', score: 96, notes: 'Citation-first answers are the whole product.' },
       { task: 'chat', score: 70, notes: 'You can keep asking, but the center of the product is search.' },
@@ -811,11 +812,11 @@ export const toolSeeds: ToolSeed[] = [
     shortDesc: 'A design editor with Magic Studio tools for graphics, docs, and simple video.',
     longDesc: 'Canva is the fastest way for a non-designer to ship a social graphic, slide, or one-page layout. It is not a code editor or a cinematic video suite.',
     pricingModel: 'freemium',
-    priceFromUsd: null,
+    priceFromUsd: 18,
     hasFreeTier: true,
     skillLevel: 'beginner',
     platforms: ['Web', 'iOS', 'Android', 'macOS', 'Windows'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: '2026-10-22',
     fits: [
       { task: 'design', score: 92, notes: 'Templates and a simple editor for everyday graphics.' },
       { task: 'websites', score: 70, notes: 'Can publish a simple site, with less control than Webflow or Framer.' },
@@ -889,11 +890,11 @@ export const toolSeeds: ToolSeed[] = [
     shortDesc: 'On-page SEO guidance while you write or brief a page.',
     longDesc: 'Surfer scores a draft against the terms and structure it sees on ranking pages. It is a specialist. A general chatbot will not replace the checklist.',
     pricingModel: 'paid',
-    priceFromUsd: null,
+    priceFromUsd: 59,
     hasFreeTier: false,
     skillLevel: 'intermediate',
     platforms: ['Web'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: '2026-10-22',
     fits: [
       { task: 'seo', score: 94, notes: 'On-page optimization is the product.' },
       { task: 'writing', score: 65, notes: 'The editor is there to serve the SEO brief.' },
@@ -3848,7 +3849,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // expansion 2026-10-22 (Forge, approved by James) + freshness discovery | 14 new tools, unrated, official domains only, no affiliate links
-  // priceFromUsd is the monthly-billed price except d-id, tldv, jetbrains-ai, krisp, which are labeled 'billed annually' in longDesc
+  // priceFromUsd is the monthly-billed price except d-id, tldv, jetbrains-ai, krisp and perplexity, which are labeled 'billed annually' in longDesc
   // source: https://ampcode.com/pricing
   tool({
     slug: 'amp',
