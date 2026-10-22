@@ -3,9 +3,9 @@ import { taskSeeds } from '../src/data/catalog'
 import { CATALOG_TOOL_COUNT } from '../src/lib/seo-pages'
 import { bestGuideHeading } from '../src/lib/descriptions'
 import { toolsForTask } from '../src/lib/recommend'
-import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
+import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'
 
-const catalog = catalogFromSeeds()
+const catalog = listedCatalogFromSeeds()
 
 test.describe('seo hub pages', () => {
   test.beforeEach(async ({ context }) => {

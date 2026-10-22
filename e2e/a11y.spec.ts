@@ -1,9 +1,9 @@
 import AxeBuilder from '@axe-core/playwright'
 import { expect, test } from '@playwright/test'
 import { toolCategories } from '../src/lib/tool-index'
-import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
+import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'
 
-const category = toolCategories(catalogFromSeeds().tools)[0]
+const category = toolCategories(listedCatalogFromSeeds().tools)[0]
 const pages = [
   '/',
   '/sponsor',

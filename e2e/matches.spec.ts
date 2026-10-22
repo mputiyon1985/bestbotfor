@@ -1,11 +1,11 @@
 import { expect, test } from '@playwright/test'
-import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
+import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'
 import { listMatches, MATCHES_PAGE_SIZE, matchesPath, seeAllMatchesLabel } from '../src/lib/matches'
 import { paginationItems, showingLabel } from '../src/lib/pagination'
 import type { ScoreableTool } from '../src/lib/scoring'
 
 function candidates(task: string): ScoreableTool[] {
-  return catalogFromSeeds().tools.flatMap((tool) => {
+  return listedCatalogFromSeeds().tools.flatMap((tool) => {
     const fit = tool.fits.find((item) => item.taskSlug === task)
     if (!fit) return []
     return [

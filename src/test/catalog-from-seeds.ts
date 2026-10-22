@@ -76,3 +76,10 @@ function editorialFor(slug: string): Pick<CatalogTool, 'editorial' | 'pros' | 'c
     quizEligible: entry.quizEligible,
   }
 }
+
+/** The catalog as the site serves it: unlisted tools (Mercury 3) keep a DB record but never reach public pages. */
+export function listedCatalogFromSeeds(): Catalog {
+  const catalog = catalogFromSeeds()
+  const unlisted = new Set(toolSeeds.filter((tool) => tool.unlisted).map((tool) => tool.slug))
+  return { ...catalog, tools: catalog.tools.filter((tool) => !unlisted.has(tool.slug)) }
+}
