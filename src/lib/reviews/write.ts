@@ -69,6 +69,8 @@ export type ReviewWriteReason =
   | 'unavailable'
   | 'invalid'
   | 'not_found'
+  /** The caller already has a live review for this tool; use editReview. */
+  | 'exists'
 
 export type ReviewWriteResult =
   | {
@@ -130,14 +132,26 @@ async function consume(
   }
 }
 
+/** Per-user limit key. The Clerk user id is hashed so rate_limits never holds it in clear. */
+export function userLimitKey(kind: 'submit' | 'edit' | 'delete', userId: string): string {
+  return `review:${kind}:user:${hashText(`review-user|${userId}`)}`
+}
+
 async function gateLimits(
   deps: ReviewWriteDeps,
-  kind: 'submit' | 'edit',
-  ip: string,
+  kind: 'submit' | 'edit' | 'delete',
+  ip: string | null,
   now: number,
 ): Promise<ReviewWriteResult | null> {
-  const userKey = kind === 'submit' ? `review:submit:user:${deps.principal?.userId}` : `review:edit:user:${deps.principal?.userId}`
+  const userKey = userLimitKey(kind, deps.principal?.userId ?? '')
   const userLimit = kind === 'submit' ? 5 : 20
+  if (kind === 'delete') {
+    const decision = await consume(deps.db, deps.limiter, userKey, userLimit, DAY_MS, now)
+    if (decision === 'limit') return { ok: false, reason: 'rate_limited', retryAt: now + DAY_MS }
+    if (decision === 'unavailable') return { ok: false, reason: 'unavailable' }
+    return null
+  }
+  if (!ip) return { ok: false, reason: 'unavailable' }
   const checks: [string, number, number][] = [
     [userKey, userLimit, DAY_MS],
     [rateLimitKey(ip, 'review:submit:hour'), 10, HOUR_MS],
@@ -312,7 +326,60 @@ export async function submitReview(deps: ReviewWriteDeps, toolSlug: string, form
         .from(reviews)
         .where(and(eq(reviews.clerkUserId, ready.principal.userId), eq(reviews.toolId, tool.id)))
         .limit(1)
-      if (existing) return { id: existing.id, created: false }
+      if (existing && existing.status !== 'withdrawn') return { id: existing.id, created: false, exists: true }
+      if (existing) {
+        const versions = await tx.select().from(reviewVersions).where(eq(reviewVersions.reviewId, existing.id))
+        const nextNo = versions.reduce((max, row) => Math.max(max, row.versionNo), 0) + 1
+        const [version] = await tx
+          .insert(reviewVersions)
+          .values({
+            reviewId: existing.id,
+            versionNo: nextNo,
+            stars: parsed.stars,
+            pros,
+            cons,
+            useCaseText,
+            role: parsed.role ?? null,
+            usageDuration: parsed.usageDuration ?? null,
+            planType: parsed.planType ?? null,
+            connection: parsed.connection,
+            connectionText,
+            attestationVersion: ATTESTATION_VERSION,
+            vendorDomainCheck: vendor,
+            decision: 'pending',
+            contentHash,
+            createdAt: ready.now,
+          })
+          .returning()
+        if (!version) throw new Error('version insert failed')
+        await tx
+          .update(reviews)
+          .set({
+            status: 'pending',
+            publishedVersionId: null,
+            latestVersionId: version.id,
+            weight,
+            countsTowardScore,
+            displayName,
+            ipHmac: ready.ipHmac,
+            netHmac: ready.netHmac,
+            ipKeyId: ready.ipKeyId,
+            updatedAt: ready.now,
+          })
+          .where(eq(reviews.id, existing.id))
+        await audit(tx as unknown as Database, {
+          reviewId: existing.id,
+          versionId: version.id,
+          userId: ready.principal.userId,
+          action: 'resubmit',
+          fromStatus: 'withdrawn',
+          toStatus: 'pending',
+          note,
+          now: ready.now,
+        })
+        await rebuildReviewAggregate(tx as unknown as Database, tool.id, ready.now)
+        return { id: existing.id, created: false, exists: false }
+      }
       const [review] = await tx
         .insert(reviews)
         .values({
@@ -367,8 +434,9 @@ export async function submitReview(deps: ReviewWriteDeps, toolSlug: string, form
         hash: hashText(`submit|${review.id}|${version.id}|pending|${ready.now}`),
       })
       await rebuildReviewAggregate(tx as unknown as Database, tool.id, ready.now)
-      return { id: review.id, created: true }
+      return { id: review.id, created: true, exists: false }
     })
+    if (reviewId.exists) return { ok: false, reason: 'exists' }
     const [stored] = await deps.db.select().from(reviews).where(eq(reviews.id, reviewId.id)).limit(1)
     return {
       ok: true,
@@ -384,7 +452,7 @@ export async function submitReview(deps: ReviewWriteDeps, toolSlug: string, form
         .from(reviews)
         .where(and(eq(reviews.clerkUserId, ready.principal.userId), eq(reviews.toolId, tool.id)))
         .limit(1)
-      if (existing) return { ok: true, reviewId: existing.id, status: existing.status, displayName: existing.displayName, created: false }
+      if (existing) return { ok: false, reason: 'exists' }
     }
     console.error('review write failed', error instanceof Error ? error.name : 'error')
     return { ok: false, reason: 'unavailable' }
@@ -421,6 +489,9 @@ export async function editReview(deps: ReviewWriteDeps, toolSlug: string, form: 
   const connectionText = parsed.connection === 'disclosed' ? normalizeReviewText(parsed.connectionText) : ''
   const countsTowardScore = parsed.connection === 'disclosed' ? 0 : 1
   const note = hintNote([pros, cons, useCaseText, connectionText].join('\n'), domains.map((row) => row.domain), [])
+  // A withdrawn review is reopened as pending; its old published version is not revived.
+  const reopening = existing.status === 'withdrawn'
+  const nextStatus = reopening ? 'pending' : existing.status
   await deps.db.transaction(async (tx) => {
     const [version] = await tx
       .insert(reviewVersions)
@@ -448,6 +519,7 @@ export async function editReview(deps: ReviewWriteDeps, toolSlug: string, form: 
       .update(reviews)
       .set({
         latestVersionId: version.id,
+        ...(reopening ? { status: 'pending', publishedVersionId: null } : {}),
         displayName,
         countsTowardScore,
         ipHmac: ready.ipHmac,
@@ -460,15 +532,15 @@ export async function editReview(deps: ReviewWriteDeps, toolSlug: string, form: 
       reviewId: existing.id,
       versionId: version.id,
       userId: ready.principal.userId,
-      action: 'edit',
+      action: reopening ? 'resubmit' : 'edit',
       fromStatus: existing.status,
-      toStatus: existing.status,
+      toStatus: nextStatus,
       note,
       now: ready.now,
     })
     await rebuildReviewAggregate(tx as unknown as Database, tool.id, ready.now)
   })
-  return { ok: true, reviewId: existing.id, status: existing.status, displayName, created: false }
+  return { ok: true, reviewId: existing.id, status: nextStatus, displayName, created: false }
 }
 
 export async function deleteReview(deps: ReviewWriteDeps, toolSlug: string): Promise<ReviewWriteResult> {
@@ -476,7 +548,10 @@ export async function deleteReview(deps: ReviewWriteDeps, toolSlug: string): Pro
   if (!userRatingsEnabled(env, deps.productionLaunch)) return { ok: false, reason: 'flag_off' }
   const principal = deps.principal
   if (!principal?.userId) return { ok: false, reason: 'signed_out' }
+  if (principal.banned) return { ok: false, reason: 'banned' }
   const now = deps.now ?? Date.now()
+  const limited = await gateLimits(deps, 'delete', null, now)
+  if (limited) return limited
   const tool = await toolRow(deps.db, toolSlug)
   if (!tool) return { ok: false, reason: 'not_found' }
   const [existing] = await deps.db
@@ -485,6 +560,9 @@ export async function deleteReview(deps: ReviewWriteDeps, toolSlug: string): Pro
     .where(and(eq(reviews.clerkUserId, principal.userId), eq(reviews.toolId, tool.id)))
     .limit(1)
   if (!existing) return { ok: false, reason: 'not_found' }
+  if (existing.status === 'withdrawn') {
+    return { ok: true, reviewId: existing.id, status: 'withdrawn', displayName: existing.displayName, created: false }
+  }
   await deps.db.transaction(async (tx) => {
     await tx.update(reviews).set({ status: 'withdrawn', updatedAt: now }).where(eq(reviews.id, existing.id))
     await audit(tx as unknown as Database, {

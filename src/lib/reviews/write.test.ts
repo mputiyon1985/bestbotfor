@@ -1,10 +1,10 @@
 import { count, eq } from 'drizzle-orm'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createTestDatabase } from '@/test/db'
 import { moderationEvents, reviewVersions, reviews, toolVendorDomains, tools } from '@/lib/db/schema'
 import { aggregateFromReviews } from './aggregate'
 import { pastReviewWait, vendorDomainDecision } from './eligibility'
-import { submitReview, deleteReview, editReview, rebuildReviewAggregate, type ReviewPrincipal, type ReviewWriteDeps, type ReviewWriteReason } from './write'
+import { submitReview, deleteReview, editReview, rebuildReviewAggregate, userLimitKey, type ReviewPrincipal, type ReviewWriteDeps, type ReviewWriteReason } from './write'
 
 const now = Date.parse('2026-10-17T12:00:00Z')
 const day = 24 * 60 * 60 * 1000
@@ -293,5 +293,146 @@ describe('submitReview', () => {
     expect(totals.weightedSum).toBe(24.5)
     expect(totals.star1).toBe(0)
     expect(totals.star5).toBe(2)
+  })
+})
+
+describe('review write follow-ups (QA #47)', () => {
+  it('reopens a withdrawn review as pending with a new version on resubmit', async () => {
+    process.env.BBF_E2E_HOOKS = '1'
+    const { db, close } = await createTestDatabase()
+    try {
+      await seedTool(db)
+      expect((await submitReview(deps(db), 'chatgpt', form)).ok).toBe(true)
+      expect((await deleteReview(deps(db, { now: now + 1000 }), 'chatgpt')).ok).toBe(true)
+      const again = await submitReview(deps(db, { now: now + 2000 }), 'chatgpt', { ...form, stars: 2, pros: 'Changed my mind' })
+      expect(again).toMatchObject({ ok: true, status: 'pending', created: false })
+      const [review] = await db.select().from(reviews)
+      expect(review?.status).toBe('pending')
+      expect(review?.publishedVersionId).toBeNull()
+      const versions = await db.select().from(reviewVersions)
+      expect(versions).toHaveLength(2)
+      expect(review?.latestVersionId).toBe(versions[1]?.id)
+      expect(versions[1]?.stars).toBe(2)
+      expect(await reviewCount(db)).toBe(1)
+      const events = await db.select().from(moderationEvents).where(eq(moderationEvents.action, 'resubmit'))
+      expect(events).toHaveLength(1)
+      expect(events[0]?.fromStatus).toBe('withdrawn')
+    } finally {
+      await close()
+    }
+  })
+
+  it('refuses a resubmit on a live review instead of returning ok and dropping it', async () => {
+    process.env.BBF_E2E_HOOKS = '1'
+    const { db, close } = await createTestDatabase()
+    try {
+      await seedTool(db)
+      expect((await submitReview(deps(db), 'chatgpt', form)).ok).toBe(true)
+      const again = await submitReview(deps(db, { now: now + 1000 }), 'chatgpt', { ...form, stars: 1 })
+      expect(again).toEqual({ ok: false, reason: 'exists' })
+      expect(await db.select().from(reviewVersions)).toHaveLength(1)
+    } finally {
+      await close()
+    }
+  })
+
+  it('keeps rate limits on a resubmit after delete', async () => {
+    process.env.BBF_E2E_HOOKS = '1'
+    const { db, close } = await createTestDatabase()
+    try {
+      await seedTool(db)
+      expect((await submitReview(deps(db), 'chatgpt', form)).ok).toBe(true)
+      expect((await deleteReview(deps(db, { now: now + 1000 }), 'chatgpt')).ok).toBe(true)
+      const limited = await submitReview(deps(db, { now: now + 2000, limiter: async () => 'limit' }), 'chatgpt', form)
+      expect(limited).toMatchObject({ ok: false, reason: 'rate_limited' })
+      const [review] = await db.select().from(reviews)
+      expect(review?.status).toBe('withdrawn')
+      expect(await db.select().from(reviewVersions)).toHaveLength(1)
+    } finally {
+      await close()
+    }
+  })
+
+  it('reopens a withdrawn review as pending on edit', async () => {
+    process.env.BBF_E2E_HOOKS = '1'
+    const { db, close } = await createTestDatabase()
+    try {
+      await seedTool(db)
+      expect((await submitReview(deps(db), 'chatgpt', form)).ok).toBe(true)
+      expect((await deleteReview(deps(db, { now: now + 1000 }), 'chatgpt')).ok).toBe(true)
+      const edited = await editReview(deps(db, { now: now + 2000 }), 'chatgpt', { ...form, stars: 3 })
+      expect(edited).toMatchObject({ ok: true, status: 'pending' })
+      const [review] = await db.select().from(reviews)
+      expect(review?.status).toBe('pending')
+      expect(review?.publishedVersionId).toBeNull()
+      expect(await db.select().from(reviewVersions)).toHaveLength(2)
+    } finally {
+      await close()
+    }
+  })
+
+  it('refuses delete when the ratings flag is off, and leaves the row', async () => {
+    process.env.BBF_E2E_HOOKS = '1'
+    const { db, close } = await createTestDatabase()
+    try {
+      await seedTool(db)
+      expect((await submitReview(deps(db), 'chatgpt', form)).ok).toBe(true)
+      const off = await deleteReview(deps(db, { env: { userRatings: 'off', vercelEnv: 'test' } }), 'chatgpt')
+      expect(off).toEqual({ ok: false, reason: 'flag_off' })
+      const prod = await deleteReview(deps(db, { env: { userRatings: 'on', vercelEnv: 'production' }, productionLaunch: false }), 'chatgpt')
+      expect(prod).toEqual({ ok: false, reason: 'flag_off' })
+      const [review] = await db.select().from(reviews)
+      expect(review?.status).toBe('pending')
+    } finally {
+      await close()
+    }
+  })
+
+  it('refuses delete for a banned user and when rate limited', async () => {
+    process.env.BBF_E2E_HOOKS = '1'
+    const { db, close } = await createTestDatabase()
+    try {
+      await seedTool(db)
+      expect((await submitReview(deps(db), 'chatgpt', form)).ok).toBe(true)
+      expect(await deleteReview(deps(db, { principal: principal({ banned: true }) }), 'chatgpt')).toEqual({ ok: false, reason: 'banned' })
+      expect(await deleteReview(deps(db, { limiter: async () => 'limit' }), 'chatgpt')).toMatchObject({ ok: false, reason: 'rate_limited' })
+      expect(await deleteReview(deps(db, { limiter: async () => 'unavailable' }), 'chatgpt')).toEqual({ ok: false, reason: 'unavailable' })
+      const [review] = await db.select().from(reviews)
+      expect(review?.status).toBe('pending')
+    } finally {
+      await close()
+    }
+  })
+
+  it('fails closed through the default allowRate limiter when the rate-limit table fails', async () => {
+    process.env.BBF_E2E_HOOKS = '1'
+    const { db, close } = await createTestDatabase()
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      await seedTool(db)
+      await db.$client.execute('DROP TABLE rate_limits')
+      expect(await submitReview(deps(db), 'chatgpt', form)).toEqual({ ok: false, reason: 'unavailable' })
+      expect(await editReview(deps(db), 'chatgpt', form)).toEqual({ ok: false, reason: 'unavailable' })
+      expect(await deleteReview(deps(db), 'chatgpt')).toEqual({ ok: false, reason: 'unavailable' })
+      expect(await reviewCount(db)).toBe(0)
+    } finally {
+      spy.mockRestore()
+      await close()
+    }
+  })
+
+  it('hashes the Clerk user id in the per-user limit key', async () => {
+    const keys: string[] = []
+    process.env.BBF_E2E_HOOKS = '1'
+    const { db, close } = await createTestDatabase()
+    try {
+      await seedTool(db)
+      await submitReview(deps(db, { limiter: async (key) => { keys.push(key); return 'allow' } }), 'chatgpt', form)
+      expect(keys[0]).toBe(userLimitKey('submit', 'user_maria'))
+      expect(keys[0]).toMatch(/^review:submit:user:[0-9a-f]{64}$/)
+      expect(keys.join(' ')).not.toContain('user_maria')
+    } finally {
+      await close()
+    }
   })
 })
