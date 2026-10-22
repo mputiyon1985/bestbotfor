@@ -39,7 +39,7 @@ function deps(db: ReviewWriteDeps['db'], userId: string, at = now): ReviewWriteD
     },
     headers: { get: (name: string) => (name.toLowerCase() === 'x-bbf-test-ip' ? '203.0.113.7' : null) },
     now: at,
-    env: { userRatings: 'on', vercelEnv: 'test', reviewIpHmacSecret: 'local-review-ip-hmac-secret-32b-yy', reviewIpHmacKeyId: 'k1' },
+    env: { userRatings: 'on', vercelEnv: 'test', reviewIpHmacSecret: 'local-review-ip-hmac-secret-32b-yy', reviewIpHmacKeyId: 'k1', reviewUserLimitSecret: 'local-review-user-limit-secret-32b-zz' },
   }
 }
 

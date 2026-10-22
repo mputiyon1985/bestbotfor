@@ -1,4 +1,4 @@
-import { createHash } from 'node:crypto'
+import { createHash, createHmac } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
 import { allowRate, type RateLimitDecision } from '@/lib/action-limit'
 import type { Database } from '@/lib/db/client'
@@ -88,7 +88,7 @@ export type ReviewWriteDeps = {
   db: Database
   principal: ReviewPrincipal | null
   headers: HeaderSource
-  env?: VercelRuntimeEnv & UserRatingsEnv & { reviewIpHmacSecret?: string; reviewIpHmacKeyId?: string; staffUserIds?: string }
+  env?: VercelRuntimeEnv & UserRatingsEnv & { reviewIpHmacSecret?: string; reviewIpHmacKeyId?: string; reviewUserLimitSecret?: string; staffUserIds?: string }
   now?: number
   limiter?: Limiter
   revalidate?: (slug: string) => void
@@ -132,9 +132,18 @@ async function consume(
   }
 }
 
-/** Per-user limit key. The Clerk user id is hashed so rate_limits never holds it in clear. */
-export function userLimitKey(kind: 'submit' | 'edit' | 'delete', userId: string): string {
-  return `review:${kind}:user:${hashText(`review-user|${userId}`)}`
+/** REVIEW_USER_LIMIT_SECRET must be at least 32 characters. */
+export const USER_LIMIT_SECRET_MIN = 32
+
+/**
+ * Per-user limit key: HMAC-SHA256 of the Clerk user id under REVIEW_USER_LIMIT_SECRET,
+ * so rate_limits never holds the id and a known id cannot be confirmed without the key.
+ * Returns null when the secret is missing or short; callers fail closed.
+ */
+export function userLimitKey(kind: 'submit' | 'edit' | 'delete', userId: string, secret: string | undefined): string | null {
+  const key = (secret ?? '').trim()
+  if (key.length < USER_LIMIT_SECRET_MIN || !userId) return null
+  return `review:${kind}:user:${createHmac('sha256', key).update(`review-user|v1|${userId}`).digest('hex')}`
 }
 
 async function gateLimits(
@@ -143,7 +152,15 @@ async function gateLimits(
   ip: string | null,
   now: number,
 ): Promise<ReviewWriteResult | null> {
-  const userKey = userLimitKey(kind, deps.principal?.userId ?? '')
+  const userKey = userLimitKey(
+    kind,
+    deps.principal?.userId ?? '',
+    deps.env?.reviewUserLimitSecret ?? process.env.REVIEW_USER_LIMIT_SECRET,
+  )
+  if (!userKey) {
+    console.error('review write unavailable')
+    return { ok: false, reason: 'unavailable' }
+  }
   const userLimit = kind === 'submit' ? 5 : 20
   if (kind === 'delete') {
     const decision = await consume(deps.db, deps.limiter, userKey, userLimit, DAY_MS, now)

@@ -1,7 +1,8 @@
+import { createHash } from 'node:crypto'
 import { count, eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createTestDatabase } from '@/test/db'
-import { moderationEvents, reviewVersions, reviews, toolVendorDomains, tools } from '@/lib/db/schema'
+import { moderationEvents, reviewAggregates, reviewVersions, reviews, toolVendorDomains, tools } from '@/lib/db/schema'
 import { aggregateFromReviews } from './aggregate'
 import { pastReviewWait, vendorDomainDecision } from './eligibility'
 import { submitReview, deleteReview, editReview, rebuildReviewAggregate, userLimitKey, type ReviewPrincipal, type ReviewWriteDeps, type ReviewWriteReason } from './write'
@@ -60,6 +61,7 @@ function deps(
       vercelEnv: 'test',
       reviewIpHmacSecret: secret,
       reviewIpHmacKeyId: 'k1',
+      reviewUserLimitSecret: 'local-review-user-limit-secret-32b-zz',
     },
     ...overrides,
   }
@@ -135,7 +137,7 @@ describe('submitReview', () => {
       expect(Number(versions?.n ?? 0)).toBe(1)
 
       const blocked: { reason: ReviewWriteReason; input: ReviewWriteDeps }[] = [
-        { reason: 'flag_off', input: deps(db, { principal: principal({ userId: 'user_flag' }), env: { userRatings: 'off', vercelEnv: 'test', reviewIpHmacSecret: secret, reviewIpHmacKeyId: 'k1' } }) },
+        { reason: 'flag_off', input: deps(db, { principal: principal({ userId: 'user_flag' }), env: { userRatings: 'off', vercelEnv: 'test', reviewIpHmacSecret: secret, reviewIpHmacKeyId: 'k1', reviewUserLimitSecret: 'local-review-user-limit-secret-32b-zz' } }) },
         { reason: 'signed_out', input: deps(db, { principal: null }) },
         { reason: 'unverified', input: deps(db, { principal: principal({ userId: 'user_unverified', emailVerified: false }) }) },
         { reason: 'waiting', input: deps(db, { principal: principal({ userId: 'user_waiting', createdAtMs: now - day }) }) },
@@ -421,18 +423,83 @@ describe('review write follow-ups (QA #47)', () => {
     }
   })
 
-  it('hashes the Clerk user id in the per-user limit key', async () => {
+  it('keys the per-user limit with an HMAC of the Clerk id, and fails closed without the secret', async () => {
     const keys: string[] = []
+    process.env.BBF_E2E_HOOKS = '1'
+    const previous = process.env.REVIEW_USER_LIMIT_SECRET
+    delete process.env.REVIEW_USER_LIMIT_SECRET
+    const { db, close } = await createTestDatabase()
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      await seedTool(db)
+      const secretA = 'local-review-user-limit-secret-32b-zz'
+      await submitReview(deps(db, { limiter: async (key) => { keys.push(key); return 'allow' } }), 'chatgpt', form)
+      expect(keys[0]).toBe(userLimitKey('submit', 'user_maria', secretA))
+      expect(keys[0]).toMatch(/^review:submit:user:[0-9a-f]{64}$/)
+      expect(keys.join(' ')).not.toContain('user_maria')
+      expect(keys[0]).not.toContain(createHash('sha256').update('review-user|user_maria').digest('hex'))
+      expect(userLimitKey('submit', 'user_maria', 'another-review-user-limit-secret-32')).not.toBe(keys[0])
+      expect(userLimitKey('submit', 'user_maria', 'short')).toBeNull()
+      expect(userLimitKey('submit', 'user_maria', undefined)).toBeNull()
+      const noSecret = deps(db)
+      noSecret.env = { ...noSecret.env, reviewUserLimitSecret: undefined }
+      let called = 0
+      const limiter = async () => { called += 1; return 'allow' as const }
+      expect(await submitReview({ ...noSecret, limiter }, 'chatgpt', form)).toEqual({ ok: false, reason: 'unavailable' })
+      expect(await editReview({ ...noSecret, limiter }, 'chatgpt', form)).toEqual({ ok: false, reason: 'unavailable' })
+      expect(await deleteReview({ ...noSecret, limiter }, 'chatgpt')).toEqual({ ok: false, reason: 'unavailable' })
+      expect(called).toBe(0)
+    } finally {
+      spy.mockRestore()
+      if (previous === undefined) delete process.env.REVIEW_USER_LIMIT_SECRET
+      else process.env.REVIEW_USER_LIMIT_SECRET = previous
+      await close()
+    }
+  })
+
+  it('pins the delete limit at 20 per user per day', async () => {
     process.env.BBF_E2E_HOOKS = '1'
     const { db, close } = await createTestDatabase()
     try {
       await seedTool(db)
-      await submitReview(deps(db, { limiter: async (key) => { keys.push(key); return 'allow' } }), 'chatgpt', form)
-      expect(keys[0]).toBe(userLimitKey('submit', 'user_maria'))
-      expect(keys[0]).toMatch(/^review:submit:user:[0-9a-f]{64}$/)
-      expect(keys.join(' ')).not.toContain('user_maria')
+      const seen: [string, number, number][] = []
+      await deleteReview(deps(db, { limiter: async (key, limit, windowMs) => { seen.push([key, limit, windowMs]); return 'allow' } }), 'chatgpt')
+      expect(seen).toEqual([[userLimitKey('delete', 'user_maria', 'local-review-user-limit-secret-32b-zz'), 20, day]])
     } finally {
       await close()
+    }
+  })
+
+  it('withdraws a published review, drops it from the aggregate, and reopens it without reviving the old version', async () => {
+    process.env.BBF_E2E_HOOKS = '1'
+    for (const reopen of ['submit', 'edit'] as const) {
+      const { db, close } = await createTestDatabase()
+      try {
+        const tool = await seedTool(db)
+        expect((await submitReview(deps(db), 'chatgpt', form)).ok).toBe(true)
+        const [first] = await db.select().from(reviews)
+        if (!first) throw new Error('review missing')
+        await db.update(reviewVersions).set({ decision: 'approved', decidedAt: now }).where(eq(reviewVersions.id, first.latestVersionId))
+        await db.update(reviews).set({ status: 'published', publishedVersionId: first.latestVersionId, publishedAt: now }).where(eq(reviews.id, first.id))
+        await rebuildReviewAggregate(db, tool.id, now)
+        const aggregate = async () => (await db.select().from(reviewAggregates))[0]?.publishedCount
+        expect(await aggregate()).toBe(1)
+        expect((await deleteReview(deps(db, { now: now + 1000 }), 'chatgpt')).ok).toBe(true)
+        expect(await aggregate()).toBe(0)
+        const [withdrawn] = await db.select().from(reviews)
+        expect(withdrawn?.status).toBe('withdrawn')
+        const result = reopen === 'submit'
+          ? await submitReview(deps(db, { now: now + 2000 }), 'chatgpt', { ...form, stars: 2 })
+          : await editReview(deps(db, { now: now + 2000 }), 'chatgpt', { ...form, stars: 2 })
+        expect(result).toMatchObject({ ok: true, status: 'pending' })
+        const [reopened] = await db.select().from(reviews)
+        expect(reopened?.status).toBe('pending')
+        expect(reopened?.publishedVersionId).toBeNull()
+        expect(reopened?.latestVersionId).not.toBe(first.latestVersionId)
+        expect(await aggregate()).toBe(0)
+      } finally {
+        await close()
+      }
     }
   })
 })

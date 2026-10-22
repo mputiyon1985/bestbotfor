@@ -70,11 +70,16 @@ export async function purgeWithdrawnReviewText(
         })
         const tombstone = inserted.lastInsertRowid
         if (tombstone === undefined || countOf(inserted.rowsAffected) !== 1) throw new Error('tombstone insert failed')
-        await tx.execute({
+        const repointed = await tx.execute({
           sql: `UPDATE reviews SET latest_version_id = ?, published_version_id = NULL, ip_hmac = NULL, net_hmac = NULL
             WHERE id = ? AND status = 'withdrawn'`,
           args: [tombstone, id],
         })
+        // Reopened between the select and this transaction: keep every version.
+        if (countOf(repointed.rowsAffected) !== 1) {
+          await tx.rollback()
+          continue
+        }
         await tx.execute({ sql: 'DELETE FROM review_versions WHERE review_id = ? AND id <> ?', args: [id, tombstone] })
         await tx.commit()
         purged += 1
