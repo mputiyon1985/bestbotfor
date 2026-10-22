@@ -21,6 +21,10 @@ const ALLOWED = new Set([
   'scripts/seed.ts',
   'scripts/migrate.ts',
   'scripts/a2-catalog-corrections.ts',
+  // Prebuild step. Only touches the local file data/catalog-fallback.db built from
+  // bundled seeds, never a hosted DB: PRAGMA wal_checkpoint, journal_mode = DELETE
+  // and VACUUM so the file is readable on a read-only serverless filesystem.
+  'scripts/build-catalog-fallback.ts',
   'drizzle/0004_retire_quiz_fits.sql',
   'drizzle/0007_drop_non_forge_scores.sql',
   // Sponsorship rows are inserted from src/lib/stripe-webhook.ts.
