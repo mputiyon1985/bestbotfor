@@ -4,7 +4,7 @@ const WIDTHS = [375, 390, 768] as const
 
 const PAGES = [
   { name: 'result', path: '/result?task=chat&budget=any&skill=beginner', pagination: false, bars: 0 },
-  { name: 'all matches', path: '/result?task=chat&view=all', pagination: true, bars: 0 },
+  { name: 'all matches', path: '/result?task=writing&view=all', pagination: true, bars: 0 },
   { name: 'coding matches', path: '/result?task=coding&view=all', pagination: true, bars: 0 },
   { name: 'tool', path: '/tools/chatgpt', pagination: false, bars: 4 },
 ] as const

@@ -8,9 +8,11 @@ const scoutUnrated = ['dadan', 'composio', 'supercmo', 'mintlify']
   .filter((tool) => tool && unratedSlugs.includes(tool.slug))
 
 test('unrated tools never appear in quiz results or all matches', async ({ page }) => {
-  test.setTimeout(180_000)
-  const tasks = [...new Set(listedUnrated.flatMap((tool) => tool.fits.map((fit) => fit.task)))]
-  expect(tasks.length).toBeGreaterThan(0)
+  test.setTimeout(60_000)
+  // A few tasks only: /result is rate limited per IP across the whole suite.
+  // The unit test (quiz-unrated.test.ts) covers every task, budget and skill.
+  const tasks = ['chat', 'music', 'video']
+  for (const task of tasks) expect(listedUnrated.some((tool) => tool.fits.some((fit) => fit.task === task)), task).toBe(true)
   for (const task of tasks) {
     const names = listedUnrated.filter((tool) => tool.fits.some((fit) => fit.task === task)).map((tool) => tool.name)
     for (const url of [`/result?task=${task}&budget=any&skill=pro`, `/result?task=${task}&view=all`]) {

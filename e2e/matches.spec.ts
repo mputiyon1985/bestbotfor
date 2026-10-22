@@ -19,29 +19,30 @@ function candidates(task: string): ScoreableTool[] {
         fitScore: fit.score,
         notes: fit.notes,
         quizEligible: tool.quizEligible,
+        editorial: tool.editorial,
       },
     ]
   })
 }
 
 test('the quiz links to every match and the pages stay in rank order', async ({ page }) => {
-  const matches = listMatches(candidates('chat'), 'any')
+  const matches = listMatches(candidates('coding'), 'any')
   expect(matches.length).toBeGreaterThan(MATCHES_PAGE_SIZE)
   const first = pageOf(matches, 1)
   const second = pageOf(matches, 2)
 
-  await page.goto('/result?task=chat&budget=any&skill=beginner')
+  await page.goto('/result?task=coding&budget=any&skill=beginner')
   await page.getByRole('link', { name: seeAllMatchesLabel(matches.length) }).click()
-  await expect(page).toHaveURL(/\/result\?task=chat&view=all$/)
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Chat and brainstorm matches')
-  await expect(page).toHaveTitle('Chat and brainstorm matches · BestBotFor')
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/best\/chat$/)
-  await expect(page.locator('link[rel="next"]')).toHaveAttribute('href', /\/result\?task=chat&view=all&page=2$/)
+  await expect(page).toHaveURL(/\/result\?task=coding&view=all$/)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Write code matches')
+  await expect(page).toHaveTitle('Write code matches · BestBotFor')
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/best\/coding$/)
+  await expect(page.locator('link[rel="next"]')).toHaveAttribute('href', /\/result\?task=coding&view=all&page=2$/)
   await expect(page.locator('link[rel="prev"]')).toHaveCount(0)
 
   await expect(page.getByText(showingLabel(1, MATCHES_PAGE_SIZE, matches.length))).toBeVisible()
   const pages = page.getByRole('navigation', { name: 'Pages' })
-  await expect(pages.getByRole('link', { name: 'Page 2' })).toHaveAttribute('href', '/result?task=chat&view=all&page=2')
+  await expect(pages.getByRole('link', { name: 'Page 2' })).toHaveAttribute('href', '/result?task=coding&view=all&page=2')
 
   const list = page.getByRole('list', { name: 'Matches' })
   await expect(list.getByRole('listitem')).toHaveCount(MATCHES_PAGE_SIZE)
@@ -52,9 +53,9 @@ test('the quiz links to every match and the pages stay in rank order', async ({ 
   await expect(list.getByRole('heading', { level: 2, name: second[0]?.name ?? '', exact: true })).toHaveCount(0)
 
   await page.getByRole('link', { name: 'Next page' }).click()
-  await expect(page).toHaveURL(/\/result\?task=chat&view=all&page=2$/)
-  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/best\/chat$/)
-  await expect(page.locator('link[rel="prev"]')).toHaveAttribute('href', /\/result\?task=chat&view=all$/)
+  await expect(page).toHaveURL(/\/result\?task=coding&view=all&page=2$/)
+  await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/best\/coding$/)
+  await expect(page.locator('link[rel="prev"]')).toHaveAttribute('href', /\/result\?task=coding&view=all$/)
   await expect(page.getByText(showingLabel(2, MATCHES_PAGE_SIZE, matches.length))).toBeVisible()
   const pageTwo = page.getByRole('list', { name: 'Matches' })
   await expect(pageTwo.getByRole('listitem')).toHaveCount(second.length)
@@ -63,23 +64,23 @@ test('the quiz links to every match and the pages stay in rank order', async ({ 
 })
 
 test('the see-all link keeps the quiz budget', async ({ page }) => {
-  const free = listMatches(candidates('music'), 'free')
-  const low = listMatches(candidates('music'), 'low')
+  const free = listMatches(candidates('video'), 'free')
+  const low = listMatches(candidates('video'), 'low')
   expect(free.length).toBeGreaterThan(0)
   expect(low.length).toBeGreaterThan(free.length)
 
-  await page.goto('/result?task=music&budget=free&skill=beginner')
+  await page.goto('/result?task=video&budget=free&skill=beginner')
   await expect(page.getByRole('link', { name: seeAllMatchesLabel(free.length) })).toHaveAttribute(
     'href',
-    matchesPath('music', 'free', 1),
+    matchesPath('video', 'free', 1),
   )
 
-  await page.goto('/result?task=music&budget=low&skill=beginner')
+  await page.goto('/result?task=video&budget=low&skill=beginner')
   await expect(page.getByRole('link', { name: seeAllMatchesLabel(low.length) })).toHaveAttribute(
     'href',
-    matchesPath('music', 'low', 1),
+    matchesPath('video', 'low', 1),
   )
-  await expect(page).toHaveTitle(/Make music: /)
+  await expect(page).toHaveTitle(/Make a video: /)
 })
 
 test('a budget filter is a real link and canonicalizes to the task guide', async ({ browser }) => {
@@ -88,8 +89,9 @@ test('a budget filter is a real link and canonicalizes to the task guide', async
   try {
     const free = listMatches(candidates('music'), 'free')
     const low = listMatches(candidates('music'), 'low')
+    // SOUNDRAW is unrated, so it is never a match on any budget.
     expect(free.some((tool) => tool.slug === 'soundraw')).toBe(false)
-    expect(low.some((tool) => tool.slug === 'soundraw')).toBe(true)
+    expect(low.some((tool) => tool.slug === 'soundraw')).toBe(false)
 
     await page.goto(matchesPath('music', 'any', 1))
     await page.getByRole('navigation', { name: 'Filter by budget' }).getByRole('link', { name: 'Free only' }).click()
@@ -101,7 +103,8 @@ test('a budget filter is a real link and canonicalizes to the task guide', async
 
     await page.goto(matchesPath('music', 'low', 1))
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute('href', /\/best\/music$/)
-    await expect(page.getByRole('heading', { level: 2, name: 'SOUNDRAW', exact: true })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 2, name: 'SOUNDRAW', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('list', { name: 'Matches' }).getByRole('listitem')).toHaveCount(low.length)
 
     const codingLow = listMatches(candidates('coding'), 'low')
     expect(codingLow.length).toBeGreaterThan(MATCHES_PAGE_SIZE)
@@ -182,7 +185,7 @@ test('archived tools stay off the match lists and mid is not a budget filter', a
   expect(agents.some((tool) => tool.slug === 'flowise')).toBe(false)
   expect(automation.some((tool) => tool.slug === 'flowise')).toBe(false)
   expect(Math.ceil(coding.length / MATCHES_PAGE_SIZE)).toBeGreaterThanOrEqual(2)
-  expect(Math.ceil(automation.length / MATCHES_PAGE_SIZE)).toBeGreaterThanOrEqual(3)
+  expect(Math.ceil(automation.length / MATCHES_PAGE_SIZE)).toBeGreaterThanOrEqual(2)
 
   await page.goto(matchesPath('coding', 'any', 2))
   await expect(page.getByRole('heading', { level: 2, name: 'Roo Code', exact: true })).toHaveCount(0)
@@ -193,7 +196,7 @@ test('archived tools stay off the match lists and mid is not a budget filter', a
   expect(agentsHtml).not.toContain('Flowise')
   await expect(page.getByRole('heading', { level: 2, name: 'Flowise', exact: true })).toHaveCount(0)
 
-  await page.goto(matchesPath('automation', 'any', 3))
+  await page.goto(matchesPath('automation', 'any', 2))
   const automationHtml = await page.content()
   expect(automationHtml).not.toContain('/tools/flowise')
   expect(automationHtml).not.toContain('Flowise')

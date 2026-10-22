@@ -62,7 +62,7 @@ test('key controls meet the 44px tap target at 390px', async ({ page }) => {
   expect(overlaps(resultLogo, backBox)).toBe(false)
   expect(backBox.y - (resultLogo.y + resultLogo.height)).toBeGreaterThanOrEqual(24)
 
-  await page.goto('/result?task=chat&view=all')
+  await page.goto('/result?task=writing&view=all')
   const pages = page.getByRole('navigation', { name: 'Pages' })
   await expectFullButton(pages.getByRole('link', { name: 'Page 1' }), 'page 1')
   await expectFullButton(pages.getByRole('link', { name: 'Page 2' }), 'page 2')
