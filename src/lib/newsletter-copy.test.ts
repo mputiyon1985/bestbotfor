@@ -45,10 +45,19 @@ describe('newsletter signup copy', () => {
     expect(source('src/data/compare-copy.ts')).not.toMatch(/\b(weekday|each day)\b/i)
   })
 
+  it('does not describe Beehiiv as not yet connected, since issue #1 is live', () => {
+    for (const file of ['src/app/newsletter/page.tsx', 'src/components/daily-bot-capture.tsx']) {
+      const text = source(file).replace(/\s+/g, ' ')
+      expect(text, file).not.toMatch(/when the digest is connected/i)
+      expect(text, file).not.toMatch(/once (it is |it's )?connected/i)
+      expect(text, file).not.toMatch(/connected to Beehiiv/i)
+    }
+  })
+
   it('links issue #1 everywhere the old "first issue coming soon" line was', () => {
     expect(DAILY_BOT_ISSUE_1_URL).toBe('https://thedailybot.beehiiv.com/p/prices-we-caught-changing-issue-1')
     const link = source('src/components/daily-bot-issue-link.tsx')
-    expect(link).toContain('rel="noopener"')
+    expect(link).toContain('rel="noopener noreferrer"')
     expect(link).not.toContain('target=')
     for (const file of [
       'src/components/daily-bot-capture.tsx',

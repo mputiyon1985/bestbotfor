@@ -3,7 +3,7 @@ export const DAILY_BOT_ISSUE_1_URL = 'https://thedailybot.beehiiv.com/p/prices-w
 
 export function ReadIssueOneLink() {
   return (
-    <a className="underline" href={DAILY_BOT_ISSUE_1_URL} rel="noopener">
+    <a className="underline" href={DAILY_BOT_ISSUE_1_URL} rel="noopener noreferrer">
       Read issue #1
     </a>
   )
