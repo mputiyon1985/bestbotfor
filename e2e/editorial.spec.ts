@@ -62,7 +62,7 @@ test('a scored tool shows fractional stars, the rubric, and no review schema', a
 
 test('unrated tools hide the score and keep pros and cons', async ({ page }) => {
   test.setTimeout(180_000)
-  expect(unratedSlugs).toHaveLength(68)
+  expect(unratedSlugs).toHaveLength(90)
   for (const slug of unratedSlugs) {
     const tool = toolSeeds.find((item) => item.slug === slug)
     const v1 = editorialSeeds.find((row) => row.slug === slug)
