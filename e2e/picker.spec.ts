@@ -1,12 +1,12 @@
 import { expect, test } from '@playwright/test'
 import { fewStrongOptionsLabel, overBudgetLabel, priceLabel } from '../src/lib/format'
 import { recommend } from '../src/lib/recommend'
-import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
+import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'
 
 const answers = { task: 'chat', budget: 'any', skill: 'beginner' } as const
 
 test('three questions produce one pick and six alternatives', async ({ page }) => {
-  const result = recommend(catalogFromSeeds(), answers)
+  const result = recommend(listedCatalogFromSeeds(), answers)
   const pick = result?.picks[0]
   const alternatives = result?.picks.slice(1) ?? []
   expect(pick).toBeTruthy()
@@ -39,7 +39,7 @@ test('three questions produce one pick and six alternatives', async ({ page }) =
 
 test('a free budget labels the best fits that sit just over budget', async ({ page }) => {
   const tight = { task: 'seo', budget: 'free', skill: 'beginner' } as const
-  const result = recommend(catalogFromSeeds(), tight)
+  const result = recommend(listedCatalogFromSeeds(), tight)
   const alternatives = result?.picks.slice(1) ?? []
   const over = alternatives.filter((pick) => pick.budgetFit === 'over')
   expect(result?.picks.length).toBe(7)
@@ -69,7 +69,7 @@ test('a free budget labels the best fits that sit just over budget', async ({ pa
 
 test('a short list says few strong options exist', async ({ page }) => {
   const games = { task: 'games', budget: 'any', skill: 'beginner' } as const
-  const result = recommend(catalogFromSeeds(), games)
+  const result = recommend(listedCatalogFromSeeds(), games)
   const alternatives = result?.picks.slice(1) ?? []
   expect(alternatives.length).toBeLessThan(6)
   expect(alternatives.length).toBeGreaterThan(0)
@@ -83,7 +83,7 @@ test('a short list says few strong options exist', async ({ page }) => {
 
 test('a low budget keeps SOUNDRAW in the music results', async ({ page }) => {
   const answers = { task: 'music', budget: 'low', skill: 'beginner' } as const
-  const result = recommend(catalogFromSeeds(), answers)
+  const result = recommend(listedCatalogFromSeeds(), answers)
   const soundraw = result?.picks.find((pick) => pick.slug === 'soundraw')
   expect(soundraw?.budgetFit).toBe('within')
   expect(soundraw?.priceFromUsd).toBe(16.99)

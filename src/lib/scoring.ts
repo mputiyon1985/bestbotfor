@@ -1,4 +1,5 @@
 import { skillLabel } from './format'
+import { quizNeedsRating } from './quiz-gate'
 import type { Budget, Skill } from './validation'
 
 /** All-matches uses the same budgets as the quiz. */
@@ -26,6 +27,22 @@ export type ScoreableTool = {
   notes: string
   /** False drops the tool from the quiz pick and its alternatives. Omitted means eligible. */
   quizEligible?: boolean
+  /**
+   * Editorial score; null means unrated. Only matters for tools added in #138
+   * or later (quiz-gate.ts): those are left out of quiz matching while unrated
+   * and stay on their category page, labeled Unrated.
+   */
+  editorial?: unknown
+}
+
+/**
+ * Quiz matching gate: the minimum fit and quiz eligibility, plus an editorial
+ * rating for tools added in #138 or later (no made-up match score for new
+ * unrated tools). Older tools keep their original behavior.
+ */
+export function isQuizMatchable(tool: Pick<ScoreableTool, 'slug' | 'fitScore' | 'quizEligible' | 'editorial'>): boolean {
+  if (tool.fitScore < MIN_QUIZ_FIT_SCORE || tool.quizEligible === false) return false
+  return !(quizNeedsRating(tool.slug) && tool.editorial == null)
 }
 
 export type RankedTool = ScoreableTool & {
@@ -137,7 +154,7 @@ export function selectQuizPicks<T extends ScoreableTool>(
   tools: T[],
   answers: { budget: RankBudget; skill: Skill },
 ): QuizPick<T>[] {
-  const qualified = tools.filter((tool) => tool.fitScore >= MIN_QUIZ_FIT_SCORE && tool.quizEligible !== false)
+  const qualified = tools.filter(isQuizMatchable)
   return rankTools(qualified, answers)
     .slice(0, QUIZ_RESULT_COUNT)
     .map((tool) => ({

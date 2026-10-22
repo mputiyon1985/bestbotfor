@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { PICKER_QUESTIONS } from '../src/components/picker-form'
 import { recommend } from '../src/lib/recommend'
-import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
+import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'
 
 const answers = { task: 'chat', budget: 'any', skill: 'beginner' } as const
 
@@ -10,7 +10,6 @@ test('sub-page Open Graph and Twitter titles include the brand', async ({ page }
     ['/about', 'About'],
     ['/tools', 'Tools'],
     ['/pricing', 'Pricing'],
-    ['/best/music', 'Best AI for making music'],
   ] as const
   for (const [path, title] of cases) {
     await page.goto(path)
@@ -19,6 +18,12 @@ test('sub-page Open Graph and Twitter titles include the brand', async ({ page }
     await expect(page.locator('meta[name="twitter:title"]'), path).toHaveAttribute('content', branded)
     await expect(page, path).toHaveTitle(`${title} · BestBotFor`)
   }
+  // /best pages use an absolute SEO title (src/content/seo-meta.ts); social titles still carry the brand.
+  const music = 'Best AI music generators (2026): Our Pick + Free Options'
+  await page.goto('/best/music')
+  await expect(page.locator('meta[property="og:title"]')).toHaveAttribute('content', `${music} | BestBotFor`)
+  await expect(page.locator('meta[name="twitter:title"]')).toHaveAttribute('content', `${music} | BestBotFor`)
+  await expect(page).toHaveTitle(music)
 })
 
 test('pages publish og:url as the absolute canonical', async ({ page }) => {
@@ -43,7 +48,7 @@ test('how it works names the same three questions as the picker', async ({ page 
 })
 
 test('the scripted picker reaches a result within a few seconds', async ({ page }) => {
-  const pick = recommend(catalogFromSeeds(), answers)?.picks[0]
+  const pick = recommend(listedCatalogFromSeeds(), answers)?.picks[0]
   expect(pick).toBeTruthy()
   if (!pick) return
 

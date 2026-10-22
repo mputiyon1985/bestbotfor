@@ -23,7 +23,18 @@ describe('findLiveStripeKeys', () => {
     await expect(findLiveStripeKeys(directory)).resolves.toEqual([file])
   })
 
-  it('ignores test-mode keys', async () => {
+  it('flags a committed live-mode opt-in and a webhook signing secret', async () => {
+    const directory = await mkdtemp(path.join(tmpdir(), 'bestbotfor-keys-'))
+    directories.push(directory)
+    const flag = path.join(directory, 'enabled.env')
+    await writeFile(flag, `STRIPE_ALLOW_LIVE=${'true'}\n`)
+    const secret = path.join(directory, 'hook.env')
+    await writeFile(secret, `STRIPE_WEBHOOK_SECRET=${'whsec_'}${'a'.repeat(32)}\n`)
+    const hits = await findLiveStripeKeys(directory)
+    expect(hits.sort()).toEqual([flag, secret].sort())
+  })
+
+  it('ignores test-mode keys and a disabled live flag', async () => {
     const directory = await mkdtemp(path.join(tmpdir(), 'bestbotfor-keys-'))
     directories.push(directory)
     await writeFile(path.join(directory, 'env'), 'STRIPE_SECRET_KEY=sk_test_example\n')

@@ -1,4 +1,4 @@
-import { notInArray } from 'drizzle-orm'
+import { and, eq, notInArray } from 'drizzle-orm'
 
 export type RatingWriteCounts = {
   scoresInserted: number
@@ -8,7 +8,7 @@ export type RatingWriteCounts = {
   prosUpdated: number
   prosRemoved: number
 }
-import { comparePairSeeds, taskSeeds, toolSeeds } from '../src/data/catalog'
+import { comparePairSeeds, retiredFitSeeds, taskSeeds, toolSeeds } from '../src/data/catalog'
 import { editorialSeeds } from '../src/data/scores-pros-cons.seed'
 import { ratingSeeds, supplementalProsConsSeeds } from '../src/data/scores-v23.seed'
 import { getDb } from '../src/lib/db/client'
@@ -75,7 +75,7 @@ for (const tool of toolSeeds) {
       skillLevel: tool.skillLevel,
       platforms: JSON.stringify(tool.platforms),
       lastVerifiedAt: tool.lastVerifiedAt,
-      status: 'active',
+      status: tool.unlisted ? 'unlisted' : 'active',
       needsVerification: tool.needsVerification === true,
     })
     .onConflictDoUpdate({
@@ -93,7 +93,7 @@ for (const tool of toolSeeds) {
         skillLevel: tool.skillLevel,
         platforms: JSON.stringify(tool.platforms),
         lastVerifiedAt: tool.lastVerifiedAt,
-        status: 'active',
+        status: tool.unlisted ? 'unlisted' : 'active',
         needsVerification: tool.needsVerification === true,
       },
     })
@@ -103,6 +103,16 @@ const taskRows = await tx.select().from(tasks)
 const toolRows = await tx.select().from(tools)
 const taskId = new Map(taskRows.map((row) => [row.slug, row.id]))
 const toolId = new Map(toolRows.map((row) => [row.slug, row.id]))
+
+for (const [toolSlug, taskSlug] of retiredFitSeeds) {
+  const retiredTool = toolId.get(toolSlug)
+  const retiredTask = taskId.get(taskSlug)
+  if (!retiredTool || !retiredTask) throw new Error(`Unknown retired fit ${toolSlug}/${taskSlug}`)
+  if (toolSeeds.some((tool) => tool.slug === toolSlug && tool.fits.some((fit) => fit.task === taskSlug))) {
+    throw new Error(`Retired fit ${toolSlug}/${taskSlug} is still in the catalog`)
+  }
+  await tx.delete(toolTasks).where(and(eq(toolTasks.toolId, retiredTool), eq(toolTasks.taskId, retiredTask)))
+}
 
 for (const tool of toolSeeds) {
   const id = toolId.get(tool.slug)
@@ -239,6 +249,8 @@ for (const entry of pointSeeds) {
 
 const now = Date.now()
 for (const tool of toolSeeds) {
+  // Unlisted tools (for example Mercury 3) are hidden from the site, so they get no vendor domain.
+  if (tool.unlisted) continue
   const id = toolId.get(tool.slug)
   if (!id) throw new Error(`Missing tool id for vendor domain ${tool.slug}`)
   const domain = registrableDomain(tool.url)

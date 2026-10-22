@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { SocialIconRow } from './social-icons'
 import { isClerkConfigured } from '@/lib/flags'
 import { BrandLockup } from './brand-lockup'
 import { MemberButtonSlot } from './member-button-slot'
@@ -13,10 +14,10 @@ export async function SiteHeader() {
 
   const links = [
     { href: '/tools', label: 'Tools' },
-    { href: '/best/coding', label: 'Best for' },
-    { href: '/compare/cursor-vs-github-copilot', label: 'Compare' },
-    { href: '/pricing', label: 'Pricing' },
+    { href: '/best', label: 'Best for' },
+    { href: '/compare', label: 'Compare' },
     { href: '/newsletter', label: 'Newsletter' },
+    { href: '/sponsor', label: 'Advertise' },
   ]
 
   return (
@@ -61,6 +62,9 @@ export async function SiteHeader() {
                 <MemberButtonSlot />
               </div>
             ) : null}
+            <div aria-label="Follow BestBotFor" role="group" className="border-t border-line pt-2">
+              <SocialIconRow />
+            </div>
           </nav>
         </details>
       </div>

@@ -1,0 +1,51 @@
+/**
+ * Stripe live Payment Links for the sponsor subscriptions (created in the
+ * Stripe dashboard API on October 18, 2026). These are fixed public URLs on
+ * buy.stripe.com, so they hold no secret. Fulfillment for these is manual
+ * until the in-app subscription checkout ships. The webhook only upserts a row
+ * in the membership `subscriptions` table with no Clerk user, which grants
+ * nothing: no `sponsorships` row, card, or placement. The team sets up the
+ * placement by email (docs/runbooks/sponsor-reject-refund.md, "Payment Link
+ * sales").
+ *
+ * The prices in `terms` are copy, not read from Stripe. If a link's Price
+ * changes in Stripe, update this file in the same change
+ * (docs/runbooks/sponsor-payment-links.md has the read-back to compare).
+ *
+ * The founding Payment Link (plink_1URylTIJUbygfAuc07cebXfn) is retired. It
+ * was deactivated in Stripe at the in-app founding go-live on 2026-10-19 and
+ * removed from this list afterwards, so unsetting the founding Price vars can
+ * never put a dead buy.stripe.com link back on /sponsor. Its record (Prices,
+ * limit, past sales as `founding_link:` rows, which still count toward the
+ * shared cap of 5) is in docs/runbooks/sponsor-payment-links.md.
+ *
+ * /sponsor shows them only when live billing is on, so a preview or local
+ * build never sends a tester to a live charge.
+ */
+
+export const SPONSOR_PAYMENT_LINK_HOST = 'buy.stripe.com'
+
+export const SPONSOR_SUBSCRIPTION_NOTICE = 'Subscription, renews monthly until you cancel.'
+
+/** Shown next to the subscriptions, like the one-time form's Sponsored-label line. */
+export const SPONSOR_SUBSCRIPTION_DISCLOSURE = 'Placements carry a Sponsored label and never change rankings. See'
+
+/** The sponsor-subscriptions runbook points buyers at this line. */
+export const SPONSOR_CANCEL_LINE = 'To cancel, email'
+
+export const SPONSOR_PAYMENT_LINKS = [
+  {
+    id: 'sponsor_monthly',
+    paymentLinkId: 'plink_1URyeXIJUbygfAucnLlkSP5u',
+    url: 'https://buy.stripe.com/4gMdRa7vW8G6gg2ebyfrW02',
+    title: 'Monthly sponsor',
+    terms: '$299/mo. Cancel anytime.',
+    cta: 'Subscribe monthly',
+  },
+] as const
+
+/** The live /sponsor price note about the links: singular while there is one link (Sentinel P3-1 on #98). */
+export const SPONSOR_PAYMENT_LINKS_NOTE: string =
+  (SPONSOR_PAYMENT_LINKS as readonly unknown[]).length === 1
+    ? 'The Payment Link below is a separate Stripe link with its own price set in Stripe.'
+    : 'The Payment Links below are separate Stripe links with their own prices set in Stripe.'

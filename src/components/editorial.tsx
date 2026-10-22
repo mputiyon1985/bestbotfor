@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { UNMAINTAINED_NOTICE, ratingAriaLabel, starFills, type EditorialScore, type ProCon } from '@/lib/editorial'
+import { OVERALL_RATING_NOTE } from '@/lib/descriptions'
 import { formatUsDate } from '@/lib/format'
 import { publicScore, scoresPublished } from '@/lib/score-visibility'
 
@@ -100,6 +101,7 @@ export function ScoreSection({
           {UNMAINTAINED_NOTICE}
         </p>
       ) : null}
+      <p data-overall-rating-note className="max-w-2xl text-sm text-muted">{OVERALL_RATING_NOTE}</p>
       <RankLine editorial={editorial} />
       <dl className="max-w-xl min-w-0 space-y-3">
         {score.criteria.map((part) => (

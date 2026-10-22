@@ -1,5 +1,5 @@
 import { ORGANIZATION_LOGO_PATH } from './brand'
-import { absoluteUrl, getSiteUrl, SITE_NAME, TAGLINE } from './site'
+import { absoluteUrl, BUSINESS_PHONE_E164, getSiteUrl, SITE_NAME, TAGLINE } from './site'
 import type { CatalogTool } from './catalog-types'
 
 /**
@@ -40,6 +40,7 @@ export function organizationJsonLd() {
     slogan: TAGLINE,
     description: `${TAGLINE} BestBotFor recommends one AI tool and up to six alternatives.`,
     logo: absoluteUrl(ORGANIZATION_LOGO_PATH),
+    telephone: BUSINESS_PHONE_E164,
   }
 }
 

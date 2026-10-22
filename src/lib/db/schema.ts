@@ -1,5 +1,5 @@
 import { desc, sql } from 'drizzle-orm'
-import { check, index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
+import { blob, check, index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 export const tools = sqliteTable('tools', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -96,14 +96,18 @@ export const affiliatePrograms = sqliteTable('affiliate_programs', {
   verifiedAt: text('verified_at'),
 })
 
-export const clicks = sqliteTable('clicks', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  toolId: integer('tool_id').notNull(),
-  page: text('page').notNull(),
-  ts: integer('ts').notNull(),
-  country: text('country'),
-  ipHash: text('ip_hash'),
-})
+export const clicks = sqliteTable(
+  'clicks',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    toolId: integer('tool_id').notNull(),
+    page: text('page').notNull(),
+    ts: integer('ts').notNull(),
+    country: text('country'),
+    ipHash: text('ip_hash'),
+  },
+  (table) => [index('clicks_ts_idx').on(table.ts)],
+)
 
 export const subscribers = sqliteTable('subscribers', {
   id: integer('id').primaryKey({ autoIncrement: true }),
@@ -111,6 +115,18 @@ export const subscribers = sqliteTable('subscribers', {
   createdAt: integer('created_at').notNull(),
   destination: text('destination').notNull(),
   beehiivId: text('beehiiv_id'),
+  /** Beehiiv's status when this row is parked as `failed`. Null for every other row. */
+  beehiivStatus: text('beehiiv_status'),
+  /** `pending` until a sender claims it as `syncing`. `synced` is counted. `unsubscribed` is not sent by backfill. `failed` is terminal. */
+  status: text('status').notNull().default('pending'),
+  /** Set when the row becomes `syncing`. Null means a crash left no clock, so reconcile treats it as stale. */
+  syncingStartedAt: integer('syncing_started_at'),
+  /** First-touch tags from the signup form, written once when the row is created. Null when none were recorded. */
+  utmSource: text('utm_source'),
+  utmMedium: text('utm_medium'),
+  utmCampaign: text('utm_campaign'),
+  utmContent: text('utm_content'),
+  landingPath: text('landing_path'),
 })
 
 export const subscriptions = sqliteTable(
@@ -134,6 +150,149 @@ export const stripeEvents = sqliteTable('stripe_events', {
   processedAt: integer('processed_at').notNull(),
 })
 
+export const sponsorships = sqliteTable(
+  'sponsorships',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    stripeCheckoutSessionId: text('stripe_checkout_session_id').notNull().unique(),
+    stripePaymentIntentId: text('stripe_payment_intent_id'),
+    stripeCustomerId: text('stripe_customer_id'),
+    stripePriceId: text('stripe_price_id'),
+    offering: text('offering').notNull(),
+    status: text('status').notNull(),
+    email: text('email'),
+    company: text('company'),
+    taskSlug: text('task_slug'),
+    issueDate: text('issue_date'),
+    amountTotal: integer('amount_total'),
+    currency: text('currency'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+    /** First time status became paid. The placement window starts here and is not moved later. */
+    paidAt: integer('paid_at'),
+    /** Set once when a refund event matches this payment. The placement stops showing. */
+    refundedAt: integer('refunded_at'),
+    /** Subscription offerings only (founding_sponsor, placement_subscription). Null for one-time rows. */
+    stripeSubscriptionId: text('stripe_subscription_id'),
+    /** Last Stripe subscription status applied (trialing, active, past_due, canceled, ...). */
+    subscriptionStatus: text('subscription_status'),
+    /** End of the latest paid (or paid-trial) period, ms. The placement shows until here. Only moves forward, except an immediate cancel. */
+    paidThrough: integer('paid_through'),
+    /** Founding price lock end, ms. Subscription start plus the lock months. */
+    priceLockedUntil: integer('price_locked_until'),
+    /** When a scheduled cancellation takes effect, ms. Null when none is scheduled. */
+    cancelAt: integer('cancel_at'),
+    /** When the subscription was canceled, ms. */
+    canceledAt: integer('canceled_at'),
+    /** Last invoice.payment_failed for this subscription, ms. Cleared by the next invoice.paid. */
+    paymentFailedAt: integer('payment_failed_at'),
+    /** Stripe event.created (ms) of the last subscription status applied. Older events are ignored. */
+    subscriptionEventAt: integer('subscription_event_at'),
+  },
+  (table) => [
+    index('sponsorships_status_idx').on(table.status),
+    index('sponsorships_subscription_idx').on(table.stripeSubscriptionId),
+  ],
+)
+
+/** Buyer-submitted tool card. Hidden until status is approved. */
+export const sponsorshipCreatives = sqliteTable(
+  'sponsorship_creatives',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    sponsorshipId: integer('sponsorship_id'),
+    stripeCheckoutSessionId: text('stripe_checkout_session_id'),
+    requestKey: text('request_key').unique(),
+    toolName: text('tool_name').notNull(),
+    description: text('description').notNull(),
+    url: text('url').notNull(),
+    logoMime: text('logo_mime').notNull(),
+    logoBytes: blob('logo_bytes', { mode: 'buffer' }).notNull(),
+    status: text('status').notNull(),
+    /** Increments when the buyer replaces the card. Approval is bound to this value. */
+    version: integer('version').notNull().default(1),
+    contentHash: text('content_hash'),
+    rejectedAt: integer('rejected_at'),
+    /** How many times the buyer resubmitted after a rejection. One is the maximum. */
+    resubmissionCount: integer('resubmission_count').notNull().default(0),
+    /** null, refund_pending, or refunded. Set after the resubmission window ends. */
+    refundStatus: text('refund_status'),
+    hadInvisible: integer('had_invisible').notNull().default(0),
+    approvedToolName: text('approved_tool_name'),
+    approvedDescription: text('approved_description'),
+    approvedUrl: text('approved_url'),
+    approvedLogoMime: text('approved_logo_mime'),
+    approvedLogoBytes: blob('approved_logo_bytes', { mode: 'buffer' }),
+    approvedContentHash: text('approved_content_hash'),
+    approvedVersion: integer('approved_version'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [
+    index('sponsorship_creatives_status_idx').on(table.status),
+    index('sponsorship_creatives_sponsorship_idx').on(table.sponsorshipId),
+    index('sponsorship_creatives_session_idx').on(table.stripeCheckoutSessionId),
+  ],
+)
+
+/**
+ * Daily totals for one sponsorship. impressions is an approved card render.
+ * go_clicks is a /go Visit from that /best page. No visitor identifier.
+ */
+export const sponsorshipDailyCounts = sqliteTable(
+  'sponsorship_daily_counts',
+  {
+    sponsorshipId: integer('sponsorship_id').notNull(),
+    day: text('day').notNull(),
+    impressions: integer('impressions').notNull().default(0),
+    goClicks: integer('go_clicks').notNull().default(0),
+  },
+  (table) => [
+    primaryKey({ columns: [table.sponsorshipId, table.day] }),
+    index('sponsorship_daily_counts_day_idx').on(table.day),
+  ],
+)
+
+/** Append-only admin decisions for a sponsor tool card. */
+export const sponsorshipReviewEvents = sqliteTable(
+  'sponsorship_review_events',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    creativeId: integer('creative_id').notNull(),
+    sponsorshipId: integer('sponsorship_id'),
+    actor: text('actor').notNull(),
+    decision: text('decision').notNull(),
+    reason: text('reason').notNull(),
+    contentHash: text('content_hash'),
+    version: integer('version'),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [index('sponsorship_review_events_creative_idx').on(table.creativeId)],
+)
+
+/** Append-only refund workflow. Separate from approve/reject so that check stays unchanged. */
+export const sponsorshipRefundEvents = sqliteTable(
+  'sponsorship_refund_events',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    creativeId: integer('creative_id').notNull(),
+    sponsorshipId: integer('sponsorship_id'),
+    actor: text('actor').notNull(),
+    decision: text('decision').notNull(),
+    reason: text('reason').notNull(),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [index('sponsorship_refund_events_creative_idx').on(table.creativeId)],
+)
+
+/** One live checkout hold per task page. No buyer identity is stored. */
+export const sponsorshipSlotClaims = sqliteTable('sponsorship_slot_claims', {
+  taskSlug: text('task_slug').primaryKey(),
+  requestKey: text('request_key').notNull(),
+  offering: text('offering').notNull(),
+  claimedAt: integer('claimed_at').notNull(),
+})
+
 export const savedPicks = sqliteTable(
   'saved_picks',
   {
@@ -147,11 +306,26 @@ export const savedPicks = sqliteTable(
   (table) => [index('saved_picks_user_idx').on(table.clerkUserId)],
 )
 
-export const rateLimits = sqliteTable('rate_limits', {
-  key: text('key').primaryKey(),
-  count: integer('count').notNull(),
-  resetAt: integer('reset_at').notNull(),
-})
+export const rateLimits = sqliteTable(
+  'rate_limits',
+  {
+    key: text('key').primaryKey(),
+    count: integer('count').notNull(),
+    resetAt: integer('reset_at').notNull(),
+  },
+  (table) => [index('rate_limits_reset_at_idx').on(table.resetAt)],
+)
+
+/** One row per hashed client and fixed window. Expired rows are deleted after the response. */
+export const resultRateWindows = sqliteTable(
+  'result_rate_windows',
+  {
+    bucket: text('bucket').primaryKey(),
+    count: integer('count').notNull(),
+    expiresAt: integer('expires_at').notNull(),
+  },
+  (table) => [index('result_rate_windows_expires_idx').on(table.expiresAt)],
+)
 
 /**
  * One rating per user per tool. latest_version_id and published_version_id
@@ -347,6 +521,15 @@ export const toolSponsorLinks = sqliteTable(
   (table) => [index('tool_sponsor_links_tool_ends_idx').on(table.toolId, table.endsAt)],
 )
 
+/** Private suggestion box. No address column. Not shown on the site. */
+export const suggestions = sqliteTable('suggestions', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  kind: text('kind').notNull(),
+  message: text('message').notNull(),
+  email: text('email'),
+  createdAt: integer('created_at').notNull(),
+})
+
 export const userTombstones = sqliteTable('user_tombstones', {
   userHmac: text('user_hmac').primaryKey(),
   deletedAt: integer('deleted_at').notNull(),
@@ -358,3 +541,23 @@ export const webhookEvents = sqliteTable('webhook_events', {
   type: text('type').notNull(),
   processedAt: integer('processed_at').notNull(),
 })
+
+/** Member deal codes (0024). `code` and `deal_url` are members-only and never leave the server for others. */
+export const deals = sqliteTable(
+  'deals',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    toolSlug: text('tool_slug').notNull(),
+    vendor: text('vendor').notNull(),
+    title: text('title').notNull(),
+    discountText: text('discount_text').notNull(),
+    code: text('code'),
+    dealUrl: text('deal_url'),
+    terms: text('terms'),
+    startsAt: integer('starts_at'),
+    expiresAt: integer('expires_at'),
+    active: integer('active', { mode: 'boolean' }).notNull().default(false),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [index('deals_tool_slug_idx').on(table.toolSlug)],
+)

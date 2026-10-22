@@ -6,11 +6,11 @@ import { hasDotSegment } from '@/lib/dot-segment'
 import { buildContentSecurityPolicy, securityHeaders } from '@/lib/csp'
 import { getDb, peekCachedTaskSlugs } from '@/lib/db/client'
 import { isAdminPath } from '@/lib/admin-path'
-import { isClerkConfigured, isRatingsPath, userRatingsEnabled } from '@/lib/flags'
+import { adminSponsorsEnabled, isAdminMfaPath, isClerkConfigured, isRatingsPath, isSponsorsAdminPath, userRatingsEnabled } from '@/lib/flags'
 import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from '@/lib/indexing'
 import { clientIp, rateLimitKey } from '@/lib/ip'
 import { hasMalformedPercentEncoding, MALFORMED_PERCENT_MESSAGE } from '@/lib/percent-encoding'
-import { consumeLocalRateLimit, persistResultRateLimit } from '@/lib/rate-limit'
+import { consumeResultRateLimit, scheduleResultWindowPurge } from '@/lib/rate-limit'
 import { acceptResultFault, faultedResultWork } from '@/lib/result-fault'
 import { decideResultGate } from '@/lib/result-gate'
 import { resultNotFoundHeaders, resultNotFoundHtml, resultRateLimitHeaders, resultRateLimitHtml, resultUnavailableHeaders, resultUnavailableHtml } from '@/lib/result-http'
@@ -31,6 +31,7 @@ function nextWithNonce(request: NextRequest): NextResponse {
   const csp = buildContentSecurityPolicy(nonce, process.env.NODE_ENV !== 'production')
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-nonce', nonce)
+  requestHeaders.set('x-bbf-method', request.method)
   requestHeaders.set('Content-Security-Policy', csp)
   const response = NextResponse.next({ request: { headers: requestHeaders } })
   return adminHeaders(applySecurity(response, nonce), request.nextUrl.pathname)
@@ -78,10 +79,7 @@ function rejectMalformedEncoding(request: NextRequest): NextResponse | null {
  * the members sign-in redirect. The path is decoded and lowercased first.
  * The body is plain text so it is distinct from the app not-found page.
  */
-function rejectHiddenRatings(request: NextRequest): NextResponse | null {
-  const paths = [request.nextUrl.pathname, ...rawPaths(request).map((value) => requestPath(value))]
-  if (!paths.some((path) => isRatingsPath(path))) return null
-  if (userRatingsEnabled()) return null
+function hiddenNotFound(): NextResponse {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   return applySecurity(
     new NextResponse(RATINGS_HIDDEN_MESSAGE, {
@@ -94,6 +92,28 @@ function rejectHiddenRatings(request: NextRequest): NextResponse | null {
     }),
     nonce,
   )
+}
+
+function requestPaths(request: NextRequest): string[] {
+  return [request.nextUrl.pathname, ...rawPaths(request).map((value) => requestPath(value))]
+}
+
+function rejectHiddenRatings(request: NextRequest): NextResponse | null {
+  const paths = requestPaths(request)
+  const ratingsPaths = paths.filter((path) => isRatingsPath(path))
+  if (ratingsPaths.length === 0) return null
+  if (userRatingsEnabled()) return null
+  // Sponsor admins still need MFA setup when ratings are off. Any other ratings path stays hidden.
+  if (ratingsPaths.every((path) => isAdminMfaPath(path)) && adminSponsorsEnabled()) return null
+  return hiddenNotFound()
+}
+
+/** /admin/sponsors 404s while ADMIN_SPONSORS is off. Ratings being on does not open it. */
+function rejectHiddenSponsors(request: NextRequest): NextResponse | null {
+  const paths = requestPaths(request)
+  if (!paths.some((path) => isSponsorsAdminPath(path))) return null
+  if (adminSponsorsEnabled()) return null
+  return hiddenNotFound()
 }
 
 function rawPaths(request: NextRequest): string[] {
@@ -145,7 +165,7 @@ const withClerk = clerkMiddleware(async (auth, request) => {
   return nextWithNonce(request)
 })
 
-/** Faults run only when Playwright sets RESULT_FAULTS=1 on an explicit test env. */
+/** Faults run only when Playwright sets RESULT_FAULTS=1 and VERCEL_ENV is development or test. */
 function resultFault(request: NextRequest) {
   return acceptResultFault(request.headers.get('x-bbf-result-fault'), {
     faults: process.env.RESULT_FAULTS,
@@ -160,8 +180,9 @@ function resultFault(request: NextRequest) {
  * Quiz views that pass the catalog check are rate limited with 429 and Retry-After.
  * When the catalog lookup fails or times out, the page's catalog read runs here.
  * A cached task list skips that retry. A miss is this same 404. A thrown read is 503.
- * A read that only runs long renders the page. The shared limiter write is not
- * awaited: the in-memory counter decides, and waitUntil records the row after.
+ * A read that only runs long renders the page. The shared fixed window is
+ * consulted with a short timeout. If it does not answer, the in-memory counter
+ * decides. Expired windows are deleted after the response.
  */
 async function gateResult(request: NextRequest, event: NextFetchEvent): Promise<NextResponse | null> {
   if (request.nextUrl.pathname !== '/result') return null
@@ -183,9 +204,8 @@ async function gateResult(request: NextRequest, event: NextFetchEvent): Promise<
     pageLookup: faultedResultWork(fault, 'page', readCatalog),
     limit: faultedResultWork(fault, 'limit', () => {
       const key = rateLimitKey(clientIp(request.headers), 'result')
-      const local = consumeLocalRateLimit(key, ACTION_LIMITS.result.limit, ACTION_LIMITS.result.windowMs)
-      if (local.ok) event.waitUntil(persistResultRateLimit(db, key, ACTION_LIMITS.result.limit, ACTION_LIMITS.result.windowMs))
-      return Promise.resolve(local)
+      event.waitUntil(scheduleResultWindowPurge(db))
+      return consumeResultRateLimit(db, key, ACTION_LIMITS.result.limit, ACTION_LIMITS.result.windowMs)
     }),
   })
   if (decision.type === 'not-found') {
@@ -208,6 +228,8 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   if (malformed) return malformed
   const hiddenRatings = rejectHiddenRatings(request)
   if (hiddenRatings) return hiddenRatings
+  const hiddenSponsors = rejectHiddenSponsors(request)
+  if (hiddenSponsors) return hiddenSponsors
   const rejected = rejectCatalogPath(request)
   if (rejected) return rejected
   const gated = await gateResult(request, event)
