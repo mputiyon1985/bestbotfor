@@ -116,6 +116,10 @@ describe('track newsletter_signup source', () => {
     expect(gtag).toHaveBeenCalledWith('event', 'newsletter_signup', { source: '/best/music' })
     expect(track('newsletter_signup', { source: 'a@b.c' })).toBe(true)
     expect(gtag).toHaveBeenLastCalledWith('event', 'newsletter_signup', {})
+    expect(track('quiz_start', { source: '/best/music', task: 'music' })).toBe(true)
+    expect(gtag).toHaveBeenLastCalledWith('event', 'quiz_start', { task: 'music' })
+    expect(track('affiliate_click', { source: 'best', tool: 'jasper' })).toBe(true)
+    expect(gtag).toHaveBeenLastCalledWith('event', 'affiliate_click', { tool: 'jasper' })
     g.window = {}
     expect(track('newsletter_signup', { source: '/best/music' })).toBe(false)
   })

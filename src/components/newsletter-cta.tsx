@@ -1,6 +1,7 @@
 'use client'
 
-import { useActionState, useCallback, useEffect, useRef, useState } from 'react'
+import { useActionState, useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { track } from '@/lib/analytics'
 import { CONSENT_EVENT } from '@/lib/consent'
 import { FirstTouchField } from '@/components/first-touch-field'
@@ -66,6 +67,18 @@ export function NewsletterCta({ path, source }: { path: string; source: Newslett
     setDismissed(true)
   }
   const showBar = !dismissed && !done && scrolled && !(mobile && inlineVisible)
+  const barRef = useRef<HTMLDivElement>(null)
+  const [barHeight, setBarHeight] = useState(0)
+  useLayoutEffect(() => {
+    const el = barRef.current
+    if (!showBar || !el) return
+    const measure = () => setBarHeight(el.offsetHeight)
+    measure()
+    if (typeof ResizeObserver !== 'function') return
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [showBar])
 
   return (
     <>
@@ -87,8 +100,13 @@ export function NewsletterCta({ path, source }: { path: string; source: Newslett
           )}
         </div>
       </section>
-      {showBar ? (
+      {/* Portaled to the end of <body>: last in tab order, after the footer. The spacer keeps the footer clear of the bar. */}
+      {showBar && typeof document !== 'undefined'
+        ? createPortal(
+            <>
+              <div aria-hidden="true" data-newsletter-cta-spacer style={{ height: barHeight }} />
         <div
+          ref={barRef}
           data-newsletter-cta="bar"
           role="region"
           aria-label="Newsletter signup"
@@ -104,13 +122,16 @@ export function NewsletterCta({ path, source }: { path: string; source: Newslett
               onClick={dismiss}
               aria-label={NEWSLETTER_CTA_COPY.dismissLabel}
               data-newsletter-cta-dismiss
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-xl"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full text-xl focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo"
             >
               ×
             </button>
           </div>
         </div>
-      ) : null}
+            </>,
+            document.body,
+          )
+        : null}
     </>
   )
 }
