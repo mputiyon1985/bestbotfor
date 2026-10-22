@@ -259,7 +259,7 @@ test('archived tools stay live, show the notice, and stay off quiz results', asy
   expect(flowise?.status()).toBe(200)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Flowise')
   await expect(page.locator('[data-maintenance-notice]')).toHaveText('Unmaintained (repo archived)')
-  await expect(page.locator('[data-category-rank]')).toHaveText('Tied · #5 of 6 in Agents')
+  await expect(page.locator('[data-category-rank]')).toHaveText('Tied · #6 of 8 in Agents')
   await expect(page.locator('[data-tie]')).toBeVisible()
 
   const roo = await page.goto('/tools/roo-code')

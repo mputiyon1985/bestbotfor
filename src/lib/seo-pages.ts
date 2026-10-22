@@ -6,7 +6,7 @@ import { taskGerund } from './descriptions'
  * plus the /best hub). Counts come from the catalog seed, so the copy follows
  * the data instead of a typed number.
  */
-export const CATALOG_TOOL_COUNT = toolSeeds.length
+export const CATALOG_TOOL_COUNT = toolSeeds.filter((tool) => !tool.unlisted).length
 export const CATALOG_TASK_COUNT = taskSeeds.length
 
 export const BEST_HUB_PATH = '/best'

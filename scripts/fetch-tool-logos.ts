@@ -70,8 +70,8 @@ export const NEUTRAL_TILE_FILL = '#a8a8b6'
 /** Deepgram's safari pinned-tab SVG is one black shape with a cutout waveform. */
 export const NEUTRAL_TILE_SLUGS = ['deepgram'] as const
 
-const OK_COUNT = 152
-const LOW_RES_COUNT = 6
+const OK_COUNT = 173
+const LOW_RES_COUNT = 7
 const MISSING_COUNT = 1
 
 type LogoStatus = 'ok' | 'low_res' | 'missing'

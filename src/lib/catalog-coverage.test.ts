@@ -67,7 +67,7 @@ describe('catalog seed', () => {
 
     const expectedFits = toolSeeds.reduce((sum, tool) => sum + tool.fits.length, 0)
     expect(fitRows).toHaveLength(expectedFits)
-    expect(toolRows.every((row) => row.status === 'active')).toBe(true)
+    expect(toolRows.filter((row) => row.status !== 'active').map((row) => [row.slug, row.status])).toEqual([['mercury-inception', 'unlisted']])
     expect(toolRows.find((row) => row.slug === 'soundraw')?.priceFromUsd).toBe(16.99)
     expect(toolRows.find((row) => row.slug === 'semrush')).toMatchObject({
       pricingModel: 'freemium',

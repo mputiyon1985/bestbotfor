@@ -48,8 +48,8 @@ describe('Our rating', () => {
   })
 
   it('accepts the checked seed and rejects invented or incomplete rows', () => {
-    expect(ratingSeeds).toHaveLength(91)
-    expect(unratedSlugs).toHaveLength(90)
+    expect(ratingSeeds).toHaveLength(95)
+    expect(unratedSlugs).toHaveLength(86)
     expect(ratingSeeds.find((row) => row.slug === 'grok')?.rationale).toBe('')
     expect(ratingSeeds.find((row) => row.slug === 'semantic-scholar')?.rationale).toBe('')
     expect(unratedSlugs).not.toContain('cursor')
@@ -300,7 +300,7 @@ describe('Our rating', () => {
     expect(grok?.tool.cons).toEqual([])
     expect(catalog.tools.find((tool) => tool.slug === 'semantic-scholar')?.pros).toEqual([])
     expect(catalog.tools.find((tool) => tool.slug === 'semantic-scholar')?.cons).toEqual([])
-    expect(supplementalProsConsSeeds.map((row) => row.slug).sort()).toEqual(['cursor', 'windsurf'])
+    expect(supplementalProsConsSeeds.map((row) => row.slug).sort()).toEqual(['composio', 'cursor', 'mistral-voxtral', 'omnara', 'twinmind', 'windsurf'])
     const perplexity = chat?.picks.find((pick) => pick.slug === 'perplexity')
     expect(perplexity?.tool.editorial).toBeNull()
     expect(chat?.picks.some((pick) => pick.tool.editorial)).toBe(true)

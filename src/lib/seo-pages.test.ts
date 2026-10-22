@@ -41,9 +41,9 @@ describe('seo hub head copy', () => {
 
   it('uses the spec head copy for the Loadout and the guide, with counts from the catalog', () => {
     expect(CATALOG_TASK_COUNT).toBe(taskSeeds.length)
-    expect(CATALOG_TOOL_COUNT).toBe(toolSeeds.length)
+    expect(CATALOG_TOOL_COUNT).toBe(toolSeeds.filter((tool) => !tool.unlisted).length)
     expect(LOADOUT_TITLE).toBe(`The AI Loadout: The Best AI Tool for All ${taskSeeds.length} Jobs`)
-    expect(LOADOUT_DESCRIPTION).toContain(`from our catalog of ${toolSeeds.length} tools`)
+    expect(LOADOUT_DESCRIPTION).toContain(`from our catalog of ${CATALOG_TOOL_COUNT} tools`)
     const guide = getGuide('how-to-choose-an-ai-tool')
     expect(guide?.title).toBe('How to Choose an AI Tool: 3 Questions That Decide It')
     expect(guide?.heading).toBe('How to choose an AI tool')

@@ -3374,7 +3374,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['Web', 'macOS', 'Windows'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'meetings', score: 80, notes: 'Transcribes and summarizes meetings and conversations, with new Mac and Windows apps.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Design | scout rating 3.8 (not shown) | pricing: unknown (no pricing page; browser app plus Windows download v0.5.2)
@@ -3393,7 +3395,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['Web', 'Windows'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'design', score: 60, notes: 'Turns an idea into editable, print-ready designs like stickers, packaging and cards.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: AI video | scout rating 3.6 (not shown) | pricing: Free start available ("Start for Free"); paid plan prices unknown (pricing page renders client-side and could not be rea
@@ -3412,7 +3416,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'video', score: 60, notes: 'A chat-based video agent that turns prompts, slides, docs and clips into finished videos.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Video editing | scout rating 4.1 (not shown) | pricing: Free $0 (25 videos, 720p, 10 AI credits/mo); Lite $14/mo or $8/mo annual; Pro $24/mo or $14/mo annual (unlimited AI cred
@@ -3431,7 +3437,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'video', score: 60, notes: 'A screen and webcam recorder with AI transcripts, chapters, notes and dubbing.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Voice | scout rating 3.7 (not shown) | pricing: 1-week free trial; Free tier exists (no Video Studio); paid Starter, Professional, Business and Enterprise plans (yearly
@@ -3450,7 +3458,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['Web', 'Chrome'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'voice', score: 60, notes: 'Live voice translation for chats, calls and Meet, Teams or Zoom meetings in 32 languages.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Automation | scout rating 3.6 (not shown) | pricing: Intern $39/mo (330 credits, 1 ad account); Part Time $99/mo (900 credits); Full Time $499/mo (5,000 credits); CMO $1,799
@@ -3469,7 +3479,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'intermediate',
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'automation', score: 60, notes: 'Creates ad creatives and runs Meta, Google and TikTok campaigns on autopilot.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: AI video | scout rating 3.7 (not shown) | pricing: Starter $29/mo (500 credits); Growth $79/mo (2,000 credits); Pro $199/mo (10,000 credits); Enterprise $999/mo; warmed ac
@@ -3488,7 +3500,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'video', score: 60, notes: 'Creates and posts short-form ad and UGC-style videos from your website URL.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Research | scout rating 3.9 (not shown) | pricing: Lite $9/mo or $90/yr; Pro $59/mo or $499/yr (adds X/Twitter accounts); 30-day money-back guarantee.
@@ -3507,7 +3521,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'intermediate',
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'research', score: 60, notes: 'An AI feed reader that filters RSS, X, YouTube and newsletters against your criteria.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Voice | scout rating 4.2 (not shown) | pricing: API usage: Mini Transcribe 3 $0.0035/min; Realtime Transcribe $0.008/min; Small Transcribe $0.004/min; Mini TTS 3 $13 pe
@@ -3526,7 +3542,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'pro',
     platforms: ['API'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'voice', score: 70, notes: 'Speech-to-text and text-to-speech models plus a voice-agent SDK, via API or self-hosting.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Development | scout rating 3.9 (not shown) | pricing: Free: new API keys get 100M free tokens. Mercury 3 (currently 50% off): $0.10/1M input, $0.01 cached, $0.35/1M output. D
@@ -3545,7 +3563,10 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'pro',
     platforms: ['API'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'backend', score: 60, notes: 'A fast diffusion-based LLM API with 1M context and an OpenAI-compatible interface.' },
+    ],
+    unlisted: true,
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Agent builder | scout rating 4.3 (not shown) | pricing: Hobby $0 (100K tool calls, 50K triggers, 3 seats); Pro $29/mo incl. $29 usage credit, then metered ($0.0003/tool call); 
@@ -3564,7 +3585,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'pro',
     platforms: ['Web', 'API'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'agents', score: 70, notes: 'Tools and managed auth for AI agents, with 1,500+ app integrations and an MCP gateway.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Writing | scout rating 4.0 (not shown) | pricing: Starter $0 (5 editor seats, custom domain); Pro $450/mo billed annually or $540/mo monthly (14-day trial with 5,000 cred
@@ -3583,7 +3606,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'intermediate',
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'writing', score: 60, notes: 'A docs platform with an agent that keeps documentation up to date as your product changes.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Coding assistant | scout rating 3.8 (not shown) | pricing: Coding plans: Starter $10/mo, Pro $29/mo, Team $99/mo; pay-as-you-go from a $5 top-up; Enterprise custom.
@@ -3602,7 +3627,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'pro',
     platforms: ['API'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'coding', score: 60, notes: 'Fast open-model inference with coding plans for Claude Code, Codex, Cline and other agents.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Coding assistant | scout rating 3.6 (not shown) | pricing: Free $0 (personal, non-commercial; up to 20 remote agents); Pro $17.99/mo (up to 40 agents, email support); Enterprise c
@@ -3621,7 +3648,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'pro',
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'coding', score: 60, notes: 'A shared workspace where several coding agents and people coordinate in real time.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Automation | scout rating 3.7 (not shown) | pricing: 7-day free trial (1 account, no card); Pro $69 per connected account/mo (1-10 accounts); Agency $34 per extra account af
@@ -3640,7 +3669,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'intermediate',
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'automation', score: 60, notes: 'Finds leads and runs outreach campaigns, controllable from your AI agent via MCP.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Productivity | scout rating 3.4 (not shown) | pricing: unknown (not published on site)
@@ -3659,7 +3690,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['iOS'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'writing', score: 60, notes: 'A personal AI assistant over iMessage for bookings, leads, invoices and email.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Agent builder | scout rating 3.8 (not shown) | pricing: Platform free ($0 platform fee); pay as you go for Omnara-managed models (provider token rates) and machines (~$0.0414/G
@@ -3678,7 +3711,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'pro',
     platforms: ['API'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'agents', score: 64, notes: 'An open-source platform to deploy stateful agents on any model, machine or cloud.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Automation | scout rating 3.7 (not shown) | pricing: Free download (43 MB); Mac app in beta; paid plans unknown.
@@ -3697,7 +3732,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'intermediate',
     platforms: ['macOS'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'automation', score: 60, notes: 'Lets Claude, ChatGPT or any MCP client control your real iPhone or Android phone.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Productivity | scout rating 3.6 (not shown) | pricing: Free (unlimited notes, limited insights); Pro $4.99/mo or $39.99/yr (smarter actions, private encrypted notes, daily pla
@@ -3716,7 +3753,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['iOS'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'writing', score: 60, notes: 'Adds AI insights and one-tap actions to Apple Reminders on iPhone and iPad.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Research | scout rating 3.5 (not shown) | pricing: Free start with 50 tokens (no card); paid pricing unknown (pricing page not readable).
@@ -3735,7 +3774,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'intermediate',
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'research', score: 60, notes: 'A research agent that finds matching companies and decision-makers from a plain-English brief.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Automation | scout rating 3.6 (not shown) | pricing: Free and open source with your own API keys; optional SuperCMO key is pay-per-use credits; SuperCMO Cloud pricing unknow
@@ -3754,7 +3795,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'pro',
     platforms: ['API'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'automation', score: 60, notes: 'Open-source skills that turn Claude Code, Cursor or Codex into a marketing assistant.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Productivity | scout rating 3.5 (not shown) | pricing: Free (MIT open source); you pay your own model provider (Anthropic/OpenAI) or run local models free via Ollama/LM Studio
@@ -3773,7 +3816,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'pro',
     platforms: ['macOS', 'Windows', 'Linux'],
     lastVerifiedAt: SCOUTED_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'writing', score: 60, notes: 'An open-source, local-first personal agent with memory in plain Markdown files.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   ...musicSeoToolSeeds,

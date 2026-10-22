@@ -68,7 +68,7 @@ describe('free-plan catalog data', () => {
 
   it('has a catalog tool, a note, an official source and a valid date for every entry', () => {
     const entries = Object.entries(freePlanNotes)
-    expect(entries.length).toBe(63)
+    expect(entries.length).toBe(64)
     for (const [slug, fields] of entries) {
       const seed = seeds.get(slug)
       expect(seed, slug).toBeTruthy()
@@ -102,7 +102,8 @@ describe('free-plan catalog data', () => {
 })
 
 describe('free page', () => {
-  const at = Date.UTC(2026, 9, 18, 16)
+  // The newest free-plan check (TwinMind) is 2026-10-22, so the page clock starts there.
+  const at = Date.UTC(2026, 9, 22, 16)
 
   it('lists the top six free tools in /result budget=free order, without held tools', () => {
     for (const task of FREE_PAGE_TASKS) {
@@ -123,7 +124,7 @@ describe('free page', () => {
 
   it('stale: every page falls back to noindex 91 days after the check', () => {
     for (const task of FREE_PAGE_TASKS) {
-      const page = buildFreePage(toolsForTask(catalog, task), checkedAt + 91 * DAY)
+      const page = buildFreePage(toolsForTask(catalog, task), Date.UTC(2026, 9, 22) + 91 * DAY)
       expect(page.indexable, task).toBe(false)
       expect(page.tools.every((item) => item.freePlanStatus === 'stale')).toBe(true)
     }
