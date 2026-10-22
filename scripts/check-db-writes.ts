@@ -41,6 +41,8 @@ const ALLOWED = new Set([
   // stays off until DATA_RETENTION_PRODUCTION_LAUNCH, and dry-run is the default.
   // No other cron route may write.
   'src/app/api/cron/data-retention/route.ts',
+  // Review write service, gated by userRatingsEnabled() (off in production).
+  'src/lib/reviews/write.ts',
 ])
 
 const ROOTS = ['src', 'scripts', 'drizzle']

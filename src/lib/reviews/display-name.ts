@@ -37,7 +37,14 @@ const SCRIPT_PATTERNS: { name: string; pattern: RegExp }[] = [
 const LETTER = /\p{L}/u
 const MARKS = /\p{M}/gu
 
-/** Raw length, counted before NFKC. Longer names are rejected and not normalized. */
+/**
+ * Raw length, counted in Unicode code points before NFKC.
+ * The message says "characters" because that count matches code points,
+ * not UTF-16 code units. The normalized form uses the same cap: NFKC can
+ * expand one character about 18 times.
+ * reviews.display_name still allows only 60 code points. The write service
+ * refuses a longer raw name so that limit does not need a migration.
+ */
 export const DISPLAY_NAME_MAX_LENGTH = 64
 
 export const DISPLAY_NAME_TOO_LONG_MESSAGE = 'Display name must be 64 characters or fewer.'
@@ -51,6 +58,17 @@ export type DisplayNameDecision =
   | { ok: true }
   | { ok: false; reason: 'empty' | 'mixed_script' | 'reserved' }
   | { ok: false; reason: 'too_long'; message: string }
+
+export function codePointLength(value: string): number {
+  let count = 0
+  for (const _char of value) count += 1
+  return count
+}
+
+/** The name shown on a review is the raw snapshot, not the NFKC form used for checks. */
+export function reviewDisplayName(name: string): string {
+  return name
+}
 
 function scriptOf(char: string): string | null {
   if (!LETTER.test(char)) return null
@@ -130,10 +148,13 @@ function hasReservedPhrase(tokens: string[], phrases: string[][]): boolean {
 
 /** Refuse a public name that impersonates staff, BestBotFor, or the tool's brand. Does not rewrite it. */
 export function checkDisplayName(name: string, context: DisplayNameContext = {}): DisplayNameDecision {
-  if (name.length > DISPLAY_NAME_MAX_LENGTH) {
+  if (codePointLength(name) > DISPLAY_NAME_MAX_LENGTH) {
     return { ok: false, reason: 'too_long', message: DISPLAY_NAME_TOO_LONG_MESSAGE }
   }
   const normalized = normalizeDisplayName(name)
+  if (codePointLength(normalized) > DISPLAY_NAME_MAX_LENGTH) {
+    return { ok: false, reason: 'too_long', message: DISPLAY_NAME_TOO_LONG_MESSAGE }
+  }
   if (normalized.length === 0) return { ok: false, reason: 'empty' }
   const words = normalized.split(' ').map((word) => word.replace(/[^\p{L}\p{N}]+/gu, '')).filter((word) => word.length > 0)
   if (words.some(mixesScripts)) return { ok: false, reason: 'mixed_script' }
