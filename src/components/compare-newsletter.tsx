@@ -1,5 +1,6 @@
 import { COMPARE_DIGEST_FINE_PRINT } from '@/data/compare-copy'
 import { inlineParts } from '@/lib/compare-copy'
+import { ReadIssueOneLink } from './daily-bot-issue-link'
 import { NewsletterForm } from './newsletter-form'
 
 export function CompareNewsletter({
@@ -19,7 +20,7 @@ export function CompareNewsletter({
       <div className="mt-4">
         <NewsletterForm source="compare" idSuffix={idSuffix} />
       </div>
-      <p className="text-sm text-muted">{COMPARE_DIGEST_FINE_PRINT}</p>
+      <p className="text-sm text-muted">{COMPARE_DIGEST_FINE_PRINT} <ReadIssueOneLink />.</p>
     </section>
   )
 }
