@@ -59,6 +59,12 @@ export type ToolSeed = {
   affiliate: AffiliateSeed
   /** The public name and URL still need a fresh check. No editorial score is shown. */
   needsVerification?: boolean
+  /**
+   * Kept in the catalog seed but left off every public surface: the seed writes
+   * tools.status = 'unlisted', so site pages, search, the quiz and the sitemap
+   * (all filter status = 'active') skip it, and /go/<slug> answers 404.
+   */
+  unlisted?: boolean
 }
 
 export type CatalogTask = TaskSeed

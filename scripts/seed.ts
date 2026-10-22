@@ -74,7 +74,7 @@ for (const tool of toolSeeds) {
       skillLevel: tool.skillLevel,
       platforms: JSON.stringify(tool.platforms),
       lastVerifiedAt: tool.lastVerifiedAt,
-      status: 'active',
+      status: tool.unlisted ? 'unlisted' : 'active',
       needsVerification: tool.needsVerification === true,
     })
     .onConflictDoUpdate({
@@ -92,7 +92,7 @@ for (const tool of toolSeeds) {
         skillLevel: tool.skillLevel,
         platforms: JSON.stringify(tool.platforms),
         lastVerifiedAt: tool.lastVerifiedAt,
-        status: 'active',
+        status: tool.unlisted ? 'unlisted' : 'active',
         needsVerification: tool.needsVerification === true,
       },
     })

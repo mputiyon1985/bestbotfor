@@ -62,7 +62,7 @@ test('a scored tool shows fractional stars, the rubric, and no review schema', a
 
 test('unrated tools hide the score and keep pros and cons', async ({ page }) => {
   test.setTimeout(180_000)
-  expect(unratedSlugs).toHaveLength(104)
+  expect(unratedSlugs).toHaveLength(100)
   for (const slug of unratedSlugs) {
     const tool = toolSeeds.find((item) => item.slug === slug)
     const v1 = editorialSeeds.find((row) => row.slug === slug)
@@ -259,7 +259,7 @@ test('archived tools stay live, show the notice, and stay off quiz results', asy
   expect(flowise?.status()).toBe(200)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Flowise')
   await expect(page.locator('[data-maintenance-notice]')).toHaveText('Unmaintained (repo archived)')
-  await expect(page.locator('[data-category-rank]')).toHaveText('Tied · #5 of 6 in Agents')
+  await expect(page.locator('[data-category-rank]')).toHaveText('Tied · #6 of 8 in Agents')
   await expect(page.locator('[data-tie]')).toBeVisible()
 
   const roo = await page.goto('/tools/roo-code')

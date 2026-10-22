@@ -12,34 +12,9 @@ import { MONOGRAM_OVERRIDES, NEUTRAL_TILE_FILL, NEUTRAL_TILE_SLUGS, markLongSide
 type ManifestEntry = { slug: string; sourceUrl: string; fetchedAt: string }
 
 const manifest = manifestJson as ManifestEntry[]
-const MISSING = [
-  'aider',
-  'band',
-  'bits',
-  'causo',
-  'composio',
-  'cutbay',
-  'dadan',
-  'fastlane',
-  'mercury-inception',
-  'midjourney',
-  'mintlify',
-  'mistral-voxtral',
-  'needle',
-  'notif',
-  'omnara',
-  'opposable',
-  'playad',
-  'radaric',
-  'runinfra',
-  'sponkly',
-  'supercmo',
-  'tend',
-  'twinmind',
-  'useit-studio',
-]
-const LOW_RES = ['clearscope', 'clipdrop', 'hailuo', 'jules', 'letsenhance', 'neuronwriter', 'tldv', 'wolfram-alpha']
-const HOSTED = 162
+const MISSING = ['aider', 'midjourney']
+const LOW_RES = ['clearscope', 'clipdrop', 'cutbay', 'hailuo', 'jules', 'letsenhance', 'neuronwriter', 'tldv', 'wolfram-alpha']
+const HOSTED = 183
 const monogramOverrides = new Set<string>(MONOGRAM_OVERRIDES)
 
 function sourceFiles(directory: string): string[] {
@@ -83,8 +58,8 @@ describe('tool logos', () => {
     const sources = await readSources()
     const bySlug = new Map(sources.map((row) => [row.slug, row]))
     expect(sources).toHaveLength(toolSeeds.length)
-    expect(sources.filter((row) => row.status === 'ok')).toHaveLength(163)
-    expect(sources.filter((row) => row.status === 'low_res')).toHaveLength(8)
+    expect(sources.filter((row) => row.status === 'ok')).toHaveLength(184)
+    expect(sources.filter((row) => row.status === 'low_res')).toHaveLength(9)
     const missing = sources.filter((row) => row.status === 'missing').map((row) => row.slug).sort()
     expect(missing).toEqual(MISSING)
     const lowRes = sources.filter((row) => row.status === 'low_res').map((row) => row.slug).sort()

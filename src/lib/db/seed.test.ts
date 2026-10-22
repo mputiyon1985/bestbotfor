@@ -279,8 +279,8 @@ describe('catalog seed', () => {
     const rated = scores.map((row) => idToSlug.get(row.toolId)).sort()
     const csvSlugs = ratingSeeds.map((row) => row.slug).sort()
     const v1Slugs = new Set(editorialSeeds.map((row) => row.slug))
-    expect(ratingSeeds).toHaveLength(91)
-    expect(unratedSlugs).toHaveLength(104)
+    expect(ratingSeeds).toHaveLength(95)
+    expect(unratedSlugs).toHaveLength(100)
     expect(rated).toEqual(csvSlugs)
     expect(new Set(rated)).toEqual(new Set(csvSlugs))
     expect(csvSlugs).toContain('cursor')
@@ -308,9 +308,13 @@ describe('catalog seed', () => {
     expect(kept).toBe(87)
     expect(removedSlugs).toHaveLength(59)
     expect(ratingSeeds.filter((row) => !v1Slugs.has(row.slug)).map((row) => row.slug).sort()).toEqual([
+      'composio',
       'cursor',
       'grok',
+      'mistral-voxtral',
+      'omnara',
       'semantic-scholar',
+      'twinmind',
       'windsurf',
     ])
     const keptPoints = keptProsConsSeeds.reduce((total, row) => total + row.pros.length + row.cons.length, 0)
@@ -373,7 +377,7 @@ describe('catalog seed', () => {
     const fresh = await seed()
     expect(fresh).toEqual({
       scoresInserted: 0,
-      scoresUpdated: 91,
+      scoresUpdated: 95,
       scoresRemoved: 0,
       prosInserted: 0,
       prosUpdated: prosConsTotal,
@@ -397,7 +401,7 @@ describe('catalog seed', () => {
     await useTempDatabase()
     const fresh = await seed()
     expect(fresh).toEqual({
-      scoresInserted: 91,
+      scoresInserted: 95,
       scoresUpdated: 0,
       scoresRemoved: 0,
       prosInserted: prosConsTotal,
@@ -437,7 +441,7 @@ describe('catalog seed', () => {
     process.env.SEED_PRUNE = '1'
     const fromV1 = await seed()
     expect(fromV1).toEqual({
-      scoresInserted: 4,
+      scoresInserted: 8,
       scoresUpdated: 87,
       scoresRemoved: 59,
       prosInserted: pointTotal(supplementalProsConsSeeds),
@@ -484,7 +488,7 @@ describe('catalog seed', () => {
     const replaced = await seed()
     expect(replaced).toEqual({
       scoresInserted: 0,
-      scoresUpdated: 91,
+      scoresUpdated: 95,
       scoresRemoved: 2,
       prosInserted: 0,
       prosUpdated: prosConsTotal,
