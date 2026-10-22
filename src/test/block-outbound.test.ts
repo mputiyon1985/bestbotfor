@@ -8,7 +8,7 @@ import { describe, expect, it } from 'vitest'
 
 const SKIP_DIRECTORIES = new Set(['node_modules', '.git', '.next', 'dist', 'coverage', 'data', '.turbo'])
 const GUARD_FILES = new Set(['src/test/block-outbound.ts', 'src/test/block-outbound.test.ts'])
-const UNSAFE_FETCH_IMPORTERS = ['src/lib/rate-limit.remote.test.ts']
+const UNSAFE_FETCH_IMPORTERS: string[] = []
 
 describe('outbound network guard', () => {
   it('blocks lookalike hosts and still allows loopback', async () => {
