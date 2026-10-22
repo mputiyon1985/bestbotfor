@@ -3,8 +3,8 @@ import { FREE_PAGE_TASKS } from '../src/lib/free-plan'
 import { FREE_PLAN_DROP_HEADER, FREE_PLAN_NOW_HEADER } from '../src/lib/free-page-hooks'
 
 // Runs against the BBF_E2E_HOOKS=1 server (playwright project free-plan-hooks).
-// Notes were checked 2026-10-18, so 2026-10-20 is fresh and 2027-03-01 is stale.
-const FRESH = '2026-10-20'
+// Notes were checked 2026-10-18 to 2026-10-22, so 2026-10-23 is fresh and 2027-03-01 is stale.
+const FRESH = '2026-10-23'
 const STALE = '2027-03-01'
 
 test.describe('free page index gate', () => {
