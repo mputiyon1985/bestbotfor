@@ -2,9 +2,9 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { LawyerReviewNotice } from '@/components/lawyer-review-notice'
-import { userRatingsEnabled } from '@/lib/flags'
+import { newsletterCtaEnabled, userRatingsEnabled } from '@/lib/flags'
 import { pageMetadata } from '@/lib/metadata'
-import { CLICK_LOG_PARAGRAPH, FIRST_TOUCH_PRIVACY_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, NEWSLETTER_SIGNUP_PARAGRAPH, rateLimitPrivacyParagraphs, RETENTION_JOB_PARAGRAPH, SHARING_PARAGRAPH, SUGGESTION_PRIVACY_PARAGRAPH, TURSO_BACKUP_PARAGRAPH } from '@/lib/privacy-copy'
+import { CLICK_LOG_PARAGRAPH, FIRST_TOUCH_PRIVACY_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, newsletterSignupParagraph, rateLimitPrivacyParagraphs, RETENTION_JOB_PARAGRAPH, SHARING_PARAGRAPH, SUGGESTION_PRIVACY_PARAGRAPH, TURSO_BACKUP_PARAGRAPH } from '@/lib/privacy-copy'
 import { PRIVACY_RATINGS_PARAGRAPHS, PRIVACY_UPDATED, PRIVACY_UPDATED_WITH_RATINGS, RETENTION_ROWS } from '@/lib/ratings-policy-copy'
 
 export const dynamic = 'force-dynamic'
@@ -28,7 +28,7 @@ export default function PrivacyPage() {
       </p>
       <h2 className="font-semibold text-3xl">What we collect</h2>
       <p>{FIRST_TOUCH_PRIVACY_PARAGRAPH}</p>
-      <p>{NEWSLETTER_SIGNUP_PARAGRAPH}</p>
+      <p>{newsletterSignupParagraph(newsletterCtaEnabled())}</p>
       <p>{SUGGESTION_PRIVACY_PARAGRAPH}</p>
       <p>
         If you create an account, Clerk handles sign-in. Clerk receives the details you give them, such as your email,

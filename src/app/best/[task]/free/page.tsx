@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { DailyBotCapture } from '@/components/daily-bot-capture'
+import { NewsletterCta } from '@/components/newsletter-cta'
+import { newsletterCtaEnabled } from '@/lib/flags'
 import { JsonLd } from '@/components/json-ld'
 import { ToolLogo } from '@/components/tool-logo'
 import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
@@ -61,6 +63,7 @@ export default async function BestFreePage({ params }: { params: Promise<{ task:
       answer: 'Each one has a free plan or is free to use, but free plans have limits. The note under each tool says what the vendor’s own page lists, and when we checked it.',
     },
   ]
+  const cta = newsletterCtaEnabled()
   return (
     <article className="space-y-8" data-free-plan-index={indexable ? 'index' : 'noindex'}>
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
@@ -72,6 +75,7 @@ export default async function BestFreePage({ params }: { params: Promise<{ task:
         {bestFreeHeading(task.name).replace(/^Best/, 'The best')} is {top.name}. These are the {tools.length} highest-ranked tools for this job
         that you can start without paying, out of {totalFree} with a free plan in our catalog.
       </p>
+      {cta ? <NewsletterCta path={path} source="best" /> : null}
       {indexable ? null : (
         <p role="note" className="text-sm text-muted">
           Some free-plan details on this page have not been checked recently. Confirm each free plan on the vendor’s site.
@@ -139,7 +143,7 @@ export default async function BestFreePage({ params }: { params: Promise<{ task:
         Want this personalized? <Link className="underline" href="/">Answer 3 questions</Link> and choose Free only.{' '}
         <Link className="underline" href={guidePath('how-to-choose-an-ai-tool')}>How to choose an AI tool</Link>.
       </p>
-      <DailyBotCapture source="best" />
+      {cta ? null : <DailyBotCapture source="best" />}
     </article>
   )
 }

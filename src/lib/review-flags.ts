@@ -36,3 +36,12 @@ export const SHOW_USER_AGGREGATE_JSONLD: boolean = false
  * already indexed on main.
  */
 export const POLICY_PAGES_LAWYER_APPROVED: boolean = false
+
+/**
+ * Production launch switch for the newsletter CTA (inline box + sticky bar)
+ * on /compare/*, /alternatives/*, /best/*, and /guides/* pages.
+ * Ships false. Production stays off until Mark approves the copy and Sentinel
+ * passes it, and a launch PR sets this to true, even when NEWSLETTER_CTA is on.
+ * A code constant, same as SHOW_SCORES.
+ */
+export const NEWSLETTER_CTA_PRODUCTION_LAUNCH: boolean = false

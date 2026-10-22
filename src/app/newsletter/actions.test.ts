@@ -45,3 +45,31 @@ describe('subscribeAction first_touch wiring (Sentinel P3-1 on #101)', () => {
     expect(subscribeToNewsletter.mock.calls.map((call) => (call[0] as { firstTouch: unknown }).firstTouch)).toEqual([null, null, null, null])
   })
 })
+
+describe('subscribeAction cta_path (newsletter CTA)', () => {
+  const original = { cta: process.env.NEWSLETTER_CTA, env: process.env.VERCEL_ENV }
+  afterEach(() => {
+    if (original.cta === undefined) delete process.env.NEWSLETTER_CTA
+    else process.env.NEWSLETTER_CTA = original.cta
+    if (original.env === undefined) delete process.env.VERCEL_ENV
+    else process.env.VERCEL_ENV = original.env
+  })
+
+  it('passes a valid page path as referringPath when the flag is on', async () => {
+    process.env.NEWSLETTER_CTA = 'on'
+    process.env.VERCEL_ENV = 'test'
+    subscribeToNewsletter.mockResolvedValue({ status: 'success', message: 'ok', tracked: false })
+    await subscribeAction(idle, form({ email: 'a@example.com', source: 'best', cta_path: '/best/music' }))
+    expect(subscribeToNewsletter.mock.calls[0]?.[0]).toMatchObject({ source: 'best', referringPath: '/best/music' })
+    await subscribeAction(idle, form({ email: 'a@example.com', source: 'best', cta_path: '//evil.example/x' }))
+    expect(subscribeToNewsletter.mock.calls[1]?.[0]).toMatchObject({ referringPath: undefined })
+  })
+
+  it('ignores cta_path when the flag is off', async () => {
+    process.env.NEWSLETTER_CTA = 'on'
+    process.env.VERCEL_ENV = 'production'
+    subscribeToNewsletter.mockResolvedValue({ status: 'success', message: 'ok', tracked: false })
+    await subscribeAction(idle, form({ email: 'a@example.com', source: 'best', cta_path: '/best/music' }))
+    expect(subscribeToNewsletter.mock.calls[0]?.[0]).toMatchObject({ referringPath: undefined })
+  })
+})

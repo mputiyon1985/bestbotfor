@@ -4,6 +4,8 @@ import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { DailyBotCapture } from '@/components/daily-bot-capture'
+import { NewsletterCta } from '@/components/newsletter-cta'
+import { newsletterCtaEnabled } from '@/lib/flags'
 import { JsonLd } from '@/components/json-ld'
 import { ToolLogo } from '@/components/tool-logo'
 import {
@@ -81,6 +83,8 @@ export default async function AlternativesPage({ params, searchParams }: Props) 
   const newsletterSource = alternativesNewsletterSource(subject.slug)
   const copy = alternativesCopy(subject.slug)
   const nova = novaCopy(`${subject.slug}-alternatives`)
+  // Flag on: the CTA replaces the Daily Bot form on the five tools that have one.
+  const cta = newsletterCtaEnabled()
   return (
     <article className="space-y-8">
       <JsonLd data={breadcrumbJsonLd(crumbs)} nonce={nonce} />
@@ -92,6 +96,7 @@ export default async function AlternativesPage({ params, searchParams }: Props) 
           The closest {subject.name} alternative is {closest.name}. {closest.notes}
         </p>
       ) : null}
+      {cta ? <NewsletterCta path={path} source={newsletterSource ?? 'newsletter'} /> : null}
       {copy.intro ? <p>{copy.intro}</p> : null}
       <nav aria-label="Budget" className="flex flex-wrap gap-2">
         {ALTERNATIVE_BUDGETS.map((option) => (
@@ -175,7 +180,7 @@ export default async function AlternativesPage({ params, searchParams }: Props) 
       <p className="text-sm text-muted">
         Want this personalized? <Link className="underline" href="/">Answer 3 questions</Link> and get your pick in 30 seconds. Payment never buys a higher rank.
       </p>
-      {newsletterSource ? <DailyBotCapture source={newsletterSource} /> : null}
+      {newsletterSource && !cta ? <DailyBotCapture source={newsletterSource} /> : null}
     </article>
   )
 }
