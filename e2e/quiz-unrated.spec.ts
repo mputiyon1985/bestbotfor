@@ -1,17 +1,18 @@
 import { expect, test } from '@playwright/test'
 import { toolSeeds } from '../src/data/catalog'
 import { unratedSlugs } from '../src/data/scores-v23.seed'
+import { ratingRequiredSlugs } from '../src/lib/quiz-gate'
 
-const listedUnrated = toolSeeds.filter((tool) => !tool.unlisted && unratedSlugs.includes(tool.slug))
+const listedUnrated = toolSeeds.filter((tool) => !tool.unlisted && unratedSlugs.includes(tool.slug) && ratingRequiredSlugs.has(tool.slug))
 const scoutUnrated = ['dadan', 'composio', 'supercmo', 'mintlify']
   .map((slug) => toolSeeds.find((tool) => tool.slug === slug))
   .filter((tool) => tool && unratedSlugs.includes(tool.slug))
 
-test('unrated tools never appear in quiz results or all matches', async ({ page }) => {
+test('new unrated scout tools never appear in quiz results or all matches', async ({ page }) => {
   test.setTimeout(60_000)
   // A few tasks only: /result is rate limited per IP across the whole suite.
   // The unit test (quiz-unrated.test.ts) covers every task, budget and skill.
-  const tasks = ['chat', 'music', 'video']
+  const tasks = ['automation', 'writing', 'video']
   for (const task of tasks) expect(listedUnrated.some((tool) => tool.fits.some((fit) => fit.task === task)), task).toBe(true)
   for (const task of tasks) {
     const names = listedUnrated.filter((tool) => tool.fits.some((fit) => fit.task === task)).map((tool) => tool.name)
@@ -23,6 +24,11 @@ test('unrated tools never appear in quiz results or all matches', async ({ page 
       }
     }
   }
+})
+
+test('pre-existing unrated Perplexity still appears in Research quiz results', async ({ page }) => {
+  await page.goto('/result?task=research&budget=any&skill=beginner')
+  await expect(page.locator('main').getByRole('heading', { name: 'Perplexity', exact: true }).first()).toBeVisible()
 })
 
 test('unrated tools stay browsable on their category page, labeled Unrated', async ({ page }) => {
