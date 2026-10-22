@@ -20,8 +20,8 @@ export default function NewsletterPage() {
         Free AI newsletter. Goes out weekly on Thursdays. <ReadIssueOneLink />. Unsubscribe anytime.
       </p>
       <p>
-        A short, plain-English note on AI tools and agents: what launched, what changed price, and which bot we’d pick. We store your email on our servers. When the digest is
-        connected to Beehiiv, that is where the issues are sent. If Beehiiv asks you to confirm, check your inbox.
+        A short, plain-English note on AI tools and agents: what launched, what changed price, and which bot we’d pick. We store your email on our servers.
+        If Beehiiv asks you to confirm, check your inbox.
       </p>
       <NewsletterForm source="newsletter" />
       <p className="text-sm text-muted">
