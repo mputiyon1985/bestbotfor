@@ -303,6 +303,11 @@ export const freePlanNotes: Readonly<Record<string, FreePlanFields>> = {
     freePlanSource: "https://www.granola.ai/pricing",
     freePlanCheckedAt: "2026-10-18",
   },
+  "twinmind": {
+    freePlanNote: "TwinMind Free ($0, free forever) includes unlimited summaries and AI chats, unlimited transcription and capture hours, and daily and weekly digests. Pro is $11.99/month.",
+    freePlanSource: "https://twinmind.com/pricing",
+    freePlanCheckedAt: "2026-10-22",
+  },
   "read-ai": {
     freePlanNote: "Read AI Free ($0, no credit card) includes 5 meeting transcripts a month with summaries, unlimited search, a personal meeting coach, basic integrations and 20+ languages. It is always free.",
     freePlanSource: "https://www.read.ai/plans-pricing",

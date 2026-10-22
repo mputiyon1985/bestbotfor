@@ -100,7 +100,7 @@ const loadTasks = catalogPageCache(async () => readTasks(getDb()), catalogCacheK
 
 const loadToolPage = catalogPageCache(
   async (page: number, category: string | null) => readToolPage(getDb(), page, category),
-  catalogCacheKey('tool-page-v1'),
+  catalogCacheKey('tool-page-v2'),
 )
 
 const loadToolCategoryCounts = catalogPageCache(async () => readToolCategoryCounts(getDb()), catalogCacheKey('tool-category-counts-v1'))

@@ -62,8 +62,9 @@ test('a scored tool shows fractional stars, the rubric, and no review schema', a
 
 test('unrated tools hide the score and keep pros and cons', async ({ page }) => {
   test.setTimeout(180_000)
-  expect(unratedSlugs).toHaveLength(90)
-  for (const slug of unratedSlugs) {
+  expect(unratedSlugs).toHaveLength(86)
+  const unlisted = new Set(toolSeeds.filter((item) => item.unlisted).map((item) => item.slug))
+  for (const slug of unratedSlugs.filter((item) => !unlisted.has(item))) {
     const tool = toolSeeds.find((item) => item.slug === slug)
     const v1 = editorialSeeds.find((row) => row.slug === slug)
     await page.goto(`/tools/${slug}`)
@@ -254,12 +255,24 @@ test('a single-tool category hides the rank and a note shows when it is filled',
   expect(html).not.toContain('chatgpt.com/pricing')
 })
 
+test('unlisted tools have no page, no /go redirect and no sitemap entry', async ({ page, request }) => {
+  const tool = await page.goto('/tools/mercury-inception')
+  expect(tool?.status()).toBe(404)
+  const go = await request.get('/go/mercury-inception', { maxRedirects: 0 })
+  expect(go.status()).toBe(404)
+  const sitemap = await request.get('/sitemap.xml')
+  expect(sitemap.status()).toBe(200)
+  const xml = await sitemap.text()
+  expect(xml).toContain('/tools/twinmind')
+  expect(xml).not.toContain('mercury-inception')
+})
+
 test('archived tools stay live, show the notice, and stay off quiz results', async ({ page }) => {
   const flowise = await page.goto('/tools/flowise')
   expect(flowise?.status()).toBe(200)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Flowise')
   await expect(page.locator('[data-maintenance-notice]')).toHaveText('Unmaintained (repo archived)')
-  await expect(page.locator('[data-category-rank]')).toHaveText('Tied · #5 of 6 in Agents')
+  await expect(page.locator('[data-category-rank]')).toHaveText('Tied · #6 of 8 in Agents')
   await expect(page.locator('[data-tie]')).toBeVisible()
 
   const roo = await page.goto('/tools/roo-code')

@@ -107,6 +107,16 @@ describe('HEAD /go/[slug]', () => {
 })
 
 describe('GET /go/[slug]', () => {
+  it('404s an unlisted seed before the rate limit, catalog read, or click log', async () => {
+    // getTool is mocked to return a tool, so only the GET seed filter can stop this.
+    const response = await GET(request('GET', 'mercury-inception'), context('mercury-inception'))
+    expect(response.status).toBe(404)
+    expect(await response.text()).toBe('That tool is not in the catalog.')
+    expect(response.headers.get('location')).toBeNull()
+    expect(calls).toEqual({ limit: 0, tool: 0, db: 0 })
+    expect(jobs).toHaveLength(0)
+  })
+
   it('still rate-limits, loads the catalog, and records a click', async () => {
     const response = await GET(request('GET', 'cursor', '?ref=evil'), context())
     expect(response.status).toBe(302)

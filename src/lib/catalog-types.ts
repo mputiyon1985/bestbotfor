@@ -59,6 +59,19 @@ export type ToolSeed = {
   affiliate: AffiliateSeed
   /** The public name and URL still need a fresh check. No editorial score is shown. */
   needsVerification?: boolean
+  /**
+   * Kept in the catalog seed but left off every public surface: the seed writes
+   * tools.status = 'unlisted', so site pages, search, the quiz and the sitemap
+   * (all filter status = 'active') skip it, and /go/<slug> answers 404.
+   */
+  unlisted?: boolean
+  /**
+   * ET date the tool joined the catalog. Set for tools added in #138 (bot scout
+   * 2026-10-22) or later. Those tools need an editorial rating to appear in
+   * quiz matching (see src/lib/quiz-gate.ts); tools without it keep the
+   * original quiz behavior.
+   */
+  addedAt?: string
 }
 
 export type CatalogTask = TaskSeed

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
-import { taskSeeds, toolSeeds } from '../src/data/catalog'
+import { taskSeeds } from '../src/data/catalog'
+import { CATALOG_TOOL_COUNT } from '../src/lib/seo-pages'
 import { bestGuideHeading } from '../src/lib/descriptions'
 import { toolsForTask } from '../src/lib/recommend'
 import { catalogFromSeeds } from '../src/test/catalog-from-seeds'
@@ -31,7 +32,7 @@ test.describe('seo hub pages', () => {
     await page.setViewportSize({ width: 1024, height: 900 })
     await page.goto('/ai-loadout')
     await expect(page).toHaveTitle(`The AI Loadout: The Best AI Tool for All ${taskSeeds.length} Jobs · BestBotFor`)
-    await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', new RegExp(`catalog of ${toolSeeds.length} tools`))
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute('content', new RegExp(`catalog of ${CATALOG_TOOL_COUNT} tools`))
     await expect(page.getByRole('heading', { level: 1 })).toHaveCount(1)
     const table = page.getByRole('table', { name: 'Top pick for each job' })
     await expect(table.getByRole('row')).toHaveCount(taskSeeds.length + 1)
@@ -58,7 +59,7 @@ test.describe('seo hub pages', () => {
     const jobs = page.getByRole('list', { name: 'Jobs we cover' })
     await expect(jobs.getByRole('link')).toHaveCount(taskSeeds.length)
     await expect(page.getByRole('link', { name: 'Read how we rate tools' })).toHaveAttribute('href', '/how-we-rate')
-    await expect(page.getByRole('link', { name: `Browse all ${toolSeeds.length} tools` })).toHaveAttribute('href', '/tools')
+    await expect(page.getByRole('link', { name: `Browse all ${CATALOG_TOOL_COUNT} tools` })).toHaveAttribute('href', '/tools')
     await expect(page.getByRole('link', { name: 'Get your pick in 30 seconds' })).toHaveAttribute('href', '/')
     const schemas = await page.locator('script[type="application/ld+json"]').allTextContents()
     expect(schemas.some((text) => text.includes('"FAQPage"'))).toBe(true)

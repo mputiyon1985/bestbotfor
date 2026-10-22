@@ -164,6 +164,11 @@ export default async function ToolsPage({ searchParams }: { searchParams: Promis
                 <Link href={`/tools/${tool.slug}`} className="font-semibold underline-offset-4 hover:underline">
                   {tool.name}
                 </Link>
+                {tool.rated === false ? (
+                  <span data-unrated className="ml-2 inline-block rounded-full border border-line px-2 text-xs font-semibold text-muted">
+                    Unrated
+                  </span>
+                ) : null}
                 <span className="mt-1 block text-sm text-muted">
                   {tool.category}. {tool.shortDesc}
                 </span>

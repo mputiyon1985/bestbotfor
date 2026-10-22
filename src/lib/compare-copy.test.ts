@@ -121,8 +121,8 @@ describe('curated compare copy', () => {
     const voice = viewFor('elevenlabs-vs-murf')
     expect(voice.view.verdictPlain).toContain('96 vs 84')
     expect(cell(voice.view, 'Our rating')).toMatchObject({
-      a: '4.3 (#1 of 6 in Voice)',
-      b: '3.6 (#4 of 6 in Voice)',
+      a: '4.3 (#1 of 7 in Voice)',
+      b: '3.6 (#4 of 7 in Voice)',
     })
     expect(cell(voice.view, 'Fit: create a voiceover')).toMatchObject({ a: '96', b: '84' })
 
@@ -155,7 +155,7 @@ describe('curated compare copy', () => {
     expect(notetakers.view.heading).toBe('Fathom vs Fireflies')
     expect(notetakers.view.slug).toBe('fathom-vs-fireflies')
     expect(cell(notetakers.view, 'Fit: take meeting notes')).toMatchObject({ a: '86', b: '88' })
-    expect(cell(notetakers.view, 'Our rating').b).toBe('4.1 (#2 of 7 in Meetings)')
+    expect(cell(notetakers.view, 'Our rating').b).toBe('4.1 (#2 of 8 in Meetings)')
 
     const builders = viewFor('lovable-vs-v0')
     expect(builders.view.verdictPlain).toContain('fit 94')

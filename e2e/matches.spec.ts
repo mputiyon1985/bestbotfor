@@ -19,6 +19,7 @@ function candidates(task: string): ScoreableTool[] {
         fitScore: fit.score,
         notes: fit.notes,
         quizEligible: tool.quizEligible,
+        editorial: tool.editorial,
       },
     ]
   })

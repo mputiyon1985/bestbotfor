@@ -31,7 +31,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     return text('That address is not a tool in the catalog.', 404)
   }
 
-  const reviewed = toolSeeds.find((item) => item.slug === slug)
+  const reviewed = toolSeeds.find((item) => item.slug === slug && !item.unlisted)
   if (!reviewed) return text('That tool is not in the catalog.', 404)
 
   const db = getDb()

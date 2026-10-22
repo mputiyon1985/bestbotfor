@@ -39,7 +39,7 @@ export function resolveHeadGoRedirect(slug: string): GoOutcome {
   if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) {
     return { status: 404, body: NOT_A_TOOL }
   }
-  const reviewed = toolSeeds.find((item) => item.slug === slug)
+  const reviewed = toolSeeds.find((item) => item.slug === slug && !item.unlisted)
   if (!reviewed) return { status: 404, body: NOT_IN_CATALOG }
   const decision = decideRedirect({
     tool: { url: reviewed.url, affiliateUrl: null, allowedHosts: reviewed.allowedHosts },
