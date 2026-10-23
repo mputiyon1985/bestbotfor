@@ -76,7 +76,10 @@ export const metadata: Metadata = {
 // Typed as a plain record because React's <meta> props do not declare `value`.
 const IMPACT_META_ATTRS: Record<string, string> = { value: IMPACT_SITE_VERIFICATION }
 
-export const dynamic = 'force-dynamic'
+// No route-segment `dynamic` override here: it forced every route (including
+// sitemap, robots and llms) dynamic. Pages that render this layout stay dynamic
+// anyway because headers() supplies the per-request CSP nonce; their DB reads
+// go through the unstable_cache wrappers in src/lib/catalog.ts.
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const headerStore = await headers()
