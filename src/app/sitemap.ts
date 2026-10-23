@@ -11,7 +11,32 @@ import { loadFreePage } from '@/lib/free-page-data'
 import { isFreePageTask } from '@/lib/free-plan'
 import { bestFreePath } from '@/lib/seo-pages'
 
-export const dynamic = 'force-dynamic'
+/**
+ * Was force-dynamic, which ran the uncached readSitemapDates() join on every
+ * crawler hit. Now ISR: built once, regenerated at most daily. Read failures
+ * still fall back to SITEMAP_STATIC_LASTMOD and the static path list.
+ */
+export const revalidate = 86400
+
+/**
+ * During `next build` a catalog failure still yields the degraded sitemap (so a
+ * build without a seeded DB, e.g. CI's local build test, does not fail); ISR
+ * replaces it at the next revalidation. At request/revalidation time a catalog
+ * failure must throw: Next then keeps serving the last good sitemap instead of
+ * caching one with no /tools or /best entries for the whole window. Dev and
+ * test runs (NODE_ENV !== 'production') keep the degraded output.
+ */
+export function sitemapDegradedAllowed(env: Readonly<Record<string, string | undefined>> = process.env): boolean {
+  // Dev and tests (no seeded DB) also keep the degraded sitemap; only a production server throws.
+  return env.NEXT_PHASE === 'phase-production-build' || env.NODE_ENV !== 'production'
+}
+
+export class SitemapCatalogUnavailableError extends Error {
+  constructor(part: string, cause: unknown) {
+    super(`sitemap ${part} unavailable`, { cause })
+    this.name = 'SitemapCatalogUnavailableError'
+  }
+}
 
 /** Static sitemap paths. /search stays off this list because that page is noindex. */
 export const SITEMAP_STATIC_PATHS = [
@@ -57,6 +82,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     dates = await readSitemapDates(getDb())
   } catch (error) {
     console.error('sitemap dates unavailable', error instanceof Error ? error.name : 'error')
+    // Dates only affect lastmod (falls back to SITEMAP_STATIC_LASTMOD); the URL set stays complete, so no throw.
   }
   const toolDate = (slug: string) => dates.tools.get(slug) ?? SITEMAP_STATIC_LASTMOD
   const taskDate = (slug: string) => dates.tasks.get(slug) ?? SITEMAP_STATIC_LASTMOD
@@ -95,6 +121,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     }
   } catch (error) {
     console.error('sitemap catalog unavailable', error instanceof Error ? error.name : 'error')
+    if (!sitemapDegradedAllowed()) throw new SitemapCatalogUnavailableError('catalog', error)
   }
 
   for (const page of ALTERNATIVE_PAGES) {

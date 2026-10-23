@@ -1,6 +1,5 @@
 import { notFound } from 'next/navigation'
 
-export const dynamic = 'force-dynamic'
 
 // Same metadata as not-found.tsx, including robots: null. Without this, the
 // client hydrates the layout robots tag (index, follow in production) next to
