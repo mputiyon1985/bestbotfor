@@ -6,6 +6,7 @@ The job is `GET /api/cron/data-retention`. Vercel Cron calls it every day at 08:
 
 - `rate_limits`: delete a row when `reset_at` is more than 24 hours in the past. The delete does not look at the key, so rows left behind when the rate-limit HMAC key changed are included. Quiz `/result` rows are not in this table.
 - `result_rate_windows`: delete a row when `expires_at` is more than 24 hours in the past. `consumeResultRateLimit` writes these rows. The in-request purge can remove a window as soon as it closes. This job is the later pass for any window still present a day after `expires_at`. The bucket is not read into the log.
+- `reviews` and `review_versions` (only while `userRatingsEnabled()` is true; off in production today): every `withdrawn` review that still has a non-tombstone version is purged. One empty tombstone version (`attestation_version = 'purged'`, no text or optional answers) is appended, the review points at it, `published_version_id`, `ip_hmac` and `net_hmac` are cleared, and every other version is deleted. `moderation_events` rows stay. This backs the ratings policy line "Text and versions deleted within 24 hours": the job runs once a day, so text is gone by the next run. While ratings are off the job does not read the review tables and the report has no review fields.
 - `clicks`: keep the row. Set `ip_hash` to null when `ts` is more than 90 days in the past and the hash is still set. `tool_id`, `page`, `ts`, and `country` stay.
 
 Each statement is limited to 500 rows, and one invocation runs at most 40 batches per table. The deleted and cleared counts are the rows those statements changed. `truncated: true` means a change total is lower than the eligible count, so the next run continues. Running it again after the tables are caught up changes nothing.
@@ -16,7 +17,7 @@ Before the first write, the job checks two things. The open client has to be the
 
 ## What it does not change
 
-It does not edit the privacy policy. It does not delete click rows. It does not read or write review `ip_hmac` or `net_hmac`. It does not log rate-limit keys, result-window buckets, IP hashes, or addresses.
+It does not edit the privacy policy. It does not delete click rows. It does not touch review rows that are not withdrawn. It does not log rate-limit keys, result-window buckets, IP hashes, or addresses.
 
 ## Locks
 

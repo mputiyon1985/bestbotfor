@@ -15,6 +15,8 @@ import {
   type RetentionEnv,
   type RetentionReport,
 } from '@/lib/data-retention'
+import { userRatingsEnabled } from '@/lib/flags'
+import { countWithdrawnReviewText, purgeWithdrawnReviewText, reviewTablesReady } from '@/lib/reviews/purge'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -190,7 +192,7 @@ async function clearOldSuggestionEmails(client: Client, cutoff: number, batchSiz
 
 export async function runDataRetention(
   db: RetentionClient,
-  options: { dryRun: boolean; now: number; batchSize?: number; maxBatches?: number; url?: string; vercelEnv?: string },
+  options: { dryRun: boolean; now: number; batchSize?: number; maxBatches?: number; url?: string; vercelEnv?: string; ratingsEnabled?: boolean },
 ): Promise<RetentionReport> {
   const batchSize = options.batchSize ?? RETENTION_BATCH_SIZE
   const maxBatches = options.maxBatches ?? RETENTION_MAX_BATCHES
@@ -235,10 +237,14 @@ export async function runDataRetention(
       )
     : 0
   const counted = { rateLimitsEligible, resultWindowsEligible, clickHashesEligible, suggestionEmailsEligible, suggestionsEligible }
-  if (options.dryRun) return countsOnly(true, counted)
+  // Ratings off (prod today): reviews are never read or written here.
+  const reviewsOn = options.ratingsEnabled === true && (await reviewTablesReady(client))
+  const reviewTextEligible = reviewsOn ? await countWithdrawnReviewText(client) : 0
+  const reviewCounts = reviewsOn ? { reviewTextEligible, reviewTextPurged: 0 } : {}
+  if (options.dryRun) return { ...countsOnly(true, counted), ...reviewCounts }
   if (!retentionTargetOk({ url: options.url, protocol: client.protocol, vercelEnv: options.vercelEnv })) {
     console.error('data retention guard refused', 'target')
-    return countsOnly(false, counted)
+    return { ...countsOnly(false, counted), ...reviewCounts }
   }
   const rateLimitsDeleted = await deleteExpiredRateLimits(client, rateCutoff, batchSize, maxBatches)
   const resultWindowsDeleted = await deleteExpiredResultWindows(client, windowCutoff, batchSize, maxBatches)
@@ -247,11 +253,12 @@ export async function runDataRetention(
   const suggestionEmailsCleared = suggestionsReady
     ? await clearOldSuggestionEmails(client, emailCutoff, batchSize, maxBatches)
     : 0
+  const reviewTextPurged = reviewsOn ? await purgeWithdrawnReviewText(client, batchSize, maxBatches, options.now) : 0
   return {
     event: 'data_retention',
     enabled: true,
     dryRun: false,
-    wrote: rateLimitsDeleted + resultWindowsDeleted + clickHashesCleared + suggestionsDeleted + suggestionEmailsCleared > 0,
+    wrote: rateLimitsDeleted + resultWindowsDeleted + clickHashesCleared + suggestionsDeleted + suggestionEmailsCleared + reviewTextPurged > 0,
     rateLimitsEligible,
     rateLimitsDeleted,
     resultWindowsEligible,
@@ -262,7 +269,9 @@ export async function runDataRetention(
     suggestionEmailsCleared,
     suggestionsEligible,
     suggestionsDeleted,
+    ...(reviewsOn ? { reviewTextEligible, reviewTextPurged } : {}),
     truncated:
+      reviewTextPurged < reviewTextEligible ||
       rateLimitsDeleted < rateLimitsEligible ||
       resultWindowsDeleted < resultWindowsEligible ||
       clickHashesCleared < clickHashesEligible ||
@@ -310,6 +319,7 @@ export async function handleRetentionCron(
       now: deps.now ?? Date.now(),
       url: deps.url ?? process.env.TURSO_DATABASE_URL,
       vercelEnv: env.vercelEnv,
+      ratingsEnabled: userRatingsEnabled(),
     })
     console.log(retentionLogLine(report))
     return NextResponse.json(report, { status: 200, headers: NO_STORE })
