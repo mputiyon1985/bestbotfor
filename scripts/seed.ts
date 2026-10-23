@@ -11,9 +11,10 @@ export type RatingWriteCounts = {
 import { comparePairSeeds, retiredFitSeeds, taskSeeds, toolSeeds } from '../src/data/catalog'
 import { editorialSeeds } from '../src/data/scores-pros-cons.seed'
 import { ratingSeeds, supplementalProsConsSeeds } from '../src/data/scores-v23.seed'
-import { assertSafeDbTarget } from '../src/lib/db/guard'
 import { getDb } from '../src/lib/db/client'
-import { affiliatePrograms, tasks, toolProsCons, toolScores, toolTasks, tools } from '../src/lib/db/schema'
+import { assertSafeDbTarget } from '../src/lib/db/guard'
+import { affiliatePrograms, tasks, toolProsCons, toolScores, toolTasks, toolVendorDomains, tools } from '../src/lib/db/schema'
+import { registrableDomain } from '../src/lib/reviews/domain'
 import { validateProsConsSeeds, validateRatingSeeds } from '../src/lib/editorial'
 import { reviewedToolUrl } from '../src/lib/redirect'
 
@@ -244,6 +245,18 @@ for (const entry of pointSeeds) {
         set: { body: point.body, sourceUrl: point.sourceUrl },
       })
   }
+}
+
+const now = Date.now()
+for (const tool of toolSeeds) {
+  // Unlisted tools (for example Mercury 3) are hidden from the site, so they get no vendor domain.
+  if (tool.unlisted) continue
+  const id = toolId.get(tool.slug)
+  if (!id) throw new Error(`Missing tool id for vendor domain ${tool.slug}`)
+  const domain = registrableDomain(tool.url)
+  if (!domain) throw new Error(`Tool ${tool.slug} has no registrable domain`)
+  // Insert only. A manual row for the same domain stays manual, and old tool_url rows are not deleted.
+  await tx.insert(toolVendorDomains).values({ toolId: id, domain, source: 'tool_url', createdAt: now }).onConflictDoNothing()
 }
 
 const storedPrograms = await tx.select().from(affiliatePrograms)

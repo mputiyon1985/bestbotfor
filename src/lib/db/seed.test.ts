@@ -10,7 +10,21 @@ import { applyMigrations } from './migrate'
 import { generateMetadata as toolMetadata } from '@/app/tools/[slug]/page'
 import { editorialSeeds } from '@/data/scores-pros-cons.seed'
 import { keptProsConsSeeds, ratingSeeds, supplementalProsConsSeeds, unratedSlugs } from '@/data/scores-v23.seed'
-import { affiliatePrograms, clicks, tasks, toolProsCons, toolScores, toolTasks, tools } from './schema'
+import {
+  affiliatePrograms,
+  clicks,
+  moderationEvents,
+  reviewAggregates,
+  reviewReports,
+  reviewVersions,
+  reviews,
+  tasks,
+  toolProsCons,
+  toolScores,
+  toolTasks,
+  toolVendorDomains,
+  tools,
+} from './schema'
 
 const previousUrl = process.env.TURSO_DATABASE_URL
 const previousToken = process.env.TURSO_AUTH_TOKEN
@@ -63,6 +77,48 @@ async function rowCounts() {
     affiliatePrograms: Number(programCount?.n ?? 0),
   }
 }
+
+describe('vendor domain seed', () => {
+  it('upserts one tool_url domain per tool, keeps manual rows, and does not write reviews', async () => {
+    await useTempDatabase()
+    await seed()
+    const db = getDb()
+    const toolRows = (await db.select().from(tools)).filter((row) => row.status === 'active')
+    const domains = await db.select().from(toolVendorDomains)
+    expect(domains.length).toBeGreaterThanOrEqual(toolRows.length)
+    expect(domains.every((row) => row.source === 'tool_url')).toBe(true)
+    const byTool = new Map<number, number>()
+    for (const row of domains) byTool.set(row.toolId, (byTool.get(row.toolId) ?? 0) + 1)
+    expect(byTool.size).toBe(toolRows.length)
+
+    const sample = toolRows[0]
+    expect(sample).toBeTruthy()
+    if (!sample) return
+    await db.insert(toolVendorDomains).values({
+      toolId: sample.id,
+      domain: 'manual-vendor.test',
+      source: 'manual',
+      createdAt: 1,
+    })
+    await seed()
+    const again = await db.select().from(toolVendorDomains)
+    expect(again.filter((row) => row.source === 'tool_url')).toHaveLength(domains.length)
+    const manual = again.find((row) => row.domain === 'manual-vendor.test')
+    expect(manual?.source).toBe('manual')
+    expect(manual?.createdAt).toBe(1)
+
+    const [reviewCount] = await db.select({ n: count() }).from(reviews)
+    const [versionCount] = await db.select({ n: count() }).from(reviewVersions)
+    const [reportCount] = await db.select({ n: count() }).from(reviewReports)
+    const [aggregateCount] = await db.select({ n: count() }).from(reviewAggregates)
+    const [eventCount] = await db.select({ n: count() }).from(moderationEvents)
+    expect(Number(reviewCount?.n ?? 0)).toBe(0)
+    expect(Number(versionCount?.n ?? 0)).toBe(0)
+    expect(Number(reportCount?.n ?? 0)).toBe(0)
+    expect(Number(aggregateCount?.n ?? 0)).toBe(0)
+    expect(Number(eventCount?.n ?? 0)).toBe(0)
+  })
+})
 
 describe('catalog seed', () => {
   it('seeds twice against a local libsql file and keeps the same row counts', async () => {
