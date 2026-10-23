@@ -2,6 +2,11 @@ import type { MetadataRoute } from 'next'
 import { isProductionDeployment } from '@/lib/indexing'
 import { getSiteUrl } from '@/lib/site'
 
+/**
+ * Stays request-time: the rules depend on runtime VERCEL_ENV (preview vs
+ * production), and a static build baked the preview disallow-all into CI's
+ * Lighthouse run. No DB reads, so this costs no Turso quota.
+ */
 export const dynamic = 'force-dynamic'
 
 export default function robots(): MetadataRoute.Robots {
