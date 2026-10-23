@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- CI: the Lighthouse category gates (`lighthouserc.cjs`, `lighthouserc.quiz.cjs`) now take 3 runs per URL and assert on the median (`aggregationMethod: 'median'`; LHCI's default, optimistic, would have gated on the best run). The 0.95 bars are unchanged; a single noisy 0.94 sample no longer fails the job. The home paint budget (`lighthouserc.home.cjs`) is unchanged. The Lighthouse step has `timeout-minutes: 12` and the `check` job `timeout-minutes: 30`, so a hung Lighthouse run fails fast instead of running 15+ minutes. CI and config only; no app code.
 - Catalog: Genspark and Manus move from Productivity to Agent builder (James's decision). Category change only in `src/data/catalog.ts`; no other tool, field or schema change. Merging deploys and re-seeds the production catalog, so it needs Mark's OK.
 - e2e: `tap-targets.spec.ts` sends its own `x-forwarded-for` (a per-attempt `2001:db8:44::/64` documentation address) so it no longer shares the per-network `/result` rate-limit window with the other parallel workers on 127.0.0.1, which intermittently gave it the 429 "Too many results" page (Sentinel P3 from the #46 QA). Test-side only: the limiter, its limits and `clientIp` are unchanged. No migration, no env change.
 - The catalog seed upserts `tool_vendor_domains` from each tool URL’s registrable domain with `source = 'tool_url'`. A second run does not add duplicate rows. A `manual` row is left in place. Unlisted tools (Mercury 3) get no row. Review tables are not written.
