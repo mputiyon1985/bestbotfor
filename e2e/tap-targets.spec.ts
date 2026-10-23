@@ -1,4 +1,4 @@
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page, type TestInfo } from '@playwright/test'
 
 async function box(locator: Locator) {
   const value = await locator.boundingBox()
@@ -27,7 +27,20 @@ async function logo(page: Page) {
   return box(page.getByRole('banner').getByRole('link', { name: 'BestBotFor' }))
 }
 
-test('key controls meet the 44px tap target at 390px', async ({ page }) => {
+/**
+ * Its own client address for the shared per-network /result limit. Parallel
+ * workers all reach the e2e server from 127.0.0.1, so without this the spec
+ * shares one window with every other /result spec and can get the 429 page.
+ * Test-side only: the limiter and its limits are unchanged.
+ */
+function ownClientIp(testInfo: TestInfo) {
+  const now = Date.now()
+  const groups = [Math.floor(now / 0x10000) % 0x10000, now % 0x10000, testInfo.workerIndex % 0x10000, testInfo.retry % 0x10000]
+  return `2001:db8:44::${groups.map((group) => group.toString(16)).join(':')}`
+}
+
+test('key controls meet the 44px tap target at 390px', async ({ page }, testInfo) => {
+  await page.setExtraHTTPHeaders({ 'x-forwarded-for': ownClientIp(testInfo) })
   await page.context().addCookies([
     { name: 'bbf_consent', value: 'denied', domain: '127.0.0.1', path: '/' },
   ])
