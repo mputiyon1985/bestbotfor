@@ -11,6 +11,8 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # Backstop for any hung step; a normal run takes about 10 minutes.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -54,6 +56,8 @@ jobs:
           NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
       - name: Lighthouse
         run: npm run check:lighthouse
+        # 3 runs per URL take about 5 minutes; a hang fails here instead of running on.
+        timeout-minutes: 12
         env:
           TURSO_DATABASE_URL: file:./data/ci.db
           TURSO_AUTH_TOKEN: local
