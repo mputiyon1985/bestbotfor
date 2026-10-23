@@ -47,6 +47,10 @@ export type RetentionReport = {
   suggestionEmailsCleared: number
   suggestionsEligible: number
   suggestionsDeleted: number
+  /** Set only when user ratings are on. Withdrawn review versions with text left. */
+  reviewTextEligible?: number
+  /** Set only when user ratings are on. Withdrawn review versions scrubbed. */
+  reviewTextPurged?: number
   truncated: boolean
 }
 

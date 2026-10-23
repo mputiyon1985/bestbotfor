@@ -43,6 +43,8 @@ const ALLOWED = new Set([
   'src/app/api/cron/data-retention/route.ts',
   // Review write service, gated by userRatingsEnabled() (off in production).
   'src/lib/reviews/write.ts',
+  // Withdrawn-review purge, called only by the data-retention cron while user ratings are on.
+  'src/lib/reviews/purge.ts',
 ])
 
 const ROOTS = ['src', 'scripts', 'drizzle']
