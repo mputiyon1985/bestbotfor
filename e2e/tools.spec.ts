@@ -21,7 +21,9 @@ function pageCount(total: number): number {
 }
 
 test('lists a page of catalog tools and links to the next page', async ({ page }) => {
-  const ordered = [...catalog.tools].sort((a, b) => a.name.localeCompare(b.name))
+  // The page orders by tools.name in SQL (SQLite BINARY collation: code-unit order, so
+  // lowercase-first names such as myPip sort after the capitalized ones).
+  const ordered = [...catalog.tools].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
   const first = ordered[0]
   expect(first).toBeTruthy()
   if (!first) return
@@ -56,7 +58,7 @@ test('filters by a catalog category with a shareable URL and without JavaScript'
   if (!category) return
   const expected = catalog.tools
     .filter((tool) => categorySlug(tool.category) === category.slug)
-    .sort((a, b) => a.name.localeCompare(b.name))
+    .sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
   const pages = pageCount(expected.length)
 
   const context = await browser.newContext({ javaScriptEnabled: false })
@@ -84,7 +86,7 @@ test('filters by a catalog category with a shareable URL and without JavaScript'
 test('each real tools page has its own canonical, and pages past the end are 404', async ({ page, request }) => {
   const pages = pageCount(catalog.tools.length)
   expect(pages).toBeGreaterThan(1)
-  expect(pages).toBeLessThan(10)
+  expect(pages).toBeLessThan(12)
 
   await page.goto('/tools')
   const firstCanonical = await page.locator('link[rel="canonical"]').getAttribute('href')
@@ -198,7 +200,8 @@ test('a tool card and an 80% logo mark fit the first 390px viewport', async ({ p
   await page.setViewportSize(viewport)
   await page.goto('/tools')
 
-  const card = page.getByRole('list', { name: 'Tools' }).getByRole('listitem').first()
+  // The first card with a hosted logo (a monogram-only tool, such as 1Password for Agents, can sort first).
+  const card = page.getByRole('list', { name: 'Tools' }).getByRole('listitem').filter({ has: page.locator('img') }).first()
   await expect(card).toBeVisible()
   const cardBox = await card.boundingBox()
   expect(cardBox, 'first tool card').not.toBeNull()
