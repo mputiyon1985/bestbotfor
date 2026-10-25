@@ -4263,7 +4263,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['Web'],
     lastVerifiedAt: FRESHNESS_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'research', score: 88, notes: 'Answers from peer-reviewed papers, with citations and a meter that shows how far studies agree.' },
+    ],
     affiliate: none,
   }),
   // Bot scout 2026-10-24 (James). Unrated: no editorial score, pros or cons until Forge rubric review.
@@ -4632,7 +4634,10 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['Web', 'iOS', 'Android', 'API'],
     lastVerifiedAt: BACKLOG_BATCH_02,
-    fits: [],
+    fits: [
+      { task: 'chat', score: 78, notes: 'A capable general assistant with built-in agents for research, slides, docs and sheets.' },
+      { task: 'research', score: 76, notes: 'Its Deep Research agent writes cited reports, but it is a general assistant, not a citation-first search tool.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-25 | category: Productivity | scout rating 4.0 (not shown) | launch: 2026-10-23 | pricing: Free (Mac app, fully offline; macOS 15+, Apple Silicon optimized); Enterprise by contact.
