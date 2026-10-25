@@ -65,6 +65,24 @@ describe('unrated tools and the quiz', () => {
     }
   })
 
+  it('returns Aider for coding and backend once it is rated and has fits, without changing any top pick (#156)', () => {
+    const aider = catalog.tools.find((tool) => tool.slug === 'aider')!
+    expect(aider.editorial).not.toBeNull()
+    expect(aider.fits.map((fit) => [fit.taskSlug, fit.score])).toEqual([['coding', 78], ['backend', 60]])
+    const coding = recommend(catalog, { task: 'coding', budget: 'free', skill: 'pro' })!
+    expect(coding.picks.map((pick) => pick.slug).slice(0, 2)).toEqual(['opencode', 'aider'])
+    const backend = recommend(catalog, { task: 'backend', budget: 'free', skill: 'pro' })!
+    expect(backend.picks.map((pick) => pick.slug).slice(0, 2)).toEqual(['supabase', 'aider'])
+    for (const task of catalog.tasks) {
+      for (const budget of matchBudgets) {
+        for (const skill of skills) {
+          const result = recommend(catalog, { task: task.slug, budget, skill })
+          expect(result?.picks[0]?.slug, `${task.slug}/${budget}/${skill}`).not.toBe('aider')
+        }
+      }
+    }
+  })
+
   it('leaves pre-existing unrated tools in the quiz (Perplexity in Research)', () => {
     const perplexity = catalog.tools.find((tool) => tool.slug === 'perplexity')
     expect(perplexity?.editorial?.overall).toBe(3.9)

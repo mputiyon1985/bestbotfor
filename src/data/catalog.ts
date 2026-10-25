@@ -3934,6 +3934,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: none,
   }),
   // source: https://aider.chat/ | FLAG: No pricing page; installed with pip from the official site. Model/API costs are separate.
+  // 2026-10-25 fits (ratings backlog batch 01, Sentinel QA of #156): coding 78, backend 60, from https://aider.chat/ , /docs/ , /docs/usage/modes.html , /docs/git.html . No vibe-coding fit (terminal only, no preview or hosting).
   tool({
     slug: 'aider',
     addedAt: '2026-10-22',
@@ -3950,7 +3951,10 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'pro',
     platforms: ['Terminal'],
     lastVerifiedAt: FRESHNESS_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'coding', score: 78, notes: 'Pair-program from the terminal on an existing repo: it maps the codebase, commits each change to git, and runs your linters and tests.' },
+      { task: 'backend', score: 60, notes: 'Can edit backend code in a repo you already have, but it does not host a database or run services.' },
+    ],
     affiliate: none,
   }),
   // source: https://www.jetbrains.com/store/ai/?section=personal&billing=monthly | 2026-10-25 price fix (Sentinel QA of #156; James's store check; re-read from the store page data): AI Pro $10/mo billed monthly or $100/yr; AI Ultimate $30/mo or $300/yr. /ai/ now leads to “JetBrains Air”. Logo is the JetBrains corporate mark.
