@@ -14,6 +14,8 @@
 
 **Two sources for #1:** one quality source is enough to rate a tool, but taking #1 in a category needs two independent quality sources. If a tool with only one source would sort to #1, it's placed just below the best tool that has two.
 
+**Counting sources:** each publisher or app store counts as one source, however many pages or entries it has. A tested review or roundup that reaches a negative verdict on a tool doesn't count as a quality source for it.
+
 **Ties:** tools within 0.1 of each other are shown as tied.
 
 **What the numbers mean:** 5 is rare and best in class. 4 is clearly above average. 3 is average for the category. 2 is weak. 1 is poor. We never stretch or curve the results to make them look spread out. The numbers come straight from the evidence.

@@ -257,7 +257,7 @@ describe('Our rating', () => {
     expect(catalog.tools.find((tool) => tool.slug === 'perplexity')?.editorial?.overall).toBe(3.9)
     expect(catalog.tools.find((tool) => tool.slug === 'canva')?.editorial?.overall).toBe(4)
     expect(catalog.tools.find((tool) => tool.slug === 'surfer')?.editorial?.overall).toBe(3.6)
-    // perplexity.ai/pro shows only the annual-billed Pro price: $17, labeled 'billed annually' like d-id and krisp
+    // perplexity.ai/pro shows only the annual-billed Pro price: $17, labeled 'billed annually' like krisp and tldv
     const perplexitySeed = toolSeeds.find((tool) => tool.slug === 'perplexity')
     expect(perplexitySeed?.priceFromUsd).toBe(17)
     expect(perplexitySeed?.longDesc).toContain('$17 a month, billed annually')

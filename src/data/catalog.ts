@@ -7,6 +7,7 @@ const FRESHNESS_2026_10_22 = '2026-10-22'
 const SCOUTED_2026_10_24 = '2026-10-24'
 const SCOUTED_2026_10_25 = '2026-10-25'
 const BACKLOG_BATCH_02 = '2026-10-25'
+const BACKLOG_BATCH_03 = '2026-10-25'
 
 const none: AffiliateSeed = {
   hasProgram: false,
@@ -1605,6 +1606,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // pricing verified 2026-10-15 at https://languagetool.org/premium | budget fit: free | best for: grammar, multilingual
+  // 2026-10-25 price fix (ratings backlog batch 03): Premium $24.90 billed monthly ($5.83/mo only on annual billing); free plan, per https://languagetool.org/premium.
   tool({
     slug: 'languagetool',
     name: 'LanguageTool',
@@ -1615,11 +1617,11 @@ export const toolSeeds: ToolSeed[] = [
     shortDesc: 'A multilingual grammar, style, and spelling checker.',
     longDesc: 'Strong if you write in more than one language. Advanced style suggestions need Premium.',
     pricingModel: 'freemium',
-    priceFromUsd: null,
+    priceFromUsd: 24.9,
     hasFreeTier: true,
     skillLevel: 'beginner',
     platforms: ['Web', 'Chrome', 'Word', 'macOS', 'Windows'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: BACKLOG_BATCH_03,
     fits: [
       { task: 'writing', score: 70, notes: 'Strong if you write in more than one language.' },
     ],
@@ -2124,6 +2126,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // pricing verified 2026-10-15 at https://fliki.ai/pricing | budget fit: free | best for: text-to-video, voiceover
+  // 2026-10-25 price fix (ratings backlog batch 03): Standard $28/user/month billed monthly ($16.80 on yearly billing); free plan, per https://fliki.ai/pricing.
   tool({
     slug: 'fliki',
     name: 'Fliki',
@@ -2134,11 +2137,11 @@ export const toolSeeds: ToolSeed[] = [
     shortDesc: 'Turns text into videos with AI voices.',
     longDesc: 'Quick explainer videos from a script or blog post. Free plan has low credits.',
     pricingModel: 'freemium',
-    priceFromUsd: null,
+    priceFromUsd: 28,
     hasFreeTier: true,
     skillLevel: 'beginner',
     platforms: ['Web'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: BACKLOG_BATCH_03,
     fits: [
       { task: 'video', score: 72, notes: 'Quick explainer videos from a script or blog post.' },
       { task: 'voice', score: 55, notes: 'Videos are built from AI voices, so voiceover is part of the job.' },
@@ -3202,6 +3205,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // pricing verified 2026-10-15 at https://get.mem.ai/pricing | budget fit: free | best for: notes, second-brain
+  // 2026-10-25 price fix (ratings backlog batch 03): Mem Plus $9/month; free plan, per https://get.mem.ai/pricing. Catalog category stays Productivity (score-row move out of Writing is planned for a later batch).
   tool({
     slug: 'mem',
     name: 'Mem',
@@ -3212,11 +3216,11 @@ export const toolSeeds: ToolSeed[] = [
     shortDesc: 'An AI notes app that organizes and resurfaces what you save.',
     longDesc: 'A self-organizing notes app. Free plan has limited capacity.',
     pricingModel: 'freemium',
-    priceFromUsd: null,
+    priceFromUsd: 9,
     hasFreeTier: true,
     skillLevel: 'beginner',
     platforms: ['Web', 'macOS', 'iOS'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: BACKLOG_BATCH_03,
     fits: [
       { task: 'writing', score: 50, notes: 'A self-organizing notes app.' },
       { task: 'research', score: 50, notes: 'Notes resurface what you saved. That is lighter than a search assistant.' },
@@ -3860,7 +3864,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // expansion 2026-10-22 (Forge, approved by James) + freshness discovery | 14 new tools, unrated, official domains only, no affiliate links
-  // priceFromUsd is the monthly-billed price except d-id, tldv, krisp, perplexity, gamma and lalal-ai, which are labeled 'billed annually' in longDesc
+  // priceFromUsd is the monthly-billed price except tldv, krisp, perplexity, gamma and lalal-ai, which are labeled 'billed annually' in longDesc
   // source: https://ampcode.com/pricing
   tool({
     slug: 'amp',
@@ -4025,7 +4029,7 @@ export const toolSeeds: ToolSeed[] = [
     fits: [],
     affiliate: none,
   }),
-  // source: https://www.d-id.com/pricing/studio/ | FLAG: Trial only. The price is annual-billed; the monthly price is not shown.
+  // source: https://www.d-id.com/pricing/studio/ | Trial only (14 days), no free plan. 2026-10-25 price fix (ratings backlog batch 03): Lite $5.90/month on Monthly billing; the old 4.7 was the annual-billed rate ($56/yr).
   tool({
     slug: 'd-id',
     addedAt: '2026-10-22',
@@ -4035,13 +4039,13 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['www.d-id.com', 'd-id.com'],
     category: 'AI video',
     shortDesc: 'AI avatar videos and agents, with an API.',
-    longDesc: 'D-ID makes talking-avatar videos, video translation and interactive agents, with API access. A 14-day trial is free. Lite starts at $4.70 a month billed annually ($56 a year).',
+    longDesc: 'D-ID makes talking-avatar videos, video translation and interactive agents, with API access. A 14-day trial is free. Lite is $5.90 a month billed monthly, or $4.70 a month billed annually ($56 a year).',
     pricingModel: 'paid',
-    priceFromUsd: 4.7,
+    priceFromUsd: 5.9,
     hasFreeTier: false,
     skillLevel: 'beginner',
     platforms: ['Web', 'API'],
-    lastVerifiedAt: FRESHNESS_2026_10_22,
+    lastVerifiedAt: BACKLOG_BATCH_03,
     fits: [],
     affiliate: none,
   }),
