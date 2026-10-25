@@ -1237,6 +1237,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // pricing verified 2026-10-15 at https://www.warp.dev/pricing | budget fit: free | best for: terminal, agents, coding
+  // 2026-10-25 price fix (ratings backlog batch 01): Build plan $20/month billed monthly ($18/month billed annually), per https://www.warp.dev/pricing. Rating still held (Unrated).
   tool({
     slug: 'warp',
     name: 'Warp',
@@ -1247,7 +1248,7 @@ export const toolSeeds: ToolSeed[] = [
     shortDesc: 'An agentic development environment built around a modern terminal.',
     longDesc: 'Useful if your work happens in the terminal and you want agents that run commands for you. It is a terminal-first tool, not a full code editor.',
     pricingModel: 'freemium',
-    priceFromUsd: null,
+    priceFromUsd: 20,
     hasFreeTier: true,
     skillLevel: 'intermediate',
     platforms: ['macOS', 'Linux', 'Windows'],

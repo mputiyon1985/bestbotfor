@@ -13,6 +13,7 @@ describe('how we rate', () => {
       .join('\n')
     expect(text).toContain('Quality (40%)')
     expect(text).toContain('within 0.1')
+    expect(text).toContain('GitHub stars count as a quality signal only at 1,000 stars or more.')
     expect(text).toContain('We keep the evidence and sources for each score on file and review them quarterly.')
     expect(text).not.toContain('Every score links to its sources')
     expect(text).not.toContain('links to its sources')
