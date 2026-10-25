@@ -83,6 +83,29 @@ describe('unrated tools and the quiz', () => {
     }
   })
 
+  it('returns Kimi (chat) and Consensus (research) once rated with Forge\'s fits, without changing any top pick (batch 02)', () => {
+    const kimi = catalog.tools.find((tool) => tool.slug === 'kimi')!
+    const consensus = catalog.tools.find((tool) => tool.slug === 'consensus')!
+    expect(kimi.editorial).not.toBeNull()
+    expect(consensus.editorial).not.toBeNull()
+    expect(kimi.fits.map((fit) => [fit.taskSlug, fit.score])).toEqual([['chat', 78], ['research', 76]])
+    expect(consensus.fits.map((fit) => [fit.taskSlug, fit.score])).toEqual([['research', 88]])
+    const chat = recommend(catalog, { task: 'chat', budget: 'free', skill: 'beginner' })!
+    expect(chat.picks.map((pick) => pick.slug).indexOf('kimi')).toBe(4)
+    expect(chat.picks[0]?.slug).toBe('chatgpt')
+    const research = recommend(catalog, { task: 'research', budget: 'free', skill: 'beginner' })!
+    expect(research.picks.map((pick) => pick.slug).indexOf('consensus')).toBe(1)
+    expect(research.picks[0]?.slug).toBe('perplexity')
+    for (const task of catalog.tasks) {
+      for (const budget of matchBudgets) {
+        for (const skill of skills) {
+          const top = recommend(catalog, { task: task.slug, budget, skill })?.picks[0]?.slug
+          expect(['kimi', 'consensus'], `${task.slug}/${budget}/${skill}`).not.toContain(top)
+        }
+      }
+    }
+  })
+
   it('leaves pre-existing unrated tools in the quiz (Perplexity in Research)', () => {
     const perplexity = catalog.tools.find((tool) => tool.slug === 'perplexity')
     expect(perplexity?.editorial?.overall).toBe(3.9)
