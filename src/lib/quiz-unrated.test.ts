@@ -27,7 +27,7 @@ describe('unrated tools and the quiz', () => {
         'deepcell', 'heal-dev', 'movo-ai', 'monid', 'ovren', 'shogunai', 'context-engine', 'klaussy-review', 'polylane',
         'plango', 'sideos', 'sellto-us', 'zcad-ai', 'monish',
         // bot scout 2026-10-25
-        'llama-app', 'papermark', '1password-for-agents', 'kimi', 'instant-search', 'agentgrid', 'corgi', 'call4me',
+        'llama-app', 'papermark', '1password-for-agents', 'kimi', 'instant-search', 'agentgrid', 'corgi',
         'witness', 'candor', 'mypip', 'lexmount', 'clips-by-plastic', 'sume-api', 'major', 'inyon', 'agentvalley',
         'specsight', 'eardub', 'yourcast', 'linkintel', 'futureproof', 'agensh',
       ].sort(),
@@ -54,7 +54,7 @@ describe('unrated tools and the quiz', () => {
 
   it('never returns a new unrated tool for any task, budget or skill', () => {
     const newUnrated = new Set(catalog.tools.filter((tool) => tool.editorial === null && ratingRequiredSlugs.has(tool.slug)).map((tool) => tool.slug))
-    expect(newUnrated.size).toBe(74) // 18 unrated scout tools minus unlisted Mercury 3, plus 14 unrated expansion tools, plus 6 addendum tools, plus 14 scout 2026-10-24 tools, plus 23 scout 2026-10-25 tools
+    expect(newUnrated.size).toBe(73) // 18 unrated scout tools minus unlisted Mercury 3, plus 14 unrated expansion tools, plus 6 addendum tools, plus 14 scout 2026-10-24 tools, plus 22 scout 2026-10-25 tools
     for (const task of catalog.tasks) {
       for (const budget of matchBudgets) {
         for (const skill of skills) {

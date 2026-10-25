@@ -4683,27 +4683,6 @@ export const toolSeeds: ToolSeed[] = [
     fits: [],
     affiliate: { ...none, status: 'verify' },
   }),
-  // scout 2026-10-25 | category: Voice | scout rating 3.9 (not shown) | launch: unknown (site blog dated 2026-10-13; ChatGPT plugin listing posted to Show HN 2026-10-24) | pricing: Pay as you go: $0.25/min from pickup (half price on hold); prepaid credits from $10, with monthly reload on by default; unanswered, busy and failed calls are free; some countries cost more ($0.40-$0.65/min).
-  // note: Pay as you go per minute ($10 prepaid minimum); no monthly price.
-  tool({
-    slug: 'call4me',
-    addedAt: '2026-10-25',
-    name: 'call4me',
-    vendor: 'call4me',
-    url: 'https://call4.me',
-    allowedHosts: ['call4.me'],
-    category: 'Voice',
-    shortDesc: 'An MCP server that lets AI agents place real phone calls to businesses for you.',
-    longDesc: 'MCP server that lets ChatGPT, Claude, Codex, Grok Bot and other agents place real phone calls to businesses: it books appointments, gets through phone menus and holds, relays your answers mid-call, and returns the transcript and recording.',
-    pricingModel: 'paid',
-    priceFromUsd: null,
-    hasFreeTier: false,
-    skillLevel: 'intermediate',
-    platforms: ['API'],
-    lastVerifiedAt: SCOUTED_2026_10_25,
-    fits: [],
-    affiliate: { ...none, status: 'verify' },
-  }),
   // scout 2026-10-25 | category: Security (FLAG: scout category "Security" mapped to Research) | scout rating 3.9 (not shown) | launch: unknown (listed as new on There's An AI For That 2026-10-24) | pricing: Free $0 (20 image scans/mo, 2 min video/voice); Pro $15/mo or $120/yr (1,000 image scans, 10 min video/voice, API and MCP 500 calls/mo); Enterprise custom.
   // note: Launch date unknown: only a There's An AI For That 'new' listing (2026-10-24).
   tool({

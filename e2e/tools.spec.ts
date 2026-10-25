@@ -22,7 +22,7 @@ function pageCount(total: number): number {
 
 test('lists a page of catalog tools and links to the next page', async ({ page }) => {
   // The page orders by tools.name in SQL (SQLite BINARY collation: code-unit order, so
-  // lowercase-first names such as call4me and myPip sort after the capitalized ones).
+  // lowercase-first names such as myPip sort after the capitalized ones).
   const ordered = [...catalog.tools].sort((a, b) => (a.name < b.name ? -1 : a.name > b.name ? 1 : 0))
   const first = ordered[0]
   expect(first).toBeTruthy()

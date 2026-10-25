@@ -13,7 +13,7 @@ type ManifestEntry = { slug: string; sourceUrl: string; fetchedAt: string }
 
 const manifest = manifestJson as ManifestEntry[]
 const MISSING = [
-  '1password-for-agents', 'agensh', 'agentgrid', 'agentvalley', 'aider', 'call4me', 'candor', 'clips-by-plastic', 'context-engine', 'corgi', 'deepcell', 'eardub', 'futureproof', 'gamma', 'heal-dev', 'instant-search', 'inyon', 'kimi', 'klaussy-review', 'lexmount', 'linkintel', 'llama-app', 'major', 'midjourney', 'monid', 'monish', 'movo-ai', 'mypip', 'nightcafe', 'ovren', 'papermark', 'plango', 'polylane', 'quillbot', 'sellto-us', 'shogunai', 'sideos', 'specsight', 'sume-api', 'witness', 'yourcast', 'zcad-ai',
+  '1password-for-agents', 'agensh', 'agentgrid', 'agentvalley', 'aider', 'candor', 'clips-by-plastic', 'context-engine', 'corgi', 'deepcell', 'eardub', 'futureproof', 'gamma', 'heal-dev', 'instant-search', 'inyon', 'kimi', 'klaussy-review', 'lexmount', 'linkintel', 'llama-app', 'major', 'midjourney', 'monid', 'monish', 'movo-ai', 'mypip', 'nightcafe', 'ovren', 'papermark', 'plango', 'polylane', 'quillbot', 'sellto-us', 'shogunai', 'sideos', 'specsight', 'sume-api', 'witness', 'yourcast', 'zcad-ai',
 ]
 const LOW_RES = ['clearscope', 'clipdrop', 'cutbay', 'hailuo', 'jules', 'letsenhance', 'neuronwriter', 'tldv', 'wolfram-alpha']
 const HOSTED = 186
