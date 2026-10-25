@@ -134,16 +134,17 @@ describe('curated compare copy', () => {
 
     const avatars = viewFor('heygen-vs-synthesia')
     expect(avatars.view.verdictPlain).toContain('90 vs 88')
-    expect(cell(avatars.view, 'Our rating').a).toBe('3.7 (#7 of 8 in Video (editors & avatars))')
-    expect(cell(avatars.view, 'Our rating').b).toBe('3.7 (#6 of 8 in Video (editors & avatars))')
+    expect(cell(avatars.view, 'Our rating').a).toBe('3.7 (#8 of 10 in Video (editors & avatars))')
+    expect(cell(avatars.view, 'Our rating').b).toBe('3.7 (#7 of 10 in Video (editors & avatars))')
     expect(cell(avatars.view, 'Fit: make a video')).toMatchObject({ a: '88', b: '90' })
 
     const video = viewFor('descript-vs-runway')
     expect(video.view.verdictPlain.startsWith('They do different jobs.')).toBe(true)
     expect(video.view.verdictPlain).toContain('fit 92')
     expect(video.view.verdictPlain).not.toContain('stronger pick for create a voiceover')
-    expect(cell(video.view, 'Our rating').a).toBe('4.1 (#2 of 8 in Video (editors & avatars))')
-    expect(cell(video.view, 'Our rating').b).toBe('3.5 (#1 of 3 in Video (generators))')
+    // Ratings backlog batch 03 (approved by James): D-ID is the new Video editors #1 and Kling the new Video generators #1
+    expect(cell(video.view, 'Our rating').a).toBe('4.1 (#3 of 10 in Video (editors & avatars))')
+    expect(cell(video.view, 'Our rating').b).toBe('3.5 (#2 of 4 in Video (generators))')
     const auto = comparisonSummary(video.left, video.right, comparisonRows(video.left, video.right))
     expect(auto).toContain('Descript is the stronger pick for create a voiceover')
 

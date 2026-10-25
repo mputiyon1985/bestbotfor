@@ -16,6 +16,8 @@ describe('how we rate', () => {
     expect(text).toContain('GitHub stars count as a quality signal only at 1,000 stars or more.')
     expect(text).toContain('A tested review published by a university library counts as a quality source too.')
     expect(text).toContain('one quality source is enough to rate a tool, but taking #1 in a category needs two independent quality sources.')
+    expect(text).toContain('each publisher or app store counts as one source, however many pages or entries it has.')
+    expect(text).toContain("A tested review or roundup that reaches a negative verdict on a tool doesn't count as a quality source for it.")
     expect(text).toContain('We keep the evidence and sources for each score on file and review them quarterly.')
     expect(text).not.toContain('Every score links to its sources')
     expect(text).not.toContain('links to its sources')

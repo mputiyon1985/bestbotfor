@@ -50,8 +50,8 @@ describe('Our rating', () => {
   })
 
   it('accepts the checked seed and rejects invented or incomplete rows', () => {
-    expect(ratingSeeds).toHaveLength(105)
-    expect(unratedSlugs).toHaveLength(132)
+    expect(ratingSeeds).toHaveLength(112)
+    expect(unratedSlugs).toHaveLength(125)
     expect(ratingSeeds.find((row) => row.slug === 'grok')?.rationale).toBe('')
     expect(ratingSeeds.find((row) => row.slug === 'semantic-scholar')?.rationale).toBe('')
     expect(unratedSlugs).not.toContain('cursor')
@@ -257,7 +257,7 @@ describe('Our rating', () => {
     expect(catalog.tools.find((tool) => tool.slug === 'perplexity')?.editorial?.overall).toBe(3.9)
     expect(catalog.tools.find((tool) => tool.slug === 'canva')?.editorial?.overall).toBe(4)
     expect(catalog.tools.find((tool) => tool.slug === 'surfer')?.editorial?.overall).toBe(3.6)
-    // perplexity.ai/pro shows only the annual-billed Pro price: $17, labeled 'billed annually' like d-id and krisp
+    // perplexity.ai/pro shows only the annual-billed Pro price: $17, labeled 'billed annually' like krisp and tldv
     const perplexitySeed = toolSeeds.find((tool) => tool.slug === 'perplexity')
     expect(perplexitySeed?.priceFromUsd).toBe(17)
     expect(perplexitySeed?.longDesc).toContain('$17 a month, billed annually')
@@ -333,7 +333,7 @@ describe('Our rating', () => {
     expect(grok?.tool.cons).toEqual([])
     expect(catalog.tools.find((tool) => tool.slug === 'semantic-scholar')?.pros).toEqual([])
     expect(catalog.tools.find((tool) => tool.slug === 'semantic-scholar')?.cons).toEqual([])
-    expect(supplementalProsConsSeeds.map((row) => row.slug).sort()).toEqual(['aider', 'canva', 'composio', 'consensus', 'cursor', 'kimi', 'mistral-voxtral', 'omnara', 'perplexity', 'podcastle', 'twinmind', 'windsurf'])
+    expect(supplementalProsConsSeeds.map((row) => row.slug).sort()).toEqual(['aider', 'canva', 'composio', 'consensus', 'cursor', 'd-id', 'kimi', 'kling', 'languagetool', 'mistral-voxtral', 'omnara', 'perplexity', 'podcastle', 'quillbot', 'twinmind', 'windsurf', 'writer'])
     const perplexity = chat?.picks.find((pick) => pick.slug === 'perplexity')
     expect(perplexity?.tool.editorial?.overall).toBe(3.9)
     expect(chat?.picks.some((pick) => pick.tool.editorial)).toBe(true)
