@@ -121,8 +121,8 @@ describe('curated compare copy', () => {
     const voice = viewFor('elevenlabs-vs-murf')
     expect(voice.view.verdictPlain).toContain('96 vs 84')
     expect(cell(voice.view, 'Our rating')).toMatchObject({
-      a: '4.3 (#1 of 7 in Voice)',
-      b: '3.6 (#4 of 7 in Voice)',
+      a: '4.3 (#1 of 10 in Voice)',
+      b: '3.6 (#5 of 10 in Voice)',
     })
     expect(cell(voice.view, 'Fit: create a voiceover')).toMatchObject({ a: '96', b: '84' })
 
@@ -165,7 +165,8 @@ describe('curated compare copy', () => {
 
     const speech = viewFor('assemblyai-vs-deepgram')
     expect(speech.view.verdictPlain).not.toContain('scores higher')
-    expect(cell(speech.view, 'Our rating')).toMatchObject({ a: 'Not yet rated', b: 'Not yet rated' })
+    // Ratings backlog batch 02 rates Deepgram (Voice); AssemblyAI stays Unrated (speech-to-text boards are out of the source set)
+    expect(cell(speech.view, 'Our rating')).toMatchObject({ a: 'Not yet rated', b: '2.9 (#10 of 10 in Voice)' })
     expect(cell(speech.view, 'Skill level')).toMatchObject({ a: 'Advanced', b: 'Advanced' })
     expect(speech.view.rows.some((row) => row.label.startsWith('Fit:'))).toBe(false)
     expect(COMPARE_SECONDARY_NOTE).toBe(
@@ -419,7 +420,10 @@ describe('catalog corrections', () => {
     expect(points?.pros.map((point) => point.text)).toContain(DEEPGRAM_PRICE_PRO)
     expect(points?.pros.map((point) => point.text).join('\n')).not.toContain(DEEPGRAM_PRICE_PRO_STALE)
     const v23 = readFileSync(path.join(process.cwd(), 'src/data/scores-v2.3.csv'), 'utf8')
-    expect(v23).toContain(DEEPGRAM_PRICE_PRO)
+    // Ratings backlog batch 02 rates Deepgram (Voice, TTS), so its v2.3 row now carries Forge's checked points:
+    // the Flux TTS usage price replaces the Nova-3 speech-to-text price pro. The stale price must still never return.
+    const deepgramRow = v23.split(/\r?\n/).find((line) => line.startsWith('deepgram,'))
+    expect(deepgramRow).toContain('Usage-based only (Flux TTS $0.045 per 1k characters); no monthly plan to compare')
     expect(v23).not.toContain(DEEPGRAM_PRICE_PRO_STALE)
   })
 
