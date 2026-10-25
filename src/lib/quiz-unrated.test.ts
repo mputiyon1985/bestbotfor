@@ -54,7 +54,7 @@ describe('unrated tools and the quiz', () => {
 
   it('never returns a new unrated tool for any task, budget or skill', () => {
     const newUnrated = new Set(catalog.tools.filter((tool) => tool.editorial === null && ratingRequiredSlugs.has(tool.slug)).map((tool) => tool.slug))
-    expect(newUnrated.size).toBe(72) // 18 unrated scout tools minus unlisted Mercury 3, plus 14 unrated expansion tools minus Aider (rated in ratings backlog batch 01), plus 6 addendum tools, plus 14 scout 2026-10-24 tools, plus 22 scout 2026-10-25 tools
+    expect(newUnrated.size).toBe(70) // 18 unrated scout tools minus unlisted Mercury 3, plus 14 unrated expansion tools minus Aider (rated in ratings backlog batch 01), plus 6 addendum tools minus Consensus, plus 14 scout 2026-10-24 tools, plus 22 scout 2026-10-25 tools minus Kimi (Consensus and Kimi rated in ratings backlog batch 02)
     for (const task of catalog.tasks) {
       for (const budget of matchBudgets) {
         for (const skill of skills) {
@@ -78,6 +78,29 @@ describe('unrated tools and the quiz', () => {
         for (const skill of skills) {
           const result = recommend(catalog, { task: task.slug, budget, skill })
           expect(result?.picks[0]?.slug, `${task.slug}/${budget}/${skill}`).not.toBe('aider')
+        }
+      }
+    }
+  })
+
+  it('returns Kimi (chat) and Consensus (research) once rated with Forge\'s fits, without changing any top pick (batch 02)', () => {
+    const kimi = catalog.tools.find((tool) => tool.slug === 'kimi')!
+    const consensus = catalog.tools.find((tool) => tool.slug === 'consensus')!
+    expect(kimi.editorial).not.toBeNull()
+    expect(consensus.editorial).not.toBeNull()
+    expect(kimi.fits.map((fit) => [fit.taskSlug, fit.score])).toEqual([['chat', 78], ['research', 76]])
+    expect(consensus.fits.map((fit) => [fit.taskSlug, fit.score])).toEqual([['research', 88]])
+    const chat = recommend(catalog, { task: 'chat', budget: 'free', skill: 'beginner' })!
+    expect(chat.picks.map((pick) => pick.slug).indexOf('kimi')).toBe(4)
+    expect(chat.picks[0]?.slug).toBe('chatgpt')
+    const research = recommend(catalog, { task: 'research', budget: 'free', skill: 'beginner' })!
+    expect(research.picks.map((pick) => pick.slug).indexOf('consensus')).toBe(1)
+    expect(research.picks[0]?.slug).toBe('perplexity')
+    for (const task of catalog.tasks) {
+      for (const budget of matchBudgets) {
+        for (const skill of skills) {
+          const top = recommend(catalog, { task: task.slug, budget, skill })?.picks[0]?.slug
+          expect(['kimi', 'consensus'], `${task.slug}/${budget}/${skill}`).not.toContain(top)
         }
       }
     }

@@ -25,8 +25,9 @@ test('a scored tool shows fractional stars, the rubric, and no review schema', a
   expect(fills).toEqual(starFills(claude.overall).map(String))
 
   await expect(page.getByRole('heading', { name: 'Our rating', exact: true })).toBeVisible()
-  await expect(page.locator('[data-category-rank]')).toHaveText('#4 of 4 in Chat')
-  await expect(page.locator('[data-tie]')).toHaveCount(0)
+  // Ratings backlog batch 02: Kimi (3.9) joins Claude (4.0) in tie group chat-T3
+  await expect(page.locator('[data-category-rank]')).toHaveText('Tied · #4 of 5 in Chat')
+  await expect(page.locator('[data-tie]')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'How we score' })).toHaveCount(0)
   await expect(page.getByRole('link', { name: /out of 5/ })).toHaveAttribute('href', '/how-we-rate')
   const prosAndCons = page.getByRole('region', { name: 'Pros and cons' })
@@ -62,7 +63,7 @@ test('a scored tool shows fractional stars, the rubric, and no review schema', a
 
 test('unrated tools hide the score and keep pros and cons', async ({ page }) => {
   test.setTimeout(180_000)
-  expect(unratedSlugs).toHaveLength(138)
+  expect(unratedSlugs).toHaveLength(132)
   const unlisted = new Set(toolSeeds.filter((item) => item.unlisted).map((item) => item.slug))
   for (const slug of unratedSlugs.filter((item) => !unlisted.has(item))) {
     const tool = toolSeeds.find((item) => item.slug === slug)
@@ -101,7 +102,7 @@ test('result cards show a compact pros list only for tools that have one', async
   await page.goto('/result?task=chat&budget=any&skill=beginner')
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('ChatGPT')
   await expect(page.getByRole('img', { name: ratingAriaLabel(chatgpt.overall) }).first()).toBeVisible()
-  await expect(page.getByText('#1 of 4 in Chat').first()).toBeVisible()
+  await expect(page.getByText('#1 of 5 in Chat').first()).toBeVisible()
   await expect(page.getByText(chatgptPoints.pros[0]?.text ?? '', { exact: false }).first()).toBeVisible()
 
   const claudeCard = page.getByRole('listitem').filter({
@@ -248,7 +249,7 @@ test('a single-tool category hides the rank and a note shows when it is filled',
   expect(html).not.toContain('www.craft.do/pricing')
 
   await page.goto('/tools/chatgpt')
-  await expect(page.locator('[data-category-rank]')).toHaveText('#1 of 4 in Chat')
+  await expect(page.locator('[data-category-rank]')).toHaveText('#1 of 5 in Chat')
   await expect(page.locator('[data-score-note]')).toHaveText('regular price not published; value neutral')
   html = await page.content()
   expect(html).not.toContain('pcmag.com')

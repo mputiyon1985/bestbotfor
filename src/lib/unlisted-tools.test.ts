@@ -14,6 +14,8 @@ import { CATALOG_TOOL_COUNT } from './seo-pages'
 import { readFileSync } from 'node:fs'
 
 const UNLISTED = 'mercury-inception'
+// Ratings backlog batch 02 (James, 2026-10-25): You.com and Resemble AI are unlisted too; records kept, quiz_eligible=false.
+const UNLISTED_ALL = ['mercury-inception', 'resemble-ai', 'you-com']
 const previousUrl = process.env.TURSO_DATABASE_URL
 const previousToken = process.env.TURSO_AUTH_TOKEN
 const directories: string[] = []
@@ -33,16 +35,18 @@ afterEach(async () => {
 })
 
 describe('unlisted tools', () => {
-  it('only Mercury 3 is unlisted, and it keeps its record and is not quiz eligible', () => {
-    expect(toolSeeds.filter((tool) => tool.unlisted).map((tool) => tool.slug)).toEqual([UNLISTED])
-    expect(CATALOG_TOOL_COUNT).toBe(toolSeeds.length - 1)
+  it('only Mercury 3, Resemble AI and You.com are unlisted, and they keep their records and are not quiz eligible', () => {
+    expect(toolSeeds.filter((tool) => tool.unlisted).map((tool) => tool.slug).sort()).toEqual(UNLISTED_ALL)
+    expect(CATALOG_TOOL_COUNT).toBe(toolSeeds.length - UNLISTED_ALL.length)
     const csv = readFileSync(path.join(process.cwd(), 'src/data/scores-v2.3.csv'), 'utf8')
-    const row = csv.split('\n').find((line) => line.startsWith(`${UNLISTED},`))
-    expect(row?.trimEnd().endsWith(',Active,false,')).toBe(true)
+    for (const slug of UNLISTED_ALL) {
+      const row = csv.split('\n').find((line) => line.startsWith(`${slug},`))
+      expect(row?.trimEnd().endsWith(',Active,false,'), slug).toBe(true)
+    }
   })
 
   it('/go answers 404 for an unlisted tool', () => {
-    expect(resolveHeadGoRedirect(UNLISTED).status).toBe(404)
+    for (const slug of UNLISTED_ALL) expect(resolveHeadGoRedirect(slug).status, slug).toBe(404)
     expect(resolveHeadGoRedirect('twinmind').status).toBe(302)
   })
 
@@ -74,6 +78,12 @@ describe('unlisted tools', () => {
     const allRows = await db.select().from(tools)
     const catalog = assembleCatalog([], allRows, [], [])
     expect(catalog.tools.map((tool) => tool.slug)).not.toContain(UNLISTED)
-    expect(catalog.tools).toHaveLength(toolSeeds.length - 1)
+    for (const slug of UNLISTED_ALL) {
+      const [record] = await db.select().from(tools).where(eq(tools.slug, slug))
+      expect(record?.status, slug).toBe('unlisted')
+      expect(slugs.tools, slug).not.toContain(slug)
+      expect(catalog.tools.map((tool) => tool.slug), slug).not.toContain(slug)
+    }
+    expect(catalog.tools).toHaveLength(toolSeeds.length - UNLISTED_ALL.length)
   })
 })

@@ -6,6 +6,7 @@ const SCOUTED_2026_10_22 = '2026-10-22'
 const FRESHNESS_2026_10_22 = '2026-10-22'
 const SCOUTED_2026_10_24 = '2026-10-24'
 const SCOUTED_2026_10_25 = '2026-10-25'
+const BACKLOG_BATCH_02 = '2026-10-25'
 
 const none: AffiliateSeed = {
   hasProgram: false,
@@ -2227,6 +2228,8 @@ export const toolSeeds: ToolSeed[] = [
     // Forge, Oct 18: now a deepfake-detection product with no included TTS. Off the voice list (see retiredFitSeeds).
     fits: [],
     affiliate: { ...none, status: 'verify' },
+    // UNLISTED 2026-10-25 (ratings backlog batch 02, James): resemble.ai/pricing lists only deepfake-detection plans, with no text-to-speech plan or rate. Record kept; score row stays Unrated, quiz_eligible=false.
+    unlisted: true,
   }),
   // pricing verified 2026-10-15 at https://speechify.com/pricing/ | budget fit: free | best for: text-to-speech, reading
   tool({
@@ -2272,6 +2275,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // pricing verified 2026-10-15 at https://async.com/pricing (Podcastle is now Async; podcastle.ai redirects there, Oct 18) | budget fit: free | best for: podcasting, recording, editing
+  // 2026-10-25 price fix (ratings backlog batch 02): Essentials $19.99/month billed monthly ($11.99/mo on yearly billing); free plan, per https://async.com/pricing.
   tool({
     slug: 'podcastle',
     name: 'Async',
@@ -2282,11 +2286,11 @@ export const toolSeeds: ToolSeed[] = [
     shortDesc: 'A podcast recording and editing studio with AI voices.',
     longDesc: 'An all-in-one start for podcasters. Free plan has limits.',
     pricingModel: 'freemium',
-    priceFromUsd: null,
+    priceFromUsd: 19.99,
     hasFreeTier: true,
     skillLevel: 'beginner',
     platforms: ['Web'],
-    lastVerifiedAt: '2026-10-18',
+    lastVerifiedAt: BACKLOG_BATCH_02,
     fits: [
       { task: 'voice', score: 70, notes: 'An all-in-one start for podcasters.' },
       { task: 'video', score: 45, notes: 'The studio is audio first and also handles some video.' },
@@ -2403,6 +2407,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // pricing verified 2026-10-15 at https://www.lalal.ai/pricing/ | budget fit: free | best for: stem-separation, vocals
+  // 2026-10-25 price fix (ratings backlog batch 02): Lite $7.50/mo, $90 billed annually; no monthly plan published, so priceFromUsd is the annual-billed rate, labeled 'billed annually' in longDesc.
   tool({
     slug: 'lalal-ai',
     name: 'LALAL.AI',
@@ -2411,13 +2416,13 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['www.lalal.ai'],
     category: 'Voice',
     shortDesc: 'AI stem splitting to separate vocals and instruments.',
-    longDesc: 'Clean vocal or instrument tracks from any song. Free tier is limited.',
+    longDesc: 'Clean vocal or instrument tracks from any song. Free tier is limited. Lite is $7.50 a month, billed annually ($90 a year).',
     pricingModel: 'freemium',
-    priceFromUsd: null,
+    priceFromUsd: 7.5,
     hasFreeTier: true,
     skillLevel: 'beginner',
     platforms: ['Web', 'Windows', 'macOS'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: BACKLOG_BATCH_02,
     fits: [
       { task: 'voice', score: 60, notes: 'Clean vocal or instrument tracks from any song.' },
     ],
@@ -2592,6 +2597,8 @@ export const toolSeeds: ToolSeed[] = [
       { task: 'research', score: 66, notes: 'A search layer for developers building AI apps.' },
     ],
     affiliate: { ...none, status: 'verify' },
+    // UNLISTED 2026-10-25 (ratings backlog batch 02, James): you.com now sells a search/inference API priced per 1k calls (https://you.com/pricing); the consumer app the old signals describe is gone. Record kept; score row stays Unrated, quiz_eligible=false.
+    unlisted: true,
   }),
   // pricing verified 2026-10-15 at https://www.researchrabbit.ai/pricing | budget fit: free | best for: citation-maps, papers
   tool({
@@ -2615,6 +2622,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // pricing verified 2026-10-15 at https://kagi.com/pricing | budget fit: low | best for: search, ad-free, privacy
+  // 2026-10-25 price fix (ratings backlog batch 02): Starter $5/month billed monthly (300 searches); 100-search trial, no free plan, per https://kagi.com/pricing.
   tool({
     slug: 'kagi',
     name: 'Kagi',
@@ -2625,11 +2633,11 @@ export const toolSeeds: ToolSeed[] = [
     shortDesc: 'An ad-free, private paid search engine with an AI assistant.',
     longDesc: 'Clean search results without ads or tracking. Paid after a 100-search trial.',
     pricingModel: 'paid',
-    priceFromUsd: null,
+    priceFromUsd: 5,
     hasFreeTier: false,
     skillLevel: 'beginner',
     platforms: ['Web'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: BACKLOG_BATCH_02,
     fits: [
       { task: 'research', score: 74, notes: 'Clean search results without ads or tracking.' },
     ],
@@ -3852,7 +3860,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // expansion 2026-10-22 (Forge, approved by James) + freshness discovery | 14 new tools, unrated, official domains only, no affiliate links
-  // priceFromUsd is the monthly-billed price except d-id, tldv, krisp, perplexity and gamma, which are labeled 'billed annually' in longDesc
+  // priceFromUsd is the monthly-billed price except d-id, tldv, krisp, perplexity, gamma and lalal-ai, which are labeled 'billed annually' in longDesc
   // source: https://ampcode.com/pricing
   tool({
     slug: 'amp',
@@ -4255,7 +4263,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['Web'],
     lastVerifiedAt: FRESHNESS_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'research', score: 88, notes: 'Answers from peer-reviewed papers, with citations and a meter that shows how far studies agree.' },
+    ],
     affiliate: none,
   }),
   // Bot scout 2026-10-24 (James). Unrated: no editorial score, pros or cons until Forge rubric review.
@@ -4606,7 +4616,8 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-25 | category: Research | scout rating 4.3 (not shown) | launch: 2026-10-23 | pricing: Kimi apps: Free (limited), Plus $15/mo, Pro $31/mo, Max $79/mo, Ultra $159/mo (effective monthly on annual billing). API: $2.00 input / $10.00 output per million tokens ($0.20 cached input); Highspeed $4.00 / $20.00.
-  // note: Plus $15/mo is the effective monthly price on annual billing.
+  // note: 2026-10-25 price fix (ratings backlog batch 02): Plus is $19/month billed monthly; $15/mo is the effective monthly price only on annual billing ($180/yr), per https://www.kimi.com/membership/pricing.
+  // 2026-10-25 category change (ratings backlog batch 02, approved by James): Research -> Chat assistant. Kimi is a general chat assistant (chat, agents, Deep Research). url/allowedHosts stay www.kimi.ai (no allowlist change).
   tool({
     slug: 'kimi',
     addedAt: '2026-10-25',
@@ -4614,16 +4625,19 @@ export const toolSeeds: ToolSeed[] = [
     vendor: 'Moonshot AI',
     url: 'https://www.kimi.ai',
     allowedHosts: ['www.kimi.ai'],
-    category: 'Research',
+    category: 'Chat assistant',
     shortDesc: 'Moonshot AI\'s flagship model with a 1M-token context, in the Kimi apps and API.',
     longDesc: 'Moonshot AI\'s new flagship model: 2.8T-parameter mixture-of-experts, 1M-token context, multimodal input and a faster Highspeed variant. Strong on coding and agent benchmarks, available in the Kimi apps and API, with open weights promised by Nov 4, 2026.',
     pricingModel: 'freemium',
-    priceFromUsd: 15,
+    priceFromUsd: 19,
     hasFreeTier: true,
     skillLevel: 'beginner',
     platforms: ['Web', 'iOS', 'Android', 'API'],
-    lastVerifiedAt: SCOUTED_2026_10_25,
-    fits: [],
+    lastVerifiedAt: BACKLOG_BATCH_02,
+    fits: [
+      { task: 'chat', score: 78, notes: 'A capable general assistant with built-in agents for research, slides, docs and sheets.' },
+      { task: 'research', score: 76, notes: 'Its Deep Research agent writes cited reports, but it is a general assistant, not a citation-first search tool.' },
+    ],
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-25 | category: Productivity | scout rating 4.0 (not shown) | launch: 2026-10-23 | pricing: Free (Mac app, fully offline; macOS 15+, Apple Silicon optimized); Enterprise by contact.
