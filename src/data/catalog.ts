@@ -4046,7 +4046,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['Web', 'API'],
     lastVerifiedAt: BACKLOG_BATCH_03,
-    fits: [],
+    fits: [
+      { task: 'video', score: 82, notes: 'Script to an avatar video, with translation into many languages and an API.' },
+    ],
     affiliate: none,
   }),
   // source: https://kling.ai/app/membership/membership-plan | FLAG: klingai.com redirects to kling.ai. No free plan on the membership page (only “daily free uses” of some features). The renewal price display is ambiguous ($8.80 vs $10), so the list price is used.
@@ -4066,7 +4068,10 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['Web'],
     lastVerifiedAt: FRESHNESS_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'video', score: 86, notes: 'Text- and image-to-video with native audio, 4K output and clips up to 15 seconds; it generates shots rather than editing footage.' },
+      { task: 'images', score: 60, notes: 'The same platform generates stills with Kling Image 3.0, alongside video.' },
+    ],
     affiliate: none,
   }),
   // source: https://hailuoai.video/ | FLAG: The /subscribe page redirects home; the price comes from the “From $9.99/mo” header. Sign-up credits are not a free plan.
@@ -4207,7 +4212,9 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['Web', 'Chrome', 'macOS', 'iOS', 'Android'],
     lastVerifiedAt: FRESHNESS_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'writing', score: 72, notes: 'Best for paraphrasing and polishing a draft you already have, not for drafting campaigns from scratch.' },
+    ],
     affiliate: none,
   }),
   // source: https://help.manus.im/en/articles/11711111-what-is-the-current-membership-pricing-for-manus
