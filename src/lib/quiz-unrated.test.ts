@@ -54,12 +54,30 @@ describe('unrated tools and the quiz', () => {
 
   it('never returns a new unrated tool for any task, budget or skill', () => {
     const newUnrated = new Set(catalog.tools.filter((tool) => tool.editorial === null && ratingRequiredSlugs.has(tool.slug)).map((tool) => tool.slug))
-    expect(newUnrated.size).toBe(73) // 18 unrated scout tools minus unlisted Mercury 3, plus 14 unrated expansion tools, plus 6 addendum tools, plus 14 scout 2026-10-24 tools, plus 22 scout 2026-10-25 tools
+    expect(newUnrated.size).toBe(72) // 18 unrated scout tools minus unlisted Mercury 3, plus 14 unrated expansion tools minus Aider (rated in ratings backlog batch 01), plus 6 addendum tools, plus 14 scout 2026-10-24 tools, plus 22 scout 2026-10-25 tools
     for (const task of catalog.tasks) {
       for (const budget of matchBudgets) {
         for (const skill of skills) {
           const result = recommend(catalog, { task: task.slug, budget, skill })
           for (const pick of result?.picks ?? []) expect(newUnrated.has(pick.slug), `${task.slug}/${budget}/${skill}: ${pick.slug}`).toBe(false)
+        }
+      }
+    }
+  })
+
+  it('returns Aider for coding and backend once it is rated and has fits, without changing any top pick (#156)', () => {
+    const aider = catalog.tools.find((tool) => tool.slug === 'aider')!
+    expect(aider.editorial).not.toBeNull()
+    expect(aider.fits.map((fit) => [fit.taskSlug, fit.score])).toEqual([['coding', 78], ['backend', 60]])
+    const coding = recommend(catalog, { task: 'coding', budget: 'free', skill: 'pro' })!
+    expect(coding.picks.map((pick) => pick.slug).slice(0, 2)).toEqual(['opencode', 'aider'])
+    const backend = recommend(catalog, { task: 'backend', budget: 'free', skill: 'pro' })!
+    expect(backend.picks.map((pick) => pick.slug).slice(0, 2)).toEqual(['supabase', 'aider'])
+    for (const task of catalog.tasks) {
+      for (const budget of matchBudgets) {
+        for (const skill of skills) {
+          const result = recommend(catalog, { task: task.slug, budget, skill })
+          expect(result?.picks[0]?.slug, `${task.slug}/${budget}/${skill}`).not.toBe('aider')
         }
       }
     }

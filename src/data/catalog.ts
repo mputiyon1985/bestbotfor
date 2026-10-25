@@ -1237,6 +1237,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // pricing verified 2026-10-15 at https://www.warp.dev/pricing | budget fit: free | best for: terminal, agents, coding
+  // 2026-10-25 price fix (ratings backlog batch 01): Build plan $20/month billed monthly ($18/month billed annually), per https://www.warp.dev/pricing. Rating still held (Unrated).
   tool({
     slug: 'warp',
     name: 'Warp',
@@ -1247,7 +1248,7 @@ export const toolSeeds: ToolSeed[] = [
     shortDesc: 'An agentic development environment built around a modern terminal.',
     longDesc: 'Useful if your work happens in the terminal and you want agents that run commands for you. It is a terminal-first tool, not a full code editor.',
     pricingModel: 'freemium',
-    priceFromUsd: null,
+    priceFromUsd: 20,
     hasFreeTier: true,
     skillLevel: 'intermediate',
     platforms: ['macOS', 'Linux', 'Windows'],
@@ -3851,7 +3852,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // expansion 2026-10-22 (Forge, approved by James) + freshness discovery | 14 new tools, unrated, official domains only, no affiliate links
-  // priceFromUsd is the monthly-billed price except d-id, tldv, jetbrains-ai, krisp, perplexity and gamma, which are labeled 'billed annually' in longDesc
+  // priceFromUsd is the monthly-billed price except d-id, tldv, krisp, perplexity and gamma, which are labeled 'billed annually' in longDesc
   // source: https://ampcode.com/pricing
   tool({
     slug: 'amp',
@@ -3933,6 +3934,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: none,
   }),
   // source: https://aider.chat/ | FLAG: No pricing page; installed with pip from the official site. Model/API costs are separate.
+  // 2026-10-25 fits (ratings backlog batch 01, Sentinel QA of #156): coding 78, backend 60, from https://aider.chat/ , /docs/ , /docs/usage/modes.html , /docs/git.html . No vibe-coding fit (terminal only, no preview or hosting).
   tool({
     slug: 'aider',
     addedAt: '2026-10-22',
@@ -3949,10 +3951,13 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'pro',
     platforms: ['Terminal'],
     lastVerifiedAt: FRESHNESS_2026_10_22,
-    fits: [],
+    fits: [
+      { task: 'coding', score: 78, notes: 'Pair-program from the terminal on an existing repo: it maps the codebase, commits each change to git, and runs your linters and tests.' },
+      { task: 'backend', score: 60, notes: 'Can edit backend code in a repo you already have, but it does not host a database or run services.' },
+    ],
     affiliate: none,
   }),
-  // source: https://www.jetbrains.com/store/ai/?section=personal&billing=yearly | FLAG: Sold yearly only: $100/yr = $8.33/mo. /ai/ now leads to “JetBrains Air”. Logo is the JetBrains corporate mark.
+  // source: https://www.jetbrains.com/store/ai/?section=personal&billing=monthly | 2026-10-25 price fix (Sentinel QA of #156; James's store check; re-read from the store page data): AI Pro $10/mo billed monthly or $100/yr; AI Ultimate $30/mo or $300/yr. /ai/ now leads to “JetBrains Air”. Logo is the JetBrains corporate mark.
   tool({
     slug: 'jetbrains-ai',
     addedAt: '2026-10-22',
@@ -3962,9 +3967,9 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['www.jetbrains.com', 'jetbrains.com'],
     category: 'Coding assistant',
     shortDesc: 'AI completion and coding agents inside JetBrains IDEs.',
-    longDesc: 'JetBrains AI adds code completion and access to coding agents (Junie, Claude Agent, Codex, Gemini) inside JetBrains IDEs. AI Free includes unlimited completion and 3 monthly credits. Sold yearly only: AI Pro is $100 a year (about $8.33 a month, billed annually) and AI Ultimate is $300 a year.',
+    longDesc: 'JetBrains AI adds code completion and access to coding agents (Junie, Claude Agent, Codex, Gemini) inside JetBrains IDEs. AI Free includes unlimited completion and 3 monthly credits. AI Pro is $10 a month billed monthly, or $100 a year. AI Ultimate is $30 a month, or $300 a year.',
     pricingModel: 'freemium',
-    priceFromUsd: 8.33,
+    priceFromUsd: 10,
     hasFreeTier: true,
     skillLevel: 'intermediate',
     platforms: ['JetBrains'],

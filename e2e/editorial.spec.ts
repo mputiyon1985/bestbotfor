@@ -62,7 +62,7 @@ test('a scored tool shows fractional stars, the rubric, and no review schema', a
 
 test('unrated tools hide the score and keep pros and cons', async ({ page }) => {
   test.setTimeout(180_000)
-  expect(unratedSlugs).toHaveLength(139)
+  expect(unratedSlugs).toHaveLength(138)
   const unlisted = new Set(toolSeeds.filter((item) => item.unlisted).map((item) => item.slug))
   for (const slug of unratedSlugs.filter((item) => !unlisted.has(item))) {
     const tool = toolSeeds.find((item) => item.slug === slug)
@@ -137,7 +137,7 @@ test('windsurf stays at its slug, cursor and relevance show the reviewed prices,
   await expect(page.getByText('Free tier, then $20 and up')).toBeVisible()
   await expect(page.getByText('The Free plan is $0 and Pro is $20 a month.')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Our rating', exact: true })).toBeVisible()
-  await expect(page.locator('[data-category-rank]')).toHaveText('Tied · #10 of 12 in Coding')
+  await expect(page.locator('[data-category-rank]')).toHaveText('Tied · #11 of 13 in Coding')
   await expect(page.locator('[data-tie]')).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Pros and cons' })).toBeVisible()
   await expect(page.getByText('Free plan has unlimited Tab completions and inline edits', { exact: true })).toBeVisible()
@@ -167,7 +167,7 @@ test('windsurf stays at its slug, cursor and relevance show the reviewed prices,
 
   await page.goto('/tools/cursor')
   await expect(page.getByRole('heading', { name: 'Our rating', exact: true })).toBeVisible()
-  await expect(page.locator('[data-category-rank]')).toContainText('#2 of 12 in Coding')
+  await expect(page.locator('[data-category-rank]')).toContainText('#2 of 13 in Coding')
   await expect(page.getByRole('heading', { name: 'Pros and cons' })).toBeVisible()
   await expect(page.getByText('Free plan includes limited agent requests', { exact: true })).toBeVisible()
   await expect(page.getByText('Free tier, then $8 and up')).toBeVisible()
@@ -280,7 +280,7 @@ test('archived tools stay live, show the notice, and stay off quiz results', asy
   expect(roo?.status()).toBe(200)
   await expect(page.getByRole('heading', { level: 1 })).toHaveText('Roo Code')
   await expect(page.locator('[data-maintenance-notice]')).toHaveText('Unmaintained (repo archived)')
-  await expect(page.locator('[data-category-rank]')).toHaveText('#12 of 12 in Coding')
+  await expect(page.locator('[data-category-rank]')).toHaveText('#13 of 13 in Coding')
   await expect(page.locator('[data-tie]')).toHaveCount(0)
 
   await page.goto('/result?task=agents&budget=any&skill=intermediate')

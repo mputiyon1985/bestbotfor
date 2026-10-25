@@ -335,8 +335,8 @@ describe('catalog seed', () => {
     const rated = scores.map((row) => idToSlug.get(row.toolId)).sort()
     const csvSlugs = ratingSeeds.map((row) => row.slug).sort()
     const v1Slugs = new Set(editorialSeeds.map((row) => row.slug))
-    expect(ratingSeeds).toHaveLength(98)
-    expect(unratedSlugs).toHaveLength(139)
+    expect(ratingSeeds).toHaveLength(99)
+    expect(unratedSlugs).toHaveLength(138)
     expect(rated).toEqual(csvSlugs)
     expect(new Set(rated)).toEqual(new Set(csvSlugs))
     expect(csvSlugs).toContain('cursor')
@@ -364,6 +364,7 @@ describe('catalog seed', () => {
     expect(kept).toBe(88)
     expect(removedSlugs).toHaveLength(58)
     expect(ratingSeeds.filter((row) => !v1Slugs.has(row.slug)).map((row) => row.slug).sort()).toEqual([
+      'aider',
       'canva',
       'composio',
       'cursor',
@@ -435,7 +436,7 @@ describe('catalog seed', () => {
     const fresh = await seed()
     expect(fresh).toEqual({
       scoresInserted: 0,
-      scoresUpdated: 98,
+      scoresUpdated: 99,
       scoresRemoved: 0,
       prosInserted: 0,
       prosUpdated: prosConsTotal,
@@ -459,7 +460,7 @@ describe('catalog seed', () => {
     await useTempDatabase()
     const fresh = await seed()
     expect(fresh).toEqual({
-      scoresInserted: 98,
+      scoresInserted: 99,
       scoresUpdated: 0,
       scoresRemoved: 0,
       prosInserted: prosConsTotal,
@@ -499,7 +500,7 @@ describe('catalog seed', () => {
     process.env.SEED_PRUNE = '1'
     const fromV1 = await seed()
     expect(fromV1).toEqual({
-      scoresInserted: 10,
+      scoresInserted: 11,
       scoresUpdated: 88,
       scoresRemoved: 58,
       prosInserted: pointTotal(supplementalProsConsSeeds),
@@ -546,7 +547,7 @@ describe('catalog seed', () => {
     const replaced = await seed()
     expect(replaced).toEqual({
       scoresInserted: 0,
-      scoresUpdated: 98,
+      scoresUpdated: 99,
       scoresRemoved: 2,
       prosInserted: 0,
       prosUpdated: prosConsTotal,
