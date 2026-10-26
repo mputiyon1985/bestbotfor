@@ -1,4 +1,5 @@
 import { N8N_PRICE_LABEL } from '@/data/catalog-corrections'
+import { withAnnualBilling } from './annual-billed'
 import type { Budget, Skill } from './validation'
 
 const PRICE_LABEL_OVERRIDES: Readonly<Record<string, string>> = {
@@ -63,9 +64,9 @@ type Priced = {
 export function priceLabel(tool: Priced): string {
   if (tool.slug) {
     const override = PRICE_LABEL_OVERRIDES[tool.slug]
-    if (override) return override
+    if (override) return withAnnualBilling(tool.slug, override)
   }
-  if (tool.pricingModel === 'free') return 'Free'
+  if (tool.pricingModel === 'free') return withAnnualBilling(tool.slug, 'Free')
   if (tool.priceFromUsd != null) {
     const wholeDollars = Number.isInteger(tool.priceFromUsd)
     const money = new Intl.NumberFormat('en-US', {
@@ -74,10 +75,11 @@ export function priceLabel(tool: Priced): string {
       minimumFractionDigits: wholeDollars ? 0 : 2,
       maximumFractionDigits: wholeDollars ? 0 : 2,
     }).format(tool.priceFromUsd)
-    return tool.hasFreeTier ? `Free tier, then ${money} and up` : `${money} and up`
+    const label = tool.hasFreeTier ? `Free tier, then ${money} and up` : `${money} and up`
+    return withAnnualBilling(tool.slug, label)
   }
-  if (tool.hasFreeTier) return 'Free tier, paid plans available'
-  return 'Paid'
+  if (tool.hasFreeTier) return withAnnualBilling(tool.slug, 'Free tier, paid plans available')
+  return withAnnualBilling(tool.slug, 'Paid')
 }
 
 export function formatStripeAmount(unitAmount: number, currency: string, interval: string | null): string {

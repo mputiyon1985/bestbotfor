@@ -1958,7 +1958,7 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
-  // pricing verified 2026-10-18 at https://pika.art/pricing | budget fit: paid (Free tier has 0 credits a month) | best for: video, effects, social
+  // pricing rechecked 2026-10-26 at https://pika.art/pricing and https://pika.art/faq | freemium, hasFreeTier false: the Free plan has no monthly credit allowance (packs only), so it is not a usable free tier | best for: video, effects, social
   tool({
     slug: 'pika',
     name: 'Pika',
@@ -2214,7 +2214,7 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
-  // pricing verified 2026-10-18 at https://www.resemble.ai/pricing | budget fit: paid ($0 Flex tier is pay-as-you-go, no included usage) | best for: voice-cloning, deepfake-detection
+  // pricing rechecked 2026-10-26 at https://www.resemble.ai/pricing | Flex is $0/mo pay-as-you-go ("load credits", no included usage). "Start free" is not a free allowance, so hasFreeTier stays false | best for: voice-cloning, deepfake-detection
   tool({
     slug: 'resemble-ai',
     name: 'Resemble AI',
@@ -3866,7 +3866,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // expansion 2026-10-22 (Forge, approved by James) + freshness discovery | 14 new tools, unrated, official domains only, no affiliate links
-  // priceFromUsd is the monthly-billed price except perplexity, lalal-ai and agentspot, which are labeled 'billed annually' in longDesc
+  // priceFromUsd is the monthly-billed price except ANNUAL_BILLED_SLUGS (src/lib/annual-billed.ts). priceLabel appends ", billed annually" for that list.
   // source: https://ampcode.com/pricing
   tool({
     slug: 'amp',
@@ -5512,7 +5512,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // source: https://www.thoughtspot.com/agentspot (product page) ; https://www.thoughtspot.com/agentspot/pricing
-  // Forge's draft only had the press release and left Fleet unpublished. The pricing page on 2026-10-26 lists Fleet at $1,650/month billed annually (no monthly-billed price shown), so priceFromUsd is that labeled annual rate.
+  // Forge's draft only had the press release and left Fleet unpublished. Rechecked 2026-10-26: Free is a real plan ($0, no card, 25 DO credits/week, unlimited agents and users), so pricingModel stays freemium and hasFreeTier stays true. Fleet is $1,650/month billed annually (no monthly-billed price shown), so priceFromUsd is that annual rate and the slug is on ANNUAL_BILLED_SLUGS.
   tool({
     slug: 'agentspot',
     addedAt: FRESHNESS_2026_10_26,

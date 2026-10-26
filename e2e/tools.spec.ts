@@ -86,7 +86,8 @@ test('filters by a catalog category with a shareable URL and without JavaScript'
 test('each real tools page has its own canonical, and pages past the end are 404', async ({ page, request }) => {
   const pages = pageCount(catalog.tools.length)
   expect(pages).toBeGreaterThan(1)
-  expect(pages).toBeLessThan(12)
+  // The last real page follows the listed catalog and TOOLS_PAGE_SIZE. A fixed cap (the old `< 12`) fails as soon as one more tool opens the next page.
+  expect(pages).toBe(Math.ceil(catalog.tools.length / TOOLS_PAGE_SIZE))
 
   await page.goto('/tools')
   const firstCanonical = await page.locator('link[rel="canonical"]').getAttribute('href')
