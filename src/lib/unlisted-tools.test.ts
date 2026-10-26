@@ -15,7 +15,7 @@ import { readFileSync } from 'node:fs'
 
 const UNLISTED = 'mercury-inception'
 // Ratings backlog batch 02 (James, 2026-10-25): You.com and Resemble AI are unlisted too; records kept, quiz_eligible=false.
-const UNLISTED_ALL = ['mercury-inception', 'resemble-ai', 'you-com']
+const UNLISTED_ALL = ['dessa', 'mercury-inception', 'resemble-ai', 'you-com']
 const previousUrl = process.env.TURSO_DATABASE_URL
 const previousToken = process.env.TURSO_AUTH_TOKEN
 const directories: string[] = []
@@ -35,7 +35,7 @@ afterEach(async () => {
 })
 
 describe('unlisted tools', () => {
-  it('only Mercury 3, Resemble AI and You.com are unlisted, and they keep their records and are not quiz eligible', () => {
+  it('only Dessa, Mercury 3, Resemble AI and You.com are unlisted, and they keep their records and are not quiz eligible', () => {
     expect(toolSeeds.filter((tool) => tool.unlisted).map((tool) => tool.slug).sort()).toEqual(UNLISTED_ALL)
     expect(CATALOG_TOOL_COUNT).toBe(toolSeeds.length - UNLISTED_ALL.length)
     const csv = readFileSync(path.join(process.cwd(), 'src/data/scores-v2.3.csv'), 'utf8')
