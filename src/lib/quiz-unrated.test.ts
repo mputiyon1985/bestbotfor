@@ -12,7 +12,7 @@ const catalog = catalogFromSeeds()
 const skills = ['beginner', 'intermediate', 'pro'] as const
 
 describe('unrated tools and the quiz', () => {
-  it('marks exactly the tools added in #138, the #142 expansion and addendum, and the 2026-10-24 and 2026-10-25 scouts', () => {
+  it('marks exactly the tools added in #138, the #142 expansion and addendum, and the 2026-10-24, 2026-10-25 and 2026-10-26 scouts', () => {
     expect([...ratingRequiredSlugs].sort()).toEqual(
       [
         'twinmind', 'useit-studio', 'cutbay', 'dadan', 'sponkly', 'playad', 'fastlane', 'radaric', 'mistral-voxtral',
@@ -30,6 +30,10 @@ describe('unrated tools and the quiz', () => {
         'llama-app', 'papermark', '1password-for-agents', 'kimi', 'instant-search', 'agentgrid', 'corgi',
         'witness', 'candor', 'mypip', 'lexmount', 'clips-by-plastic', 'sume-api', 'major', 'inyon', 'agentvalley',
         'specsight', 'eardub', 'yourcast', 'linkintel', 'futureproof', 'agensh',
+        // bot scout 2026-10-26
+        'claude-duet', 'kiwi', 'pomerado', 'manyagents', 'vibeide', 'tabsh', 'avp', 'whoiscooking', 'loqui',
+        'jobmate-ai', 'chatacademia', 'bidhelm', 'agentranked', 'rapid-indexer', 'auteo', 'hurston-1', 'casecite',
+        'rainbowsay', 'dessa', 'aws-continuum',
       ].sort(),
     )
     for (const slug of ['perplexity', 'soundraw', 'canva', 'surfer']) expect(ratingRequiredSlugs.has(slug), slug).toBe(false)
@@ -54,7 +58,7 @@ describe('unrated tools and the quiz', () => {
 
   it('never returns a new unrated tool for any task, budget or skill', () => {
     const newUnrated = new Set(catalog.tools.filter((tool) => tool.editorial === null && ratingRequiredSlugs.has(tool.slug)).map((tool) => tool.slug))
-    expect(newUnrated.size).toBe(67) // 18 unrated scout tools minus unlisted Mercury 3, plus 14 unrated expansion tools minus Aider (rated in ratings backlog batch 01) and D-ID and Kling (rated in batch 03), plus 6 addendum tools minus Consensus (batch 02) and QuillBot (batch 03), plus 14 scout 2026-10-24 tools, plus 22 scout 2026-10-25 tools minus Kimi (Consensus and Kimi rated in ratings backlog batch 02)
+    expect(newUnrated.size).toBe(87) // 18 unrated scout tools minus unlisted Mercury 3, plus 14 unrated expansion tools minus Aider (rated in ratings backlog batch 01) and D-ID and Kling (rated in batch 03), plus 6 addendum tools minus Consensus (batch 02) and QuillBot (batch 03), plus 14 scout 2026-10-24 tools, plus 22 scout 2026-10-25 tools minus Kimi (Consensus and Kimi rated in ratings backlog batch 02), plus 20 scout 2026-10-26 tools
     for (const task of catalog.tasks) {
       for (const budget of matchBudgets) {
         for (const skill of skills) {
