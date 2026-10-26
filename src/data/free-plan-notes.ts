@@ -331,12 +331,12 @@ export const freePlanNotes: Readonly<Record<string, FreePlanFields>> = {
 }
 
 /**
- * Tools Forge could not verify from the official page. They stay off every
- * /best/[task]/free page until someone re-checks them. hasFreeTier is unchanged.
+ * Tools kept off every /best/[task]/free page. Picsart's free plan is still
+ * unverified, so hasFreeTier stays as it was. Hedra was re-checked on
+ * 2026-10-26 and has no free plan (hasFreeTier is false), so it no longer needs a hold.
  */
 export const freePlanHolds: Readonly<Record<string, string>> = {
   "picsart": "Official pricing page lists only Pro and Ultra; no free-plan terms published there.",
-  "hedra": "Pricing page renders client-side only; no free-plan terms readable from the official page.",
 }
 
 /**

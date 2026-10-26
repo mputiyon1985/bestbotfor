@@ -4,6 +4,7 @@ import { elevenlabsMusicFit, musicSeoToolSeeds } from './music-seo'
 const REVIEWED = '2026-10-15'
 const SCOUTED_2026_10_22 = '2026-10-22'
 const FRESHNESS_2026_10_22 = '2026-10-22'
+const FRESHNESS_2026_10_26 = '2026-10-26'
 const SCOUTED_2026_10_24 = '2026-10-24'
 const SCOUTED_2026_10_25 = '2026-10-25'
 const SCOUTED_2026_10_26 = '2026-10-26'
@@ -717,7 +718,7 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
-  // pricing verified 2026-10-22 at https://pictory.ai/pricing | paid; Starter $25/mo billed annually ($29 monthly); 14-day free trial only
+  // pricing verified 2026-10-26 at https://pictory.ai/pricing | paid; Starter $29/mo billed monthly ($25 billed annually); 14-day free trial only
   tool({
     slug: 'pictory',
     name: 'Pictory',
@@ -726,13 +727,13 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['pictory.ai'],
     category: 'AI video',
     shortDesc: 'Turns a blog post or script into a narrated video with stock visuals.',
-    longDesc: 'Pictory is a shortcut from text to a social or marketing video. The look is assembled, not filmed. Use a generative video tool when you need original motion.',
+    longDesc: 'Pictory is a shortcut from text to a social or marketing video. The look is assembled, not filmed. Use a generative video tool when you need original motion. Starter is $29 a month billed monthly, or $25 billed annually. There is a 14-day free trial, not a free plan.',
     pricingModel: 'paid',
-    priceFromUsd: 25,
+    priceFromUsd: 29,
     hasFreeTier: false,
     skillLevel: 'beginner',
     platforms: ['Web'],
-    lastVerifiedAt: '2026-10-22',
+    lastVerifiedAt: FRESHNESS_2026_10_26,
     fits: [
       { task: 'video', score: 74, notes: 'Text to a stock-style video for marketing.' },
     ],
@@ -1649,7 +1650,7 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
-  // pricing verified 2026-10-15 at https://textcortex.com/pricing | budget fit: free | best for: writing, knowledge-base
+  // pricing verified 2026-10-26 at https://textcortex.com/pricing | paid; Premium $29.99/user/mo billed monthly ($23.99 annual); 14-day free trial; no Free plan | best for: writing, knowledge-base
   tool({
     slug: 'textcortex',
     name: 'TextCortex',
@@ -1658,13 +1659,13 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['textcortex.com'],
     category: 'Writing',
     shortDesc: 'An AI writing and knowledge assistant with browser extensions.',
-    longDesc: 'Helps draft and rewrite across the web with your own knowledge base. Free plan is limited.',
-    pricingModel: 'freemium',
-    priceFromUsd: null,
-    hasFreeTier: true,
+    longDesc: 'Helps draft and rewrite across the web with your own knowledge base. Premium is $29.99 per user a month billed monthly ($23.99 billed annually); a 14-day free trial is offered.',
+    pricingModel: 'paid',
+    priceFromUsd: 29.99,
+    hasFreeTier: false,
     skillLevel: 'beginner',
     platforms: ['Web', 'Chrome'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: FRESHNESS_2026_10_26,
     fits: [
       { task: 'writing', score: 68, notes: 'Helps draft and rewrite across the web with your own knowledge base.' },
       { task: 'seo', score: 52, notes: 'Drafts and rewrites across the web from your own knowledge base, which can revise a page in the browser. It does not build an SEO brief or a term score.' },
@@ -2149,7 +2150,7 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
-  // pricing verified 2026-10-15 at https://www.hedra.com/pricing | budget fit: free | best for: character-video, lip-sync
+  // pricing verified 2026-10-26 at https://www.hedra.com/pricing?product=studio | paid; Studio Basic $20/mo billed monthly (Pro $50, Ultra $100, Teams $75); API prepaid pay-as-you-go; no Free plan | best for: character-video, lip-sync
   tool({
     slug: 'hedra',
     name: 'Hedra',
@@ -2158,13 +2159,13 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['www.hedra.com'],
     category: 'AI video',
     shortDesc: 'AI character video with expressive talking characters.',
-    longDesc: 'Good for animated characters that speak. Free plan is limited.',
-    pricingModel: 'freemium',
-    priceFromUsd: null,
-    hasFreeTier: true,
+    longDesc: 'Good for animated characters that speak. Studio plans start at $20 a month (Basic, 2,000 credits); the API is pay-as-you-go.',
+    pricingModel: 'paid',
+    priceFromUsd: 20,
+    hasFreeTier: false,
     skillLevel: 'beginner',
     platforms: ['Web'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: FRESHNESS_2026_10_26,
     fits: [
       { task: 'video', score: 74, notes: 'Good for animated characters that speak.' },
       { task: 'games', score: 45, notes: 'Talking characters can look like game art. It is not a game runtime.' },
@@ -3865,7 +3866,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // expansion 2026-10-22 (Forge, approved by James) + freshness discovery | 14 new tools, unrated, official domains only, no affiliate links
-  // priceFromUsd is the monthly-billed price except tldv, krisp, perplexity, gamma and lalal-ai, which are labeled 'billed annually' in longDesc
+  // priceFromUsd is the monthly-billed price except perplexity, lalal-ai and agentspot, which are labeled 'billed annually' in longDesc
   // source: https://ampcode.com/pricing
   tool({
     slug: 'amp',
@@ -4095,7 +4096,7 @@ export const toolSeeds: ToolSeed[] = [
     fits: [],
     affiliate: none,
   }),
-  // source: https://tldv.io/app/pricing/
+  // source: https://tldv.io/app/pricing/ | Monthly tab: Pro $29/seat/mo; annual $18
   tool({
     slug: 'tldv',
     addedAt: '2026-10-22',
@@ -4105,17 +4106,17 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['tldv.io'],
     category: 'Meetings',
     shortDesc: 'An AI meeting recorder and notetaker with CRM sync.',
-    longDesc: 'tl;dv records and transcribes meetings in 30+ languages and writes AI notes. The Free plan has unlimited recordings and transcription with 10 AI-note meetings. Pro is $18 per seat a month, billed annually (monthly-billed price not shown).',
+    longDesc: 'tl;dv records and transcribes meetings in 30+ languages and writes AI notes. The Free plan has unlimited recordings and transcription with 10 AI-note meetings. Pro is $29 per seat a month billed monthly, or $18 billed annually.',
     pricingModel: 'freemium',
-    priceFromUsd: 18,
+    priceFromUsd: 29,
     hasFreeTier: true,
     skillLevel: 'beginner',
     platforms: ['Web', 'iOS', 'Android'],
-    lastVerifiedAt: FRESHNESS_2026_10_22,
+    lastVerifiedAt: FRESHNESS_2026_10_26,
     fits: [],
     affiliate: none,
   }),
-  // source: https://krisp.ai/pricing/ | FLAG: Trial only. Whether $8 is monthly or annual billing is unclear (the page has a “Save 50%” toggle).
+  // source: https://krisp.ai/pricing/ | Core $16/mo/user billed monthly, $8 billed annually; 7-day free trial only
   tool({
     slug: 'krisp',
     addedAt: '2026-10-22',
@@ -4125,13 +4126,13 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['krisp.ai'],
     category: 'Meetings',
     shortDesc: 'Noise cancellation plus a bot-free AI meeting note-taker.',
-    longDesc: 'Krisp removes background noise and takes AI notes and transcripts without a meeting bot. There is a 7-day free trial. Core is $8 per user a month, billed annually; the page has a monthly toggle and the monthly-billed price was not confirmed.',
+    longDesc: 'Krisp removes background noise and takes AI notes and transcripts without a meeting bot. There is a 7-day free trial. Core is $16 per user a month billed monthly, or $8 billed annually.',
     pricingModel: 'paid',
-    priceFromUsd: 8,
+    priceFromUsd: 16,
     hasFreeTier: false,
     skillLevel: 'beginner',
     platforms: ['macOS', 'Windows'],
-    lastVerifiedAt: FRESHNESS_2026_10_22,
+    lastVerifiedAt: FRESHNESS_2026_10_26,
     fits: [],
     affiliate: none,
   }),
@@ -4176,7 +4177,7 @@ export const toolSeeds: ToolSeed[] = [
     fits: [],
     affiliate: none,
   }),
-  // source: https://gamma.app/pricing | FLAG: Price is billed annually; monthly-billed price not confirmed on an official page.
+  // source: https://gamma.app/pricing | Pay monthly tab: Plus $12/seat/mo; annual $9 ($108 a year)
   tool({
     slug: 'gamma',
     addedAt: '2026-10-22',
@@ -4186,13 +4187,13 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['gamma.app'],
     category: 'Design',
     shortDesc: "Generates presentations, documents and websites from a prompt.",
-    longDesc: "Gamma creates decks, docs and sites with AI. The Free plan includes 400 starter credits that do not refill. Plus is $9 per seat a month billed annually ($108 a year) with 1,000 monthly credits.",
+    longDesc: "Gamma creates decks, docs and sites with AI. The Free plan includes 400 starter credits that do not refill. Plus is $12 per seat a month billed monthly, or $9 billed annually ($108 a year) with 1,000 monthly credits.",
     pricingModel: 'freemium',
-    priceFromUsd: 9,
+    priceFromUsd: 12,
     hasFreeTier: true,
     skillLevel: 'beginner',
     platforms: ['Web'],
-    lastVerifiedAt: FRESHNESS_2026_10_22,
+    lastVerifiedAt: FRESHNESS_2026_10_26,
     fits: [],
     affiliate: none,
   }),
@@ -5089,8 +5090,8 @@ export const toolSeeds: ToolSeed[] = [
     fits: [],
     affiliate: { ...none, status: 'verify' },
   }),
-  // scout 2026-10-26 | category: Coding assistant | scout rating 3.8 (not shown) | launch: 2026-10-25 (Product Hunt post created) | pricing: Free 14-day trial; license price not published (email hello@ailogy.co to buy). Uses your own Claude Code/Codex plans.
-  // note: License price not published (unknown); 14-day free trial. Vendor from the purchase email domain (ailogy.co).
+  // scout 2026-10-26 | category: Coding assistant | scout rating 3.8 (not shown) | launch: 2026-10-25 (Product Hunt post created) | pricing: $49 one-time license after a 14-day free trial (https://manyagents.app). Uses your own Claude Code/Codex plans.
+  // note: $49 one-time license after a 14-day free trial, same one-time convention as whoiscooking ($5). Vendor from the purchase email domain (ailogy.co).
   tool({
     slug: 'manyagents',
     addedAt: '2026-10-26',
@@ -5100,13 +5101,13 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['manyagents.app'],
     category: 'Coding assistant',
     shortDesc: 'A Mac app that orchestrates Claude Code and Codex agents in parallel git worktrees.',
-    longDesc: 'Mac app where an orchestrator splits your request across Claude Code and Codex agents, each in its own git worktree, with reviewer agents, a built-in browser for testing and one inbox for agents\' questions.',
+    longDesc: 'Mac app where an orchestrator splits your request across Claude Code and Codex agents, each in its own git worktree, with reviewer agents, a built-in browser for testing and one inbox for agents\' questions. A license is $49, paid once, after a 14-day free trial.',
     pricingModel: 'paid',
-    priceFromUsd: null,
+    priceFromUsd: 49,
     hasFreeTier: false,
     skillLevel: 'pro',
     platforms: ['macOS'],
-    lastVerifiedAt: SCOUTED_2026_10_26,
+    lastVerifiedAt: FRESHNESS_2026_10_26,
     fits: [],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -5424,8 +5425,10 @@ export const toolSeeds: ToolSeed[] = [
     unlisted: true,
     affiliate: { ...none, status: 'verify' },
   }),
-  // scout 2026-10-26 | category: Security (FLAG: scout category "Security" mapped to Coding assistant) | scout rating 4.1 (not shown) | launch: 2026-10-22 (GA; preview since 2026-06-17) | pricing: unknown (AWS pricing page not verified on this run)
-  // note: PLACEHOLDER: pricing unknown (AWS pricing page not verified). pricingModel 'paid' is a placeholder because the schema requires free/freemium/paid (tools.pricing_model NOT NULL); priceFromUsd null.
+  // scout 2026-10-26 | category: Security (FLAG: scout category "Security" mapped to Coding assistant) | scout rating 4.1 (not shown) | launch: 2026-10-22 (GA; preview since 2026-06-17)
+  // pricing verified 2026-10-26 at https://aws.amazon.com/continuum/pricing/ | pay-as-you-go: pentest $50 per task-hour;
+  // code vulnerabilities $200 per 1M protected lines/mo (tiered to $100) + $10 per Continuum inference unit; 2-month free trial for new AWS customers (trial, not a free plan)
+  // pricingModel stays 'paid' (the column is free, freemium or paid, and it cannot be empty); priceFromUsd stays null (usage-based, no flat plan price)
   tool({
     slug: 'aws-continuum',
     addedAt: '2026-10-26',
@@ -5442,6 +5445,150 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'pro',
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_10_26,
+    fits: [],
+    affiliate: { ...none, status: 'verify' },
+  }),
+  // freshness 2026-10-26 (Forge). Unrated (fits: []), addedAt so the quiz rating gate applies.
+  // Appended at the end of toolSeeds. The seed draft said "before ...musicSeoToolSeeds"; that spread is no longer the end of the array (the 10/26 scout block follows it).
+  // Official pages read 2026-10-26. No affiliate links. Ratings and logos follow in the normal rating pass.
+  // source: https://recursive.com/updates/introducing-recursive-flint ; https://huggingface.co/RecursiveSI/flint (License: apache-2.0)
+  tool({
+    slug: 'recursive-flint',
+    addedAt: FRESHNESS_2026_10_26,
+    name: 'Recursive Flint',
+    vendor: 'Recursive',
+    url: 'https://recursive.com/updates/introducing-recursive-flint',
+    allowedHosts: ['recursive.com', 'huggingface.co'],
+    category: 'Coding assistant',
+    shortDesc: 'A free open-weight coding model built to run agentic coding locally on a laptop.',
+    longDesc: 'Flint is Recursive\'s first model, released October 21, 2026. It is a mixture-of-experts coding model with 40 billion total and 2.5 billion active parameters. The weights are free on Hugging Face under the Apache 2.0 license. It works with llama.cpp, Ollama, LM Studio, vLLM and SGLang, so code stays on your machine and there are no API fees. Recursive says it runs at more than 125 tokens a second on an M4 Pro MacBook Pro.',
+    pricingModel: 'free',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['Self-hosted'],
+    lastVerifiedAt: FRESHNESS_2026_10_26,
+    fits: [],
+    affiliate: { ...none, status: 'verify' },
+  }),
+  // source: https://gradium.ai/pricing (Monthly tab: Free $0 45k credits; XS $13; S $43; M $340; L $1,615) ; https://gradium.ai/blog/gradium-releases-phonon
+  tool({
+    slug: 'gradium',
+    addedAt: FRESHNESS_2026_10_26,
+    name: 'Gradium',
+    vendor: 'Gradium',
+    url: 'https://gradium.ai',
+    allowedHosts: ['gradium.ai'],
+    category: 'Voice',
+    shortDesc: 'Voice AI APIs for text-to-speech, speech-to-text and voice design, plus the open-source on-device Phonon TTS.',
+    longDesc: 'Gradium, founded by the cofounders of the Kyutai lab, sells text-to-speech, speech-to-text, voice design and voice cloning through an API. On October 21, 2026 it released Phonon, an open-source (Apache 2.0) on-device text-to-speech model of 31M to 40M parameters for English, French, German, Spanish and Portuguese. The API Free plan includes 45,000 credits a month. XS is $13 a month billed monthly ($12 billed yearly).',
+    pricingModel: 'freemium',
+    priceFromUsd: 13,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['API', 'Self-hosted'],
+    lastVerifiedAt: FRESHNESS_2026_10_26,
+    fits: [],
+    affiliate: { ...none, status: 'verify' },
+  }),
+  // source: https://aistudio.google.com/learn/introducing-the-gemini-api-cli (published Oct 19, 2026) ; https://ai.google.dev/gemini-api/docs/pricing (Free tier + Paid tier) ; repo license Apache-2.0
+  tool({
+    slug: 'gemini-api-cli',
+    addedAt: FRESHNESS_2026_10_26,
+    name: 'Gemini API CLI',
+    vendor: 'Google',
+    url: 'https://github.com/google-gemini/gemini-api-cli',
+    allowedHosts: ['github.com', 'aistudio.google.com'],
+    category: 'Development',
+    shortDesc: 'An experimental command-line tool that gives developers and coding agents the Gemini API from the terminal.',
+    longDesc: 'Google released the Gemini API CLI (gemini-api) as an experimental preview on October 19, 2026. It is a zero-dependency binary for macOS, Linux and Windows that brings Gemini reasoning, media generation, multimodal analysis and Managed Agents to the shell and to coding agents. The CLI is free and open source (Apache 2.0). Usage is billed at Gemini API rates, which have a Free tier and a Paid tier.',
+    pricingModel: 'freemium',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['macOS', 'Windows', 'Linux'],
+    lastVerifiedAt: FRESHNESS_2026_10_26,
+    fits: [],
+    affiliate: { ...none, status: 'verify' },
+  }),
+  // source: https://www.thoughtspot.com/agentspot (product page) ; https://www.thoughtspot.com/agentspot/pricing
+  // Forge's draft only had the press release and left Fleet unpublished. The pricing page on 2026-10-26 lists Fleet at $1,650/month billed annually (no monthly-billed price shown), so priceFromUsd is that labeled annual rate.
+  tool({
+    slug: 'agentspot',
+    addedAt: FRESHNESS_2026_10_26,
+    name: 'AgentSpot',
+    vendor: 'ThoughtSpot',
+    url: 'https://www.thoughtspot.com/agentspot',
+    allowedHosts: ['www.thoughtspot.com'],
+    category: 'Agent builder',
+    shortDesc: 'A shared workspace where teams build agents, workflows and apps on business data, priced by outcome.',
+    longDesc: 'ThoughtSpot launched AgentSpot on October 22, 2026 as "multiplayer AI": anyone on a team can build agents, workflows and apps grounded in business data and share them. You pay only when an agent delivers work (a conversation, a workflow run or an app session), not per seat or token. The free plan has no time limit or card requirement and includes unlimited agents and users with 25 Data-to-Outcome credits a week. Fleet is $1,650 a month, billed annually, with 250 credits a week.',
+    pricingModel: 'freemium',
+    priceFromUsd: 1650,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: FRESHNESS_2026_10_26,
+    fits: [],
+    affiliate: { ...none, status: 'verify' },
+  }),
+  // source: https://www.sai.work/pricing ; news: https://www.simular.ai/articles/agent-s4-evolving-the-interfaces-computer-use-agents-work-throughagen (Oct 21, 2026)
+  tool({
+    slug: 'sai',
+    addedAt: FRESHNESS_2026_10_26,
+    name: 'Sai',
+    vendor: 'Simular',
+    url: 'https://www.sai.work',
+    allowedHosts: ['www.sai.work', 'sai.work'],
+    category: 'Automation',
+    shortDesc: 'A computer-use agent that runs repetitive computer tasks for you, unattended.',
+    longDesc: 'Sai is Simular\'s computer-use agent. It runs repetitive computer work on a dedicated cloud Windows or Linux computer, or on your own Mac or Windows machine, and gets faster with each run. Explore is free with credits that refresh daily. Pay as you go is $50 a month for 50,000 credits ($50 of usage), and Sai Unlimited is $500 a month. Simular published its open-source Agent S4 research framework on October 21, 2026.',
+    pricingModel: 'freemium',
+    priceFromUsd: 50,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Web', 'macOS', 'Windows'],
+    lastVerifiedAt: FRESHNESS_2026_10_26,
+    fits: [],
+    affiliate: { ...none, status: 'verify' },
+  }),
+  // source: https://higgsfield.ai/pricing (Monthly tab: Starter $19 billed monthly; Annual tab: Starter $19, Plus $47, Ultra $99)
+  tool({
+    slug: 'higgsfield',
+    addedAt: FRESHNESS_2026_10_26,
+    name: 'Higgsfield',
+    vendor: 'Higgsfield AI',
+    url: 'https://higgsfield.ai',
+    allowedHosts: ['higgsfield.ai'],
+    category: 'AI video',
+    shortDesc: 'A creator studio for AI video and images that bundles top generation models under one credit plan.',
+    longDesc: 'Higgsfield bundles video and image models such as Seedance, Kling and Nano Banana with creator apps like AI Influencer, Ads Studio and Cinema Studio. Starter is $19 a month for 270 credits, the same whether billed monthly or annually. Plus is $59 a month billed monthly ($47 billed annually), and Ultra is $129 ($99 annually). There is no free plan; paid plans include a few free generations in some apps.',
+    pricingModel: 'paid',
+    priceFromUsd: 19,
+    hasFreeTier: false,
+    skillLevel: 'beginner',
+    platforms: ['Web'],
+    lastVerifiedAt: FRESHNESS_2026_10_26,
+    fits: [],
+    affiliate: { ...none, status: 'verify' },
+  }),
+  // source: https://www.adobe.com/products/firefly/plans.html (Standard US$9.99/mo monthly; "You don't need a plan to get free daily generations")
+  tool({
+    slug: 'adobe-firefly',
+    addedAt: FRESHNESS_2026_10_26,
+    name: 'Adobe Firefly',
+    vendor: 'Adobe',
+    url: 'https://www.adobe.com/products/firefly.html',
+    allowedHosts: ['www.adobe.com', 'firefly.adobe.com'],
+    category: 'Images',
+    shortDesc: 'Adobe\'s generative app for images, video and audio, with free daily generations and credit plans.',
+    longDesc: 'Firefly creates and edits images, video and audio, and also offers partner models from Google, OpenAI, Flux and others. Without a plan you get free daily generations that refresh every day. Firefly Standard is $9.99 a month with 2,000 generative credits. Pro is $19.99, Pro Plus $49.99 and Premium $199.99, and paid plans include Adobe Express Premium and Photoshop on web and mobile.',
+    pricingModel: 'freemium',
+    priceFromUsd: 9.99,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['Web', 'iOS', 'Android'],
+    lastVerifiedAt: FRESHNESS_2026_10_26,
     fits: [],
     affiliate: { ...none, status: 'verify' },
   }),

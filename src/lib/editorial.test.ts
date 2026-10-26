@@ -51,14 +51,14 @@ describe('Our rating', () => {
 
   it('accepts the checked seed and rejects invented or incomplete rows', () => {
     expect(ratingSeeds).toHaveLength(112)
-    expect(unratedSlugs).toHaveLength(145)
+    expect(unratedSlugs).toHaveLength(152)
     expect(ratingSeeds.find((row) => row.slug === 'grok')?.rationale).toBe('')
     expect(ratingSeeds.find((row) => row.slug === 'semantic-scholar')?.rationale).toBe('')
     expect(unratedSlugs).not.toContain('cursor')
     expect(unratedSlugs).not.toContain('windsurf')
     expect(unratedSlugs).not.toContain('perplexity')
     expect(unratedSlugs).toContain('se-ranking')
-    expect(toolSeeds).toHaveLength(257)
+    expect(toolSeeds).toHaveLength(264)
     const rated = new Set(ratingSeeds.map((row) => row.slug))
     expect([...slugs].filter((slug) => !rated.has(slug)).sort()).toEqual([...unratedSlugs])
     expect(JSON.stringify(ratingSeeds)).not.toContain('pcmag.com')
@@ -257,7 +257,7 @@ describe('Our rating', () => {
     expect(catalog.tools.find((tool) => tool.slug === 'perplexity')?.editorial?.overall).toBe(3.9)
     expect(catalog.tools.find((tool) => tool.slug === 'canva')?.editorial?.overall).toBe(4)
     expect(catalog.tools.find((tool) => tool.slug === 'surfer')?.editorial?.overall).toBe(3.6)
-    // perplexity.ai/pro shows only the annual-billed Pro price: $17, labeled 'billed annually' like krisp and tldv
+    // perplexity.ai/pro shows only the annual-billed Pro price: $17, labeled 'billed annually' (krisp and tldv now use the monthly-billed price)
     const perplexitySeed = toolSeeds.find((tool) => tool.slug === 'perplexity')
     expect(perplexitySeed?.priceFromUsd).toBe(17)
     expect(perplexitySeed?.longDesc).toContain('$17 a month, billed annually')

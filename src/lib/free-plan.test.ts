@@ -96,7 +96,7 @@ describe('free-plan catalog data', () => {
   })
 
   it('holds the unverified tools and gives them no note', () => {
-    expect(Object.keys(freePlanHolds).sort()).toEqual(['hedra', 'picsart'])
+    expect(Object.keys(freePlanHolds).sort()).toEqual(['picsart'])
     for (const slug of Object.keys(freePlanHolds)) expect(freePlanNotes[slug]).toBeUndefined()
   })
 })

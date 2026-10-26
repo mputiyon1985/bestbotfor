@@ -167,7 +167,7 @@ export const musicSeoToolSeeds: ToolSeed[] = [
     ],
     affiliate: { ...none, status: 'verify' },
   }),
-  // pricing verified 2026-10-21 at https://www.semrush.com/prices/ (SEO $139.95/mo monthly, $117.33/mo annual; Free 10 reports/day) | budget fit: free | best for: seo,keyword-research,rank-tracking,site-audit
+  // pricing verified 2026-10-26 at https://www.semrush.com/prices/ (SEO $139/mo monthly, $117.33/mo annual; Free 10 reports/day). #143 restored 139.95; this is the carried 10/22 fix. | budget fit: free | best for: seo,keyword-research,rank-tracking,site-audit
   tool({
     slug: 'semrush',
     name: 'Semrush',
@@ -176,13 +176,13 @@ export const musicSeoToolSeeds: ToolSeed[] = [
     allowedHosts: ['www.semrush.com'],
     category: 'SEO',
     shortDesc: 'An all-in-one SEO suite: keywords, rank tracking, audits, and AI visibility.',
-    longDesc: 'The broad platform for keyword research, competitors and site audits. A free account includes 1 project and 10 reports a day. Paid SEO plans start at $139.95/mo billed monthly.',
+    longDesc: 'The broad platform for keyword research, competitors and site audits. A free account includes 1 project and 10 reports a day. Paid SEO plans start at $139/mo billed monthly.',
     pricingModel: 'freemium',
-    priceFromUsd: 139.95,
+    priceFromUsd: 139,
     hasFreeTier: true,
     skillLevel: 'intermediate',
     platforms: ['Web', 'API'],
-    lastVerifiedAt: REVIEWED,
+    lastVerifiedAt: '2026-10-26',
     fits: [
       { task: 'seo', score: 90, notes: 'Full SEO suite; writing optimization is one part of it.' },
     ],

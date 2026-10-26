@@ -72,7 +72,7 @@ describe('catalog seed', () => {
     expect(toolRows.find((row) => row.slug === 'semrush')).toMatchObject({
       pricingModel: 'freemium',
       hasFreeTier: true,
-      priceFromUsd: 139.95,
+      priceFromUsd: 139,
     })
   })
 
@@ -130,7 +130,7 @@ describe('catalog seed', () => {
       ['se-ranking', 84],
     ] as const) {
       const entry = toolSeeds.find((item) => item.slug === slug)
-      expect(entry?.lastVerifiedAt, slug).toBe('2026-10-16')
+      expect(entry?.lastVerifiedAt, slug).toBe(slug === 'semrush' ? '2026-10-26' : '2026-10-16')
       expect(entry?.allowedHosts.length, slug).toBeGreaterThan(0)
       const fit = entry?.fits[0]
       expect(fit?.score, slug).toBe(score)
@@ -138,7 +138,7 @@ describe('catalog seed', () => {
     expect(toolSeeds.find((item) => item.slug === 'semrush')).toMatchObject({
       pricingModel: 'freemium',
       hasFreeTier: true,
-      priceFromUsd: 139.95,
+      priceFromUsd: 139,
     })
     expect(toolSeeds.find((item) => item.slug === 'soundraw')?.priceFromUsd).toBe(16.99)
     expect(toolSeeds.find((item) => item.slug === 'neuronwriter')?.priceFromUsd).toBe(23)
