@@ -1,5 +1,5 @@
 import { N8N_PRICE_LABEL } from '@/data/catalog-corrections'
-import { withAnnualBilling } from './annual-billed'
+import { isAnnualBilledSlug, withAnnualBilling } from './annual-billed'
 import type { Budget, Skill } from './validation'
 
 const PRICE_LABEL_OVERRIDES: Readonly<Record<string, string>> = {
@@ -75,7 +75,9 @@ export function priceLabel(tool: Priced): string {
       minimumFractionDigits: wholeDollars ? 0 : 2,
       maximumFractionDigits: wholeDollars ? 0 : 2,
     }).format(tool.priceFromUsd)
-    const label = tool.hasFreeTier ? `Free tier, then ${money} and up` : `${money} and up`
+    // "/mo" is only for the annual list. A bare "$1,650 and up, billed annually" reads as a yearly total.
+    const amount = isAnnualBilledSlug(tool.slug) ? `${money}/mo` : money
+    const label = tool.hasFreeTier ? `Free tier, then ${amount} and up` : `${amount} and up`
     return withAnnualBilling(tool.slug, label)
   }
   if (tool.hasFreeTier) return withAnnualBilling(tool.slug, 'Free tier, paid plans available')

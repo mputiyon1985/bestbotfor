@@ -1,8 +1,12 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { expect, test, type Locator } from '@playwright/test'
 import { comparePairSeeds, toolSeeds } from '../src/data/catalog'
 import { TOOL_LOGO_MARK_FILL, TOOL_LOGO_SIZE } from '../src/lib/logo-source'
 import { BEST_GUIDE_TOOL_COUNT } from '../src/lib/descriptions'
+import { MATCHES_PAGE_SIZE, MATCHES_SKILL, matchesPath } from '../src/lib/matches'
 import { toolsForTask } from '../src/lib/recommend'
+import { isQuizMatchable, rankTools } from '../src/lib/scoring'
 import { categorySlug, toolCategories } from '../src/lib/tool-index'
 import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'
 
@@ -18,6 +22,42 @@ function escapeRegExp(value: string): string {
 
 function pageCount(total: number): number {
   return Math.max(1, Math.ceil(total / TOOLS_PAGE_SIZE))
+}
+
+/**
+ * Listed tools, counted from the catalog source files. This does not call
+ * `pageCount` or read the directory UI, so a page-count assert can compare
+ * the rendered pagination against ceil(n / TOOLS_PAGE_SIZE).
+ */
+/** Best-guide card, or the all-matches card when the tool ranks past the guide. */
+function rankedCardPath(slug: string): string | null {
+  for (const task of catalog.tasks) {
+    const ranked = toolsForTask(catalog, task.slug)
+    const index = ranked.findIndex((tool) => tool.slug === slug)
+    if (index >= 0 && index < BEST_GUIDE_TOOL_COUNT) return `/best/${task.slug}`
+  }
+  for (const task of catalog.tasks) {
+    const ranked = toolsForTask(catalog, task.slug).filter((tool) =>
+      isQuizMatchable({ slug: tool.slug, fitScore: tool.fitScore, quizEligible: tool.quizEligible, editorial: tool.editorial }),
+    )
+    const ordered = rankTools(ranked, { budget: 'any', skill: MATCHES_SKILL })
+    const index = ordered.findIndex((tool) => tool.slug === slug)
+    if (index === -1) continue
+    return matchesPath(task.slug, 'any', Math.floor(index / MATCHES_PAGE_SIZE) + 1)
+  }
+  return null
+}
+
+function listedToolCountFromCatalogFiles(): number {
+  const files = ['src/data/catalog.ts', 'src/data/music-seo.ts']
+  let slugs = 0
+  let unlisted = 0
+  for (const file of files) {
+    const lines = readFileSync(path.join(process.cwd(), file), 'utf8').split('\n')
+    slugs += lines.filter((line) => /^ {4}slug: /.test(line)).length
+    unlisted += lines.filter((line) => /^ {4}unlisted: true,?/.test(line)).length
+  }
+  return slugs - unlisted
 }
 
 test('lists a page of catalog tools and links to the next page', async ({ page }) => {
@@ -84,12 +124,20 @@ test('filters by a catalog category with a shareable URL and without JavaScript'
 })
 
 test('each real tools page has its own canonical, and pages past the end are 404', async ({ page, request }) => {
-  const pages = pageCount(catalog.tools.length)
-  expect(pages).toBeGreaterThan(1)
-  // The last real page follows the listed catalog and TOOLS_PAGE_SIZE. A fixed cap (the old `< 12`) fails as soon as one more tool opens the next page.
-  expect(pages).toBe(Math.ceil(catalog.tools.length / TOOLS_PAGE_SIZE))
+  // n comes from the catalog files. The page count comes from the directory UI, not from pageCount().
+  const listed = listedToolCountFromCatalogFiles()
+  const expectedPages = Math.ceil(listed / TOOLS_PAGE_SIZE)
+  expect(expectedPages).toBeGreaterThan(1)
 
   await page.goto('/tools')
+  const summary = page.getByText(/\d+ tools\. Page 1 of \d+\./)
+  await expect(summary).toBeVisible()
+  const renderedPages = Number(/Page 1 of (\d+)\./.exec((await summary.innerText()) ?? '')?.[1])
+  expect(renderedPages, 'pages rendered by the directory').toBe(expectedPages)
+  const lastPage = await request.get(`/tools?page=${renderedPages}`)
+  expect(lastPage.status()).toBe(200)
+  const pages = renderedPages
+
   const firstCanonical = await page.locator('link[rel="canonical"]').getAttribute('href')
   expect(firstCanonical).toMatch(/\/tools$/)
 
@@ -307,6 +355,46 @@ test('an unknown category does not echo the query', async ({ page }) => {
   await expect(page.getByText(unknown)).toHaveCount(0)
   await expect(page.locator('meta[name="robots"]')).toHaveAttribute('content', /noindex/)
   await expect(page.getByRole('list', { name: 'Tools' })).toHaveCount(0)
+})
+
+test('annual-billed tools show a monthly rate on the card, the tool page, and the meta description', async ({ page }) => {
+  const cases = [
+    { slug: 'agentspot', name: 'AgentSpot', price: 'Free tier, then $1,650/mo and up, billed annually' },
+    { slug: 'perplexity', name: 'Perplexity', price: 'Free tier, then $17/mo and up, billed annually' },
+    { slug: 'lalal-ai', name: 'LALAL.AI', price: 'Free tier, then $7.50/mo and up, billed annually' },
+  ] as const
+
+  for (const item of cases) {
+    await page.goto(`/tools/${item.slug}`)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(item.name)
+    await expect(page.getByText(item.price, { exact: true }).filter({ visible: true })).toBeVisible()
+    await expect(page.getByText('Yes', { exact: true }).filter({ visible: true }).first()).toBeVisible()
+    const description = (await page.locator('meta[name="description"]').getAttribute('content')) ?? ''
+    expect(description, item.slug).toContain(item.price)
+    expect(description.length, item.slug).toBeLessThanOrEqual(160)
+    const cut = description.indexOf('…')
+    if (cut !== -1) {
+      const tool = catalog.tools.find((entry) => entry.slug === item.slug)
+      const lead = `${item.name} by ${tool?.vendor}: ${tool?.shortDesc.trim().replace(/\.?$/, '.')}`
+      const before = description.slice(0, cut)
+      expect(lead.startsWith(before), item.slug).toBe(true)
+      expect(lead[before.length], `${item.slug} meta cut mid-word`).toMatch(/\s/)
+    }
+
+    const cardPath = rankedCardPath(item.slug)
+    if (!cardPath) {
+      expect(toolSeeds.find((tool) => tool.slug === item.slug)?.fits, item.slug).toEqual([])
+      continue
+    }
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto(cardPath)
+    const card = page.getByRole('listitem').filter({ has: page.getByRole('link', { name: item.name, exact: true }) })
+    await expect(card.getByText(item.price, { exact: true })).toBeVisible()
+    if (cardPath.startsWith('/best/')) {
+      await page.setViewportSize({ width: 1280, height: 900 })
+      await expect(page.locator('table').getByText(item.price, { exact: true })).toBeVisible()
+    }
+  }
 })
 
 test('best, compare, tool profiles, and the sitemap follow the seed', async ({ page, request }) => {

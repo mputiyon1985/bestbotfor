@@ -17,7 +17,7 @@ describe('batch 02 catalog fixes (seed is what prod re-seeds from)', () => {
     const lalal = seed('lalal-ai')
     expect(lalal.priceFromUsd).toBe(7.5)
     expect(lalal.longDesc).toContain('$7.50 a month, billed annually')
-    expect(priceLabel(lalal)).toBe('Free tier, then $7.50 and up, billed annually')
+    expect(priceLabel(lalal)).toBe('Free tier, then $7.50/mo and up, billed annually')
   })
 
   it('keeps Deepgram usage-based with no monthly price', () => {
