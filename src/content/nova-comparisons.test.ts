@@ -20,10 +20,10 @@ describe('Nova comparison copy', () => {
     expect(copy).not.toMatch(/\| Writesonic \|[^\n]*\| Yes/)
   })
 
-  it('lists Semrush SEO at $139.95/mo on surfer-alternatives, matching the catalog', () => {
+  it('lists Semrush SEO at $139/mo on surfer-alternatives, matching the catalog', () => {
     const copy = novaCopy('surfer-alternatives') ?? ''
-    expect(copy).toContain('SEO plan $139.95/mo')
-    expect(copy).not.toMatch(/\$139(?![.\d])/)
+    expect(copy).toContain('SEO plan $139/mo')
+    expect(copy).not.toContain('$139.95')
   })
 
   it('renders nothing for unpublished or unknown slugs', () => {
