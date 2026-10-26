@@ -5402,7 +5402,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-26 | category: Voice | scout rating 3.5 (not shown) | launch: 2026-10-23 (announced); widely covered 2026-10-24 | pricing: Not available: research preview for a small group of AI-safety researchers; public waitlist. No API, weights or price announced.
-  // note: OPEN QUESTION: not available to buy (research preview, waitlist; no API, weights or price). pricingModel 'paid' is a placeholder (the type needs a value); price unknown.
+  // note: not available to buy (research preview, waitlist; no API, weights or price). Unlisted until launch; pricingModel 'paid' is a placeholder (schema requires a value); price unknown.
   tool({
     slug: 'dessa',
     addedAt: '2026-10-26',
@@ -5420,10 +5420,12 @@ export const toolSeeds: ToolSeed[] = [
     platforms: ['macOS'],
     lastVerifiedAt: SCOUTED_2026_10_26,
     fits: [],
+    // Hidden until Dessa launches (James/Mark, Oct 26): research preview only, nothing to buy or try.
+    unlisted: true,
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-26 | category: Security (FLAG: scout category "Security" mapped to Coding assistant) | scout rating 4.1 (not shown) | launch: 2026-10-22 (GA; preview since 2026-06-17) | pricing: unknown (AWS pricing page not verified on this run)
-  // note: OPEN QUESTION: pricing unknown (AWS pricing page not verified); pricingModel 'paid' is a placeholder (the type needs a value).
+  // note: PLACEHOLDER: pricing unknown (AWS pricing page not verified). pricingModel 'paid' is a placeholder because the schema requires free/freemium/paid (tools.pricing_model NOT NULL); priceFromUsd null.
   tool({
     slug: 'aws-continuum',
     addedAt: '2026-10-26',
