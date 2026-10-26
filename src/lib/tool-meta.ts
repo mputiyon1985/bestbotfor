@@ -30,6 +30,27 @@ function keepsAnnualNote(tool: ToolMetaInput, text: string): boolean {
   return !isAnnualBilledSlug(tool.slug) || /billed annually/i.test(text)
 }
 
+const ELLIPSIS = '…'
+
+/**
+ * Fit `text` into `max` characters. A cut backs up to the previous word and
+ * adds an ellipsis, so a snippet never stops in the middle of a word.
+ */
+export function truncateAtWord(text: string, max: number): string {
+  if (max <= 0) return ''
+  if (text.length <= max) return text
+  if (max === 1) return ELLIPSIS
+  const limit = max - ELLIPSIS.length
+  let head = text.slice(0, limit)
+  const next = text.charAt(head.length)
+  const endsMidWord = next !== '' && !/\s/.test(next) && !/\s/.test(head.slice(-1))
+  if (endsMidWord) {
+    const boundary = head.search(/\s\S*$/)
+    if (boundary > 0) head = head.slice(0, boundary)
+  }
+  return `${head.trimEnd()}${ELLIPSIS}`
+}
+
 export function toolMetaDescription(tool: ToolMetaInput): string {
   const lead = `${tool.name} by ${tool.vendor}: ${tool.shortDesc.trim().replace(/\.?$/, '.')}`
   const price = ` Price: ${priceLabel(tool as Parameters<typeof priceLabel>[0])}.`
@@ -41,9 +62,9 @@ export function toolMetaDescription(tool: ToolMetaInput): string {
   // must not be dropped, or the snippet would hide that the rate is billed annually.
   if (isAnnualBilledSlug(tool.slug) && price.length < TOOL_DESCRIPTION_MAX) {
     const room = TOOL_DESCRIPTION_MAX - price.length
-    const trimmed = lead.length <= room ? lead : `${lead.slice(0, Math.max(0, room - 1)).trimEnd()}…`
+    const trimmed = truncateAtWord(lead, room)
     const text = `${trimmed}${price}`
-    if (text.length <= TOOL_DESCRIPTION_MAX) return text
+    if (text.length <= TOOL_DESCRIPTION_MAX && keepsAnnualNote(tool, text)) return text
   }
-  return `${lead.slice(0, TOOL_DESCRIPTION_MAX - 1).trimEnd()}…`
+  return truncateAtWord(lead, TOOL_DESCRIPTION_MAX)
 }

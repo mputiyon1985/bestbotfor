@@ -3866,7 +3866,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // expansion 2026-10-22 (Forge, approved by James) + freshness discovery | 14 new tools, unrated, official domains only, no affiliate links
-  // priceFromUsd is the monthly-billed price except ANNUAL_BILLED_SLUGS (src/lib/annual-billed.ts). priceLabel appends ", billed annually" for that list.
+  // priceFromUsd is the monthly-billed price except ANNUAL_BILLED_SLUGS (src/lib/annual-billed.ts). priceLabel shows "$X/mo and up, billed annually" for that list.
   // source: https://ampcode.com/pricing
   tool({
     slug: 'amp',
