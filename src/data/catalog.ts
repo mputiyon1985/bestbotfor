@@ -2350,9 +2350,9 @@ export const toolSeeds: ToolSeed[] = [
     url: 'https://deepgram.com',
     allowedHosts: ['deepgram.com'],
     category: 'Voice',
-    shortDesc: 'Speech-to-text and voice AI APIs for developers.',
+    shortDesc: 'Speech-to-text and text-to-speech APIs for developers.',
     longDesc:
-      'Fast transcription API for developers. Nova-3 is $0.0043 a minute pre-recorded and $0.0048 a minute streaming (promotional), after a $200 free credit.',
+      'Transcription and text-to-speech APIs for developers. Nova-3 transcription is $0.0043 a minute pre-recorded and $0.0048 a minute streaming (promotional); Flux TTS, the voice our rating covers, is $0.045 per 1,000 characters. Both are pay as you go after a $200 free credit.',
     pricingModel: 'paid',
     priceFromUsd: null,
     hasFreeTier: false,
@@ -3946,7 +3946,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: none,
   }),
   // source: https://aider.chat/ | FLAG: No pricing page; installed with pip from the official site. Model/API costs are separate.
-  // 2026-10-25 fits (ratings backlog batch 01, Sentinel QA of #156): coding 78, backend 60, from https://aider.chat/ , /docs/ , /docs/usage/modes.html , /docs/git.html . No vibe-coding fit (terminal only, no preview or hosting).
+  // 2026-10-25 fits (ratings backlog batch 01, fits from Forge): coding 78, backend 60, from https://aider.chat/ , /docs/ , /docs/usage/modes.html , /docs/git.html . No vibe-coding fit (terminal only, no preview or hosting).
   tool({
     slug: 'aider',
     addedAt: '2026-10-22',
@@ -3969,7 +3969,7 @@ export const toolSeeds: ToolSeed[] = [
     ],
     affiliate: none,
   }),
-  // source: https://www.jetbrains.com/store/ai/?section=personal&billing=monthly | 2026-10-25 price fix (Sentinel QA of #156; James's store check; re-read from the store page data): AI Pro $10/mo billed monthly or $100/yr; AI Ultimate $30/mo or $300/yr. /ai/ now leads to “JetBrains Air”. Logo is the JetBrains corporate mark.
+  // source: https://www.jetbrains.com/store/ai/?section=personal&billing=monthly | 2026-10-25 price fix (Sentinel's browser check of the store page, QA of #156; re-read from the store page data): AI Pro $10/mo billed monthly or $100/yr; AI Ultimate $30/mo or $300/yr. /ai/ now leads to “JetBrains Air”. Logo is the JetBrains corporate mark.
   tool({
     slug: 'jetbrains-ai',
     addedAt: '2026-10-22',

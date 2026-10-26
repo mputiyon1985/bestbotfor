@@ -416,6 +416,10 @@ describe('catalog corrections', () => {
     expect(deepgram?.longDesc).toContain('$0.0043')
     expect(deepgram?.longDesc).toContain('$0.0048')
     expect(deepgram?.longDesc).not.toContain('0.006')
+    // Rated on Flux TTS (scores v2.3), so the description must say it does text-to-speech, not only transcription.
+    expect(deepgram?.shortDesc).toContain('text-to-speech')
+    expect(deepgram?.longDesc).toContain('text-to-speech')
+    expect(deepgram?.longDesc).toContain('Flux TTS')
 
     const points = editorialSeeds.find((row) => row.slug === 'deepgram')
     expect(points?.pros.map((point) => point.text)).toContain(DEEPGRAM_PRICE_PRO)
