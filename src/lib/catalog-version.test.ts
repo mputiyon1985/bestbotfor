@@ -36,8 +36,9 @@ describe('every catalog unstable_cache key carries the deploy version', () => {
     vi.resetModules()
     captured.length = 0
     await import('./catalog')
-    expect(captured.length).toBeGreaterThanOrEqual(11)
+    expect(captured.length).toBeGreaterThanOrEqual(12)
     for (const parts of captured) expect(parts).toContain('catalog-version:sha-deadbeefcafe')
+    expect(captured.some((parts) => parts[0] === 'visible-tool-count-v1')).toBe(true)
   })
 })
 
