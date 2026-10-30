@@ -6,6 +6,9 @@ import { hasDotSegment } from '@/lib/dot-segment'
 import { buildContentSecurityPolicy, securityHeaders } from '@/lib/csp'
 import { getDb, peekCachedTaskSlugs } from '@/lib/db/client'
 import { isAdminPath } from '@/lib/admin-path'
+import { LOGIN_CSRF_COOKIE, LOGIN_CSRF_HEADER, loginCsrfCookie } from '@/lib/signups/auth/login-csrf'
+import { decideSignupsGate } from '@/lib/signups/gate'
+import { isSignupsAdminPath, SIGNUPS_LOGIN, SIGNUPS_REQUEST_HEADER } from '@/lib/signups/paths'
 import { isJunkPath } from '@/lib/junk-path'
 import { adminSponsorsEnabled, isAdminMfaPath, isClerkConfigured, isRatingsPath, isSponsorsAdminPath, userRatingsEnabled } from '@/lib/flags'
 import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from '@/lib/indexing'
@@ -27,14 +30,20 @@ function applySecurity(response: NextResponse, nonce: string): NextResponse {
   return response
 }
 
-function nextWithNonce(request: NextRequest): NextResponse {
+function nextWithNonce(request: NextRequest, csrf?: string): NextResponse {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const csp = buildContentSecurityPolicy(nonce, process.env.NODE_ENV !== 'production')
   const requestHeaders = new Headers(request.headers)
+  // Drop a client-supplied copy. Only this proxy sets the signups marker.
+  requestHeaders.delete(SIGNUPS_REQUEST_HEADER)
   requestHeaders.set('x-nonce', nonce)
   requestHeaders.set('x-bbf-method', request.method)
   requestHeaders.set('Content-Security-Policy', csp)
+  if (isSignupsAdminPath(request.nextUrl.pathname)) requestHeaders.set(SIGNUPS_REQUEST_HEADER, '1')
+  if (csrf) requestHeaders.set(LOGIN_CSRF_HEADER, csrf)
   const response = NextResponse.next({ request: { headers: requestHeaders } })
+  response.headers.delete(SIGNUPS_REQUEST_HEADER)
+  if (csrf) response.cookies.set(LOGIN_CSRF_COOKIE, csrf, loginCsrfCookie)
   return adminHeaders(applySecurity(response, nonce), request.nextUrl.pathname)
 }
 
@@ -249,6 +258,16 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   if (hiddenSponsors) return hiddenSponsors
   const rejected = rejectCatalogPath(request)
   if (rejected) return rejected
+  const signups = await decideSignupsGate(request)
+  if (signups.action === 'not-found') return hiddenNotFound()
+  if (signups.action === 'redirect') {
+    const url = request.nextUrl.clone()
+    url.pathname = SIGNUPS_LOGIN
+    url.search = ''
+    const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+    return adminHeaders(applySecurity(NextResponse.redirect(url), nonce), request.nextUrl.pathname)
+  }
+  if (signups.action === 'next') return nextWithNonce(request, signups.csrf ?? undefined)
   const gated = await gateResult(request, event)
   if (gated) return gated
   if (!isClerkConfigured()) {

@@ -43,6 +43,11 @@ const ALLOWED = new Set([
   'src/app/api/cron/data-retention/route.ts',
   // Review write service, gated by userRatingsEnabled() (off in production).
   'src/lib/reviews/write.ts',
+  // Signups admin reads one SELECT from a separate Turso database with
+  // SIGNUPS_TURSO_AUTH_TOKEN. The statement is built from bare identifiers,
+  // must start with SELECT, and cannot contain a semicolon. It does not use
+  // the site TURSO_DATABASE_URL and it does not write.
+  'src/lib/signups/sources/turso.ts',
   // Withdrawn-review purge, called only by the data-retention cron while user ratings are on.
   'src/lib/reviews/purge.ts',
 ])

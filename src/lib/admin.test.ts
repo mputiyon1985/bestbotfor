@@ -60,6 +60,16 @@ describe('admin access', () => {
       'src/app/admin/unguarded.tsx must call requireAdmin(), requireAdminStepUp(), assertAdminArea(), or requireMfaSetupPage().',
     ])
     expect(adminGuardGaps([{ path: 'src/app/admin/page.tsx', text: 'await requireAdmin()' }])).toEqual([])
+    expect(adminGuardGaps([{ path: 'src/app/admin/signups/page.tsx', text: 'export default function Page() { return null }' }])).toEqual([
+      'src/app/admin/signups/page.tsx must call requireSignupsSession().',
+    ])
+    expect(adminGuardGaps([{ path: 'src/app/admin/signups/page.tsx', text: 'await requireAdmin()' }])).toEqual([
+      'src/app/admin/signups/page.tsx must call requireSignupsSession().',
+    ])
+    expect(adminGuardGaps([{ path: 'src/app/admin/signups/export/route.ts', text: 'await requireSignupsSession(request)' }])).toEqual([])
+    expect(adminGuardGaps([{ path: 'src/app/admin/page.tsx', text: 'await requireSignupsSession()' }])).toEqual([
+      'src/app/admin/page.tsx must call requireAdmin(), requireAdminStepUp(), assertAdminArea(), or requireMfaSetupPage().',
+    ])
   })
 
   it('treats only /admin as an admin path, after decode and lowercase', () => {
