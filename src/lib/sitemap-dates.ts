@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm'
 import type { Database } from './db/client'
 import { tasks, toolScores, toolTasks, tools } from './db/schema'
+import { visibleToolStatus } from './visible-tool-status'
 
 /**
  * Stable lastmod for sitemap pages that carry no catalog review date of their
@@ -38,13 +39,13 @@ export async function readSitemapDates(db: Database): Promise<SitemapDates> {
       .select({ slug: tools.slug, verified: tools.lastVerifiedAt, reviewed: toolScores.reviewedAt })
       .from(tools)
       .leftJoin(toolScores, eq(toolScores.toolId, tools.id))
-      .where(eq(tools.status, 'active')),
+      .where(visibleToolStatus()),
     db
       .select({ task: tasks.slug, tool: tools.slug })
       .from(toolTasks)
       .innerJoin(tasks, eq(tasks.id, toolTasks.taskId))
       .innerJoin(tools, eq(tools.id, toolTasks.toolId))
-      .where(eq(tools.status, 'active')),
+      .where(visibleToolStatus()),
   ])
   const toolDates = new Map<string, string>()
   for (const row of toolRows) {

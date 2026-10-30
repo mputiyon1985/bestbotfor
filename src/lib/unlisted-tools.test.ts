@@ -8,7 +8,7 @@ import { seed } from '../../scripts/seed'
 import { getDb, resetDbCache } from './db/client'
 import { applyMigrations } from './db/migrate'
 import { tools } from './db/schema'
-import { assembleCatalog, readPublicSlugs, readTaskCandidates, readToolPage, readToolsBySlugs, searchToolSummaries } from './catalog-read'
+import { assembleCatalog, readPublicSlugs, readTaskCandidates, readToolPage, readToolsBySlugs, readVisibleToolCount, searchToolSummaries } from './catalog-read'
 import { resolveHeadGoRedirect } from './go-redirect'
 import { CATALOG_TOOL_COUNT } from './seo-pages'
 import { readFileSync } from 'node:fs'
@@ -85,5 +85,7 @@ describe('unlisted tools', () => {
       expect(catalog.tools.map((tool) => tool.slug), slug).not.toContain(slug)
     }
     expect(catalog.tools).toHaveLength(toolSeeds.length - UNLISTED_ALL.length)
+    expect(await readVisibleToolCount(db)).toBe(catalog.tools.length)
+    expect((await readToolPage(db, 1)).total).toBe(catalog.tools.length)
   })
 })
