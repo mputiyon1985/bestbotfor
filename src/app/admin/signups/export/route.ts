@@ -15,12 +15,7 @@ function notFoundResponse(): NextResponse {
 
 export async function GET(request: Request) {
   const access = await requireSignupsSession(request)
-  if (!access.configured) return notFoundResponse()
-  if (!access.session) {
-    const response = new NextResponse('Unauthorized', { status: 401, headers: { 'content-type': 'text/plain; charset=utf-8' } })
-    applyPrivacyHeaders(response.headers)
-    return response
-  }
+  if (!access.configured || !access.session) return notFoundResponse()
 
   const rows = combineSignups(await loadAllSources())
   const headers = new Headers({

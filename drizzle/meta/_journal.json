@@ -162,6 +162,13 @@
       "when": 1792194000000,
       "tag": "0024_deals",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1792195000000,
+      "tag": "0025_signups_admin",
+      "breakpoints": true
     }
   ]
 }

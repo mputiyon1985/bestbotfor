@@ -1,13 +1,8 @@
 import 'server-only'
-import { cached } from '../cache'
 import { fetchBeehiivSignups } from './beehiiv'
 import { fetchClerkSignups } from './clerk'
 import { fetchTursoSignups } from './turso'
 import { unavailable, type Signup, type SourceResult } from '../types'
-
-const loadTurso = cached('signups-turso', fetchTursoSignups)
-const loadBeehiiv = cached('signups-beehiiv', fetchBeehiivSignups)
-const loadClerk = cached('signups-clerk', fetchClerkSignups)
 
 async function settle(source: SourceResult['source'], load: () => Promise<SourceResult>): Promise<SourceResult> {
   try {
@@ -18,9 +13,17 @@ async function settle(source: SourceResult['source'], load: () => Promise<Source
   }
 }
 
-/** Each source is cached for 300s and isolated: one failure does not drop the others. */
+/**
+ * Each source is loaded for this request only. Results are not written to the
+ * Next.js data cache and are not kept for a later request. One failure does
+ * not drop the others.
+ */
 export async function loadAllSources(): Promise<SourceResult[]> {
-  return Promise.all([settle('turso', loadTurso), settle('beehiiv', loadBeehiiv), settle('clerk', loadClerk)])
+  return Promise.all([
+    settle('turso', fetchTursoSignups),
+    settle('beehiiv', fetchBeehiivSignups),
+    settle('clerk', fetchClerkSignups),
+  ])
 }
 
 export function combineSignups(results: readonly SourceResult[]): Signup[] {

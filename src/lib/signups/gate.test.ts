@@ -3,12 +3,14 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { proxy } from '@/proxy'
 import { hashPassword } from '@/lib/signups/auth/password'
 import { createSessionToken, SESSION_COOKIE, SESSION_TTL_MS } from '@/lib/signups/auth/session'
+import { issueSignupsSession } from '@/lib/signups/auth/session-store'
+import { withSignupsAuthDb } from '@/lib/signups/auth/fixture-db'
 import { base32Encode } from '@/lib/signups/auth/totp'
 import { decideSignupsGate } from '@/lib/signups/gate'
 import { ROBOTS_HEADER } from '@/lib/signups/privacy'
 import { SIGNUPS_EXPORT, SIGNUPS_HOME, SIGNUPS_LOGIN, SIGNUPS_LOGOUT } from '@/lib/signups/paths'
 
-const SECRET = 'test-session-secret-value'
+const SECRET = 'test-session-secret-value-32bytes-ok'
 const event = { waitUntil() {} }
 
 function configure() {
@@ -73,12 +75,25 @@ describe('signups proxy gating', () => {
   })
 
   it('allows a valid session through', async () => {
-    const { token } = await createSessionToken(SECRET, Date.now())
-    const response = await run(SIGNUPS_HOME, `${SESSION_COOKIE}=${token}`)
-    expect(response.status).toBe(200)
-    expect(response.headers.get('location')).toBeNull()
+    const closeDb = await withSignupsAuthDb()
+    try {
+      const { token } = await issueSignupsSession(SECRET)
+      const response = await run(SIGNUPS_HOME, `${SESSION_COOKIE}=${token}`)
+      expect(response.status).toBe(200)
+      expect(response.headers.get('location')).toBeNull()
+      expect(response.headers.get('x-robots-tag')).toBe(ROBOTS_HEADER)
+      expect(response.headers.get('x-bbf-signups')).toBeNull()
+    } finally {
+      await closeDb()
+    }
+  })
+
+  it('redirects a trailing slash with noindex and no-store', async () => {
+    const response = await run(`${SIGNUPS_HOME}/`)
+    expect(response.status).toBe(308)
+    expect(response.headers.get('location')).toBe(`https://dash.example${SIGNUPS_HOME}`)
     expect(response.headers.get('x-robots-tag')).toBe(ROBOTS_HEADER)
-    expect(response.headers.get('x-bbf-signups')).toBeNull()
+    expect(response.headers.get('cache-control')).toContain('no-store')
   })
 
   it('rejects an expired session cookie', async () => {

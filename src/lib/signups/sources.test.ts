@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { resetCacheForTests } from '@/lib/signups/cache'
 import { combineSignups, loadAllSources } from '@/lib/signups/sources/load'
 import { subscriberQuery } from '@/lib/signups/sources/turso'
 
@@ -12,15 +11,9 @@ const libsql = vi.hoisted(() => {
   return { execute, close, createClient }
 })
 
-const nextCache = vi.hoisted(() => ({
-  unstable_cache: vi.fn((fn: () => Promise<unknown>) => fn),
-}))
-
 vi.mock('@libsql/client', () => ({
   createClient: libsql.createClient,
 }))
-
-vi.mock('next/cache', () => nextCache)
 
 const ENV_KEYS = [
   'SIGNUPS_TURSO_DATABASE_URL',
@@ -65,7 +58,6 @@ function requestUrl(input: Parameters<typeof fetch>[0]): URL {
 
 beforeEach(() => {
   clearEnv()
-  resetCacheForTests()
   libsql.execute.mockReset()
   libsql.close.mockReset()
   libsql.createClient.mockReset()
@@ -78,7 +70,6 @@ beforeEach(() => {
 
 afterEach(() => {
   restoreEnv()
-  resetCacheForTests()
   vi.unstubAllGlobals()
   vi.restoreAllMocks()
 })
@@ -86,9 +77,10 @@ afterEach(() => {
 describe('sources', () => {
   it('builds one read-only query and ignores unsafe column names', () => {
     const loader = readFileSync(path.join(process.cwd(), 'src/lib/signups/sources/load.ts'), 'utf8')
-    expect(loader).toContain("cached('signups-turso'")
-    expect(loader).toContain("cached('signups-beehiiv'")
-    expect(loader).toContain("cached('signups-clerk'")
+    expect(loader).toContain('fetchTursoSignups')
+    expect(loader).toContain('fetchBeehiivSignups')
+    expect(loader).toContain('fetchClerkSignups')
+    expect(loader).not.toContain('unstable_cache')
     expect(subscriberQuery({})).toBe(
       'SELECT "email" AS email, "created_at" AS created_at FROM "subscribers" ORDER BY "created_at" DESC LIMIT 5000',
     )
@@ -218,14 +210,13 @@ describe('sources', () => {
     expect(missingClerk.find((result) => result.source === 'beehiiv')?.ok).toBe(true)
     expect(errors.mock.calls.flat().join(' ')).not.toContain('clerk down')
 
-    resetCacheForTests()
     clearEnv()
     const allMissing = await loadAllSources()
     expect(allMissing.every((result) => result.ok === false)).toBe(true)
     expect(libsql.createClient).toHaveBeenCalledTimes(1)
   })
 
-  it('does not refetch a source within 300 seconds', async () => {
+  it('fetches a source again on the next call', async () => {
     process.env.BEEHIIV_API_KEY = 'beehiiv_test_key'
     process.env.BEEHIIV_PUBLICATION_ID = 'pub_123'
     const fetchMock = vi.mocked(fetch)
@@ -241,7 +232,7 @@ describe('sources', () => {
     const first = await loadAllSources()
     const second = await loadAllSources()
     expect(first[1]?.signups).toEqual(second[1]?.signups)
-    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fetchMock).toHaveBeenCalledTimes(2)
   })
 
   it('sorts the combined list newest first', () => {

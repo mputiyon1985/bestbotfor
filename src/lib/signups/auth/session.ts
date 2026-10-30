@@ -5,12 +5,13 @@ import { safeEqual } from './safe-equal'
 export const SESSION_COOKIE = 'signups_session'
 export const SESSION_TTL_MS = 12 * 60 * 60 * 1000
 export const SESSION_MAX_AGE_SECONDS = 12 * 60 * 60
-export const MIN_SESSION_SECRET_LENGTH = 16
+export const MIN_SESSION_SECRET_LENGTH = 32
 
 export type SessionPayload = {
   v: 1
   exp: number
   nonce: string
+  sid: string
 }
 
 /** Scoped to the signups admin path so the cookie is not sent on public pages. */
@@ -34,6 +35,7 @@ export async function createSessionToken(secret: string, now = Date.now()): Prom
     v: 1,
     exp: Math.floor((now + SESSION_TTL_MS) / 1000),
     nonce: randomBase64Url(16),
+    sid: randomBase64Url(16),
   }
   const body = bytesToBase64Url(new TextEncoder().encode(JSON.stringify(payload)))
   const signature = await hmacSha256(secret, body)
@@ -62,5 +64,6 @@ export async function verifySessionToken(token: string, secret: string, now = Da
   if (typeof payload.exp !== 'number' || !Number.isFinite(payload.exp)) return null
   if (payload.exp * 1000 <= now) return null
   if (typeof payload.nonce !== 'string' || payload.nonce.length < 8) return null
-  return { v: 1, exp: payload.exp, nonce: payload.nonce }
+  if (typeof payload.sid !== 'string' || payload.sid.length < 8) return null
+  return { v: 1, exp: payload.exp, nonce: payload.nonce, sid: payload.sid }
 }
