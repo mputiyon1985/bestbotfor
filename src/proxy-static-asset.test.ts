@@ -49,7 +49,7 @@ describe('unknown static assets', () => {
 
   it('resolves an encoded filename from the cached public manifest', () => {
     expect(decodePublicPath('/files/%40icon.png')).toBe('/files/@icon.png')
-    const encoded = APPLE_TOUCH_ICON_PATH.replace('.', '%2E')
+    const encoded = APPLE_TOUCH_ICON_PATH.replaceAll('.', '%2E')
     expect(publicAssetFile(encoded)).toContain('apple-touch-icon.0619ce72.png')
     expect(publicAssetFile('/%2e%2e/package.json')).toBeNull()
     expect(publicAssetManifest()).toBe(publicAssetManifest())
