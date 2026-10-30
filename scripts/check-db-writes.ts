@@ -48,6 +48,9 @@ const ALLOWED = new Set([
   // must start with SELECT, and cannot contain a semicolon. It does not use
   // the site TURSO_DATABASE_URL and it does not write.
   'src/lib/signups/sources/turso.ts',
+  // Signups admin login state on the site database: session rows, used
+  // authenticator steps, and login-attempt counters. No subscriber emails.
+  'src/lib/signups/auth/store.ts',
   // Withdrawn-review purge, called only by the data-retention cron while user ratings are on.
   'src/lib/reviews/purge.ts',
 ])

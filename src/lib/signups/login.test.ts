@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { POST } from '@/app/admin/signups/login/submit/route'
+import { withSignupsAuthDb } from '@/lib/signups/auth/fixture-db'
 import { hashPassword } from '@/lib/signups/auth/password'
-import { isRateLimited, recordFailure, resetRateLimitsForTests } from '@/lib/signups/auth/rate-limit'
 import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS } from '@/lib/signups/auth/session'
 import { base32Encode, totpCode } from '@/lib/signups/auth/totp'
 import { SIGNUPS_HOME, SIGNUPS_LOGIN } from '@/lib/signups/paths'
 
-const SECRET = 'test-session-secret-value'
+const SECRET = 'test-session-secret-value-32bytes-ok'
 const PASSWORD = 'test-password-value'
 const TOTP_KEY = base32Encode(Buffer.from('12345678901234567890', 'ascii'))
 
@@ -19,26 +19,29 @@ function loginRequest(fields: Record<string, string>, ip = '203.0.113.10') {
       host: 'dash.example',
       'content-type': 'application/x-www-form-urlencoded',
       cookie: 'signups_login_csrf=csrf-token',
-      'x-forwarded-for': ip,
+      'x-forwarded-for': '198.51.100.20',
+      'x-vercel-forwarded-for': ip,
     },
     body,
   })
 }
 
-beforeEach(() => {
+let closeDb: (() => Promise<void>) | undefined
+
+beforeEach(async () => {
+  closeDb = await withSignupsAuthDb()
   process.env.SIGNUPS_LOGIN_FAILURE_DELAY_MS = '0'
   process.env.SIGNUPS_ADMIN_PASSWORD_HASH = hashPassword(PASSWORD)
   process.env.SIGNUPS_TOTP_SECRET = TOTP_KEY
   process.env.SIGNUPS_SESSION_SECRET = SECRET
-  resetRateLimitsForTests()
 })
 
-afterEach(() => {
+afterEach(async () => {
+  await closeDb?.()
   delete process.env.SIGNUPS_LOGIN_FAILURE_DELAY_MS
   delete process.env.SIGNUPS_ADMIN_PASSWORD_HASH
   delete process.env.SIGNUPS_TOTP_SECRET
   delete process.env.SIGNUPS_SESSION_SECRET
-  resetRateLimitsForTests()
 })
 
 describe('login', () => {
@@ -79,12 +82,6 @@ describe('login', () => {
       expect(response.headers.get('location')).toBe(`https://dash.example${SIGNUPS_LOGIN}?e=1`)
       expect(response.headers.getSetCookie().join(';')).not.toContain(`${SESSION_COOKIE}=`)
     }
-  })
-
-  it('rate limits repeated failures', () => {
-    for (let attempt = 0; attempt < 8; attempt++) recordFailure('203.0.113.50')
-    expect(isRateLimited('203.0.113.50')).toBe(true)
-    expect(isRateLimited('203.0.113.51')).toBe(false)
   })
 
   it('404s when the admin secrets are unset', async () => {

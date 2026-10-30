@@ -9,6 +9,7 @@ import { isAdminPath } from '@/lib/admin-path'
 import { LOGIN_CSRF_COOKIE, LOGIN_CSRF_HEADER, loginCsrfCookie } from '@/lib/signups/auth/login-csrf'
 import { decideSignupsGate } from '@/lib/signups/gate'
 import { isSignupsAdminPath, SIGNUPS_LOGIN, SIGNUPS_REQUEST_HEADER } from '@/lib/signups/paths'
+import { applyPrivacyHeaders } from '@/lib/signups/privacy'
 import { isJunkPath } from '@/lib/junk-path'
 import { adminSponsorsEnabled, isAdminMfaPath, isClerkConfigured, isRatingsPath, isSponsorsAdminPath, userRatingsEnabled } from '@/lib/flags'
 import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from '@/lib/indexing'
@@ -260,6 +261,13 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   if (rejected) return rejected
   const signups = await decideSignupsGate(request)
   if (signups.action === 'not-found') return hiddenNotFound()
+  if (signups.action === 'slash') {
+    const url = new URL(signups.pathname, request.nextUrl.origin)
+    const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+    const response = NextResponse.redirect(url, 308)
+    applyPrivacyHeaders(response.headers)
+    return adminHeaders(applySecurity(response, nonce), request.nextUrl.pathname)
+  }
   if (signups.action === 'redirect') {
     const url = request.nextUrl.clone()
     url.pathname = SIGNUPS_LOGIN

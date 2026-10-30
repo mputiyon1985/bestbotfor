@@ -561,3 +561,24 @@ export const deals = sqliteTable(
   },
   (table) => [index('deals_tool_slug_idx').on(table.toolSlug)],
 )
+
+/** Live signups-admin sessions. Logout deletes the row. A rotated session secret no longer matches secret_tag. */
+export const signupsSessions = sqliteTable('signups_sessions', {
+  id: text('id').primaryKey(),
+  expiresAt: integer('expires_at').notNull(),
+  secretTag: text('secret_tag').notNull(),
+  createdAt: integer('created_at').notNull(),
+})
+
+/** Authenticator time steps already accepted. A replay of that step is refused. */
+export const signupsTotpSteps = sqliteTable('signups_totp_steps', {
+  step: integer('step').primaryKey(),
+  usedAt: integer('used_at').notNull(),
+})
+
+/** Shared login-failure window. The bucket is an HMAC of the trusted client IP, not the address. */
+export const signupsLoginAttempts = sqliteTable('signups_login_attempts', {
+  bucket: text('bucket').primaryKey(),
+  failures: integer('failures').notNull(),
+  windowStart: integer('window_start').notNull(),
+})

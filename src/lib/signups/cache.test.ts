@@ -1,40 +1,37 @@
+import { readFileSync } from 'node:fs'
+import path from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cached, REVALIDATE_SECONDS, resetCacheForTests } from '@/lib/signups/cache'
-
-const nextCache = vi.hoisted(() => ({
-  unstable_cache: vi.fn((fn: () => Promise<unknown>) => fn),
-}))
-
-vi.mock('next/cache', () => nextCache)
+import { loadAllSources } from '@/lib/signups/sources/load'
 
 afterEach(() => {
-  resetCacheForTests()
-  vi.useRealTimers()
+  vi.unstubAllGlobals()
+  delete process.env.BEEHIIV_API_KEY
+  delete process.env.BEEHIIV_PUBLICATION_ID
 })
 
-describe('cache wrapper', () => {
-  it('registers unstable_cache with a 300 second revalidate', () => {
-    const load = async () => 'ok'
-    cached('signups-example', load)
-    expect(REVALIDATE_SECONDS).toBe(300)
-    expect(nextCache.unstable_cache).toHaveBeenCalledWith(load, ['signups-example'], { revalidate: 300 })
+describe('signups source cache', () => {
+  it('does not put subscriber emails in the Next.js data cache', () => {
+    const load = readFileSync(path.join(process.cwd(), 'src/lib/signups/sources/load.ts'), 'utf8')
+    const sources = readFileSync(path.join(process.cwd(), 'src/lib/signups/sources/beehiiv.ts'), 'utf8')
+    expect(load).not.toContain('unstable_cache')
+    expect(load).not.toContain('revalidate')
+    expect(sources).not.toContain('unstable_cache')
+    expect(load).toContain('this request only')
   })
 
-  it('does not call the loader again within 300 seconds', async () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'))
-    let calls = 0
-    const load = cached('signups-ttl', async () => {
-      calls += 1
-      return calls
-    })
-    expect(await load()).toBe(1)
-    expect(await load()).toBe(1)
-    vi.setSystemTime(new Date('2026-01-01T00:04:59.000Z'))
-    expect(await load()).toBe(1)
-    expect(calls).toBe(1)
-    vi.setSystemTime(new Date('2026-01-01T00:05:00.000Z'))
-    expect(await load()).toBe(2)
-    expect(calls).toBe(2)
+  it('loads a source again on the next call', async () => {
+    process.env.BEEHIIV_API_KEY = 'beehiiv_test_key'
+    process.env.BEEHIIV_PUBLICATION_ID = 'pub_123'
+    const fetchMock = vi.fn(async () =>
+      new Response(JSON.stringify({ data: [{ email: 'b@example.com', created: 1767225600 }], total_results: 1, total_pages: 1 }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const first = await loadAllSources()
+    const second = await loadAllSources()
+    expect(first[1]?.signups).toEqual(second[1]?.signups)
+    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(2)
   })
 })

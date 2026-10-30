@@ -17,13 +17,17 @@ describe('setup-auth', () => {
 
     const file = readFileSync(out, 'utf8')
     const session = file.match(/^SIGNUPS_SESSION_SECRET=(.+)$/m)?.[1] ?? ''
-    const password = file.match(/^PASSWORD=(.+)$/m)?.[1] ?? ''
     const totp = file.match(/^SIGNUPS_TOTP_SECRET=(.+)$/m)?.[1] ?? ''
     const hash = file.match(/^SIGNUPS_ADMIN_PASSWORD_HASH=(.+)$/m)?.[1] ?? ''
+    const password = result.stderr.match(/^Password: (.+)$/m)?.[1] ?? ''
     expect(session.length).toBeGreaterThan(20)
     expect(password.length).toBeGreaterThan(10)
     expect(totp.length).toBeGreaterThan(10)
     expect(hash.startsWith('scrypt:')).toBe(true)
+    expect(file).not.toContain('PASSWORD=')
+    expect(file).not.toContain(password)
+    expect(file).toContain('plaintext password is not in this file')
+    expect(result.stderr).toContain('Delete')
     expect(file).toContain('otpauth://totp/Signups:mark?')
     expect(result.stdout.includes(session)).toBe(false)
     expect(result.stdout.includes(password)).toBe(false)
@@ -31,7 +35,6 @@ describe('setup-auth', () => {
     expect(result.stdout.includes(hash)).toBe(false)
     expect(result.stdout.includes('otpauth://')).toBe(false)
     expect(result.stderr.includes(session)).toBe(false)
-    expect(result.stderr.includes(password)).toBe(false)
     expect(result.stderr.includes(totp)).toBe(false)
     expect((statSync(out).mode & 0o777) === 0o600).toBe(true)
 

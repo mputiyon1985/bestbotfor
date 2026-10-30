@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createSessionToken, SESSION_TTL_MS, verifySessionToken } from '@/lib/signups/auth/session'
 
-const SECRET = 'test-session-secret-value'
+const SECRET = 'test-session-secret-value-32bytes-ok'
 
 describe('session', () => {
   it('signs and verifies a token', async () => {
@@ -25,7 +25,7 @@ describe('session', () => {
     const flipped = signature!.endsWith('a') ? `${signature!.slice(0, -1)}b` : `${signature!.slice(0, -1)}a`
     expect(await verifySessionToken(`${body}.${flipped}`, SECRET)).toBeNull()
     expect(await verifySessionToken(`${body}x.${signature}`, SECRET)).toBeNull()
-    expect(await verifySessionToken(token, 'another-session-secret')).toBeNull()
+    expect(await verifySessionToken(token, 'another-session-secret-value-32b')).toBeNull()
     expect(await verifySessionToken('not-a-token', SECRET)).toBeNull()
   })
 })
