@@ -5615,8 +5615,8 @@ export const toolSeeds: ToolSeed[] = [
     fits: [],
     affiliate: { ...none, status: 'verify' },
   }),
-  // scout 2026-10-30 | category: Productivity | scout rating 4.2 (not shown) | launch: 2026-10-29 (Product Hunt #2 Product of the Day) | pricing: Free $0 forever (unlimited inboxes, meeting recordings, no card); Plus $20/mo (automations, higher AI limits, unlimited recordings and quick drafts); Max: price not shown on the pricing page (5x Plus AI usage, advanced models).
-  // note: priceFromUsd is Plus $20/mo. Max price not published.
+  // scout 2026-10-30 | category: Productivity | scout rating 4.2 (not shown) | launch: 2026-10-29 (Product Hunt #2 Product of the Day) | pricing: Free $0 forever (unlimited inboxes, meeting recordings, no card); Plus $20/mo (automations, higher AI limits, unlimited recordings and quick drafts); Max $100/mo (5× Plus AI usage, advanced models).
+  // note: priceFromUsd is Plus $20/mo. Max is $100/mo. Checked scape.app/pricing 2026-10-30.
   tool({
     slug: 'scape',
     addedAt: SCOUTED_2026_10_30,
@@ -5701,8 +5701,8 @@ export const toolSeeds: ToolSeed[] = [
     fits: [],
     affiliate: { ...none, status: 'verify' },
   }),
-  // scout 2026-10-30 | category: Video generation (FLAG: scout category "Video generation" mapped to AI video) | scout rating 4.0 (not shown) | launch: 2026-10-29 (Product Hunt #9 Product of the Day) | pricing: JST-2 is free to try in the PINOC browser app (limits not stated). Viggle plans per its affiliate page: Pro $9.99/mo, Live $19.99/mo, Max $79.99/mo. API pricing not verified.
-  // note: priceFromUsd is Viggle Pro $9.99/mo. PINOC free-use limits are not stated. API pricing was not verified, so it is not stored.
+  // scout 2026-10-30 | category: Video generation (FLAG: scout category "Video generation" mapped to AI video) | scout rating 4.0 (not shown) | launch: 2026-10-29 (Product Hunt #9 Product of the Day) | pricing: PINOC (where JST-2 runs) is billed separately from Viggle AI. Free $0 (60 credits once). Starter $10.39/mo billed annually ($124.70/yr; page shows "Was $19.99"). Pro $31.99/mo billed annually ($383.90/yr). Checked viggle.ai/pinoc/pricing 2026-10-30.
+  // note: priceFromUsd is PINOC Starter, $10.39/mo billed annually (schema billingDuration 12; no monthly-billed dollar price is printed). The scout's $9.99 was a Viggle AI plan, not JST-2. Slug is on ANNUAL_BILLED_SLUGS. Free plan is 60 credits once.
   // affiliate (scout, unverified): yes (Creator Affiliate Program); network in-house; 20% of subscription fees; recurring yes
   tool({
     slug: 'viggle-jst-2',
@@ -5713,9 +5713,9 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['viggle.ai'],
     category: 'AI video',
     shortDesc: 'A world model that generates 3D scenes, characters and full-body motion in one shared world.',
-    longDesc: 'Viggle\'s physics-native world model that generates 3D scenes, characters and full-body motion in one shared world: scenes in about a second, characters from one image or text, motion from text or video. Try it in the PINOC browser app, or via API/MCP with agents like Claude Code.',
+    longDesc: 'Viggle\'s physics-native world model that generates 3D scenes, characters and full-body motion in one shared world: scenes in about a second, characters from one image or text, motion from text or video. Try it in the PINOC browser app, or via API/MCP with agents like Claude Code. PINOC Starter is $10.39 a month, billed annually.',
     pricingModel: 'freemium',
-    priceFromUsd: 9.99,
+    priceFromUsd: 10.39,
     hasFreeTier: true,
     skillLevel: 'beginner',
     platforms: ['Web', 'API'],
@@ -5851,8 +5851,8 @@ export const toolSeeds: ToolSeed[] = [
     fits: [],
     affiliate: { ...none, status: 'verify' },
   }),
-  // scout 2026-10-30 | category: Coding assistant | scout rating 3.9 (not shown) | launch: 2026-10-27 (Product Hunt #8 Product of the Day) | pricing: Free (1 project, 1 agent, unlimited runs). Pro unlocks unlimited projects and all agents: $12/mo or $96/yr if you subscribe before Nov 3, 2026 (rate kept), then $18/mo for new subscriptions. Founder Lifetime $149 once for the first 200 buyers. Agent usage billed by your own agent plan.
-  // note: priceFromUsd is the current launch Pro price, $12/mo before Nov 3, 2026. After that date new subscriptions are $18/mo. Lifetime $149 is not a monthly price.
+  // scout 2026-10-30 | category: Coding assistant | scout rating 3.9 (not shown) | launch: 2026-10-27 (Product Hunt #8 Product of the Day) | pricing: Free $0 forever (1 project, 1 agent, unlimited runs). Pro: launch price $12/mo on the Monthly tab through Nov 3, 2026 (page strikes $18 and says "Lock it in before Nov 3"), then $18/mo. Yearly is labeled "Save 33%". Founder Lifetime $149 once, first 200 buyers. Checked pulsedev.app 2026-10-30.
+  // note: priceFromUsd is $18, the monthly price after the launch window ends on Nov 3, 2026. The page's current Monthly card is the $12 launch price. The scout's $96/yr figure is not printed on the page.
   tool({
     slug: 'pulsedev',
     addedAt: SCOUTED_2026_10_30,
@@ -5862,9 +5862,9 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['pulsedev.app'],
     category: 'Coding assistant',
     shortDesc: 'Click an element on your localhost site, and your coding agent edits the source after you approve the diff.',
-    longDesc: 'macOS desktop app: click any element on your localhost site, say what\'s wrong, and Claude Code, Codex, Gemini CLI or OpenCode edits the real source; watch the agent\'s log beside the page and approve or reject the diff before anything is written. Runs locally, no PulseDev cloud.',
+    longDesc: 'macOS desktop app: click any element on your localhost site, say what\'s wrong, and Claude Code, Codex, Gemini CLI or OpenCode edits the real source; watch the agent\'s log beside the page and approve or reject the diff before anything is written. Runs locally, no PulseDev cloud. Pro is $12 a month through November 3, 2026, then $18 a month.',
     pricingModel: 'freemium',
-    priceFromUsd: 12,
+    priceFromUsd: 18,
     hasFreeTier: true,
     skillLevel: 'intermediate',
     platforms: ['macOS'],
