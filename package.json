@@ -27,7 +27,8 @@
     "check:lighthouse": "tsx scripts/check-lighthouse.ts",
     "logos:fetch": "tsx scripts/fetch-tool-logos.ts",
     "stripe:setup-test": "tsx scripts/stripe-setup-test.ts",
-    "build:catalog-fallback": "tsx scripts/build-catalog-fallback.ts"
+    "build:catalog-fallback": "tsx scripts/build-catalog-fallback.ts",
+    "setup-signups-auth": "tsx scripts/setup-signups-auth.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.16",
@@ -49,10 +50,12 @@
     "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^26.6.5",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "eslint": "^10.12.0",
     "postcss": "^8.5.30",
+    "qrcode": "^1.5.4",
     "sharp": "^0.35.5",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
