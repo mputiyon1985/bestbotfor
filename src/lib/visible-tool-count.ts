@@ -15,8 +15,8 @@ export function formatVisibleToolCount(count: number): string | null {
 }
 
 /**
- * Homepage hero line. getVisibleToolCount is cached; a failed read hides the
- * line so the page still renders.
+ * Homepage hero count. getVisibleToolCount is cached; a failed read hides the
+ * text so the page still renders.
  */
 export async function visibleToolCountLabel(read: () => Promise<number> = getVisibleToolCount): Promise<string | null> {
   try {
