@@ -13,3 +13,6 @@ blob-report
 next-env.d.ts
 .vercel
 .lighthouseci
+.auth-setup.local
+.auth-setup.local.png
+.auth-setup.local.*

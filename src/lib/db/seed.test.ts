@@ -464,7 +464,11 @@ describe('catalog seed', () => {
     }
   })
 
-  it('counts v1 inserts, updates, and deletes, and replaces stale Cursor and Windsurf scores', async () => {
+  // Three full catalog seeds plus per-row writes. On a busy CI runner this
+  // crosses Vitest's 5s default; the assertions are unchanged.
+  it(
+    'counts v1 inserts, updates, and deletes, and replaces stale Cursor and Windsurf scores',
+    async () => {
     await useTempDatabase()
     const fresh = await seed()
     expect(fresh).toEqual({
@@ -593,7 +597,9 @@ describe('catalog seed', () => {
     }
     expect(JSON.stringify(scores)).not.toContain('stale.example')
     expect(points.filter((row) => row.sourceUrl.includes('stale.example'))).toHaveLength(1)
-  })
+    },
+    20_000,
+  )
 
   it('upserts scores and leaves rows that are not in the file unless SEED_PRUNE=1', async () => {
     delete process.env.SEED_PRUNE

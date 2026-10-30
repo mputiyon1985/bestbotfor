@@ -1,14 +1,28 @@
 import { readdir, readFile } from 'node:fs/promises'
 import path from 'node:path'
 
-const ADMIN_GUARDS = ['requireAdmin(', 'requireAdminStepUp(', 'assertAdminArea(', 'requireMfaSetupPage(']
+const CLERK_ADMIN_GUARDS = ['requireAdmin(', 'requireAdminStepUp(', 'assertAdminArea(', 'requireMfaSetupPage(']
+const SIGNUPS_ADMIN_GUARD = 'requireSignupsSession('
 
-/** Files under src/app/admin that do not call an admin guard. */
+/** Password-and-TOTP signups files are not covered by the Clerk admin guard. */
+export function isSignupsAdminFile(filePath: string): boolean {
+  return filePath.split('\\').join('/').includes('/admin/signups/')
+}
+
+/**
+ * Files under src/app/admin that do not call an admin guard.
+ * Clerk admin files must call a Clerk guard. Signups files must call
+ * requireSignupsSession(); a Clerk guard alone does not cover them.
+ */
 export function adminGuardGaps(files: { path: string; text: string }[]): string[] {
   const gaps: string[] = []
   for (const file of files) {
     if (!file.path.endsWith('.ts') && !file.path.endsWith('.tsx')) continue
-    if (ADMIN_GUARDS.some((guard) => file.text.includes(guard))) continue
+    if (isSignupsAdminFile(file.path)) {
+      if (!file.text.includes(SIGNUPS_ADMIN_GUARD)) gaps.push(`${file.path} must call requireSignupsSession().`)
+      continue
+    }
+    if (CLERK_ADMIN_GUARDS.some((guard) => file.text.includes(guard))) continue
     gaps.push(`${file.path} must call requireAdmin(), requireAdminStepUp(), assertAdminArea(), or requireMfaSetupPage().`)
   }
   return gaps
