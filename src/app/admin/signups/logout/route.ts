@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireSignupsSession } from '@/lib/signups/access'
 import { isSameOrigin } from '@/lib/signups/auth/origin'
 import { safeEqual } from '@/lib/signups/auth/safe-equal'
+import { revokeSignupsSession } from '@/lib/signups/auth/session-store'
 import { SESSION_COOKIE, sessionCookieBase } from '@/lib/signups/auth/session'
 import { applyPrivacyHeaders } from '@/lib/signups/privacy'
 import { SIGNUPS_HOME, SIGNUPS_LOGIN } from '@/lib/signups/paths'
@@ -27,6 +28,11 @@ export async function POST(request: Request) {
   const csrf = String(form.get('csrf') ?? '')
   if (!access.session || !safeEqual(access.session.nonce, csrf)) return home
 
+  try {
+    await revokeSignupsSession(access.session.sid)
+  } catch {
+    return notFoundResponse()
+  }
   const response = NextResponse.redirect(new URL(SIGNUPS_LOGIN, request.url), 303)
   response.cookies.set(SESSION_COOKIE, '', { ...sessionCookieBase, maxAge: 0 })
   applyPrivacyHeaders(response.headers)

@@ -1,10 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { GET } from '@/app/admin/signups/export/route'
+import { withSignupsAuthDb } from '@/lib/signups/auth/fixture-db'
 import { hashPassword } from '@/lib/signups/auth/password'
-import { createSessionToken, SESSION_COOKIE } from '@/lib/signups/auth/session'
+import { issueSignupsSession } from '@/lib/signups/auth/session-store'
+import { SESSION_COOKIE } from '@/lib/signups/auth/session'
 import { base32Encode } from '@/lib/signups/auth/totp'
 
-const SECRET = 'test-session-secret-value'
+const SECRET = 'test-session-secret-value-32bytes-ok'
 
 const KEYS = ['SIGNUPS_SESSION_SECRET', 'SIGNUPS_ADMIN_PASSWORD_HASH', 'SIGNUPS_TOTP_SECRET', 'SIGNUPS_TURSO_DATABASE_URL', 'SIGNUPS_TURSO_AUTH_TOKEN', 'BEEHIIV_API_KEY', 'BEEHIIV_PUBLICATION_ID', 'CLERK_SECRET_KEY'] as const
 const ORIGINAL = Object.fromEntries(KEYS.map((key) => [key, process.env[key]])) as Record<string, string | undefined>
@@ -15,7 +17,10 @@ function configure() {
   process.env.SIGNUPS_TOTP_SECRET = base32Encode(Buffer.from('12345678901234567890', 'ascii'))
 }
 
-beforeEach(() => {
+let closeDb: (() => Promise<void>) | undefined
+
+beforeEach(async () => {
+  closeDb = await withSignupsAuthDb()
   configure()
   delete process.env.SIGNUPS_TURSO_DATABASE_URL
   delete process.env.SIGNUPS_TURSO_AUTH_TOKEN
@@ -24,7 +29,8 @@ beforeEach(() => {
   delete process.env.CLERK_SECRET_KEY
 })
 
-afterEach(() => {
+afterEach(async () => {
+  await closeDb?.()
   for (const key of KEYS) {
     const value = ORIGINAL[key]
     if (value === undefined) delete process.env[key]
@@ -33,13 +39,14 @@ afterEach(() => {
 })
 
 describe('csv export', () => {
-  it('401s without a session and does not return a spreadsheet', async () => {
+  it('404s without a session and does not return a spreadsheet', async () => {
     const response = await GET(new Request('https://dash.example/admin/signups/export'))
-    expect(response.status).toBe(401)
+    expect(response.status).toBe(404)
     const body = await response.text()
-    expect(body).toBe('Unauthorized')
+    expect(body).toBe('Not found.')
     expect(body).not.toContain('source,email')
     expect(response.headers.get('x-robots-tag')).toBe('noindex, nofollow')
+    expect(response.headers.get('cache-control')).toContain('no-store')
   })
 
   it('404s when the admin secrets are unset', async () => {
@@ -50,7 +57,7 @@ describe('csv export', () => {
   })
 
   it('returns csv for a valid session even when every source is unavailable', async () => {
-    const { token } = await createSessionToken(SECRET)
+    const { token } = await issueSignupsSession(SECRET)
     const response = await GET(
       new Request('https://dash.example/admin/signups/export', { headers: { cookie: `${SESSION_COOKIE}=${token}` } }),
     )

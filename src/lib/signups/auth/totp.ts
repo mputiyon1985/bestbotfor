@@ -61,24 +61,35 @@ export function totpCode(secretBase32: string, timeMs: number, digits = 6, step 
 }
 
 /**
- * Verify a 6-digit code. Accepts the current 30s step and ±1 step.
- * Checks every candidate so runtime does not depend on which step matched.
+ * Time steps in the ±1 window whose code matches. Every candidate is checked.
+ * An empty list means the code is well formed and does not match.
+ * Null means the code or secret cannot be checked.
  */
-export function verifyTotp(code: string, secretBase32: string, now = Date.now()): boolean {
+export function matchingTotpSteps(code: string, secretBase32: string, now = Date.now()): number[] | null {
   const normalized = code.replace(/\s/g, '')
-  if (!/^\d{6}$/.test(normalized)) return false
+  if (!/^\d{6}$/.test(normalized)) return null
   let key: Buffer
   try {
     key = base32Decode(secretBase32)
   } catch {
-    return false
+    return null
   }
-  if (key.length < 10) return false
+  if (key.length < 10) return null
   const counter = Math.floor(now / 1000 / 30)
-  let matched = false
+  const matched: number[] = []
   for (let offset = -1; offset <= 1; offset++) {
-    const expected = hotp(key, counter + offset, 6)
-    if (safeEqual(expected, normalized)) matched = true
+    const step = counter + offset
+    const expected = hotp(key, step, 6)
+    if (safeEqual(expected, normalized)) matched.push(step)
   }
   return matched
+}
+
+/**
+ * Verify a 6-digit code. Accepts the current 30s step and ±1 step.
+ * Checks every candidate so runtime does not depend on which step matched.
+ */
+export function verifyTotp(code: string, secretBase32: string, now = Date.now()): boolean {
+  const matched = matchingTotpSteps(code, secretBase32, now)
+  return matched !== null && matched.length > 0
 }
