@@ -90,7 +90,7 @@ describe('homepage hero', () => {
     expect(count).toBeGreaterThan(eyebrow)
     expect(heading).toBeGreaterThan(count)
     expect(lede).toBeGreaterThan(heading)
-    expect(page).toContain('md:flex-nowrap')
+    expect(page).toContain('<br className="md:hidden" />')
     expect(page).toContain('tabular-nums')
     expect(page).not.toMatch(/<h1[\s\S]*toolCountLabel/)
   })

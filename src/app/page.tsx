@@ -45,10 +45,15 @@ export default async function HomePage() {
       <JsonLd data={faqJsonLd(faqs)} nonce={nonce} />
       <section className="grid gap-3 md:grid-cols-[1.1fr_0.9fr] md:items-end md:gap-8">
         <div>
-          {/* Same line as the eyebrow. A block under the heading pushes the quiz button below 800px. */}
-          <p className="flex flex-wrap items-baseline gap-x-3 text-sm font-medium text-accent md:flex-nowrap">
+          {/* One line from md up, so the quiz button stays above 800px. The break below md is in the first HTML, so the font swap cannot change the line count. */}
+          <p className="text-sm font-medium leading-5 text-accent">
             <span className="uppercase tracking-wide">Answer 3 quick questions</span>
-            {toolCountLabel ? <span className="tabular-nums">{toolCountLabel}</span> : null}
+            {toolCountLabel ? (
+              <>
+                <br className="md:hidden" />
+                <span className="tabular-nums md:ml-3">{toolCountLabel}</span>
+              </>
+            ) : null}
           </p>
           <h1 className="mt-3 font-headline text-4xl leading-tight md:text-6xl">{TAGLINE}</h1>
           <p className="mt-2 max-w-xl text-base text-muted md:mt-4 md:text-lg">
