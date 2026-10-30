@@ -3,7 +3,7 @@ import 'server-only'
 import { unstable_cache } from 'next/cache'
 import { cache } from 'react'
 import { asc, eq } from 'drizzle-orm'
-import { assembleCatalog, readPublicSlugs, readTaskCandidates, readTasks, readToolCategoryCounts, readToolPage, readToolSummaries, readToolsBySlugs, scoreLoadedQuiz, searchToolSummaries } from './catalog-read'
+import { assembleCatalog, readPublicSlugs, readTaskCandidates, readTasks, readToolCategoryCounts, readToolPage, readToolSummaries, readToolsBySlugs, readVisibleToolCount, scoreLoadedQuiz, searchToolSummaries } from './catalog-read'
 import type { Catalog, CatalogTask, CatalogTool } from './catalog-types'
 import { getDb } from './db'
 import { affiliatePrograms, tasks, toolProsCons, toolScores, toolTasks, tools } from './db/schema'
@@ -104,6 +104,21 @@ const loadToolPage = catalogPageCache(
 )
 
 const loadToolCategoryCounts = catalogPageCache(async () => readToolCategoryCounts(getDb()), catalogCacheKey('tool-category-counts-v1'))
+
+/**
+ * One COUNT of publicly listed tools, reused for an hour. The homepage is
+ * dynamic because of the CSP nonce, so this is what keeps that render off Turso.
+ * Catalog rows change on deploy or seed; the cache key already includes the
+ * deploy version. No catalog write path calls revalidateTag.
+ */
+const loadVisibleToolCount = catalogPageCache(
+  async () => readVisibleToolCount(getDb()),
+  catalogCacheKey('visible-tool-count-v1'),
+)
+
+export const getVisibleToolCount = cache(() =>
+  withReadFallback('visible-tool-count', [], loadVisibleToolCount, fromFallbackDb(readVisibleToolCount)),
+)
 
 const loadTaskCandidates = catalogPageCache(
   async (taskSlug: string) => readTaskCandidates(getDb(), taskSlug),

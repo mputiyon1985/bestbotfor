@@ -14,6 +14,7 @@ import {
   type ProCon,
 } from './editorial'
 import type { QuizAnswers, Skill } from './validation'
+import { visibleToolStatus, VISIBLE_TOOL_STATUS } from './visible-tool-status'
 import { z } from 'zod'
 
 const pricingSchema = z.enum(['free', 'freemium', 'paid'])
@@ -184,7 +185,7 @@ export function assembleCatalog(
   }))
 
   const catalogTools: CatalogTool[] = toolRows
-    .filter((tool) => tool.status === 'active')
+    .filter((tool) => tool.status === VISIBLE_TOOL_STATUS)
     .map((tool) =>
       toolRecord(
         tool,
@@ -287,7 +288,7 @@ export async function readToolsBySlugs(db: Database, slugs: string[]): Promise<C
   const rows = await db
     .select()
     .from(tools)
-    .where(and(eq(tools.status, 'active'), inArray(tools.slug, unique)))
+    .where(and(visibleToolStatus(), inArray(tools.slug, unique)))
   const hydrated = await hydrateTools(db, rows)
   const bySlug = new Map(hydrated.map((tool) => [tool.slug, tool]))
   return slugs.flatMap((slug) => {
@@ -313,14 +314,14 @@ export async function readToolCategoryCounts(db: Database): Promise<{ category: 
   const rows = await db
     .select({ category: tools.category, total: count() })
     .from(tools)
-    .where(eq(tools.status, 'active'))
+    .where(visibleToolStatus())
     .groupBy(tools.category)
   return rows.map((row) => ({ category: row.category, total: Number(row.total) }))
 }
 
 export async function readToolPage(db: Database, page: number, category: string | null = null): Promise<ToolPage> {
   const requested = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1
-  const where = category ? and(eq(tools.status, 'active'), eq(tools.category, category)) : eq(tools.status, 'active')
+  const where = category ? and(visibleToolStatus(), eq(tools.category, category)) : visibleToolStatus()
   const pageSelect = {
     slug: tools.slug,
     name: tools.name,
@@ -396,7 +397,7 @@ export async function readTaskCandidates(
     .from(toolTasks)
     .innerJoin(tools, eq(tools.id, toolTasks.toolId))
     .leftJoin(affiliatePrograms, eq(affiliatePrograms.toolId, tools.id))
-    .where(and(eq(toolTasks.taskId, task.id), eq(tools.status, 'active')))
+    .where(and(eq(toolTasks.taskId, task.id), visibleToolStatus()))
 
   const ids = rows.map((row) => row.id)
   const [scoreRows, proConRows] =
@@ -458,7 +459,7 @@ export async function searchToolSummaries(db: Database, query: string): Promise<
       .from(tools)
       .where(
         and(
-          eq(tools.status, 'active'),
+          visibleToolStatus(),
           sql`(${tools.name} LIKE ${pattern} ESCAPE '\\' OR ${tools.vendor} LIKE ${pattern} ESCAPE '\\' OR ${tools.category} LIKE ${pattern} ESCAPE '\\' OR ${tools.shortDesc} LIKE ${pattern} ESCAPE '\\')`,
         ),
       ),
@@ -467,7 +468,7 @@ export async function searchToolSummaries(db: Database, query: string): Promise<
       .from(tools)
       .innerJoin(toolTasks, eq(toolTasks.toolId, tools.id))
       .innerJoin(tasks, eq(tasks.id, toolTasks.taskId))
-      .where(and(eq(tools.status, 'active'), sql`${tasks.name} LIKE ${pattern} ESCAPE '\\'`)),
+      .where(and(visibleToolStatus(), sql`${tasks.name} LIKE ${pattern} ESCAPE '\\'`)),
   ])
   const ids = [...new Set([...direct, ...viaTask].map((row) => row.id))].slice(0, 200)
   if (ids.length === 0) return []
@@ -488,7 +489,7 @@ export async function searchToolSummaries(db: Database, query: string): Promise<
 export async function readPublicSlugs(db: Database): Promise<{ tasks: string[]; tools: string[] }> {
   const [taskRows, toolRows] = await Promise.all([
     db.select({ slug: tasks.slug }).from(tasks).orderBy(asc(tasks.name)),
-    db.select({ slug: tools.slug }).from(tools).where(eq(tools.status, 'active')).orderBy(asc(tools.name)),
+    db.select({ slug: tools.slug }).from(tools).where(visibleToolStatus()).orderBy(asc(tools.name)),
   ])
   return { tasks: taskRows.map((row) => row.slug), tools: toolRows.map((row) => row.slug) }
 }
@@ -503,6 +504,13 @@ export async function readToolSummaries(db: Database): Promise<Array<ToolSummary
       shortDesc: tools.shortDesc,
     })
     .from(tools)
-    .where(eq(tools.status, 'active'))
+    .where(visibleToolStatus())
     .orderBy(asc(tools.name))
+}
+
+/** COUNT of tools the public directory lists. Same predicate as {@link readToolPage}. */
+export async function readVisibleToolCount(db: Database): Promise<number> {
+  const rows = await db.select({ total: count() }).from(tools).where(visibleToolStatus())
+  const total = Number(rows[0]?.total ?? 0)
+  return Number.isFinite(total) ? total : 0
 }
