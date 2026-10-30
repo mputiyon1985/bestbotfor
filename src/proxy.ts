@@ -7,6 +7,7 @@ import { buildContentSecurityPolicy, securityHeaders } from '@/lib/csp'
 import { getDb, peekCachedTaskSlugs } from '@/lib/db/client'
 import { isAdminPath } from '@/lib/admin-path'
 import { LOGIN_CSRF_COOKIE, LOGIN_CSRF_HEADER, loginCsrfCookie } from '@/lib/signups/auth/login-csrf'
+import { signupsAuthConfigured } from '@/lib/signups/auth/config'
 import { decideSignupsGate } from '@/lib/signups/gate'
 import { isSignupsAdminPath, SIGNUPS_LOGIN, SIGNUPS_REQUEST_HEADER } from '@/lib/signups/paths'
 import { applyPrivacyHeaders } from '@/lib/signups/privacy'
@@ -235,6 +236,25 @@ async function gateResult(request: NextRequest, event: NextFetchEvent): Promise<
   return null
 }
 
+/**
+ * Next would 308 a trailing slash before this proxy runs. That redirect cannot
+ * carry the signups noindex and no-store headers, so the proxy owns it.
+ * Every other path still 308s to the same URL without the slash, and the query
+ * string stays. A signups path with no admin secrets 404s instead of redirecting.
+ */
+function redirectTrailingSlash(request: NextRequest): NextResponse | null {
+  const { pathname } = request.nextUrl
+  if (pathname.length <= 1 || !pathname.endsWith('/')) return null
+  if (isSignupsAdminPath(pathname) && !signupsAuthConfigured()) return hiddenNotFound()
+  const target = new URL(request.url)
+  target.pathname = pathname.slice(0, -1)
+  if (!isSignupsAdminPath(pathname)) return NextResponse.redirect(target, 308)
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+  const response = NextResponse.redirect(target, 308)
+  applyPrivacyHeaders(response.headers)
+  return adminHeaders(applySecurity(response, nonce), pathname)
+}
+
 /** Scanner probes get a cacheable bare 404 before any other work. */
 function rejectJunkPath(request: NextRequest): NextResponse | null {
   if (!isJunkPath(request.nextUrl.pathname)) return null
@@ -249,6 +269,8 @@ function rejectJunkPath(request: NextRequest): NextResponse | null {
 }
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  const slashed = redirectTrailingSlash(request)
+  if (slashed) return slashed
   const junk = rejectJunkPath(request)
   if (junk) return junk
   const malformed = rejectMalformedEncoding(request)
@@ -261,13 +283,6 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   if (rejected) return rejected
   const signups = await decideSignupsGate(request)
   if (signups.action === 'not-found') return hiddenNotFound()
-  if (signups.action === 'slash') {
-    const url = new URL(signups.pathname, request.nextUrl.origin)
-    const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
-    const response = NextResponse.redirect(url, 308)
-    applyPrivacyHeaders(response.headers)
-    return adminHeaders(applySecurity(response, nonce), request.nextUrl.pathname)
-  }
   if (signups.action === 'redirect') {
     const url = request.nextUrl.clone()
     url.pathname = SIGNUPS_LOGIN

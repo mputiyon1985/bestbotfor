@@ -89,11 +89,19 @@ describe('signups proxy gating', () => {
   })
 
   it('redirects a trailing slash with noindex and no-store', async () => {
-    const response = await run(`${SIGNUPS_HOME}/`)
+    const response = await run(`${SIGNUPS_HOME}/?from=1`)
     expect(response.status).toBe(308)
-    expect(response.headers.get('location')).toBe(`https://dash.example${SIGNUPS_HOME}`)
+    expect(response.headers.get('location')).toBe(`https://dash.example${SIGNUPS_HOME}?from=1`)
     expect(response.headers.get('x-robots-tag')).toBe(ROBOTS_HEADER)
     expect(response.headers.get('cache-control')).toContain('no-store')
+  })
+
+  it('308s a public trailing slash without the signups privacy headers', async () => {
+    const response = await run('/pricing/?plan=annual')
+    expect(response.status).toBe(308)
+    expect(response.headers.get('location')).toBe('https://dash.example/pricing?plan=annual')
+    expect(response.headers.get('x-robots-tag')).toBeNull()
+    expect(response.headers.get('cache-control')).toBeNull()
   })
 
   it('rejects an expired session cookie', async () => {
@@ -116,7 +124,7 @@ describe('signups proxy gating', () => {
 
   it('404s every signups path when the admin secrets are unset', async () => {
     clearAuth()
-    for (const path of [SIGNUPS_HOME, '/Admin/Signups', '/admin/%73ignups', SIGNUPS_LOGIN, SIGNUPS_EXPORT, SIGNUPS_LOGOUT]) {
+    for (const path of [SIGNUPS_HOME, `${SIGNUPS_HOME}/`, '/Admin/Signups', '/admin/%73ignups', SIGNUPS_LOGIN, SIGNUPS_EXPORT, SIGNUPS_LOGOUT]) {
       const response = await run(path)
       expect(response.status, path).toBe(404)
       expect(await response.text()).toBe('Not found.')
