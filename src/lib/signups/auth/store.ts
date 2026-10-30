@@ -12,6 +12,11 @@ export function sessionSecretTag(secret: string): string {
   return createHmac('sha256', secret).update('bestbotfor-signups-session-tag|v1').digest('hex')
 }
 
+/** Stored session id. The cookie still carries the raw sid. */
+export function signupsSessionRecordId(secret: string, sid: string): string {
+  return createHmac('sha256', secret).update(`bestbotfor-signups-session-id|v1|${sid}`).digest('hex')
+}
+
 export async function insertSignupsSession(id: string, expiresAt: number, secretTag: string, now: number): Promise<void> {
   const db = database()
   await db.execute({
@@ -66,22 +71,18 @@ export async function claimTotpStep(step: number, now: number): Promise<boolean>
   return Number(inserted.rowsAffected) > 0
 }
 
-export async function loginIsLimited(bucket: string, now = Date.now()): Promise<boolean> {
-  const result = await database().execute({
-    sql: 'SELECT failures, window_start FROM signups_login_attempts WHERE bucket = ?',
-    args: [bucket],
+/**
+ * Count one credential attempt and drop expired rows.
+ * True while this attempt is still inside the window of 8.
+ * The insert and the count are one statement, so a burst cannot slip past the cap.
+ */
+export async function consumeLoginAttempt(bucket: string, now = Date.now()): Promise<boolean> {
+  const db = database()
+  await db.execute({
+    sql: 'DELETE FROM signups_login_attempts WHERE ? - window_start > ?',
+    args: [now, LOGIN_WINDOW_MS],
   })
-  const row = result.rows[0]
-  if (!row) return false
-  const failures = Number(row.failures)
-  const windowStart = Number(row.window_start)
-  if (!Number.isFinite(failures) || !Number.isFinite(windowStart)) return true
-  if (now - windowStart > LOGIN_WINDOW_MS) return false
-  return failures >= LOGIN_MAX_FAILURES
-}
-
-export async function recordLoginFailure(bucket: string, now = Date.now()): Promise<void> {
-  await database().execute({
+  const result = await db.execute({
     sql: `INSERT INTO signups_login_attempts (bucket, failures, window_start) VALUES (?, 1, ?)
       ON CONFLICT(bucket) DO UPDATE SET
         failures = CASE
@@ -91,9 +92,12 @@ export async function recordLoginFailure(bucket: string, now = Date.now()): Prom
         window_start = CASE
           WHEN ? - signups_login_attempts.window_start > ? THEN ?
           ELSE signups_login_attempts.window_start
-        END`,
+        END
+      RETURNING failures`,
     args: [bucket, now, now, LOGIN_WINDOW_MS, now, LOGIN_WINDOW_MS, now],
   })
+  const failures = Number(result.rows[0]?.failures)
+  return Number.isFinite(failures) && failures <= LOGIN_MAX_FAILURES
 }
 
 export async function clearLoginFailures(bucket: string): Promise<void> {

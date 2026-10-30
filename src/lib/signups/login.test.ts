@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { POST } from '@/app/admin/signups/login/submit/route'
+import { getDb } from '@/lib/db'
 import { withSignupsAuthDb } from '@/lib/signups/auth/fixture-db'
 import { hashPassword } from '@/lib/signups/auth/password'
 import { SESSION_COOKIE, SESSION_MAX_AGE_SECONDS } from '@/lib/signups/auth/session'
@@ -81,6 +82,56 @@ describe('login', () => {
       expect(response.status).toBe(303)
       expect(response.headers.get('location')).toBe(`https://dash.example${SIGNUPS_LOGIN}?e=1`)
       expect(response.headers.getSetCookie().join(';')).not.toContain(`${SESSION_COOKIE}=`)
+    }
+  })
+
+  it('lets a local request through when the trusted IP header is missing', async () => {
+    const code = totpCode(TOTP_KEY, Date.now())
+    const response = await POST(
+      new Request('https://dash.example/admin/signups/login/submit', {
+        method: 'POST',
+        headers: {
+          origin: 'https://dash.example',
+          host: 'dash.example',
+          'content-type': 'application/x-www-form-urlencoded',
+          cookie: 'signups_login_csrf=csrf-token',
+          'x-forwarded-for': '203.0.113.40',
+        },
+        body: new URLSearchParams({ csrf: 'csrf-token', password: PASSWORD, code }),
+      }),
+    )
+    expect(response.status).toBe(303)
+    expect(response.headers.get('location')).toBe(`https://dash.example${SIGNUPS_HOME}`)
+  })
+
+  it('refuses a missing trusted IP on Vercel without writing a shared bucket', async () => {
+    process.env.VERCEL = '1'
+    process.env.VERCEL_ENV = 'production'
+    process.env.VERCEL_REGION = 'iad1'
+    try {
+      const code = totpCode(TOTP_KEY, Date.now())
+      const response = await POST(
+        new Request('https://dash.example/admin/signups/login/submit', {
+          method: 'POST',
+          headers: {
+            origin: 'https://dash.example',
+            host: 'dash.example',
+            'content-type': 'application/x-www-form-urlencoded',
+            cookie: 'signups_login_csrf=csrf-token',
+            'x-forwarded-for': '203.0.113.41',
+          },
+          body: new URLSearchParams({ csrf: 'csrf-token', password: PASSWORD, code }),
+        }),
+      )
+      expect(response.status).toBe(303)
+      expect(response.headers.get('location')).toBe(`https://dash.example${SIGNUPS_LOGIN}?e=1`)
+      expect(response.headers.getSetCookie().join(';')).not.toContain(`${SESSION_COOKIE}=`)
+      const rows = await getDb().$client.execute({ sql: 'SELECT COUNT(*) AS n FROM signups_login_attempts', args: [] })
+      expect(Number(rows.rows[0]?.n)).toBe(0)
+    } finally {
+      delete process.env.VERCEL
+      delete process.env.VERCEL_ENV
+      delete process.env.VERCEL_REGION
     }
   })
 

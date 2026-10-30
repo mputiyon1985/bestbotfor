@@ -7,6 +7,7 @@ import { buildContentSecurityPolicy, securityHeaders } from '@/lib/csp'
 import { getDb, peekCachedTaskSlugs } from '@/lib/db/client'
 import { isAdminPath } from '@/lib/admin-path'
 import { LOGIN_CSRF_COOKIE, LOGIN_CSRF_HEADER, loginCsrfCookie } from '@/lib/signups/auth/login-csrf'
+import { signupsAuthConfigured } from '@/lib/signups/auth/config'
 import { decideSignupsGate } from '@/lib/signups/gate'
 import { isSignupsAdminPath, SIGNUPS_LOGIN, SIGNUPS_REQUEST_HEADER } from '@/lib/signups/paths'
 import { applyPrivacyHeaders } from '@/lib/signups/privacy'
@@ -163,17 +164,24 @@ function rejectCatalogPath(request: NextRequest): NextResponse | null {
   )
 }
 
+/** Login CSRF for a signups render that also has to pass through Clerk. */
+const signupsCsrf = new WeakMap<NextRequest, string>()
+
 const withClerk = clerkMiddleware(async (auth, request) => {
   const pathname = request.nextUrl.pathname
-  if (isMembersPath(pathname)) {
-    await auth.protect()
+  // Signups has its own password session. protect() would send that visitor to Clerk sign-in.
+  // The wrapper still has to run: the root header calls auth() on every page.
+  if (!isSignupsAdminPath(pathname)) {
+    if (isMembersPath(pathname)) {
+      await auth.protect()
+    }
+    if (isAdminPath(pathname)) {
+      const { userId } = await auth()
+      // Signed-out visitors 404 in the admin layout. protect() in middleware would send them to sign-in.
+      if (userId) await auth.protect()
+    }
   }
-  if (isAdminPath(pathname)) {
-    const { userId } = await auth()
-    // Signed-out visitors 404 in the admin layout. protect() in middleware would send them to sign-in.
-    if (userId) await auth.protect()
-  }
-  return nextWithNonce(request)
+  return nextWithNonce(request, signupsCsrf.get(request))
 })
 
 /** Faults run only when Playwright sets RESULT_FAULTS=1 and VERCEL_ENV is development or test. */
@@ -235,6 +243,25 @@ async function gateResult(request: NextRequest, event: NextFetchEvent): Promise<
   return null
 }
 
+/**
+ * Next would 308 a trailing slash before this proxy runs. That redirect cannot
+ * carry the signups noindex and no-store headers, so the proxy owns it.
+ * Every other path still 308s to the same URL without the slash, and the query
+ * string stays. A signups path with no admin secrets 404s instead of redirecting.
+ */
+function redirectTrailingSlash(request: NextRequest): NextResponse | null {
+  const { pathname } = request.nextUrl
+  if (pathname.length <= 1 || !pathname.endsWith('/')) return null
+  if (isSignupsAdminPath(pathname) && !signupsAuthConfigured()) return hiddenNotFound()
+  const target = new URL(request.url)
+  target.pathname = pathname.slice(0, -1)
+  if (!isSignupsAdminPath(pathname)) return NextResponse.redirect(target, 308)
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+  const response = NextResponse.redirect(target, 308)
+  applyPrivacyHeaders(response.headers)
+  return adminHeaders(applySecurity(response, nonce), pathname)
+}
+
 /** Scanner probes get a cacheable bare 404 before any other work. */
 function rejectJunkPath(request: NextRequest): NextResponse | null {
   if (!isJunkPath(request.nextUrl.pathname)) return null
@@ -249,6 +276,8 @@ function rejectJunkPath(request: NextRequest): NextResponse | null {
 }
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  const slashed = redirectTrailingSlash(request)
+  if (slashed) return slashed
   const junk = rejectJunkPath(request)
   if (junk) return junk
   const malformed = rejectMalformedEncoding(request)
@@ -261,13 +290,6 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   if (rejected) return rejected
   const signups = await decideSignupsGate(request)
   if (signups.action === 'not-found') return hiddenNotFound()
-  if (signups.action === 'slash') {
-    const url = new URL(signups.pathname, request.nextUrl.origin)
-    const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
-    const response = NextResponse.redirect(url, 308)
-    applyPrivacyHeaders(response.headers)
-    return adminHeaders(applySecurity(response, nonce), request.nextUrl.pathname)
-  }
   if (signups.action === 'redirect') {
     const url = request.nextUrl.clone()
     url.pathname = SIGNUPS_LOGIN
@@ -275,7 +297,12 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
     return adminHeaders(applySecurity(NextResponse.redirect(url), nonce), request.nextUrl.pathname)
   }
-  if (signups.action === 'next') return nextWithNonce(request, signups.csrf ?? undefined)
+  if (signups.action === 'next') {
+    if (signups.csrf) signupsCsrf.set(request, signups.csrf)
+    // Clerk auth() in the shared header throws unless clerkMiddleware handled this request.
+    if (isClerkConfigured()) return withClerk(request, event)
+    return nextWithNonce(request, signups.csrf ?? undefined)
+  }
   const gated = await gateResult(request, event)
   if (gated) return gated
   if (!isClerkConfigured()) {

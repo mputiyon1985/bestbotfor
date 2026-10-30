@@ -11,7 +11,7 @@ import { issueSignupsSession } from '@/lib/signups/auth/session-store'
 import { MIN_SESSION_SECRET_LENGTH, SESSION_COOKIE, sessionCookieBase } from '@/lib/signups/auth/session'
 import { acceptTotp } from '@/lib/signups/auth/accept-totp'
 import { verifyTotp } from '@/lib/signups/auth/totp'
-import { clearLoginFailures, loginIsLimited, recordLoginFailure } from '@/lib/signups/auth/store'
+import { clearLoginFailures, consumeLoginAttempt } from '@/lib/signups/auth/store'
 import { applyPrivacyHeaders } from '@/lib/signups/privacy'
 import { SIGNUPS_HOME, SIGNUPS_LOGIN } from '@/lib/signups/paths'
 
@@ -50,43 +50,31 @@ export async function POST(request: Request) {
   const csrfCookie = readCookie(request, LOGIN_CSRF_COOKIE)
   if (!csrfCookie || !csrf || !safeEqual(csrfCookie, csrf)) return fail()
 
-  const bucket = signupsLoginBucket(request)
-  try {
-    if (await loginIsLimited(bucket)) return fail()
-  } catch {
-    return fail()
+  const limit = signupsLoginBucket(request)
+  if (limit.action === 'refuse') return fail()
+  if (limit.action === 'limit') {
+    try {
+      if (!(await consumeLoginAttempt(limit.bucket))) return fail()
+    } catch {
+      return fail()
+    }
   }
 
   const passwordHash = signupsPasswordHash()
   const totpSecret = signupsTotpSecret()
   const sessionSecret = signupsSessionSecret()
   if (!passwordHash || !totpSecret || sessionSecret.length < MIN_SESSION_SECRET_LENGTH || password.length === 0 || password.length > 256) {
-    try {
-      await recordLoginFailure(bucket)
-    } catch {
-      return fail()
-    }
     return fail()
   }
 
   const passwordOk = verifyPassword(password, passwordHash)
   const totpOk = verifyTotp(code, totpSecret)
-  if (!passwordOk || !totpOk) {
-    try {
-      await recordLoginFailure(bucket)
-    } catch {
-      return fail()
-    }
-    return fail()
-  }
+  if (!passwordOk || !totpOk) return fail()
 
   try {
-    if (!(await acceptTotp(code, totpSecret))) {
-      await recordLoginFailure(bucket)
-      return fail()
-    }
+    if (!(await acceptTotp(code, totpSecret))) return fail()
     const { token } = await issueSignupsSession(sessionSecret)
-    await clearLoginFailures(bucket)
+    if (limit.action === 'limit') await clearLoginFailures(limit.bucket)
     const response = NextResponse.redirect(new URL(SIGNUPS_HOME, request.url), 303)
     response.cookies.set(SESSION_COOKIE, token, sessionCookieBase)
     response.cookies.set(LOGIN_CSRF_COOKIE, '', { ...loginCsrfCookie, maxAge: 0 })
