@@ -46,16 +46,20 @@ async function main(): Promise<void> {
       return
     }
     // Next's own repeated-slash 308 runs before the proxy and cannot set these.
-    // The body is fixed. The location is a rebuilt /admin path, not the raw URL.
+    // Location is the pathname of a same-origin URL. The body stays empty.
     const collapsed = adminCollapsedRedirect(req.url ?? '')
     if (collapsed) {
-      res.statusCode = 308
-      res.setHeader('content-type', 'text/plain; charset=utf-8')
-      res.setHeader('location', collapsed)
-      res.setHeader('cache-control', 'no-store')
-      res.setHeader('x-robots-tag', 'noindex, nofollow')
-      res.end('Redirecting.')
-      return
+      const target = new URL(collapsed, 'https://bestbotfor.com')
+      if (target.origin === 'https://bestbotfor.com' && target.pathname.startsWith('/admin')) {
+        res.statusCode = 308
+        res.setHeader('content-type', 'text/plain; charset=utf-8')
+        res.setHeader('x-content-type-options', 'nosniff')
+        res.setHeader('location', `${target.pathname}${target.search}`)
+        res.setHeader('cache-control', 'no-store')
+        res.setHeader('x-robots-tag', 'noindex, nofollow')
+        res.end()
+        return
+      }
     }
     handle(req, res).catch((error: unknown) => {
       console.error('request failed', error instanceof Error ? error.name : 'error')

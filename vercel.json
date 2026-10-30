@@ -28,7 +28,7 @@
       }
     },
     {
-      "src": "^(/admin(?:/[^/]+)*)/+$",
+      "src": "^(/admin(?:/signups(?:/[^/]+)*)?)/{2,}$",
       "status": 308,
       "headers": {
         "Location": "$1",

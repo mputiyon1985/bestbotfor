@@ -85,6 +85,25 @@ describe('login', () => {
     }
   })
 
+  it('lets a local request through when the trusted IP header is missing', async () => {
+    const code = totpCode(TOTP_KEY, Date.now())
+    const response = await POST(
+      new Request('https://dash.example/admin/signups/login/submit', {
+        method: 'POST',
+        headers: {
+          origin: 'https://dash.example',
+          host: 'dash.example',
+          'content-type': 'application/x-www-form-urlencoded',
+          cookie: 'signups_login_csrf=csrf-token',
+          'x-forwarded-for': '203.0.113.40',
+        },
+        body: new URLSearchParams({ csrf: 'csrf-token', password: PASSWORD, code }),
+      }),
+    )
+    expect(response.status).toBe(303)
+    expect(response.headers.get('location')).toBe(`https://dash.example${SIGNUPS_HOME}`)
+  })
+
   it('refuses a missing trusted IP on Vercel without a region and without a shared bucket', async () => {
     const previous = {
       vercel: process.env.VERCEL,

@@ -3,6 +3,7 @@ import path from 'node:path'
 import { NextRequest } from 'next/server'
 import { describe, expect, it } from 'vitest'
 import { APPLE_TOUCH_ICON_PATH } from '@/lib/brand'
+import { decodePublicPath, publicAssetFile, publicAssetManifest } from '@/lib/public-asset'
 import { config, proxy } from './proxy'
 
 const event = { waitUntil() {} }
@@ -44,5 +45,14 @@ describe('unknown static assets', () => {
     expect(precomposed.status).toBe(200)
     expect(precomposed.headers.get('location')).toBeNull()
     expect(precomposed.headers.get('x-middleware-rewrite')).toBeNull()
+  })
+
+  it('resolves an encoded filename from the cached public manifest', () => {
+    expect(decodePublicPath('/files/%40icon.png')).toBe('/files/@icon.png')
+    const encoded = APPLE_TOUCH_ICON_PATH.replace('.', '%2E')
+    expect(publicAssetFile(encoded)).toContain('apple-touch-icon.0619ce72.png')
+    expect(publicAssetFile('/%2e%2e/package.json')).toBeNull()
+    expect(publicAssetManifest()).toBe(publicAssetManifest())
+    expect(publicAssetManifest().has(APPLE_TOUCH_ICON_PATH)).toBe(true)
   })
 })
