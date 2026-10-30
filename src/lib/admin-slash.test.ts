@@ -18,6 +18,15 @@ describe('admin repeated-slash redirect', () => {
     expect(adminCollapsedRedirect('/admin/signups')).toBeNull()
   })
 
+  it('refuses an absolute, protocol-relative, or header-breaking target', () => {
+    expect(adminCollapsedRedirect('https://evil.example/admin/')).toBeNull()
+    expect(adminCollapsedRedirect('//evil.example/admin//')).toBeNull()
+    expect(adminCollapsedRedirect('/\\evil.example')).toBeNull()
+    expect(adminCollapsedRedirect('/admin/signups//\r\nSet-Cookie: a=b')).toBeNull()
+    expect(adminCollapsedRedirect('/admin/<script>//')).toBeNull()
+    expect(adminCollapsedRedirect('/admin/signups//?next=https://evil.example')).toBe('/admin/signups')
+  })
+
   it('is the redirect vercel.json sends before Next', () => {
     const vercel = readFileSync('vercel.json', 'utf8')
     const route = JSON.parse(vercel).routes.find((entry: { src?: string }) => entry.src?.includes('/admin(?:/[^/]+)*'))

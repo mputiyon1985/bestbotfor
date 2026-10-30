@@ -46,13 +46,15 @@ async function main(): Promise<void> {
       return
     }
     // Next's own repeated-slash 308 runs before the proxy and cannot set these.
+    // The body is fixed. The location is a rebuilt /admin path, not the raw URL.
     const collapsed = adminCollapsedRedirect(req.url ?? '')
     if (collapsed) {
       res.statusCode = 308
+      res.setHeader('content-type', 'text/plain; charset=utf-8')
       res.setHeader('location', collapsed)
       res.setHeader('cache-control', 'no-store')
       res.setHeader('x-robots-tag', 'noindex, nofollow')
-      res.end(collapsed)
+      res.end('Redirecting.')
       return
     }
     handle(req, res).catch((error: unknown) => {
