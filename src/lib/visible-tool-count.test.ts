@@ -3,7 +3,7 @@ import { count } from 'drizzle-orm'
 import { describe, expect, it, vi } from 'vitest'
 import { readToolCategoryCounts, readToolPage, readVisibleToolCount } from './catalog-read'
 import { tools } from './db/schema'
-import { formatVisibleToolCount, visibleToolCountLabel } from './visible-tool-count'
+import { formatVisibleToolCount, VISIBLE_TOOL_COUNT_WORD, visibleToolCountLabel } from './visible-tool-count'
 import { VISIBLE_TOOL_STATUS, visibleToolStatus } from './visible-tool-status'
 import { createTestDatabase } from '@/test/db'
 
@@ -27,12 +27,18 @@ function toolRow(id: number, slug: string, status: string) {
   }
 }
 
+function expectedCount(count: number): string {
+  const formatted = new Intl.NumberFormat('en-US').format(count)
+  const noun = count === 1 ? 'tool' : 'tools'
+  return `${formatted} AI ${noun} ${VISIBLE_TOOL_COUNT_WORD}`
+}
+
 describe('formatVisibleToolCount', () => {
   it('groups thousands and stays a short line', () => {
-    expect(formatVisibleToolCount(260)).toBe('260 AI tools rated')
-    expect(formatVisibleToolCount(1260)).toBe('1,260 AI tools rated')
-    expect(formatVisibleToolCount(1)).toBe('1 AI tool rated')
-    expect(formatVisibleToolCount(0)).toBe('0 AI tools rated')
+    expect(formatVisibleToolCount(260)).toBe(expectedCount(260))
+    expect(formatVisibleToolCount(1260)).toBe(expectedCount(1260))
+    expect(formatVisibleToolCount(1)).toBe(expectedCount(1))
+    expect(formatVisibleToolCount(0)).toBe(expectedCount(0))
   })
 
   it('rejects a count that is not a whole number', () => {
@@ -49,7 +55,7 @@ describe('visibleToolCountLabel', () => {
     await expect(visibleToolCountLabel(async () => {
       throw new Error('db down')
     })).resolves.toBeNull()
-    await expect(visibleToolCountLabel(async () => 1260)).resolves.toBe('1,260 AI tools rated')
+    await expect(visibleToolCountLabel(async () => 1260)).resolves.toBe(expectedCount(1260))
   })
 })
 
@@ -90,6 +96,9 @@ describe('homepage hero', () => {
     expect(count).toBeGreaterThan(eyebrow)
     expect(heading).toBeGreaterThan(count)
     expect(lede).toBeGreaterThan(heading)
+    const space = page.indexOf("{' '}")
+    expect(space).toBeGreaterThan(eyebrow)
+    expect(count).toBeGreaterThan(space)
     expect(page).toContain('<br className="md:hidden" />')
     expect(page).toContain('tabular-nums')
     expect(page).not.toMatch(/<h1[\s\S]*toolCountLabel/)

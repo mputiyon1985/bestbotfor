@@ -50,6 +50,7 @@ export default async function HomePage() {
             <span className="uppercase tracking-wide">Answer 3 quick questions</span>
             {toolCountLabel ? (
               <>
+                {' '}
                 <br className="md:hidden" />
                 <span className="tabular-nums md:ml-3">{toolCountLabel}</span>
               </>

@@ -73,14 +73,20 @@ function toolRow(id: number, slug: string, status: string) {
   }
 }
 
+function expectedCount(count: number, word: string): string {
+  const formatted = new Intl.NumberFormat('en-US').format(count)
+  const noun = count === 1 ? 'tool' : 'tools'
+  return `${formatted} AI ${noun} ${word}`
+}
+
 describe('cached visible tool count', () => {
   it('reads the database once for repeated calls and revalidates hourly', async () => {
     const { getVisibleToolCount, CATALOG_PAGE_REVALIDATE_SECONDS } = await import('./catalog')
-    const { visibleToolCountLabel } = await import('./visible-tool-count')
+    const { VISIBLE_TOOL_COUNT_WORD, visibleToolCountLabel } = await import('./visible-tool-count')
     expect(await getVisibleToolCount()).toBe(1260)
     expect(await getVisibleToolCount()).toBe(1260)
-    expect(await visibleToolCountLabel()).toBe('1,260 AI tools rated')
-    expect(await visibleToolCountLabel()).toBe('1,260 AI tools rated')
+    expect(await visibleToolCountLabel()).toBe(expectedCount(1260, VISIBLE_TOOL_COUNT_WORD))
+    expect(await visibleToolCountLabel()).toBe(expectedCount(1260, VISIBLE_TOOL_COUNT_WORD))
     expect(state.queries).toBe(1)
     const registered = state.registrations.find((entry) => entry.keys[0] === 'visible-tool-count-v1')
     expect(registered?.revalidate).toBe(60 * 60)
@@ -100,9 +106,9 @@ describe('cached visible tool count', () => {
       ])
       state.failLive = true
       state.fallbackDb = db
-      const { visibleToolCountLabel } = await import('./visible-tool-count')
-      expect(await visibleToolCountLabel()).toBe('2 AI tools rated')
-      expect(await visibleToolCountLabel()).toBe('2 AI tools rated')
+      const { VISIBLE_TOOL_COUNT_WORD, visibleToolCountLabel } = await import('./visible-tool-count')
+      expect(await visibleToolCountLabel()).toBe(expectedCount(2, VISIBLE_TOOL_COUNT_WORD))
+      expect(await visibleToolCountLabel()).toBe(expectedCount(2, VISIBLE_TOOL_COUNT_WORD))
       expect(state.queries).toBe(0)
     } finally {
       await close()
