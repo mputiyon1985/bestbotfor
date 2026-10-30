@@ -9,7 +9,6 @@ export type SignupsDecision =
   | { action: 'skip' }
   | { action: 'not-found' }
   | { action: 'redirect' }
-  | { action: 'slash'; pathname: string }
   | { action: 'next'; csrf: string | null }
 
 /**
@@ -21,10 +20,6 @@ export async function decideSignupsGate(request: NextRequest): Promise<SignupsDe
   const rawPath = request.nextUrl.pathname
   if (!isSignupsAdminPath(rawPath)) return { action: 'skip' }
   if (!signupsAuthConfigured()) return { action: 'not-found' }
-
-  if (rawPath.length > 1 && rawPath.endsWith('/')) {
-    return { action: 'slash', pathname: normalizeSignupsPath(rawPath) }
-  }
 
   const path = normalizeSignupsPath(rawPath)
   if (request.method === 'GET' && path === SIGNUPS_LOGIN) {

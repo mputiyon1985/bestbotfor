@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import { GET } from '@/app/admin/signups/export/route'
 import { POST } from '@/app/admin/signups/logout/route'
+import { getDb } from '@/lib/db'
 import { withSignupsAuthDb } from './fixture-db'
 import { issueSignupsSession, verifyActiveSession } from './session-store'
 import { SESSION_COOKIE } from './session'
@@ -26,6 +27,10 @@ describe('session revocation', () => {
 
   it('stops accepting a token after logout and after the secret changes', async () => {
     const issued = await issueSignupsSession(SECRET)
+    const stored = await getDb().$client.execute({ sql: 'SELECT id FROM signups_sessions', args: [] })
+    const storedId = String(stored.rows[0]?.id ?? '')
+    expect(storedId).toMatch(/^[0-9a-f]{64}$/)
+    expect(storedId).not.toBe(issued.payload.sid)
     expect(await verifyActiveSession(issued.token, SECRET)).not.toBeNull()
 
     const rotated = `${SECRET}-rotated`

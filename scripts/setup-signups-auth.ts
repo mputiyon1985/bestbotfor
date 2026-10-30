@@ -17,7 +17,7 @@ function writePrivate(path: string, data: string | Buffer): void {
   chmodSync(path, 0o600)
 }
 
-export async function runSetup(outPath: string): Promise<{ password: string }> {
+export async function runSetup(outPath: string): Promise<{ password: string; passwordPath: string }> {
   if (basename(outPath) !== OUTPUT_NAME) throw new Error('invalid output name')
   const sessionSecret = randomBytes(32).toString('base64url')
   const password = randomBytes(18).toString('base64url')
@@ -36,8 +36,8 @@ export async function runSetup(outPath: string): Promise<{ password: string }> {
   const contents = [
     '# Local only. Do not commit, log, or paste this file.',
     '# Copy SIGNUPS_SESSION_SECRET, SIGNUPS_ADMIN_PASSWORD_HASH, and SIGNUPS_TOTP_SECRET into the host environment.',
-    '# The plaintext password is not in this file. It was printed once when this file was created.',
-    '# Delete this file and the QR PNG after you have copied the values.',
+    '# The plaintext password is not in this file. It is in the companion .password file.',
+    '# Delete this file, the QR PNG, and the .password file after you have copied the values.',
     `SIGNUPS_SESSION_SECRET=${sessionSecret}`,
     `SIGNUPS_ADMIN_PASSWORD_HASH=${passwordHash}`,
     `SIGNUPS_TOTP_SECRET=${totpSecret}`,
@@ -46,16 +46,18 @@ export async function runSetup(outPath: string): Promise<{ password: string }> {
     '',
   ].join('\n')
 
+  const passwordPath = `${outPath}.password`
   writePrivate(outPath, contents)
   writePrivate(pngPath, png)
-  return { password }
+  writePrivate(passwordPath, `${password}\n`)
+  return { password, passwordPath }
 }
 
 async function main(): Promise<void> {
   const outPath = process.env.AUTH_SETUP_FILE ? resolve(process.env.AUTH_SETUP_FILE) : resolve(process.cwd(), OUTPUT_NAME)
-  const { password } = await runSetup(outPath)
+  const { passwordPath } = await runSetup(outPath)
   process.stderr.write(
-    `Delete ${outPath} and ${outPath}.png after you copy the secrets into the host environment. The plaintext password is not stored in the file.\nPassword: ${password}\n`,
+    `Delete ${outPath}, ${outPath}.png, and ${passwordPath} after you copy the secrets into the host environment. The plaintext password is only in the password file.\n`,
   )
   process.stdout.write(`${outPath}\n`)
 }

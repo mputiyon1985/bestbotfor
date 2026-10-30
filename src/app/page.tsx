@@ -66,6 +66,8 @@ export default async function HomePage() {
         </p>
       </section>
 
+      <PickerForm tasks={tasks} />
+
       <section aria-labelledby="how-it-works">
         <h2 id="how-it-works" className="font-semibold text-3xl">How it works: three questions, about 30 seconds</h2>
         <ol className="mt-4 grid gap-3 md:grid-cols-3">
@@ -84,8 +86,6 @@ export default async function HomePage() {
         </ol>
         <p className="mt-4 text-muted">You get one pick and up to six alternatives, side by side, with the reason we chose each. Budget and experience change the answer. That’s why we ask.</p>
       </section>
-
-      <PickerForm tasks={tasks} />
 
       <section>
         <h2 className="font-semibold text-3xl">Popular jobs</h2>

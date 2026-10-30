@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { proxy } from '@/proxy'
 import { hashPassword } from '@/lib/signups/auth/password'
 import { createSessionToken, SESSION_COOKIE, SESSION_TTL_MS } from '@/lib/signups/auth/session'
@@ -89,11 +89,19 @@ describe('signups proxy gating', () => {
   })
 
   it('redirects a trailing slash with noindex and no-store', async () => {
-    const response = await run(`${SIGNUPS_HOME}/`)
+    const response = await run(`${SIGNUPS_HOME}/?from=1`)
     expect(response.status).toBe(308)
-    expect(response.headers.get('location')).toBe(`https://dash.example${SIGNUPS_HOME}`)
+    expect(response.headers.get('location')).toBe(`https://dash.example${SIGNUPS_HOME}?from=1`)
     expect(response.headers.get('x-robots-tag')).toBe(ROBOTS_HEADER)
     expect(response.headers.get('cache-control')).toContain('no-store')
+  })
+
+  it('308s a public trailing slash without the signups privacy headers', async () => {
+    const response = await run('/pricing/?plan=annual')
+    expect(response.status).toBe(308)
+    expect(response.headers.get('location')).toBe('https://dash.example/pricing?plan=annual')
+    expect(response.headers.get('x-robots-tag')).toBeNull()
+    expect(response.headers.get('cache-control')).toBeNull()
   })
 
   it('rejects an expired session cookie', async () => {
@@ -114,9 +122,38 @@ describe('signups proxy gating', () => {
     expect(cookie.toLowerCase()).toContain('path=/admin/signups/login')
   })
 
+  it('runs clerk middleware for a clerk-less login request and keeps the signups headers', async () => {
+    const live = 'live'
+    const publishable = `pk_${live}_${Buffer.from('clerk.bestbotfor.com$').toString('base64')}`
+    const previousPublishable = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+    const previousSecret = process.env.CLERK_SECRET_KEY
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = publishable
+    process.env.CLERK_SECRET_KEY = `sk_${live}_signups_gate_test_secret`
+    vi.resetModules()
+    try {
+      const { proxy: clerkProxy } = await import('@/proxy')
+      const response = await clerkProxy(new NextRequest(`https://dash.example${SIGNUPS_LOGIN}`), event as never)
+      if (!response) throw new Error('proxy returned no response')
+      expect(response.status).toBe(200)
+      expect(response.headers.get('location')).toBeNull()
+      expect(response.headers.get('x-middleware-request-x-clerk-auth-status')).toBe('signed-out')
+      expect(response.headers.get('x-middleware-request-x-bbf-signups')).toBe('1')
+      expect(response.headers.get('x-middleware-request-x-login-csrf')).toBeTruthy()
+      expect(response.headers.getSetCookie().join(';')).toContain('signups_login_csrf=')
+      expect(response.headers.get('x-robots-tag')).toBe(ROBOTS_HEADER)
+      expect(response.headers.get('cache-control')).toContain('no-store')
+    } finally {
+      if (previousPublishable === undefined) delete process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+      else process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY = previousPublishable
+      if (previousSecret === undefined) delete process.env.CLERK_SECRET_KEY
+      else process.env.CLERK_SECRET_KEY = previousSecret
+      vi.resetModules()
+    }
+  })
+
   it('404s every signups path when the admin secrets are unset', async () => {
     clearAuth()
-    for (const path of [SIGNUPS_HOME, '/Admin/Signups', '/admin/%73ignups', SIGNUPS_LOGIN, SIGNUPS_EXPORT, SIGNUPS_LOGOUT]) {
+    for (const path of [SIGNUPS_HOME, `${SIGNUPS_HOME}/`, '/Admin/Signups', '/admin/%73ignups', SIGNUPS_LOGIN, SIGNUPS_EXPORT, SIGNUPS_LOGOUT]) {
       const response = await run(path)
       expect(response.status, path).toBe(404)
       expect(await response.text()).toBe('Not found.')
