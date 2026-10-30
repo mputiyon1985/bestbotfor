@@ -56,6 +56,13 @@ function jsonResponse(body: unknown, status = 200) {
   })
 }
 
+/** Host and path from a fetch input. Hostname is compared exactly, not as a substring. */
+function requestUrl(input: Parameters<typeof fetch>[0]): URL {
+  if (typeof input === 'string') return new URL(input)
+  if (input instanceof URL) return input
+  return new URL(input.url)
+}
+
 beforeEach(() => {
   clearEnv()
   resetCacheForTests()
@@ -116,11 +123,11 @@ describe('sources', () => {
     })
     const fetchMock = vi.mocked(fetch)
     fetchMock.mockImplementation(async (input, init) => {
-      const url = String(input)
+      const url = requestUrl(input)
       expect((init?.method ?? 'GET').toUpperCase()).toBe('GET')
-      if (url.includes('beehiiv.com')) return new Response('nope', { status: 500 })
-      if (url.includes('/v1/users/count')) return jsonResponse({ total_count: 2 })
-      if (url.includes('api.clerk.com/v1/users')) {
+      if (url.hostname === 'api.beehiiv.com') return new Response('nope', { status: 500 })
+      if (url.hostname === 'api.clerk.com' && url.pathname === '/v1/users/count') return jsonResponse({ total_count: 2 })
+      if (url.hostname === 'api.clerk.com' && url.pathname === '/v1/users') {
         return jsonResponse([
           {
             primary_email_address_id: 'idn_1',
@@ -167,16 +174,16 @@ describe('sources', () => {
     process.env.CLERK_SECRET_KEY = 'clerk_test_key'
     libsql.execute.mockRejectedValue(new Error('database unavailable'))
     vi.mocked(fetch).mockImplementation(async (input) => {
-      const url = String(input)
-      if (url.includes('beehiiv.com')) {
+      const url = requestUrl(input)
+      if (url.hostname === 'api.beehiiv.com') {
         return jsonResponse({
           data: [{ email: 'b@example.com', created: 1767225600 }],
           total_results: 1,
           total_pages: 1,
         })
       }
-      if (url.includes('/v1/users/count')) return jsonResponse({ total_count: 0 })
-      if (url.includes('api.clerk.com/v1/users')) return jsonResponse([])
+      if (url.hostname === 'api.clerk.com' && url.pathname === '/v1/users/count') return jsonResponse({ total_count: 0 })
+      if (url.hostname === 'api.clerk.com' && url.pathname === '/v1/users') return jsonResponse([])
       throw new Error('unexpected url')
     })
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -199,8 +206,8 @@ describe('sources', () => {
     process.env.CLERK_SECRET_KEY = 'clerk_test_key'
     libsql.execute.mockResolvedValue({ rows: [] })
     vi.mocked(fetch).mockImplementation(async (input) => {
-      const url = String(input)
-      if (url.includes('beehiiv.com')) return jsonResponse({ data: [], total_results: 0, total_pages: 1 })
+      const url = requestUrl(input)
+      if (url.hostname === 'api.beehiiv.com') return jsonResponse({ data: [], total_results: 0, total_pages: 1 })
       throw new Error('clerk down')
     })
     const errors = vi.spyOn(console, 'error').mockImplementation(() => {})
