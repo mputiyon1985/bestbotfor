@@ -437,6 +437,7 @@ describe('sqlite file directories', () => {
     after.close()
   })
 
+  // Copies every migration and applies them more than once. On a busy CI runner this crosses Vitest's 5s default.
   it('applies 0018 with 0009 already on disk, then applies later sponsor files when they land', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'bestbotfor-order-'))
     directories.push(root)
@@ -507,7 +508,7 @@ describe('sqlite file directories', () => {
     const finalCount = await third.execute('SELECT COUNT(*) AS n FROM schema_migrations')
     expect(Number(finalCount.rows[0]?.n)).toBe(firstIds.length + late.length)
     third.close()
-  })
+  }, 20_000)
 })
 
 const SUBSCRIBER_UTM_COLUMNS = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'landing_path']

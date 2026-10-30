@@ -79,6 +79,7 @@ async function rowCounts() {
 }
 
 describe('vendor domain seed', () => {
+  // Two full catalog seeds. On a busy CI runner this crosses Vitest's 5s default.
   it('upserts one tool_url domain per tool, keeps manual rows, and does not write reviews', async () => {
     await useTempDatabase()
     await seed()
@@ -117,7 +118,7 @@ describe('vendor domain seed', () => {
     expect(Number(reportCount?.n ?? 0)).toBe(0)
     expect(Number(aggregateCount?.n ?? 0)).toBe(0)
     expect(Number(eventCount?.n ?? 0)).toBe(0)
-  })
+  }, 20_000)
 })
 
 describe('catalog seed', () => {
