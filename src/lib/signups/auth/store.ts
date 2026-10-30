@@ -86,13 +86,14 @@ export async function recordLoginFailure(bucket: string, now = Date.now()): Prom
       ON CONFLICT(bucket) DO UPDATE SET
         failures = CASE
           WHEN ? - signups_login_attempts.window_start > ? THEN 1
+          WHEN signups_login_attempts.failures >= ? THEN signups_login_attempts.failures
           ELSE signups_login_attempts.failures + 1
         END,
         window_start = CASE
           WHEN ? - signups_login_attempts.window_start > ? THEN ?
           ELSE signups_login_attempts.window_start
         END`,
-    args: [bucket, now, now, LOGIN_WINDOW_MS, now, LOGIN_WINDOW_MS, now],
+    args: [bucket, now, now, LOGIN_WINDOW_MS, LOGIN_MAX_FAILURES, now, LOGIN_WINDOW_MS, now],
   })
 }
 

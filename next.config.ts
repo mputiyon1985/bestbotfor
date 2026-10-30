@@ -58,6 +58,10 @@ const legacyAssetRedirects: { source: string; destination: string }[] = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Next's trailing-slash 308 runs before the proxy, so /admin/ and
+  // /admin/signups// cannot get noindex or no-store there. The proxy sends
+  // those redirects and repeats the same 308 for every other path.
+  skipTrailingSlashRedirect: true,
   // Ship the seed-built catalog snapshot with every server function (read only after a Turso error).
   outputFileTracingIncludes: { '/**': ['./data/catalog-fallback.db'] },
   // Inlined at build time so the test IP hook in src/lib/reviews/ip.ts is

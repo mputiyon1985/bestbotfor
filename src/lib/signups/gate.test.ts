@@ -96,6 +96,28 @@ describe('signups proxy gating', () => {
     expect(response.headers.get('cache-control')).toContain('no-store')
   })
 
+  it('adds noindex and no-store on /admin/ and a doubled signups slash', async () => {
+    const doubled = await run(`${SIGNUPS_HOME}//`)
+    expect(doubled.status).toBe(308)
+    expect(doubled.headers.get('location')).toBe(`https://dash.example${SIGNUPS_HOME}`)
+    expect(doubled.headers.get('x-robots-tag')).toBe(ROBOTS_HEADER)
+    expect(doubled.headers.get('cache-control')).toContain('no-store')
+
+    const admin = await run('/admin/')
+    expect(admin.status).toBe(308)
+    expect(admin.headers.get('location')).toBe('https://dash.example/admin')
+    expect(admin.headers.get('x-robots-tag')).toBe(ROBOTS_HEADER)
+    expect(admin.headers.get('cache-control')).toContain('no-store')
+  })
+
+  it('308s a public trailing slash without the admin privacy headers', async () => {
+    const response = await run('/pricing/?plan=annual')
+    expect(response.status).toBe(308)
+    expect(response.headers.get('location')).toBe('https://dash.example/pricing?plan=annual')
+    expect(response.headers.get('x-robots-tag')).toBeNull()
+    expect(response.headers.get('cache-control')).toBeNull()
+  })
+
   it('rejects an expired session cookie', async () => {
     const issuedAt = Date.now() - SESSION_TTL_MS - 5_000
     const { token } = await createSessionToken(SECRET, issuedAt)
@@ -116,7 +138,7 @@ describe('signups proxy gating', () => {
 
   it('404s every signups path when the admin secrets are unset', async () => {
     clearAuth()
-    for (const path of [SIGNUPS_HOME, '/Admin/Signups', '/admin/%73ignups', SIGNUPS_LOGIN, SIGNUPS_EXPORT, SIGNUPS_LOGOUT]) {
+    for (const path of [SIGNUPS_HOME, `${SIGNUPS_HOME}/`, `${SIGNUPS_HOME}//`, '/Admin/Signups', '/admin/%73ignups', SIGNUPS_LOGIN, SIGNUPS_EXPORT, SIGNUPS_LOGOUT]) {
       const response = await run(path)
       expect(response.status, path).toBe(404)
       expect(await response.text()).toBe('Not found.')

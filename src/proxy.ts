@@ -7,10 +7,12 @@ import { buildContentSecurityPolicy, securityHeaders } from '@/lib/csp'
 import { getDb, peekCachedTaskSlugs } from '@/lib/db/client'
 import { isAdminPath } from '@/lib/admin-path'
 import { LOGIN_CSRF_COOKIE, LOGIN_CSRF_HEADER, loginCsrfCookie } from '@/lib/signups/auth/login-csrf'
+import { signupsAuthConfigured } from '@/lib/signups/auth/config'
 import { decideSignupsGate } from '@/lib/signups/gate'
 import { isSignupsAdminPath, SIGNUPS_LOGIN, SIGNUPS_REQUEST_HEADER } from '@/lib/signups/paths'
 import { applyPrivacyHeaders } from '@/lib/signups/privacy'
 import { isJunkPath } from '@/lib/junk-path'
+import { isStaticAssetPath, publicAssetFile } from '@/lib/public-asset'
 import { adminSponsorsEnabled, isAdminMfaPath, isClerkConfigured, isRatingsPath, isSponsorsAdminPath, userRatingsEnabled } from '@/lib/flags'
 import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from '@/lib/indexing'
 import { clientIp, rateLimitKey } from '@/lib/ip'
@@ -235,6 +237,46 @@ async function gateResult(request: NextRequest, event: NextFetchEvent): Promise<
   return null
 }
 
+/**
+ * Image URLs used to miss the matcher and render the site header, which calls
+ * Clerk auth() and 500s. A real public file continues. Anything else is a 404
+ * here, before that header runs.
+ */
+function staticAssetResponse(request: NextRequest): NextResponse | null {
+  const pathname = request.nextUrl.pathname
+  if (!isStaticAssetPath(pathname)) return null
+  if (publicAssetFile(pathname)) return NextResponse.next()
+  return new NextResponse('Not found.', {
+    status: 404,
+    headers: {
+      'content-type': 'text/plain; charset=utf-8',
+      'cache-control': 'no-store',
+      'x-robots-tag': 'noindex, nofollow',
+    },
+  })
+}
+
+/**
+ * One 308 that removes every trailing slash. Admin paths, including /admin/
+ * and /admin/signups//, keep noindex and no-store. Other paths stay a plain 308.
+ * Signups with no admin secrets 404 instead of redirecting.
+ */
+function redirectTrailingSlash(request: NextRequest): NextResponse | null {
+  const { pathname } = request.nextUrl
+  if (pathname.length <= 1 || !pathname.endsWith('/')) return null
+  const stripped = pathname.replace(/\/+$/, '') || '/'
+  const signups = isSignupsAdminPath(pathname) || isSignupsAdminPath(stripped)
+  if (signups && !signupsAuthConfigured()) return hiddenNotFound()
+  const target = new URL(request.url)
+  target.pathname = stripped
+  const admin = isAdminPath(pathname) || isAdminPath(stripped)
+  if (!admin) return NextResponse.redirect(target, 308)
+  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
+  const response = NextResponse.redirect(target, 308)
+  applyPrivacyHeaders(response.headers)
+  return adminHeaders(applySecurity(response, nonce), pathname)
+}
+
 /** Scanner probes get a cacheable bare 404 before any other work. */
 function rejectJunkPath(request: NextRequest): NextResponse | null {
   if (!isJunkPath(request.nextUrl.pathname)) return null
@@ -249,6 +291,10 @@ function rejectJunkPath(request: NextRequest): NextResponse | null {
 }
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  const asset = staticAssetResponse(request)
+  if (asset) return asset
+  const slashed = redirectTrailingSlash(request)
+  if (slashed) return slashed
   const junk = rejectJunkPath(request)
   if (junk) return junk
   const malformed = rejectMalformedEncoding(request)
@@ -261,13 +307,6 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
   if (rejected) return rejected
   const signups = await decideSignupsGate(request)
   if (signups.action === 'not-found') return hiddenNotFound()
-  if (signups.action === 'slash') {
-    const url = new URL(signups.pathname, request.nextUrl.origin)
-    const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
-    const response = NextResponse.redirect(url, 308)
-    applyPrivacyHeaders(response.headers)
-    return adminHeaders(applySecurity(response, nonce), request.nextUrl.pathname)
-  }
   if (signups.action === 'redirect') {
     const url = request.nextUrl.clone()
     url.pathname = SIGNUPS_LOGIN
@@ -292,5 +331,5 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  matcher: ['/((?!_next/static|_next/image).*)'],
 }

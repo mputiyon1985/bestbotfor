@@ -12,6 +12,7 @@
  */
 import { createServer } from 'node:http'
 import next from 'next'
+import { adminCollapsedRedirect } from '../src/lib/admin-slash'
 import { CATALOG_REJECT_MESSAGE } from '../src/lib/catalog-path'
 import { configureFileDatabase, getDb } from '../src/lib/db/client'
 import { hasDotSegment } from '../src/lib/dot-segment'
@@ -42,6 +43,16 @@ async function main(): Promise<void> {
       res.setHeader('cache-control', 'no-store')
       res.setHeader('x-robots-tag', 'noindex, nofollow')
       res.end(MALFORMED_PERCENT_MESSAGE)
+      return
+    }
+    // Next's own repeated-slash 308 runs before the proxy and cannot set these.
+    const collapsed = adminCollapsedRedirect(req.url ?? '')
+    if (collapsed) {
+      res.statusCode = 308
+      res.setHeader('location', collapsed)
+      res.setHeader('cache-control', 'no-store')
+      res.setHeader('x-robots-tag', 'noindex, nofollow')
+      res.end(collapsed)
       return
     }
     handle(req, res).catch((error: unknown) => {
