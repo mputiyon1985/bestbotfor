@@ -79,15 +79,19 @@ describe('readVisibleToolCount', () => {
 })
 
 describe('homepage hero', () => {
-  it('places the count under the heading as text', () => {
+  it('places the count on the eyebrow line so it does not add a block under the heading', () => {
     const page = readFileSync(new URL('../app/page.tsx', import.meta.url), 'utf8')
-    const heading = page.indexOf('<h1')
+    const eyebrow = page.indexOf('Answer 3 quick questions')
     const count = page.indexOf('{toolCountLabel}')
+    const heading = page.indexOf('<h1')
     const lede = page.indexOf('Answer three quick questions')
     expect(page).toContain('visibleToolCountLabel()')
-    expect(heading).toBeGreaterThan(-1)
-    expect(count).toBeGreaterThan(heading)
-    expect(lede).toBeGreaterThan(count)
+    expect(eyebrow).toBeGreaterThan(-1)
+    expect(count).toBeGreaterThan(eyebrow)
+    expect(heading).toBeGreaterThan(count)
+    expect(lede).toBeGreaterThan(heading)
+    expect(page).toContain('md:flex-nowrap')
     expect(page).toContain('tabular-nums')
+    expect(page).not.toMatch(/<h1[\s\S]*toolCountLabel/)
   })
 })
