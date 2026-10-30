@@ -12,6 +12,7 @@
  */
 import { createServer } from 'node:http'
 import next from 'next'
+import { adminCollapsedRedirect } from '../src/lib/admin-slash'
 import { CATALOG_REJECT_MESSAGE } from '../src/lib/catalog-path'
 import { configureFileDatabase, getDb } from '../src/lib/db/client'
 import { hasDotSegment } from '../src/lib/dot-segment'
@@ -43,6 +44,22 @@ async function main(): Promise<void> {
       res.setHeader('x-robots-tag', 'noindex, nofollow')
       res.end(MALFORMED_PERCENT_MESSAGE)
       return
+    }
+    // Next's own repeated-slash 308 runs before the proxy and cannot set these.
+    // Location is the pathname of a same-origin URL. The body stays empty.
+    const collapsed = adminCollapsedRedirect(req.url ?? '')
+    if (collapsed) {
+      const target = new URL(collapsed, 'https://bestbotfor.com')
+      if (target.origin === 'https://bestbotfor.com' && target.pathname.startsWith('/admin')) {
+        res.statusCode = 308
+        res.setHeader('content-type', 'text/plain; charset=utf-8')
+        res.setHeader('x-content-type-options', 'nosniff')
+        res.setHeader('location', `${target.pathname}${target.search}`)
+        res.setHeader('cache-control', 'no-store')
+        res.setHeader('x-robots-tag', 'noindex, nofollow')
+        res.end()
+        return
+      }
     }
     handle(req, res).catch((error: unknown) => {
       console.error('request failed', error instanceof Error ? error.name : 'error')

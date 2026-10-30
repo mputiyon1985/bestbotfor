@@ -87,14 +87,16 @@ export async function consumeLoginAttempt(bucket: string, now = Date.now()): Pro
       ON CONFLICT(bucket) DO UPDATE SET
         failures = CASE
           WHEN ? - signups_login_attempts.window_start > ? THEN 1
+          WHEN signups_login_attempts.failures >= ? THEN signups_login_attempts.failures
           ELSE signups_login_attempts.failures + 1
         END,
         window_start = CASE
           WHEN ? - signups_login_attempts.window_start > ? THEN ?
           ELSE signups_login_attempts.window_start
         END
+      WHERE ? - signups_login_attempts.window_start > ? OR signups_login_attempts.failures < ?
       RETURNING failures`,
-    args: [bucket, now, now, LOGIN_WINDOW_MS, now, LOGIN_WINDOW_MS, now],
+    args: [bucket, now, now, LOGIN_WINDOW_MS, LOGIN_MAX_FAILURES, now, LOGIN_WINDOW_MS, now, now, LOGIN_WINDOW_MS, LOGIN_MAX_FAILURES],
   })
   const failures = Number(result.rows[0]?.failures)
   return Number.isFinite(failures) && failures <= LOGIN_MAX_FAILURES

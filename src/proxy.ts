@@ -12,6 +12,7 @@ import { decideSignupsGate } from '@/lib/signups/gate'
 import { isSignupsAdminPath, SIGNUPS_LOGIN, SIGNUPS_REQUEST_HEADER } from '@/lib/signups/paths'
 import { applyPrivacyHeaders } from '@/lib/signups/privacy'
 import { isJunkPath } from '@/lib/junk-path'
+import { isStaticAssetPath, publicAssetFile } from '@/lib/public-asset'
 import { adminSponsorsEnabled, isAdminMfaPath, isClerkConfigured, isRatingsPath, isSponsorsAdminPath, userRatingsEnabled } from '@/lib/flags'
 import { isProductionDeployment, PREVIEW_ROBOTS_TAG } from '@/lib/indexing'
 import { clientIp, rateLimitKey } from '@/lib/ip'
@@ -244,18 +245,39 @@ async function gateResult(request: NextRequest, event: NextFetchEvent): Promise<
 }
 
 /**
- * Next would 308 a trailing slash before this proxy runs. That redirect cannot
- * carry the signups noindex and no-store headers, so the proxy owns it.
- * Every other path still 308s to the same URL without the slash, and the query
- * string stays. A signups path with no admin secrets 404s instead of redirecting.
+ * Image URLs used to miss the matcher and render the site header, which calls
+ * Clerk auth() and 500s. A real public file continues. Anything else is a 404
+ * here, before that header runs.
+ */
+function staticAssetResponse(request: NextRequest): NextResponse | null {
+  const pathname = request.nextUrl.pathname
+  if (!isStaticAssetPath(pathname)) return null
+  if (publicAssetFile(pathname)) return NextResponse.next()
+  return new NextResponse('Not found.', {
+    status: 404,
+    headers: {
+      'content-type': 'text/plain; charset=utf-8',
+      'cache-control': 'no-store',
+      'x-robots-tag': 'noindex, nofollow',
+    },
+  })
+}
+
+/**
+ * One 308 that removes every trailing slash. Admin paths, including /admin/
+ * and /admin/signups/, keep noindex and no-store. Other paths stay a plain 308.
+ * Signups with no admin secrets 404 instead of redirecting.
  */
 function redirectTrailingSlash(request: NextRequest): NextResponse | null {
   const { pathname } = request.nextUrl
   if (pathname.length <= 1 || !pathname.endsWith('/')) return null
-  if (isSignupsAdminPath(pathname) && !signupsAuthConfigured()) return hiddenNotFound()
+  const stripped = pathname.replace(/\/+$/, '') || '/'
+  const signups = isSignupsAdminPath(pathname) || isSignupsAdminPath(stripped)
+  if (signups && !signupsAuthConfigured()) return hiddenNotFound()
   const target = new URL(request.url)
-  target.pathname = pathname.slice(0, -1)
-  if (!isSignupsAdminPath(pathname)) return NextResponse.redirect(target, 308)
+  target.pathname = stripped
+  const admin = isAdminPath(pathname) || isAdminPath(stripped)
+  if (!admin) return NextResponse.redirect(target, 308)
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const response = NextResponse.redirect(target, 308)
   applyPrivacyHeaders(response.headers)
@@ -276,6 +298,8 @@ function rejectJunkPath(request: NextRequest): NextResponse | null {
 }
 
 export async function proxy(request: NextRequest, event: NextFetchEvent) {
+  const asset = staticAssetResponse(request)
+  if (asset) return asset
   const slashed = redirectTrailingSlash(request)
   if (slashed) return slashed
   const junk = rejectJunkPath(request)
@@ -319,5 +343,5 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
 }
 
 export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)'],
+  matcher: ['/((?!_next/static|_next/image).*)'],
 }

@@ -104,10 +104,15 @@ describe('login', () => {
     expect(response.headers.get('location')).toBe(`https://dash.example${SIGNUPS_HOME}`)
   })
 
-  it('refuses a missing trusted IP on Vercel without writing a shared bucket', async () => {
+  it('refuses a missing trusted IP on Vercel without a region and without a shared bucket', async () => {
+    const previous = {
+      vercel: process.env.VERCEL,
+      env: process.env.VERCEL_ENV,
+      region: process.env.VERCEL_REGION,
+    }
     process.env.VERCEL = '1'
     process.env.VERCEL_ENV = 'production'
-    process.env.VERCEL_REGION = 'iad1'
+    delete process.env.VERCEL_REGION
     try {
       const code = totpCode(TOTP_KEY, Date.now())
       const response = await POST(
@@ -119,6 +124,7 @@ describe('login', () => {
             'content-type': 'application/x-www-form-urlencoded',
             cookie: 'signups_login_csrf=csrf-token',
             'x-forwarded-for': '203.0.113.41',
+            'x-vercel-forwarded-for': 'not-an-ip',
           },
           body: new URLSearchParams({ csrf: 'csrf-token', password: PASSWORD, code }),
         }),
@@ -129,9 +135,12 @@ describe('login', () => {
       const rows = await getDb().$client.execute({ sql: 'SELECT COUNT(*) AS n FROM signups_login_attempts', args: [] })
       expect(Number(rows.rows[0]?.n)).toBe(0)
     } finally {
-      delete process.env.VERCEL
-      delete process.env.VERCEL_ENV
-      delete process.env.VERCEL_REGION
+      if (previous.vercel === undefined) delete process.env.VERCEL
+      else process.env.VERCEL = previous.vercel
+      if (previous.env === undefined) delete process.env.VERCEL_ENV
+      else process.env.VERCEL_ENV = previous.env
+      if (previous.region === undefined) delete process.env.VERCEL_REGION
+      else process.env.VERCEL_REGION = previous.region
     }
   })
 
