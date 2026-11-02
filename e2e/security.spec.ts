@@ -229,9 +229,13 @@ test('a result 404 has one robots meta', async () => {
 
 test('a failed result lookup 404s a missing task with one robots meta', async ({ request }) => {
   test.setTimeout(30_000)
+  // Parallel specs share 127.0.0.1. A full quiz window is a 429, which hides
+  // the lookup result this test is checking. One address keeps this window empty.
+  const client = `2001:db8:f404::${Date.now().toString(16)}`
+  const headersFor = (fault: string) => ({ 'x-bbf-result-fault': fault, 'x-forwarded-for': client })
   const missing = '/result?task=marketing&budget=any&skill=beginner'
   for (const fault of ['lookup-throw', 'lookup-slow', 'limit-throw', 'limit-slow']) {
-    const response = await request.get(missing, { headers: { 'x-bbf-result-fault': fault } })
+    const response = await request.get(missing, { headers: headersFor(fault) })
     const body = await response.text()
     expect(response.status(), fault).toBe(404)
     expect(documentTitle(body), fault).toBe(notFoundTitle)
@@ -241,7 +245,7 @@ test('a failed result lookup 404s a missing task with one robots meta', async ({
 
   const quiz = '/result?task=chat&budget=any&skill=beginner'
   for (const fault of ['lookup-throw', 'lookup-slow', 'limit-throw', 'limit-slow']) {
-    const response = await request.get(quiz, { headers: { 'x-bbf-result-fault': fault } })
+    const response = await request.get(quiz, { headers: headersFor(fault) })
     const body = await response.text()
     expect(response.status(), fault).toBe(200)
     expect(documentTitle(body), fault).not.toBe(notFoundTitle)
