@@ -183,7 +183,8 @@ describe('privacy policy facts', () => {
     const abandonedSentence = 'It deletes an abandoned sponsor checkout about 90 days after it expires.'
     expect(retentionJobParagraph(false)).toContain(abandonedSentence)
     expect(retentionJobParagraph(true)).toContain(abandonedSentence)
-    expect(abandonedCheckoutPrivacyParagraph(false)).toContain('only when you opt in')
+    expect(abandonedCheckoutPrivacyParagraph(false)).toContain('only if you agreed to promotional emails at checkout')
+    expect(abandonedCheckoutPrivacyParagraph(false)).not.toContain('consent.promotions')
     expect(abandonedCheckoutPrivacyParagraph(false)).toContain('one follow-up email')
     expect(abandonedCheckoutPrivacyParagraph(false)).toContain('there is no follow-up email')
     expect(abandonedCheckoutPrivacyParagraph(false)).not.toContain('We do not email you about it')

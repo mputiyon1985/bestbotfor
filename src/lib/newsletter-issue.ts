@@ -1,4 +1,4 @@
-import { and, eq, isNull, lt } from 'drizzle-orm'
+import { and, eq, isNull, sql } from 'drizzle-orm'
 import type { Database } from './db'
 import { sponsorships } from './db/schema'
 import { SPONSOR_CONTACT_EMAIL } from './sponsor-checkout-gate'
@@ -8,18 +8,22 @@ export const NEWSLETTER_ISSUE_PASSED_ALERT_TAG = 'NEWSLETTER ISSUE PASSED'
 
 const ISSUE_DATE = /^(\d{4})-(\d{2})-(\d{2})$/
 
-/** True when the issue date is a real UTC day strictly before today. */
-export function newsletterIssueHasPassed(issueDate: string | null | undefined, now: number): boolean {
+/**
+ * True when the issue date is a real UTC day strictly before the UTC day of
+ * paidAt. An on-time payment stays unflagged after the issue goes out.
+ * The same comparison is `issue_date < date(paid_at)` in the admin list.
+ */
+export function newsletterPaidAfterIssue(issueDate: string | null | undefined, paidAt: number): boolean {
   const match = ISSUE_DATE.exec(issueDate ?? '')
-  if (!match) return false
+  if (!match || !Number.isFinite(paidAt)) return false
   const year = Number(match[1])
   const month = Number(match[2])
   const day = Number(match[3])
   const issue = new Date(Date.UTC(year, month - 1, day))
   if (issue.getUTCFullYear() !== year || issue.getUTCMonth() !== month - 1 || issue.getUTCDate() !== day) return false
-  const today = new Date(now)
-  const start = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
-  return issue.getTime() < start
+  const paid = new Date(paidAt)
+  const paidDay = Date.UTC(paid.getUTCFullYear(), paid.getUTCMonth(), paid.getUTCDate())
+  return issue.getTime() < paidDay
 }
 
 export type PassedNewsletterIssue = { sessionId: string; issueDate: string }
@@ -41,9 +45,7 @@ export function alertNewsletterIssuePassed(input: { sessionId: string; issueDate
   )
 }
 
-export async function listPassedNewsletterIssues(db: Database, now = Date.now()): Promise<PassedNewsletterIssue[]> {
-  const today = new Date(now)
-  const start = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())).toISOString().slice(0, 10)
+export async function listPassedNewsletterIssues(db: Database): Promise<PassedNewsletterIssue[]> {
   const rows = await db
     .select({
       sessionId: sponsorships.stripeCheckoutSessionId,
@@ -55,7 +57,7 @@ export async function listPassedNewsletterIssues(db: Database, now = Date.now())
         eq(sponsorships.offering, 'newsletter_slot'),
         eq(sponsorships.status, 'paid'),
         isNull(sponsorships.refundedAt),
-        lt(sponsorships.issueDate, start),
+        sql`${sponsorships.issueDate} < date(${sponsorships.paidAt} / 1000, 'unixepoch')`,
       ),
     )
   return rows.flatMap((row) => (row.issueDate ? [{ sessionId: row.sessionId, issueDate: row.issueDate }] : []))
@@ -67,6 +69,6 @@ export function flagPassedNewsletterIssue(input: {
   issueDate: string | null
   now: number
 }): void {
-  if (input.offeringId !== 'newsletter_slot' || !input.issueDate || !newsletterIssueHasPassed(input.issueDate, input.now)) return
+  if (input.offeringId !== 'newsletter_slot' || !input.issueDate || !newsletterPaidAfterIssue(input.issueDate, input.now)) return
   alertNewsletterIssuePassed({ sessionId: input.sessionId, issueDate: input.issueDate })
 }

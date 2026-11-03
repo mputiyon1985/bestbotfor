@@ -87,7 +87,7 @@ ORDER BY expired_at DESC;
 
 Refer to a row by its `cs_…` id. Do not paste the buyer's email into Slack, chat, tickets, or the repo.
 
-A paid founding checkout that takes the count past 5, or a paid placement that lands on a page that already has an active placement, is kept, logged (`FOUNDING CAP EXCEEDED` or `PLACEMENT SLOT TAKEN`), and shown on `/admin/sponsors`. A paid `newsletter_slot` whose `issue_date` is before the UTC day of the webhook is kept, logged (`NEWSLETTER ISSUE PASSED`), and shown there too. A recovered newsletter Checkout can stay payable for 30 days, so that check runs at completion. Nothing is refunded automatically.
+A paid founding checkout that takes the count past 5, or a paid placement that lands on a page that already has an active placement, is kept, logged (`FOUNDING CAP EXCEEDED` or `PLACEMENT SLOT TAKEN`), and shown on `/admin/sponsors`. A paid `newsletter_slot` whose `issue_date` is before the UTC day of `paid_at` is kept, logged (`NEWSLETTER ISSUE PASSED`), and shown there too. Paying on time for a later issue is not flagged after that issue goes out. A recovered newsletter Checkout can stay payable for 30 days, so the same `issue_date < date(paid_at)` check runs at completion. Nothing is refunded automatically.
 
 ### Refunds and cancellations for those rows
 
