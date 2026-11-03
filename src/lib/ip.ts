@@ -136,7 +136,8 @@ function rateLimitIdentity(ip: string): string {
 
 /** Rate-limit bucket key. HMAC-SHA256, not a plain hash, so the address cannot be brute-forced offline. */
 export function rateLimitKey(ip: string | null, action: string): string {
-  return hmacHex(`bestbotfor-rate|${action}|${ip ? rateLimitIdentity(ip) : 'unknown'}`)
+  if (ip) ip = rateLimitIdentity(ip)
+  return hmacHex(`bestbotfor-rate|${action}|${ip ?? 'unknown'}`)
 }
 
 export function countryCode(headerStore: Headers): string | null {
