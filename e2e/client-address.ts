@@ -9,14 +9,11 @@ import type { TestInfo } from '@playwright/test'
 export function e2eClientAddress(nonce: number, salt = 0): string {
   const n = Math.abs(Math.trunc(nonce))
   const s = Math.abs(Math.trunc(salt))
-  const groups = [
-    Math.floor(n / 2 ** 32) & 0xffff,
-    Math.floor(n / 2 ** 16) & 0xffff,
-    n & 0xffff,
-    Math.floor(s / 2 ** 16) & 0xffff,
-    s & 0xffff,
-    1,
-  ]
+  // 2001:db8 plus these two groups are the /64 a rate-limit key uses.
+  // A salt that only changes later groups shares one quiz window.
+  const prefixHi = (Math.floor(n / 2 ** 32) ^ s) & 0xffff
+  const prefixLo = (Math.floor(n / 2 ** 16) ^ Math.floor(s / 0x10000)) & 0xffff
+  const groups = [prefixHi, prefixLo, n & 0xffff, Math.floor(s / 0x10000) & 0xffff, s & 0xffff, 1]
   const address = `2001:db8:${groups.map((group) => group.toString(16)).join(':')}`
   if (isIP(address) !== 6) throw new Error(`e2e client address is not an IPv6 address: ${address}`)
   return address

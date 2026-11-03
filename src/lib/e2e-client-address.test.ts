@@ -15,6 +15,9 @@ describe('e2eClientAddress', () => {
     expect(canonicalIp(address)).not.toBeNull()
     for (const group of address.split(':')) expect(group.length).toBeLessThanOrEqual(4)
     expect(e2eClientAddress(Date.now(), 0xf404)).not.toBe(e2eClientAddress(Date.now(), 0xdb8))
+    const now = 1_763_000_000_000
+    const prefix = (salt: number) => canonicalIp(e2eClientAddress(now, salt))!.split(':').slice(0, 4).join(':')
+    expect(prefix(0x4004)).not.toBe(prefix(0x4002))
   })
 
   it('hashes the whole test id, so tests that share the first 8 hex digits differ', () => {
