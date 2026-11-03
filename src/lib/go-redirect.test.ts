@@ -129,6 +129,48 @@ describe('resolveGoRedirect', () => {
     }
   })
 
+  it('uses an allowlisted affiliate URL only when that program is active', async () => {
+    const active = await resolveGoRedirect({
+      ...cursor,
+      allowedHosts: ['cursor.com', 'partnerstack.com'],
+      limit: async () => ({ ok: true }),
+      loadTool: async () => ({
+        id: 7,
+        url: 'https://cursor.com',
+        affiliateUrl: 'https://partnerstack.com/click?p=1',
+        affiliateStatus: 'active',
+        network: 'PartnerStack',
+      }),
+    })
+    expect(active).toMatchObject({
+      status: 302,
+      click: { toolId: 7, affiliate: true, programId: 7, subIdParam: 'sid' },
+    })
+    if (active.status === 302) {
+      const location = new URL(active.location)
+      expect(location.hostname).toBe('partnerstack.com')
+      expect(location.searchParams.get('p')).toBe('1')
+    }
+
+    const inactive = await resolveGoRedirect({
+      ...cursor,
+      allowedHosts: ['cursor.com', 'partnerstack.com'],
+      limit: async () => ({ ok: true }),
+      loadTool: async () => ({
+        id: 7,
+        url: 'https://cursor.com',
+        affiliateUrl: 'https://partnerstack.com/click?p=1',
+        affiliateStatus: 'inactive',
+        network: 'PartnerStack',
+      }),
+    })
+    expect(inactive).toMatchObject({
+      status: 302,
+      location: 'https://cursor.com/?utm_source=bestbotfor&utm_medium=referral&utm_campaign=direct',
+      click: { affiliate: false, programId: null, subIdParam: null },
+    })
+  })
+
   it('does not record a click for a prefetch', async () => {
     const outcome = await resolveGoRedirect({
       ...cursor,

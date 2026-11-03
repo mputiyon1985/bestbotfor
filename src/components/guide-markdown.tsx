@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
+import { toolSeeds } from '@/data/catalog'
 import { servesAffiliateLink } from '@/lib/go-redirect'
 import { parseGuideMarkdown, type Inline } from '@/lib/guide-markdown'
 
@@ -16,7 +17,7 @@ function inline(nodes: Inline[]): ReactNode[] {
         </Link>
       )
     }
-    const affiliate = node.kind === 'go' && servesAffiliateLink(goSlug(node.href), null)
+    const affiliate = node.kind === 'go' && guideAffiliate(node.href)
     const link = (
       <a key={index} href={node.href} rel={affiliate ? 'sponsored nofollow noopener' : 'nofollow noopener'} className="underline">
         {inline(node.children)}
@@ -26,7 +27,7 @@ function inline(nodes: Inline[]): ReactNode[] {
     return (
       <span key={index}>
         {link}
-        <AffiliateDisclosure affiliate target="link" />
+        <AffiliateDisclosure affiliate />
       </span>
     )
   })
@@ -83,4 +84,11 @@ export function GuideMarkdown({ markdown }: { markdown: string }) {
 /** "/go/synthesia?utm_source=..." -> "synthesia" */
 function goSlug(href: string): string {
   return href.slice('/go/'.length).split(/[?#/]/)[0] ?? ''
+}
+
+/** Sponsored only when that tool's program is active and its tracking host is allowlisted. */
+function guideAffiliate(href: string): boolean {
+  const slug = goSlug(href)
+  const reviewed = toolSeeds.find((tool) => tool.slug === slug)
+  return servesAffiliateLink(slug, reviewed?.affiliate.affiliateUrl ?? null, reviewed?.affiliate.status)
 }

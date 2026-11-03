@@ -7,7 +7,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { DailyBotCapture } from '@/components/daily-bot-capture'
 import { PickCapNotice } from '@/components/pick-cap-notice'
 import { JsonLd } from '@/components/json-ld'
-import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
+import { AffiliateDisclosure, AffiliatePageNotice } from '@/components/affiliate-disclosure'
 import { SponsorPageCta } from '@/components/sponsor-page-cta'
 import { readFoundingSpotsLeft } from '@/lib/sponsor-availability'
 import { OutboundLink } from '@/components/outbound-link'
@@ -331,10 +331,7 @@ export default async function ResultPage({
         Share this page:{' '}
         <a className="underline [overflow-wrap:anywhere]" href={absoluteUrl(sharePath)}>{absoluteUrl(sharePath)}</a>
       </p>
-      <p className="text-sm text-muted">
-        The button goes to the tool’s own site. We are not adding an affiliate code. See the{' '}
-        <Link href="/disclosure" className="underline">Disclosures</Link>.
-      </p>
+      <AffiliatePageNotice active={result.picks.some((pick) => pick.hasAffiliateLink)} />
     </article>
   )
 }

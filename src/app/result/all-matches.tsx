@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { DailyBotCapture } from '@/components/daily-bot-capture'
 import { SponsorPageCta } from '@/components/sponsor-page-cta'
 import { JsonLd } from '@/components/json-ld'
-import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
+import { AffiliateDisclosure, AffiliatePageNotice } from '@/components/affiliate-disclosure'
 import { OutboundLink } from '@/components/outbound-link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { ToolLogo } from '@/components/tool-logo'
@@ -56,6 +56,7 @@ export function AllMatches({
       <p className="text-muted">
         {total} {noun} with a strong fit. Page {page} of {pageCount}. Ranked for {matchBudgetLabel[budget].toLowerCase()}.
       </p>
+      <AffiliatePageNotice active={tools.some((tool) => tool.hasAffiliateLink)} />
       <nav aria-label="Filter by budget">
         <ul className="flex flex-wrap gap-2">
           {matchBudgets.map((item) => (
@@ -81,7 +82,7 @@ export function AllMatches({
               <div className="flex min-w-0 items-start gap-3">
                 <ToolLogo name={tool.name} slug={tool.slug} />
                 <h2 className="min-w-0 font-semibold text-2xl">
-                  <Link href={`/tools/${tool.slug}`} className="underline-offset-4 hover:underline">
+                  <Link href={`/tools/${tool.slug}`} prefetch={false} className="underline-offset-4 hover:underline">
                     {tool.name}
                   </Link>
                 </h2>

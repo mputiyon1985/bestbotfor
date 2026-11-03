@@ -8,7 +8,7 @@ import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { ProsConsSection, ScoreSection } from '@/components/editorial'
 import { JsonLd } from '@/components/json-ld'
-import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
+import { AffiliateDisclosure, AffiliatePageNotice } from '@/components/affiliate-disclosure'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
 import { comparePairSeeds } from '@/data/catalog'
@@ -79,12 +79,13 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
         <Item label="Last reviewed" value={formatUsDate(tool.lastVerifiedAt)} />
         <Item label="Free tier" value={tool.hasFreeTier ? 'Yes' : 'No'} />
       </dl>
+      <AffiliatePageNotice active={servesAffiliateLink(tool.slug, tool.affiliate.affiliateUrl, tool.affiliate.status)} />
       <p>
-        <OutboundLink slug={tool.slug} affiliate={servesAffiliateLink(tool.slug, tool.affiliate.affiliateUrl)} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
+        <OutboundLink slug={tool.slug} affiliate={servesAffiliateLink(tool.slug, tool.affiliate.affiliateUrl, tool.affiliate.status)} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
           Visit {tool.name}
         </OutboundLink>
       </p>
-      <AffiliateDisclosure affiliate={servesAffiliateLink(tool.slug, tool.affiliate.affiliateUrl)} vendor={tool.vendor} />
+      <AffiliateDisclosure affiliate={servesAffiliateLink(tool.slug, tool.affiliate.affiliateUrl, tool.affiliate.status)} vendor={tool.vendor} />
       {toolDeals.views.length > 0 ? (
         <section aria-labelledby="tool-deals" className="space-y-3" data-tool-deals>
           <h2 id="tool-deals" className="font-semibold text-2xl">Member deal</h2>
