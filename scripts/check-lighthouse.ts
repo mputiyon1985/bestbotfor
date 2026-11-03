@@ -92,12 +92,33 @@ async function assertProductionRobots(): Promise<void> {
   }
 }
 
+/** One fetch per scored URL so the first Lighthouse run is not also the first DB read. */
+async function warmAuditedUrls(): Promise<void> {
+  const paths = [
+    '/',
+    '/best/coding',
+    '/best/seo',
+    '/tools',
+    '/tools/chatgpt',
+    '/result?task=chat&budget=any&skill=beginner',
+    '/result?task=seo&budget=free&skill=beginner',
+    '/result?task=chat&view=all',
+    '/result?task=seo&view=all&budget=free',
+  ]
+  for (const urlPath of paths) {
+    const response = await fetch(`${origin}${urlPath}`)
+    if (!response.ok) throw new Error(`warmup ${urlPath} returned ${response.status}`)
+    await response.arrayBuffer()
+  }
+}
+
 async function main(): Promise<number> {
   process.env.CHROME_PATH = process.env.CHROME_PATH || chromium.executablePath()
   const server = startServer()
   try {
     await waitForServer(server)
     await assertProductionRobots()
+    await warmAuditedUrls()
     let exitCode = 0
     for (const config of ['lighthouserc.cjs', 'lighthouserc.quiz.cjs', 'lighthouserc.home.cjs']) {
       const code = await new Promise<number>((resolve, reject) => {
