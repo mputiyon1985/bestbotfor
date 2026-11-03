@@ -44,7 +44,7 @@ export function officialHttpsUrl(value: string, allowedHosts: readonly string[])
   if (parsed.username || parsed.password) return null
   if (parsed.port !== '') return null
   const host = normalizedHostname(parsed.hostname)
-  if (!hostAllowed(host, allowedHosts)) return null
+  if (!hostAllowed(host, parsed.pathname, allowedHosts)) return null
   if (parsed.hostname !== host) parsed.hostname = host
   return parsed.toString()
 }
@@ -58,7 +58,7 @@ export function reviewedToolUrl(tool: { slug: string; url: string; allowedHosts:
   const host = new URL(safe).hostname
   const listedExactly = tool.allowedHosts.some((entry) => {
     const rule = parseAllowEntry(entry)
-    return rule !== null && !rule.subdomains && rule.host === host
+    return rule !== null && !rule.subdomains && rule.pathPrefix === null && rule.host === host
   })
   if (!listedExactly) {
     throw new Error(`Tool ${tool.slug} must list ${host} as an exact reviewed host`)
@@ -79,31 +79,47 @@ export function isStripeHostedUrl(value: string): boolean {
   }
 }
 
-type AllowRule = { host: string; subdomains: boolean }
+type AllowRule = { host: string; subdomains: boolean; pathPrefix: string | null }
 
-function hostAllowed(hostname: string, allowedHosts: readonly string[]): boolean {
+function hostAllowed(hostname: string, pathname: string, allowedHosts: readonly string[]): boolean {
   const host = canonicalHost(hostname)
   if (!host) return false
   for (const entry of allowedHosts) {
     const rule = parseAllowEntry(entry)
     if (!rule) continue
     if (host === rule.host) {
-      if (!rule.subdomains) return true
+      if (rule.subdomains) continue
+      if (pathAllowed(pathname, rule.pathPrefix)) return true
       continue
     }
-    if (rule.subdomains && host.endsWith(`.${rule.host}`)) return true
+    if (rule.subdomains && host.endsWith(`.${rule.host}`) && pathAllowed(pathname, rule.pathPrefix)) return true
   }
   return false
+}
+
+/** Exact path, or a longer path under that prefix. `/id` does not allow `/id-other`. */
+function pathAllowed(pathname: string, prefix: string | null): boolean {
+  if (!prefix) return true
+  const path = pathname === '' ? '/' : pathname
+  if (path === prefix) return true
+  const boundary = prefix.endsWith('/') ? prefix : `${prefix}/`
+  return path.startsWith(boundary)
 }
 
 function parseAllowEntry(entry: string): AllowRule | null {
   const trimmed = entry.trim()
   const subdomains = trimmed.startsWith('*.')
   const bare = subdomains ? trimmed.slice(2) : trimmed
-  if (!bare || bare.includes('*')) return null
-  const host = canonicalHost(bare)
+  const slash = bare.indexOf('/')
+  const hostPart = slash === -1 ? bare : bare.slice(0, slash)
+  const pathPrefix = slash === -1 ? null : bare.slice(slash)
+  if (!hostPart || hostPart.includes('*')) return null
+  if (pathPrefix !== null && (!pathPrefix.startsWith('/') || pathPrefix.includes('?') || pathPrefix.includes('#') || pathPrefix.includes('*'))) {
+    return null
+  }
+  const host = canonicalHost(hostPart)
   if (!host) return null
-  return { host, subdomains }
+  return { host, subdomains, pathPrefix }
 }
 
 /** Punycode, lowercase, and a single trailing-dot form of the same host. */

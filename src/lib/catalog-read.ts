@@ -60,7 +60,7 @@ export type TaskCandidate = {
   lastVerifiedAt: string
   fitScore: number
   notes: string
-  /** True when affiliate_programs.affiliate_url is set (read only). */
+  /** True when status is active and affiliate_url passes the tool allowlist. */
   hasAffiliateLink?: boolean
   editorial: EditorialScore | null
   pros: ProCon[]
@@ -393,6 +393,7 @@ export async function readTaskCandidates(
       fitScore: toolTasks.fitScore,
       notes: toolTasks.notes,
       affiliateUrl: affiliatePrograms.affiliateUrl,
+      affiliateStatus: affiliatePrograms.status,
     })
     .from(toolTasks)
     .innerJoin(tools, eq(tools.id, toolTasks.toolId))
@@ -422,7 +423,7 @@ export async function readTaskCandidates(
     lastVerifiedAt: row.lastVerifiedAt,
     fitScore: row.fitScore,
     notes: row.notes,
-    hasAffiliateLink: servesAffiliateLink(row.slug, row.affiliateUrl),
+    hasAffiliateLink: servesAffiliateLink(row.slug, row.affiliateUrl, row.affiliateStatus),
     ...(row.needsVerification
       ? { editorial: null, pros: [], cons: [], quizEligible: true }
       : editorialOf(scoreByTool.get(row.id), prosByTool.get(row.id), context)),

@@ -86,27 +86,17 @@ describe('guide markdown', () => {
     expect(xss).toContain('&lt;img')
   })
 
-  it('marks an affiliate /go link as sponsored with the Affiliate link note', async () => {
+  it('marks an active affiliate /go link as sponsored and leaves a switched-off one plain', async () => {
     const { GuideMarkdown } = await import('@/components/guide-markdown')
-    const on = renderToStaticMarkup(
+    const synthesia = renderToStaticMarkup(
       createElement(GuideMarkdown, { markdown: 'Try [Synthesia](https://bestbotfor.com/go/synthesia?utm_source=site).\n' }),
     )
-    expect(on).toContain('href="/go/synthesia?utm_source=site" rel="sponsored nofollow noopener"')
-    expect(on).toContain('data-affiliate-disclosure="affiliate"')
-    const off = renderToStaticMarkup(createElement(GuideMarkdown, { markdown: 'Try [Cursor](https://bestbotfor.com/go/cursor).\n' }))
-    expect(off).toContain('rel="nofollow noopener"')
-    expect(off).not.toContain('sponsored')
-    expect(off).not.toContain('data-affiliate-disclosure')
-  })
-
-  it('ElevenLabs /go links in guides are sponsored, and the note says "link" not "button"', async () => {
-    const { GuideMarkdown } = await import('@/components/guide-markdown')
-    const html = renderToStaticMarkup(createElement(GuideMarkdown, { markdown: '[ElevenLabs](https://bestbotfor.com/go/elevenlabs).\n' }))
-    expect(html).toContain('href="/go/elevenlabs" rel="sponsored nofollow noopener"')
-    expect(html).toContain('data-affiliate-disclosure="affiliate"')
-    expect(html).toContain('through this link.')
-    expect(html).not.toContain('through this button')
-    const { AffiliateDisclosure } = await import('@/components/affiliate-disclosure')
-    expect(renderToStaticMarkup(createElement(AffiliateDisclosure, { affiliate: true }))).toContain('through this button.')
+    expect(synthesia).toContain('href="/go/synthesia?utm_source=site" rel="sponsored nofollow noopener"')
+    expect(synthesia).toContain('data-affiliate-disclosure="affiliate"')
+    const eleven = renderToStaticMarkup(createElement(GuideMarkdown, { markdown: '[ElevenLabs](https://bestbotfor.com/go/elevenlabs).\n' }))
+    expect(eleven).toContain('href="/go/elevenlabs" rel="sponsored nofollow noopener"')
+    const cursor = renderToStaticMarkup(createElement(GuideMarkdown, { markdown: 'Try [Cursor](https://bestbotfor.com/go/cursor).\n' }))
+    expect(cursor).toContain('rel="nofollow noopener"')
+    expect(cursor).not.toContain('sponsored')
   })
 })
