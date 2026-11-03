@@ -1,4 +1,6 @@
 -- Affiliate reconciliation on clicks. Additive. Nothing is dropped or rewritten.
+-- Numbered 0027 so it follows 0026_sponsor_abandoned_checkouts from PR #172.
+-- Either file can land first: the migrator applies a missing filename later.
 -- Safe to re-run: these are plain ADD COLUMN statements, and the migrator skips
 -- a column that already exists (see addColumnStatements in src/lib/db/migrate.ts).
 -- affiliate is 0 for an official-site Visit and 1 when /go used an active program.
