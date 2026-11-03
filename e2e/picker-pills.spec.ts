@@ -1,5 +1,20 @@
 import { expect, test } from '@playwright/test'
 
+function channel(value: number): number {
+  const ratio = value / 255
+  return ratio <= 0.04045 ? ratio / 12.92 : ((ratio + 0.055) / 1.055) ** 2.4
+}
+
+function contrast(foreground: string, background: string): number {
+  const luminance = (color: string) => {
+    const [red, green, blue] = color.match(/\d+/g)?.slice(0, 3).map(Number) ?? []
+    return 0.2126 * channel(red ?? 0) + 0.7152 * channel(green ?? 0) + 0.0722 * channel(blue ?? 0)
+  }
+  const lighter = Math.max(luminance(foreground), luminance(background))
+  const darker = Math.min(luminance(foreground), luminance(background))
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
 const desktop = [
   { width: 1440, height: 900 },
   { width: 1280, height: 800 },
@@ -76,7 +91,60 @@ test('the quiz card, including the button, fits above the fold on desktop', asyn
     expect(formBox!.y, `${viewport.width} card starts on screen`).toBeGreaterThanOrEqual(0)
     expect(formBox!.y + formBox!.height, `${viewport.width} card bottom`).toBeLessThanOrEqual(viewport.height)
     expect(buttonBox!.y + buttonBox!.height, `${viewport.width} button bottom`).toBeLessThanOrEqual(viewport.height)
+    expect(formBox!.width, `${viewport.width} card width`).toBeLessThanOrEqual(640)
+    expect(formBox!.width, `${viewport.width} card width`).toBeGreaterThanOrEqual(560)
+    const mainBox = await page.locator('#main').boundingBox()
+    expect(mainBox, `${viewport.width} main`).not.toBeNull()
+    const centerDelta = Math.abs(formBox!.x + formBox!.width / 2 - (mainBox!.x + mainBox!.width / 2))
+    expect(centerDelta, `${viewport.width} card centered`).toBeLessThanOrEqual(2)
+
+    const skillBox = await page.getByRole('group', { name: '3. How experienced are you?' }).boundingBox()
+    expect(skillBox, `${viewport.width} experience`).not.toBeNull()
+    expect(buttonBox!.y - (skillBox!.y + skillBox!.height), `${viewport.width} space before button`).toBeGreaterThanOrEqual(16)
+    expect(buttonBox!.height, `${viewport.width} button height`).toBeGreaterThanOrEqual(52)
+    expect(buttonBox!.width, `${viewport.width} button fills the card`).toBeGreaterThanOrEqual(formBox!.width - 48)
+
+    const paint = await button.evaluate((el) => {
+      const style = getComputedStyle(el)
+      return { weight: Number(style.fontWeight), color: style.color, background: style.backgroundColor }
+    })
+    expect(paint.weight, `${viewport.width} button weight`).toBeGreaterThanOrEqual(700)
+    expect(contrast(paint.color, paint.background), `${viewport.width} button contrast`).toBeGreaterThanOrEqual(4.5)
+
+    await button.focus()
+    const ring = await button.evaluate((el) => {
+      const style = getComputedStyle(el)
+      return {
+        outlineStyle: style.outlineStyle,
+        outlineWidth: Number.parseFloat(style.outlineWidth),
+        outlineOffset: Number.parseFloat(style.outlineOffset),
+      }
+    })
+    expect(ring.outlineStyle, `${viewport.width} focus style`).not.toBe('none')
+    expect(ring.outlineWidth, `${viewport.width} focus width`).toBeGreaterThanOrEqual(3)
+    expect(ring.outlineOffset, `${viewport.width} focus offset`).toBeGreaterThanOrEqual(4)
   }
+})
+
+test('the quiz card is full width at 375px and the button stays easy to tap', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 844 })
+  await page.goto('/')
+  await page.evaluate(() => document.fonts.ready)
+  const form = page.locator('form[action="/result"]')
+  const button = page.getByRole('button', { name: 'See my best bot' })
+  const formBox = await form.boundingBox()
+  const buttonBox = await button.boundingBox()
+  expect(formBox).not.toBeNull()
+  expect(buttonBox).not.toBeNull()
+  expect(formBox!.width).toBeGreaterThanOrEqual(375 - 40)
+  expect(formBox!.x).toBeGreaterThanOrEqual(12)
+  expect(formBox!.x + formBox!.width).toBeLessThanOrEqual(375 - 12)
+  expect(buttonBox!.height).toBeGreaterThanOrEqual(44)
+  expect(buttonBox!.width).toBeGreaterThanOrEqual(formBox!.width - 8)
+  expect(buttonBox!.y).toBeGreaterThanOrEqual(0)
+  expect(buttonBox!.y + buttonBox!.height).toBeLessThanOrEqual(844)
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+  expect(overflow).toBeLessThanOrEqual(1)
 })
 
 test('pills stay inside the card at 390px and may wrap', async ({ page }) => {
