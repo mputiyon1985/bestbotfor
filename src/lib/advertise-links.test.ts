@@ -17,7 +17,7 @@ describe('advertise links', () => {
 
   it('offers a labeled sponsor invitation on best guides, separate from the paid placement', () => {
     const page = source('src/app/best/[task]/page.tsx')
-    expect(page).toContain('<SponsorPageCta taskSlug={task.slug} />')
+    expect(page).toContain('<SponsorPageCta taskSlug={task.slug} foundingSpotsLeft={foundingSpotsLeft} />')
     expect(page).not.toContain('Feature your tool here')
     const cta = source('src/components/sponsor-page-cta.tsx')
     expect(cta).toContain('Sponsor this page')

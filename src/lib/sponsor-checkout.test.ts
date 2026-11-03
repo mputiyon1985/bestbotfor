@@ -257,22 +257,24 @@ describe('sponsorCheckoutParams', () => {
     expect(otherOrigin.idempotencyKey).not.toBe(first.idempotencyKey)
     expect(otherOrigin.params.success_url).toBe('http://127.0.0.1:3000/sponsor/success?session_id={CHECKOUT_SESSION_ID}')
     expect(otherOrigin.params.cancel_url).toBe('http://127.0.0.1:3000/sponsor/cancel')
-    expect(first.params.after_expiration).toEqual(sponsorCheckoutRecovery().after_expiration)
-    expect(first.params.consent_collection).toEqual({ promotions: 'auto' })
-    expect(first.params.after_expiration?.recovery?.allow_promotion_codes).toBe(false)
+    expect(first.params).not.toHaveProperty('after_expiration')
+    expect(first.params).not.toHaveProperty('consent_collection')
     expect(first.params).not.toHaveProperty('allow_promotion_codes')
+    expect(sponsorCheckoutRecovery('placement_weekly')).toEqual({})
+    expect(sponsorCheckoutRecovery('founding_sponsor')).toEqual({})
+    expect(sponsorCheckoutRecovery('placement_subscription')).toEqual({})
   })
 
-  it('turns recovery on for a subscription without a promotion code', () => {
+  it('turns recovery on only for the newsletter slot, with promotion codes off', () => {
     const parsed = parseSponsorCheckout(
       form({
-        offering: 'placement_subscription',
+        offering: 'newsletter_slot',
         email: 'sponsor@example.com',
         company: 'Example Tools',
-        task_slug: 'writing',
+        issue_date: futureIssue(14),
         request_id: REQUEST_ID,
       }),
-      { ...env, STRIPE_PRICE_PLACEMENT_SUBSCRIPTION: 'price_server_sub' },
+      { ...env, STRIPE_PRICE_NEWSLETTER_SLOT: 'price_server_issue' },
     )
     expect(parsed.ok).toBe(true)
     if (!parsed.ok) return
@@ -281,7 +283,7 @@ describe('sponsorCheckoutParams', () => {
       successUrl: 'https://bestbotfor.com/sponsor/success?session_id={CHECKOUT_SESSION_ID}',
       cancelUrl: 'https://bestbotfor.com/sponsor/cancel',
     })
-    expect(session.params.mode).toBe('subscription')
+    expect(session.params.mode).toBe('payment')
     expect(session.params.after_expiration).toEqual({
       recovery: { enabled: true, allow_promotion_codes: false },
     })

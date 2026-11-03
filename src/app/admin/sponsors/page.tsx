@@ -8,6 +8,7 @@ import { foundingFoundersOverCap, type PaidFounder } from '@/lib/sponsor-availab
 import { listPendingSponsorCards, listRefundPendingSponsorCards } from '@/lib/sponsor-card'
 import { listSponsorPlacementCounts, type SponsorPlacementCount } from '@/lib/sponsor-impressions'
 import { abandonedOfferLabel, listAbandonedSponsorCheckouts } from '@/lib/sponsor-abandoned'
+import { listPlacementOverlaps, type PlacementOverlap } from '@/lib/sponsor-overlap'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,6 +30,8 @@ export default async function SponsorCardsPage() {
   let countsUnavailable = false
   let abandoned: Awaited<ReturnType<typeof listAbandonedSponsorCheckouts>> = []
   let abandonedUnavailable = false
+  let overlaps: PlacementOverlap[] = []
+  let overlapsUnavailable = false
   try {
     counts = await listSponsorPlacementCounts(db)
   } catch (error) {
@@ -40,6 +43,12 @@ export default async function SponsorCardsPage() {
   } catch (error) {
     console.error('abandoned sponsor checkout lookup failed', error instanceof Error ? error.name : 'error')
     abandonedUnavailable = true
+  }
+  try {
+    overlaps = await listPlacementOverlaps(db)
+  } catch (error) {
+    console.error('placement overlap lookup failed', error instanceof Error ? error.name : 'error')
+    overlapsUnavailable = true
   }
   return (
     <article className="max-w-2xl space-y-6">
@@ -76,10 +85,28 @@ export default async function SponsorCardsPage() {
       <h2 className="font-bold text-3xl">Refunds</h2>
       <p>Refund the payment in the Stripe dashboard, then mark the card refunded. A partial refund still hides the placement.</p>
       {refunds.length === 0 ? <p>No cards are waiting for a refund.</p> : <SponsorRefundQueue cards={refunds} />}
+      {overlapsUnavailable ? <p role="alert">The placement overlap check is unavailable.</p> : null}
+      {overlaps.length > 0 ? (
+        <section role="alert" className="space-y-2 border border-danger p-3">
+          <h2 className="font-bold text-3xl">Placement already taken</h2>
+          <p>
+            A paid checkout landed on a page that already had an active placement. Nothing was refunded automatically:
+            Mark decides to refund or honor each one.
+          </p>
+          <ul className="list-disc pl-5">
+            {overlaps.map((overlap) => (
+              <li key={overlap.taskSlug}>
+                {`/best/${overlap.taskSlug}`}
+                {` · ${overlap.sessionIds.join(', ')}`}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       <h2 className="font-semibold text-3xl">Abandoned checkouts</h2>
       <p>
-        Unpaid sponsor checkouts that expired. The email, the offer, and the time. This page does not email anyone.
-        A recovery link is Stripe’s, and only when that checkout had recovery turned on.
+        Unpaid sponsor checkouts that expired after the buyer opted in to promotional email. The email, the offer, and
+        the time. This page does not email anyone. Anyone who did not opt in is not listed.
       </p>
       {abandonedUnavailable ? <p role="alert">Abandoned checkouts are unavailable.</p> : null}
       {!abandonedUnavailable && abandoned.length === 0 ? <p>No abandoned sponsor checkouts.</p> : null}

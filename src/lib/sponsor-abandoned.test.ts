@@ -62,6 +62,7 @@ describe('parseExpiredSponsorCheckout', () => {
       expired('evt_app', {
         id: 'cs_test_app',
         payment_status: 'unpaid',
+        consent: { promotions: 'opt_in' },
         metadata: {
           kind: 'sponsorship',
           offering: 'placement_subscription',
@@ -80,6 +81,8 @@ describe('parseExpiredSponsorCheckout', () => {
       taskSlug: 'coding',
       source: 'checkout',
       recoveryUrl: 'https://buy.stripe.com/r/test_recovery',
+      promotionsConsent: 'opt_in',
+      consentedAt: 1_762_000_000_000,
     })
   })
 
@@ -89,6 +92,7 @@ describe('parseExpiredSponsorCheckout', () => {
         id: 'cs_test_monthly',
         payment_status: 'unpaid',
         payment_link: 'plink_1URyeXIJUbygfAucnLlkSP5u',
+        consent: { promotions: 'opt_in' },
         customer_details: { email: 'buyer@example.com' },
         metadata: { offer: 'sponsor_monthly', source: 'payment_link' },
         custom_fields: [{ key: 'best_page', text: { value: 'SEO' } }],
@@ -108,6 +112,31 @@ describe('parseExpiredSponsorCheckout', () => {
           id: 'cs_test_no_email',
           payment_status: 'unpaid',
           payment_link: 'plink_1URyeXIJUbygfAucnLlkSP5u',
+          metadata: { offer: 'sponsor_monthly', source: 'payment_link' },
+        }),
+        50,
+      ),
+    ).toBeNull()
+    expect(
+      parseExpiredSponsorCheckout(
+        expired('evt_no_consent', {
+          id: 'cs_test_no_consent',
+          payment_status: 'unpaid',
+          payment_link: 'plink_1URyeXIJUbygfAucnLlkSP5u',
+          customer_details: { email: 'buyer@example.com' },
+          consent: { promotions: 'opt_out' },
+          metadata: { offer: 'sponsor_monthly', source: 'payment_link' },
+        }),
+        50,
+      ),
+    ).toBeNull()
+    expect(
+      parseExpiredSponsorCheckout(
+        expired('evt_metadata_only', {
+          id: 'cs_test_metadata_only',
+          payment_status: 'unpaid',
+          customer_details: { email: 'buyer@example.com' },
+          consent: { promotions: 'opt_in' },
           metadata: { offer: 'sponsor_monthly', source: 'payment_link' },
         }),
         50,
@@ -158,6 +187,7 @@ describe('checkout.session.expired webhook', () => {
     const event = expired('evt_expire_once', {
       id: 'cs_test_once',
       payment_status: 'unpaid',
+      consent: { promotions: 'opt_in' },
       metadata: { kind: 'sponsorship', offering: 'founding_sponsor', email: 'founder@example.com', task_slug: 'writing' },
     })
     const stripe = stripeStub([event])
@@ -189,6 +219,8 @@ describe('checkout.session.expired webhook', () => {
       taskSlug: 'writing',
       source: 'checkout',
       recoveryUrl: null,
+      promotionsConsent: 'opt_in',
+      consentedAt: 1_762_000_000_000,
       createdAt: 90,
     })
     expect(await db.select().from(sponsorships)).toEqual([])
@@ -201,6 +233,7 @@ describe('checkout.session.expired webhook', () => {
       id: 'cs_test_fill',
       payment_status: 'unpaid',
       customer_details: { email: 'buyer@example.com' },
+      consent: { promotions: 'opt_in' },
       payment_link: { id: 'plink_1URyeXIJUbygfAucnLlkSP5u' },
       metadata: { offer: 'sponsor_monthly', source: 'payment_link' },
     })
@@ -208,6 +241,7 @@ describe('checkout.session.expired webhook', () => {
       id: 'cs_test_fill',
       payment_status: 'unpaid',
       customer_details: { email: 'other@example.com' },
+      consent: { promotions: 'opt_in' },
       payment_link: 'plink_1URyeXIJUbygfAucnLlkSP5u',
       metadata: { offer: 'sponsor_monthly', source: 'payment_link' },
       after_expiration: { recovery: { url: 'https://buy.stripe.com/r/live_later' } },
@@ -247,17 +281,31 @@ describe('sponsor abandoned checkout migration', () => {
     client.close()
 
     await applyMigrations(url)
-    await applyMigrations(url)
     const again = createClient({ url })
     const names = (await again.execute('PRAGMA table_info(sponsor_abandoned_checkouts)')).rows.map((row) => String(row.name))
-    expect(names).toEqual(expect.arrayContaining(['email', 'offering', 'expired_at', 'task_slug', 'source', 'recovery_url', 'created_at']))
-    const kept = await again.execute('SELECT email, offering, recovery_url FROM sponsor_abandoned_checkouts')
-    expect(kept.rows).toEqual([{ email: 'keep@example.com', offering: 'sponsor_monthly', recovery_url: null }])
-    const ledger = await again.execute(
+    expect(names).toEqual(
+      expect.arrayContaining(['email', 'offering', 'expired_at', 'task_slug', 'source', 'recovery_url', 'promotions_consent', 'consented_at', 'created_at']),
+    )
+    const dropped = await again.execute('SELECT email FROM sponsor_abandoned_checkouts')
+    expect(dropped.rows).toEqual([])
+    await again.execute({
+      sql: `INSERT INTO sponsor_abandoned_checkouts
+        (stripe_checkout_session_id, email, offering, expired_at, source, promotions_consent, consented_at, created_at)
+        VALUES (?, ?, ?, ?, ?, 'opt_in', ?, ?)`,
+      args: ['cs_opt_in', 'optin@example.com', 'sponsor_monthly', 2, 'payment_link', 2, 2],
+    })
+    again.close()
+    await applyMigrations(url)
+    const keptDb = createClient({ url })
+    const kept = await keptDb.execute('SELECT email, promotions_consent FROM sponsor_abandoned_checkouts')
+    expect(kept.rows).toEqual([{ email: 'optin@example.com', promotions_consent: 'opt_in' }])
+    keptDb.close()
+    const ledgerDb = createClient({ url })
+    const ledger = await ledgerDb.execute(
       "SELECT COUNT(*) AS n FROM schema_migrations WHERE id = '0026_sponsor_abandoned_checkouts.sql'",
     )
     expect(Number(ledger.rows[0]?.n)).toBe(1)
-    again.close()
+    ledgerDb.close()
   })
 })
 

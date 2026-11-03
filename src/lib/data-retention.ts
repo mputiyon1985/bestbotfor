@@ -15,6 +15,9 @@ export const SUGGESTION_EMAIL_RETENTION_MS = 90 * 24 * 60 * 60 * 1000
 /** Suggestion rows are deleted once they are older than 24 months (730 days; James, Oct 18). */
 export const SUGGESTION_ROW_RETENTION_MS = 730 * 24 * 60 * 60 * 1000
 
+/** Abandoned sponsor-checkout rows are deleted once they are older than 90 days. */
+export const ABANDONED_CHECKOUT_RETENTION_MS = 90 * 24 * 60 * 60 * 1000
+
 export const RETENTION_BATCH_SIZE = 500
 export const RETENTION_MAX_BATCHES = 40
 
@@ -47,6 +50,8 @@ export type RetentionReport = {
   suggestionEmailsCleared: number
   suggestionsEligible: number
   suggestionsDeleted: number
+  abandonedCheckoutsEligible: number
+  abandonedCheckoutsDeleted: number
   /** Set only when user ratings are on. Withdrawn review versions with text left. */
   reviewTextEligible?: number
   /** Set only when user ratings are on. Withdrawn review versions scrubbed. */
@@ -101,6 +106,10 @@ export function suggestionRowCutoff(now: number): number {
   return now - SUGGESTION_ROW_RETENTION_MS
 }
 
+export function abandonedCheckoutCutoff(now: number): number {
+  return now - ABANDONED_CHECKOUT_RETENTION_MS
+}
+
 function digest(value: string): Buffer {
   return createHash('sha256').update(value).digest()
 }
@@ -136,6 +145,8 @@ export function emptyRetentionReport(enabled: boolean): RetentionReport {
     suggestionEmailsCleared: 0,
     suggestionsEligible: 0,
     suggestionsDeleted: 0,
+    abandonedCheckoutsEligible: 0,
+    abandonedCheckoutsDeleted: 0,
     truncated: false,
   }
 }

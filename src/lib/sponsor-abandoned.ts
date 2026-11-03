@@ -24,8 +24,6 @@ const PAYMENT_LINK_OFFER: Readonly<Record<string, string>> = {
   [MONTHLY_PAYMENT_LINK_ID]: 'sponsor_monthly',
 }
 
-const PAYMENT_LINK_OFFERS = new Set(['founding_sponsor', 'sponsor_monthly'])
-
 export type AbandonedSponsorLead = {
   sessionId: string
   email: string
@@ -34,6 +32,10 @@ export type AbandonedSponsorLead = {
   taskSlug: string | null
   source: 'checkout' | 'payment_link'
   recoveryUrl: string | null
+  /** Buyer's choice on the expired session. Only opt_in is stored. */
+  promotionsConsent: 'opt_in'
+  /** When we observed the opt-in. Stripe does not send a separate consent clock; this is the expiry event time. */
+  consentedAt: number
 }
 
 export function abandonedOfferLabel(offering: string): string {
@@ -67,6 +69,17 @@ function sessionId(value: unknown): string | null {
   if (typeof value !== 'string' || value.length < 4 || value.length > 255) return null
   if (!value.startsWith('cs_')) return null
   return value
+}
+
+/**
+ * The buyer's answer is `consent.promotions` (`opt_in` or `opt_out`).
+ * `consent_collection.promotions` is only the setting (`auto` or `none`) and
+ * is not consent. A missing answer stores nothing.
+ */
+export function promotionsOptIn(session: Record<string, unknown>): boolean {
+  const consent = session.consent
+  if (!consent || typeof consent !== 'object' || !('promotions' in consent)) return false
+  return consent.promotions === 'opt_in'
 }
 
 function leadEmail(session: Record<string, unknown>, metadata: Record<string, unknown>): string | null {
@@ -111,10 +124,10 @@ function metadataRecord(session: Record<string, unknown>): Record<string, unknow
 }
 
 /**
- * Lead from checkout.session.expired, or null when the session is not an
- * unpaid sponsor checkout we can contact. No Stripe read. No email is sent.
- * Stripe omits customer_details.email unless the buyer opted into promotions.
- * In-app sessions also copy the email the buyer typed on /sponsor into metadata.
+ * Lead from checkout.session.expired, or null when we will not store it.
+ * No Stripe read. No email is sent. A row is stored only when the buyer
+ * opted in (`consent.promotions` is `opt_in`) and the session is an unpaid
+ * sponsor checkout. A Payment Link counts only when its id is one we know.
  */
 export function parseExpiredSponsorCheckout(event: { type?: string; created?: number; data?: { object?: unknown } }, now: number): AbandonedSponsorLead | null {
   if (event.type !== 'checkout.session.expired') return null
@@ -126,15 +139,15 @@ export function parseExpiredSponsorCheckout(event: { type?: string; created?: nu
   if (record.status === 'complete') return null
   if (record.payment_status === 'paid' || record.payment_status === 'no_payment_required') return null
 
+  if (!promotionsOptIn(record)) return null
   const metadata = metadataRecord(record)
   const linkId = paymentLinkId(record.payment_link)
   const linkOffer = linkId ? PAYMENT_LINK_OFFER[linkId] : null
   const metaOffer = typeof metadata.offer === 'string' ? metadata.offer : ''
   const inApp = metadata.kind === 'sponsorship' && typeof metadata.offering === 'string' && sponsorOffering(metadata.offering) !== null
-  const paymentLink =
-    !inApp &&
-    ((linkOffer != null && (metaOffer === '' || metaOffer === linkOffer)) ||
-      (metadata.source === 'payment_link' && PAYMENT_LINK_OFFERS.has(metaOffer) && (linkOffer == null || linkOffer === metaOffer)))
+  // Metadata alone is not enough. The Payment Link id has to be one we know,
+  // and its offer has to agree when metadata names one.
+  const paymentLink = !inApp && linkOffer != null && (metaOffer === '' || metaOffer === linkOffer)
 
   if (!inApp && !paymentLink) return null
   const email = leadEmail(record, metadata)
@@ -144,6 +157,7 @@ export function parseExpiredSponsorCheckout(event: { type?: string; created?: nu
   if (!offering) return null
   const created = event.created
   const expiredAt = typeof created === 'number' && Number.isFinite(created) && created > 0 ? Math.trunc(created * 1000) : now
+  if (!Number.isFinite(expiredAt) || expiredAt <= 0) return null
   const recovery = record.after_expiration
   const recoveryUrl =
     recovery && typeof recovery === 'object' && 'recovery' in recovery
@@ -158,6 +172,8 @@ export function parseExpiredSponsorCheckout(event: { type?: string; created?: nu
     taskSlug: taskSlugFrom(metadata, record),
     source: inApp ? 'checkout' : 'payment_link',
     recoveryUrl,
+    promotionsConsent: 'opt_in',
+    consentedAt: expiredAt,
   }
 }
 
@@ -175,6 +191,8 @@ export async function recordExpiredSponsorCheckout(db: Database, event: Stripe.E
       taskSlug: lead.taskSlug,
       source: lead.source,
       recoveryUrl: lead.recoveryUrl,
+      promotionsConsent: lead.promotionsConsent,
+      consentedAt: lead.consentedAt,
       createdAt: now,
     })
     .onConflictDoUpdate({

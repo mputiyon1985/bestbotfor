@@ -338,6 +338,16 @@ export async function foundingSpotsTaken(db: Database, now: number, excludeTask 
   return Number(result.rows[0]?.taken ?? 0)
 }
 
+/** Founding spots still open, never below zero. A read error returns null so copy does not invent a count. */
+export async function readFoundingSpotsLeft(now = Date.now()): Promise<number | null> {
+  try {
+    return await foundingSpotsLeft(getDb(), now)
+  } catch (error) {
+    console.error('founding spots read failed', error instanceof Error ? error.name : 'error')
+    return null
+  }
+}
+
 /** Founding spots still open, never below zero. */
 export async function foundingSpotsLeft(db: Database, now: number): Promise<number> {
   return Math.max(0, FOUNDING_SPONSOR_CAP - (await foundingSpotsTaken(db, now)))

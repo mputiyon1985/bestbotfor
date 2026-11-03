@@ -191,11 +191,9 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
     notice,
   ]
   if (subscription) fingerprintFields.push('subscription', setupPriceId ?? '', String(trialDays), String(lockMonths))
-  // Recovery and the promotions checkbox are outside this hash on purpose.
-  // A session created before those fields keeps its idempotency key. Stripe
-  // rejects a retry that sends a different body under that key, so the retry
-  // fails closed instead of opening a second session. A new page load uses a
-  // new request id and a new key.
+  // Recovery stays out of this hash. Founding and placement sessions do not
+  // send it. A newsletter session that does is a different body, so a retry
+  // of an older key fails closed at Stripe instead of opening a second session.
   const fingerprintSource = fingerprintFields.join('\n')
   const fingerprint = createHash('sha256').update(fingerprintSource).digest('hex').slice(0, 16)
   const founding = input.offering === 'founding_sponsor'
@@ -240,7 +238,7 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
         custom_text: shared.custom_text,
         integration_identifier: shared.integration_identifier,
         managed_payments: shared.managed_payments,
-        ...sponsorCheckoutRecovery(),
+        ...sponsorCheckoutRecovery(input.offering),
       },
     }
   }
@@ -262,7 +260,7 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
     line_items: lineItems,
     payment_method_collection: 'always',
     subscription_data: subscriptionData,
-    ...sponsorCheckoutRecovery(),
+    ...sponsorCheckoutRecovery(input.offering),
   }
   // The founding session ends 5 minutes before its hold stops counting toward
   // the cap (FOUNDING_HOLD_MS), so it cannot complete after the spot was freed.
@@ -271,14 +269,28 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
 }
 
 /**
- * Abandoned-cart recovery for a Checkout Session this app creates.
- * allow_promotion_codes stays false: sponsor prices are fixed, and the
- * original session does not offer a promotion code.
- * consent_collection.promotions auto is what lets Stripe attach the buyer's
- * email and a recovery URL to checkout.session.expired when they opt in.
- * Stripe shows that checkbox for US buyers. This app does not send the email.
+ * Offerings that may set after_expiration.recovery. A recovered Checkout stays
+ * payable for 30 days and does not recreate the founding hold or the page
+ * slot claim, so it can oversell the cap of 5 or double-book a /best page.
+ * newsletter_slot has no cap and no page slot. Founding and every placement
+ * stay off. Add an id here only when a recovered payment cannot take a scarce spot.
  */
-export function sponsorCheckoutRecovery(): Pick<Stripe.Checkout.SessionCreateParams, 'after_expiration' | 'consent_collection'> {
+export const SPONSOR_RECOVERY_OFFERING_IDS = ['newsletter_slot'] as const
+
+export function sponsorRecoveryEnabled(offeringId: string): boolean {
+  return (SPONSOR_RECOVERY_OFFERING_IDS as readonly string[]).includes(offeringId)
+}
+
+/**
+ * Recovery fields for one offering, or an empty object when recovery is off.
+ * allow_promotion_codes stays false: the original session does not offer a code.
+ * consent_collection.promotions auto asks the buyer; it is not itself consent.
+ * This app does not send email.
+ */
+export function sponsorCheckoutRecovery(
+  offeringId: string,
+): Pick<Stripe.Checkout.SessionCreateParams, 'after_expiration' | 'consent_collection'> | Record<string, never> {
+  if (!sponsorRecoveryEnabled(offeringId)) return {}
   return {
     after_expiration: {
       recovery: {

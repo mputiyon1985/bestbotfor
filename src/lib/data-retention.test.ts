@@ -7,7 +7,7 @@ import { createClient } from '@libsql/client'
 import { drizzle } from 'drizzle-orm/libsql'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createTestDatabase } from '@/test/db'
-import { clicks, rateLimits, suggestions } from '@/lib/db/schema'
+import { clicks, rateLimits, sponsorAbandonedCheckouts, suggestions } from '@/lib/db/schema'
 import { DATA_RETENTION_PRODUCTION_LAUNCH } from './retention-flags'
 import {
   CLICK_HASH_RETENTION_MS,
@@ -23,6 +23,7 @@ import {
   retentionLogLine,
   retentionTargetOk,
   type RetentionReport,
+  ABANDONED_CHECKOUT_RETENTION_MS,
   SUGGESTION_EMAIL_RETENTION_MS,
   SUGGESTION_ROW_RETENTION_MS,
 } from './data-retention'
@@ -273,6 +274,45 @@ describe('data retention job', () => {
       log.mockRestore()
       const again = await runDataRetention(db, { dryRun: false, now })
       expect(again).toMatchObject({ suggestionEmailsCleared: 0, suggestionsDeleted: 0 })
+    } finally {
+      await close()
+    }
+  })
+
+  it('deletes abandoned sponsor checkouts after 90 days and keeps a newer opt-in', async () => {
+    const { db, close } = await createTestDatabase()
+    try {
+      expect(ABANDONED_CHECKOUT_RETENTION_MS).toBe(90 * day)
+      await db.insert(sponsorAbandonedCheckouts).values([
+        {
+          stripeCheckoutSessionId: 'cs_old',
+          email: 'old@example.com',
+          offering: 'sponsor_monthly',
+          expiredAt: now - ABANDONED_CHECKOUT_RETENTION_MS - 1,
+          source: 'payment_link',
+          promotionsConsent: 'opt_in',
+          consentedAt: now - ABANDONED_CHECKOUT_RETENTION_MS - 1,
+          createdAt: now - ABANDONED_CHECKOUT_RETENTION_MS - 1,
+        },
+        {
+          stripeCheckoutSessionId: 'cs_edge',
+          email: 'edge@example.com',
+          offering: 'sponsor_monthly',
+          expiredAt: now - ABANDONED_CHECKOUT_RETENTION_MS,
+          source: 'payment_link',
+          promotionsConsent: 'opt_in',
+          consentedAt: now - ABANDONED_CHECKOUT_RETENTION_MS,
+          createdAt: now,
+        },
+      ])
+      const dry = await runDataRetention(db, { dryRun: true, now })
+      expect(dry.abandonedCheckoutsEligible).toBe(1)
+      expect(dry.abandonedCheckoutsDeleted).toBe(0)
+      const report = await runDataRetention(db, { dryRun: false, now })
+      expect(report).toMatchObject({ abandonedCheckoutsDeleted: 1, wrote: true })
+      const left = await db.select().from(sponsorAbandonedCheckouts)
+      expect(left.map((row) => row.stripeCheckoutSessionId)).toEqual(['cs_edge'])
+      expect(JSON.stringify(report)).not.toMatch(/example\.com/)
     } finally {
       await close()
     }

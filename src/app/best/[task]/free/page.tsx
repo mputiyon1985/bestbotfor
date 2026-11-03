@@ -9,6 +9,7 @@ import { newsletterCtaEnabled } from '@/lib/flags'
 import { JsonLd } from '@/components/json-ld'
 import { ToolLogo } from '@/components/tool-logo'
 import { SponsorPageCta } from '@/components/sponsor-page-cta'
+import { readFoundingSpotsLeft } from '@/lib/sponsor-availability'
 import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
 import { bestGuideCrumb, bestGuideHeading, taskGerund } from '@/lib/descriptions'
 import { loadFreePage } from '@/lib/free-page-data'
@@ -42,7 +43,7 @@ export async function generateMetadata({ params }: { params: Promise<{ task: str
 
 export default async function BestFreePage({ params }: { params: Promise<{ task: string }> }) {
   const { task: slug } = await params
-  const page = await load(slug)
+  const [page, foundingSpotsLeft] = await Promise.all([load(slug), readFoundingSpotsLeft()])
   const { task, tools, ranked, indexable, totalFree } = page
   const nonce = (await headers()).get('x-nonce')
   const top = tools[0]
@@ -76,7 +77,6 @@ export default async function BestFreePage({ params }: { params: Promise<{ task:
         {bestFreeHeading(task.name).replace(/^Best/, 'The best')} is {top.name}. These are the {tools.length} highest-ranked tools for this job
         that you can start without paying, out of {totalFree} with a free plan in our catalog.
       </p>
-      <SponsorPageCta taskSlug={task.slug} />
       {cta ? <NewsletterCta path={path} source="best" /> : null}
       {indexable ? null : (
         <p role="note" className="text-sm text-muted">
@@ -119,6 +119,7 @@ export default async function BestFreePage({ params }: { params: Promise<{ task:
           See every free match
         </Link>
       </p>
+      <SponsorPageCta taskSlug={task.slug} foundingSpotsLeft={foundingSpotsLeft} />
       {paidPick ? (
         <section aria-labelledby="when-to-pay">
           <h2 id="when-to-pay" className="font-semibold text-3xl">When to pay</h2>

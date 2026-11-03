@@ -28,6 +28,7 @@ export function AllMatches({
   total,
   tools,
   nonce,
+  foundingSpotsLeft = null,
 }: {
   task: CatalogTask
   budget: RankBudget
@@ -36,6 +37,7 @@ export function AllMatches({
   total: number
   tools: MatchTool[]
   nonce: string | null
+  foundingSpotsLeft?: number | null
 }) {
   const path = matchesPath(task.slug, budget, page)
   const crumbs = [
@@ -132,7 +134,7 @@ export function AllMatches({
           ) : null}
         </div>
       </nav>
-      <SponsorPageCta taskSlug={task.slug} />
+      <SponsorPageCta taskSlug={task.slug} foundingSpotsLeft={foundingSpotsLeft} />
       <DailyBotCapture source="result" />
     </article>
   )

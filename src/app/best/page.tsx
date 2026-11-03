@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { SponsorPageCta } from '@/components/sponsor-page-cta'
+import { readFoundingSpotsLeft } from '@/lib/sponsor-availability'
 import { JsonLd } from '@/components/json-ld'
 import { bestGuideHeading } from '@/lib/descriptions'
 import { loadHubRows } from '@/lib/hub-data'
@@ -28,7 +29,7 @@ export const metadata: Metadata = pageMetadata({
 })
 
 export default async function BestHubPage() {
-  const [rows, headerStore] = await Promise.all([loadHubRows(), headers()])
+  const [rows, headerStore, foundingSpotsLeft] = await Promise.all([loadHubRows(), headers(), readFoundingSpotsLeft()])
   const nonce = headerStore.get('x-nonce')
   const crumbs = [
     { name: 'Home', path: '/' },
@@ -58,7 +59,7 @@ export default async function BestHubPage() {
         One top pick for each job, chosen from {CATALOG_TOOL_COUNT} tools, with the closest alternatives on each page. Picks are editorial.
         Payment never buys a higher rank.
       </p>
-      <SponsorPageCta />
+      <SponsorPageCta foundingSpotsLeft={foundingSpotsLeft} />
       <ul aria-label="Jobs" className="grid gap-3 md:grid-cols-2">
         {listed.map((row) => (
           <li key={row.taskSlug} className="min-w-0 rounded-2xl border border-line p-4">

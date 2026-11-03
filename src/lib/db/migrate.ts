@@ -184,6 +184,8 @@ export const SPONSOR_ABANDONED_CHECKOUTS_DDL = `CREATE TABLE IF NOT EXISTS spons
   task_slug TEXT,
   source TEXT NOT NULL,
   recovery_url TEXT,
+  promotions_consent TEXT NOT NULL DEFAULT '',
+  consented_at INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
 )`
 
@@ -194,15 +196,24 @@ const SPONSOR_ABANDONED_ADOPT_COLUMNS: ReadonlyArray<{ name: string; ddl: string
   { name: 'task_slug', ddl: 'TEXT' },
   { name: 'source', ddl: "TEXT NOT NULL DEFAULT 'checkout'" },
   { name: 'recovery_url', ddl: 'TEXT' },
+  { name: 'promotions_consent', ddl: "TEXT NOT NULL DEFAULT ''" },
+  { name: 'consented_at', ddl: 'INTEGER NOT NULL DEFAULT 0' },
   { name: 'created_at', ddl: 'INTEGER NOT NULL DEFAULT 0' },
 ]
 
-/** Create the abandoned-checkout table when it is missing, then add any column the app expects. */
+/**
+ * Create the abandoned-checkout table when it is missing, then add any column
+ * the app expects. A row with no recorded opt-in is removed: those were written
+ * before consent was required, and we do not keep an email without it.
+ */
 export async function adoptSponsorAbandonedCheckouts(client: Client): Promise<void> {
   await client.execute(SPONSOR_ABANDONED_CHECKOUTS_DDL)
   await addMissingColumns(client, 'sponsor_abandoned_checkouts', SPONSOR_ABANDONED_ADOPT_COLUMNS)
   await client.execute(
     'CREATE INDEX IF NOT EXISTS sponsor_abandoned_checkouts_expired_at_idx ON sponsor_abandoned_checkouts (expired_at)',
+  )
+  await client.execute(
+    "DELETE FROM sponsor_abandoned_checkouts WHERE promotions_consent != 'opt_in' OR consented_at IS NULL OR consented_at <= 0",
   )
 }
 

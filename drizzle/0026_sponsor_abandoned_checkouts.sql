@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS sponsor_abandoned_checkouts (
   task_slug TEXT,
   source TEXT NOT NULL CHECK (source IN ('checkout', 'payment_link')),
   recovery_url TEXT,
+  promotions_consent TEXT NOT NULL,
+  consented_at INTEGER NOT NULL,
   created_at INTEGER NOT NULL
 );
 

@@ -38,10 +38,11 @@ export default function PrivacyPage() {
       <p>
         If you subscribe, Stripe processes the payment. We do not store your full card number. We store the Stripe
         customer id, subscription id, price id, and status so we know whether membership is active. If you start a
-        sponsor checkout and leave before paying, we store the email from that checkout, the offer, and the time it
-        expired, so we can see the abandoned checkout. We do not email you about it. On Stripe’s page you can opt in
-        to promotional email. Only then can Stripe include a recovery link, which we store with that checkout. Use
-        Stripe test cards only while this site is in test mode.
+        sponsor checkout and leave before paying, we store your email, the offer, the time it expired, and that you
+        opted in, only when you opt in to promotional email on Stripe’s checkout page. If you do not opt in, we store
+        nothing from that expired checkout. We do not email you about it. We delete that record about 90 days after
+        the checkout expires, when the retention job is on. The retention job is off in production now, so until it is
+        switched on that record has no fixed deletion date. Use Stripe test cards only while this site is in test mode.
       </p>
       <p>{CLICK_LOG_PARAGRAPH}</p>
       <h2 className="font-semibold text-3xl">Rate limits</h2>

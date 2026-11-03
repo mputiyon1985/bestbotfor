@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { SponsorPageCta } from '@/components/sponsor-page-cta'
 import { SponsorForm } from '@/components/sponsor-form'
-import { sponsorPageHref } from './sponsor-page-cta'
+import { foundingCapPhrase, sponsorPageHref } from './sponsor-page-cta'
 
 describe('sponsor page CTA', () => {
   it('links both labels to /sponsor and keeps a task slug on the query', () => {
@@ -22,6 +22,13 @@ describe('sponsor page CTA', () => {
     expect(html).toContain('href="/disclosure"')
     expect(html).toContain('$99')
     expect(html).toContain('$299/mo')
+    expect(html).toContain('limited to 5')
+    expect(foundingCapPhrase(null)).toBe('limited to 5')
+    expect(foundingCapPhrase(0)).toBe('all 5 founding spots are taken')
+    expect(foundingCapPhrase(2)).toBe('2 of 5 founding spots left')
+    const soldOut = renderToStaticMarkup(createElement(SponsorPageCta, { taskSlug: 'coding', foundingSpotsLeft: 0 }))
+    expect(soldOut).toContain('all 5 founding spots are taken')
+    expect(soldOut).not.toContain('limited to 5')
     expect(html).not.toContain('buy.stripe.com')
     expect(html).not.toContain('bg-mist')
     expect(html).not.toContain('<script')

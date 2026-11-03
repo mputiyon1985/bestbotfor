@@ -15,6 +15,7 @@ import { SponsoredPlacement, sponsoredCardIsVisible } from '@/components/sponsor
 import { SponsorPageCta } from '@/components/sponsor-page-cta'
 import { scheduleSponsorImpression } from '@/lib/sponsor-impressions'
 import { readActiveBestPlacement } from '@/lib/best-placement'
+import { readFoundingSpotsLeft } from '@/lib/sponsor-availability'
 import { getTask, listTaskCandidates } from '@/lib/catalog'
 import { getDb } from '@/lib/db'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
@@ -64,10 +65,11 @@ export async function generateMetadata({ params }: { params: Promise<{ task: str
 export default async function BestPage({ params }: { params: Promise<{ task: string }> }) {
   const { task: slug } = await params
   if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) notFound()
-  const [loaded, headerStore, placement] = await Promise.all([
+  const [loaded, headerStore, placement, foundingSpotsLeft] = await Promise.all([
     listTaskCandidates(slug),
     headers(),
     readActiveBestPlacement(() => getDb(), slug),
+    readFoundingSpotsLeft(),
   ])
   const task = loaded?.task
   const ranked = loaded?.tools ?? []
@@ -133,7 +135,6 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
         </OutboundLink>
 {top.hasAffiliateLink ? <AffiliateDisclosure affiliate /> : null}
       </p>
-      <SponsorPageCta taskSlug={task.slug} />
       {cta ? <NewsletterCta path={`/best/${task.slug}`} source="best" /> : null}
       {getCategoryGuide(task.slug) ? (
         <p data-category-guide-link>
@@ -199,6 +200,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
             See all matches
           </Link>
         </p>
+        <SponsorPageCta taskSlug={task.slug} foundingSpotsLeft={foundingSpotsLeft} />
       </div>
       <section>
         <h2 className="font-semibold text-3xl">Questions</h2>

@@ -18,6 +18,7 @@ import { sanitizeSponsorCompany } from './sponsor-company'
 import { linkSponsorCreative } from './sponsor-card'
 import { recordExpiredSponsorCheckout } from './sponsor-abandoned'
 import { alertFoundingOverCap } from './founding-cap-alert'
+import { flagPlacementOverlap } from './sponsor-overlap'
 import { listPaidFounders } from './sponsor-availability'
 import { FOUNDING_SPONSOR_CAP } from './sponsor-offerings'
 
@@ -309,6 +310,14 @@ async function applySponsorship(db: Database, stripe: Stripe, event: Stripe.Even
     sessionId: parsed.data.id,
     now,
   })
+  if (status === 'paid') {
+    await flagPlacementOverlap(db, {
+      sessionId: parsed.data.id,
+      taskSlug: parsed.data.metadata.task_slug || null,
+      offeringId: offering.id,
+      now,
+    })
+  }
 }
 
 type SponsorshipCheckout = z.infer<typeof sponsorshipCheckoutSchema>
@@ -518,7 +527,15 @@ async function applySponsorSubscriptionCheckout(
     sessionId: data.id,
     now,
   })
-  if (offering.id === 'founding_sponsor' && status === 'paid') await recountFounders(db, data.id)
+  if (status === 'paid') {
+    if (offering.id === 'founding_sponsor') await recountFounders(db, data.id)
+    await flagPlacementOverlap(db, {
+      sessionId: data.id,
+      taskSlug: metadata.task_slug || null,
+      offeringId: offering.id,
+      now,
+    })
+  }
 }
 
 /**

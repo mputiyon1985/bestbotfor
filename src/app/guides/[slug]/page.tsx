@@ -12,6 +12,7 @@ import { getGuide, guidePath } from '@/content/guides'
 import { EDITOR_BYLINE, categoryGuideArticleJsonLd, getCategoryGuide, type CategoryGuide } from '@/content/category-guides'
 import { GuideMarkdown } from '@/components/guide-markdown'
 import { SponsorPageCta } from '@/components/sponsor-page-cta'
+import { readFoundingSpotsLeft } from '@/lib/sponsor-availability'
 import { taskSeeds } from '@/data/catalog'
 import { bestGuideHeading } from '@/lib/descriptions'
 import { formatUsDate } from '@/lib/format'
@@ -141,7 +142,8 @@ export default async function GuidePage({ params }: { params: Promise<{ slug: st
   )
 }
 
-function CategoryGuidePage({ guide, nonce }: { guide: CategoryGuide; nonce: string | null }) {
+async function CategoryGuidePage({ guide, nonce }: { guide: CategoryGuide; nonce: string | null }) {
+  const foundingSpotsLeft = await readFoundingSpotsLeft()
   const task = taskSeeds.find((item) => item.slug === guide.category)
   const path = guidePath(guide.category)
   const crumbs = [
@@ -160,7 +162,7 @@ function CategoryGuidePage({ guide, nonce }: { guide: CategoryGuide; nonce: stri
         <span data-byline>{EDITOR_BYLINE}</span>. Checked {formatUsDate(guide.checked)}.
       </p>
       <GuideMarkdown markdown={guide.body} />
-      <SponsorPageCta taskSlug={guide.category} />
+      <SponsorPageCta taskSlug={guide.category} foundingSpotsLeft={foundingSpotsLeft} />
       {/* No verdict on category guides: the newsletter CTA takes the Daily Bot form's place after the body. */}
       {cta ? <NewsletterCta path={path} source="guides" /> : <DailyBotCapture source="guides" />}
     </article>

@@ -597,6 +597,10 @@ export const sponsorAbandonedCheckouts = sqliteTable(
     taskSlug: text('task_slug'),
     source: text('source').notNull(),
     recoveryUrl: text('recovery_url'),
+    /** Buyer's choice. Rows exist only for opt_in. */
+    promotionsConsent: text('promotions_consent').notNull(),
+    /** Expiry event time, the clock on which we observed the opt-in. */
+    consentedAt: integer('consented_at').notNull(),
     createdAt: integer('created_at').notNull(),
   },
   (table) => [index('sponsor_abandoned_checkouts_expired_at_idx').on(table.expiredAt)],

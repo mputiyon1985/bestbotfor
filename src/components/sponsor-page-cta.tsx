@@ -1,12 +1,18 @@
 import Link from 'next/link'
-import { sponsorPageHref } from '@/lib/sponsor-page-cta'
+import { foundingCapPhrase, sponsorPageHref } from '@/lib/sponsor-page-cta'
 
 /**
  * Invitation to buy a featured slot. It is not a paid placement: the paid
  * card is SponsoredPlacement, which uses a different label and a mist background.
  * No script, no analytics, and the link stays on this site.
  */
-export function SponsorPageCta({ taskSlug }: { taskSlug?: string | null }) {
+export function SponsorPageCta({
+  taskSlug,
+  foundingSpotsLeft = null,
+}: {
+  taskSlug?: string | null
+  foundingSpotsLeft?: number | null
+}) {
   const href = sponsorPageHref(taskSlug)
   return (
     <aside
@@ -30,7 +36,7 @@ export function SponsorPageCta({ taskSlug }: { taskSlug?: string | null }) {
         .
       </p>
       <p className="text-sm text-muted">
-        Founding sponsor is $99 now, then $299/mo after 14 days, with that price locked for 6 months, limited to 5.
+        Founding sponsor is $99 now, then $299/mo after 14 days, with that price locked for 6 months, {foundingCapPhrase(foundingSpotsLeft)}.
         Monthly sponsor is $299/mo.
       </p>
     </aside>
