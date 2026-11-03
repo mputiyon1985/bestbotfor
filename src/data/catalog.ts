@@ -628,7 +628,7 @@ export const toolSeeds: ToolSeed[] = [
     name: 'Synthesia',
     vendor: 'Synthesia',
     url: 'https://www.synthesia.io',
-    allowedHosts: ['www.synthesia.io', 'synthesia.io'],
+    allowedHosts: ['www.synthesia.io', 'synthesia.io', 'www.synthesia.io?via=mark-putiyon'],
     category: 'AI video',
     shortDesc: 'Turns a script into a presenter-style video.',
     longDesc:

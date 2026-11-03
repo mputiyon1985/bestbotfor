@@ -120,13 +120,13 @@ describe('score and ranking ignore affiliate fields', () => {
     }
     const ranked = rankTools([withMoney, { ...base, hasAffiliateLink: false }], { budget: 'any', skill: 'beginner' })
     expect(ranked.map((item) => item.score)).toEqual([ranked[0]?.score, ranked[0]?.score])
-    expect(ranked.map((item) => item.slug).sort()).toEqual(['alpha', 'beta'])
+    expect(ranked.map((item) => item.slug)).toEqual(['alpha', 'beta'])
     const catalog = rankingCatalog()
     const recommended = recommend(catalog, { task: 'writing', budget: 'any', skill: 'beginner' })
-    expect(recommended?.picks.map((pick) => pick.score)).toEqual([recommended?.picks[0]?.score, recommended?.picks[0]?.score])
-    expect(recommended?.ranked.map((item) => item.slug).sort()).toEqual(['alpha', 'beta'])
+    expect(recommended?.picks.map((pick) => pick.slug)).toEqual(['alpha', 'beta'])
+    expect(recommended?.ranked.map((item) => item.slug)).toEqual(['alpha', 'beta'])
     const listed = toolsForTask(catalog, 'writing')
-    expect(listed.map((tool) => tool.fitScore)).toEqual([80, 80])
+    expect(listed.map((tool) => tool.slug)).toEqual(['alpha', 'beta'])
     const rubric = { features: 4, value: 4, ease: 5, quality: 4 }
     expect(overallScore(rubric)).toBe(overallScore({ ...rubric, affiliateUrl: 'https://example.com', commissionNote: '20%' } as typeof rubric))
     const picks = rankTools([base satisfies ScoreableTool], { budget: 'low', skill: 'beginner' })

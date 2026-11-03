@@ -22,10 +22,13 @@ export function decideRedirect(input: {
   return { type: 'redirect', url: safe, affiliate: false }
 }
 
-/** The affiliate URL /go will serve, or null when it is unset or fails the allowlist. */
+/**
+ * The affiliate URL /go will serve, or null when it is unset or fails the allowlist.
+ * A bare host does not authorize it. The entry must pin a path or a query.
+ */
 export function affiliateRedirectUrl(value: string | null | undefined, allowedHosts: readonly string[]): string | null {
   if (!value) return null
-  return officialHttpsUrl(value, allowedHosts)
+  return matchHttpsUrl(value, allowedHosts, true)
 }
 
 /**
@@ -33,6 +36,10 @@ export function affiliateRedirectUrl(value: string | null | undefined, allowedHo
  * Non-default ports are rejected. Hosts are compared after IDNA normalization.
  */
 export function officialHttpsUrl(value: string, allowedHosts: readonly string[]): string | null {
+  return matchHttpsUrl(value, allowedHosts, false)
+}
+
+function matchHttpsUrl(value: string, allowedHosts: readonly string[], affiliate: boolean): string | null {
   if (allowedHosts.length === 0) return null
   let parsed: URL
   try {
@@ -44,7 +51,7 @@ export function officialHttpsUrl(value: string, allowedHosts: readonly string[])
   if (parsed.username || parsed.password) return null
   if (parsed.port !== '') return null
   const host = normalizedHostname(parsed.hostname)
-  if (!hostAllowed(host, parsed.pathname, allowedHosts)) return null
+  if (!hostAllowed(host, parsed.pathname, parsed.searchParams, allowedHosts, affiliate)) return null
   if (parsed.hostname !== host) parsed.hostname = host
   return parsed.toString()
 }
@@ -58,7 +65,7 @@ export function reviewedToolUrl(tool: { slug: string; url: string; allowedHosts:
   const host = new URL(safe).hostname
   const listedExactly = tool.allowedHosts.some((entry) => {
     const rule = parseAllowEntry(entry)
-    return rule !== null && !rule.subdomains && rule.pathPrefix === null && rule.host === host
+    return rule !== null && !rule.subdomains && rule.pathPrefix === null && rule.query === null && rule.host === host
   })
   if (!listedExactly) {
     throw new Error(`Tool ${tool.slug} must list ${host} as an exact reviewed host`)
@@ -79,47 +86,75 @@ export function isStripeHostedUrl(value: string): boolean {
   }
 }
 
-type AllowRule = { host: string; subdomains: boolean; pathPrefix: string | null }
+type AllowRule = {
+  host: string
+  subdomains: boolean
+  pathPrefix: string | null
+  /** Exact query pairs, in order. Null means the query is not pinned. */
+  query: ReadonlyArray<readonly [string, string]> | null
+}
 
-function hostAllowed(hostname: string, pathname: string, allowedHosts: readonly string[]): boolean {
+function hostAllowed(
+  hostname: string,
+  pathname: string,
+  search: URLSearchParams,
+  allowedHosts: readonly string[],
+  affiliate: boolean,
+): boolean {
   const host = canonicalHost(hostname)
   if (!host) return false
   for (const entry of allowedHosts) {
     const rule = parseAllowEntry(entry)
     if (!rule) continue
+    if (affiliate && rule.pathPrefix === null && rule.query === null) continue
     if (host === rule.host) {
       if (rule.subdomains) continue
-      if (pathAllowed(pathname, rule.pathPrefix)) return true
+      if (pathAllowed(pathname, rule.pathPrefix) && queryAllowed(search, rule.query)) return true
       continue
     }
-    if (rule.subdomains && host.endsWith(`.${rule.host}`) && pathAllowed(pathname, rule.pathPrefix)) return true
+    if (rule.subdomains && host.endsWith(`.${rule.host}`) && pathAllowed(pathname, rule.pathPrefix) && queryAllowed(search, rule.query)) {
+      return true
+    }
   }
   return false
 }
 
-/** Exact path, or a longer path under that prefix. `/id` does not allow `/id-other`. */
+/** Exact path only. `/id` does not allow `/id/extra` or `/id-other`. */
 function pathAllowed(pathname: string, prefix: string | null): boolean {
   if (!prefix) return true
   const path = pathname === '' ? '/' : pathname
-  if (path === prefix) return true
-  const boundary = prefix.endsWith('/') ? prefix : `${prefix}/`
-  return path.startsWith(boundary)
+  return path === prefix
+}
+
+function queryAllowed(search: URLSearchParams, expected: AllowRule['query']): boolean {
+  if (!expected) return true
+  const actual = [...search.entries()]
+  if (actual.length !== expected.length) return false
+  return expected.every(([key, value], index) => actual[index]?.[0] === key && actual[index]?.[1] === value)
 }
 
 function parseAllowEntry(entry: string): AllowRule | null {
   const trimmed = entry.trim()
   const subdomains = trimmed.startsWith('*.')
   const bare = subdomains ? trimmed.slice(2) : trimmed
-  const slash = bare.indexOf('/')
-  const hostPart = slash === -1 ? bare : bare.slice(0, slash)
-  const pathPrefix = slash === -1 ? null : bare.slice(slash)
+  const question = bare.indexOf('?')
+  const beforeQuery = question === -1 ? bare : bare.slice(0, question)
+  const queryString = question === -1 ? null : bare.slice(question + 1)
+  const slash = beforeQuery.indexOf('/')
+  const hostPart = slash === -1 ? beforeQuery : beforeQuery.slice(0, slash)
+  let pathPrefix = slash === -1 ? null : beforeQuery.slice(slash)
+  if (queryString !== null && pathPrefix === null) pathPrefix = '/'
   if (!hostPart || hostPart.includes('*')) return null
-  if (pathPrefix !== null && (!pathPrefix.startsWith('/') || pathPrefix.includes('?') || pathPrefix.includes('#') || pathPrefix.includes('*'))) {
-    return null
+  if (pathPrefix !== null && (!pathPrefix.startsWith('/') || pathPrefix.includes('#') || pathPrefix.includes('*'))) return null
+  let query: AllowRule['query'] = null
+  if (queryString !== null) {
+    if (!queryString || queryString.includes('#')) return null
+    query = [...new URLSearchParams(queryString).entries()]
+    if (query.length === 0) return null
   }
   const host = canonicalHost(hostPart)
   if (!host) return null
-  return { host, subdomains, pathPrefix }
+  return { host, subdomains, pathPrefix, query }
 }
 
 /** Punycode, lowercase, and a single trailing-dot form of the same host. */
