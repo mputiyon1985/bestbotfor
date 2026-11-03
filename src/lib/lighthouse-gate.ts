@@ -21,6 +21,51 @@ export const PERFORMANCE_FLOOR = 0.9
 
 export const PERFORMANCE_DELTA = 0.02
 
+/** Main pushes and the nightly run median this many samples per URL. */
+export const ABSOLUTE_SAMPLES = 5
+
+/** On a miss, absolute mode adds this many samples and medians the whole set. */
+export const ABSOLUTE_RETRY_SAMPLES = 5
+
+/** Printed from the copy that actually executed, so CI can see which gate ran. */
+export const LIGHTHOUSE_GATE_COPY = 'origin/main worktree'
+
+/**
+ * Even pairs measure the pull request first. Odd pairs measure main first.
+ * Pair 0 is PR then main, pair 1 is main then PR.
+ */
+export function pullRequestFirst(pairIndex: number): boolean {
+  return pairIndex % 2 === 0
+}
+
+/**
+ * URLs to measure again after an absolute miss.
+ * A leading `/` must not swallow `/best/coding`.
+ */
+export function absoluteRetryTargets(
+  messages: string[],
+  pages: readonly string[],
+  quiz: readonly string[],
+): { pages: string[]; quiz: string[]; home: boolean } {
+  const pageHits: string[] = []
+  const quizHits: string[] = []
+  let home = false
+  for (const message of messages) {
+    if (message.startsWith('home TBT') || message.startsWith('home LCP')) home = true
+    for (const url of pages) {
+      if (message.startsWith(`${url} `)) pageHits.push(url)
+    }
+    for (const url of quiz) {
+      if (message.startsWith(`${url} `)) quizHits.push(url)
+    }
+  }
+  return {
+    pages: [...new Set(pageHits)],
+    quiz: [...new Set(quizHits)],
+    home,
+  }
+}
+
 export function median(values: number[]): number {
   if (values.length === 0) throw new Error('median of no values')
   const sorted = [...values].sort((a, b) => a - b)

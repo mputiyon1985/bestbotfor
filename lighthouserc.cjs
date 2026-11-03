@@ -22,7 +22,8 @@ module.exports = {
     assert: {
       // Median of the three runs per URL. Performance is not gated here:
       // scripts/check-lighthouse.ts compares this branch to main on the same
-      // runner (within 0.02, and at least 0.95 when main itself clears 0.95).
+      // runner. Within 0.02 when main clears 0.95, and at least 0.95 then.
+      // When main is under 0.95, the PR median must be at least main's.
       aggregationMethod: 'median',
       assertions: {
         'categories:accessibility': ['error', { minScore: 0.95 }],

@@ -24,7 +24,7 @@ module.exports = {
         // Best of three. The 2.1s budget matches the quiet cluster.
         'largest-contentful-paint': ['error', { maxNumericValue: 2099, aggregationMethod: 'optimistic' }],
         // 229ms is the cap from main. scripts/check-lighthouse.ts applies it to
-        // the median, and allows the PR to match main when main itself is over 229.
+        // the median. A noisier main can be matched, but not past 250ms.
       },
     },
     upload: {

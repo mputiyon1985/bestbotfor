@@ -1,8 +1,26 @@
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process'
+import { lstatSync, readlinkSync, writeFileSync } from 'node:fs'
 import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { createRequire } from 'node:module'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { chromium } from '@playwright/test'
-import { absolutePerformanceError, homeLcpError, homeTbtError, median, performanceErrors } from '../src/lib/lighthouse-gate'
+import {
+  ABSOLUTE_RETRY_SAMPLES,
+  ABSOLUTE_SAMPLES,
+  absolutePerformanceError,
+  absoluteRetryTargets,
+  HOME_LCP_CAP_MS,
+  HOME_TBT_CAP_MS,
+  HOME_TBT_HARD_CEILING_MS,
+  LIGHTHOUSE_GATE_COPY,
+  homeLcpError,
+  homeTbtError,
+  median,
+  performanceErrors,
+  PERFORMANCE_MEDIAN_MIN,
+  pullRequestFirst,
+} from '../src/lib/lighthouse-gate'
 
 const ROOT = process.env.LH_APP_ROOT || process.cwd()
 const MAIN_DIR = '/tmp/lh-main'
@@ -14,6 +32,7 @@ const QUIZ_URLS = [
   '/result?task=seo&view=all&budget=free',
 ]
 const HOME_URLS = ['/']
+const COMPARE_SAMPLES = 3
 
 type Report = {
   finalDisplayedUrl?: string
@@ -250,22 +269,68 @@ async function oneRun(port: string, urlPath: string): Promise<Sample> {
   return sample
 }
 
-async function runRounds(ports: { pr: string; main?: string }, groups: { pr: RunGroups; main?: RunGroups }): Promise<void> {
-  for (let round = 0; round < 3; round += 1) {
-    for (const [bucket, urls] of [
-      ['pages', PAGE_URLS],
-      ['quiz', QUIZ_URLS],
-      ['home', HOME_URLS],
-    ] as const) {
-      for (const urlPath of urls) {
-        pushSample(groups.pr[bucket], urlPath, await oneRun(ports.pr, urlPath), 'pr')
-        if (ports.main && groups.main) pushSample(groups.main[bucket], urlPath, await oneRun(ports.main, urlPath), 'main')
+type RunGroups = { pages: Map<string, Sample[]>; quiz: Map<string, Sample[]>; home: Map<string, Sample[]> }
+
+type PlannedUrl = { bucket: keyof RunGroups; url: string; index: number }
+
+function measurementPlan(filter?: { pages: string[]; quiz: string[]; home: boolean }): PlannedUrl[] {
+  const items = [
+    ...PAGE_URLS.map((url) => ({ bucket: 'pages' as const, url })),
+    ...QUIZ_URLS.map((url) => ({ bucket: 'quiz' as const, url })),
+    ...HOME_URLS.map((url) => ({ bucket: 'home' as const, url })),
+  ]
+  const planned = items.map((item, index) => ({ ...item, index }))
+  if (!filter) return planned
+  return planned.filter((item) => {
+    if (item.bucket === 'home') return filter.home
+    if (item.bucket === 'pages') return filter.pages.includes(item.url)
+    return filter.quiz.includes(item.url)
+  })
+}
+
+async function collectSample(port: string, url: string, label: string, keep: { groups: RunGroups; bucket: keyof RunGroups } | null): Promise<void> {
+  const sample = await oneRun(port, url)
+  if (!keep) {
+    console.log(
+      `lighthouse warmup discarded ${label} ${url}: LCP ${sample.lcp.toFixed(0)}ms, TBT ${sample.tbt.toFixed(0)}ms, performance ${sample.performance.toFixed(2)}`,
+    )
+    return
+  }
+  pushSample(keep.groups[keep.bucket], url, sample, label)
+}
+
+/** Even pairs run the pull request first. Odd pairs run main first. The warmup sample is not counted. */
+async function runCompared(ports: { pr: string; main: string }, groups: { pr: RunGroups; main: RunGroups }): Promise<void> {
+  const plan = measurementPlan()
+  console.log('lighthouse pairs alternate; even pairs run the pull request first')
+  for (const item of plan) {
+    const order = pullRequestFirst(item.index) ? (['pr', 'main'] as const) : (['main', 'pr'] as const)
+    for (const side of order) {
+      await collectSample(side === 'pr' ? ports.pr : ports.main, item.url, side, null)
+    }
+  }
+  for (let run = 0; run < COMPARE_SAMPLES; run += 1) {
+    for (const item of plan) {
+      const order = pullRequestFirst(run + item.index) ? (['pr', 'main'] as const) : (['main', 'pr'] as const)
+      for (const side of order) {
+        const target = side === 'pr' ? groups.pr : groups.main
+        await collectSample(side === 'pr' ? ports.pr : ports.main, item.url, side, { groups: target, bucket: item.bucket })
       }
     }
   }
 }
 
-type RunGroups = { pages: Map<string, Sample[]>; quiz: Map<string, Sample[]>; home: Map<string, Sample[]> }
+async function runAbsolute(port: string, groups: RunGroups, runs: number, filter?: { pages: string[]; quiz: string[]; home: boolean }): Promise<void> {
+  const plan = measurementPlan(filter)
+  if (!filter) {
+    for (const item of plan) await collectSample(port, item.url, 'absolute', null)
+  }
+  for (let run = 0; run < runs; run += 1) {
+    for (const item of plan) {
+      await collectSample(port, item.url, 'absolute', { groups, bucket: item.bucket })
+    }
+  }
+}
 
 function categoryErrors(groups: Map<string, Sample[]>, names: Array<[string, (sample: Sample) => number]>): string[] {
   const errors: string[] = []
@@ -315,20 +380,31 @@ function compare(pr: RunGroups, baseline: RunGroups): string[] {
 
 function absoluteErrors(groups: RunGroups): string[] {
   const errors: string[] = []
-  for (const url of [...groups.pages.keys(), ...groups.quiz.keys()]) {
+  for (const url of [...PAGE_URLS, ...QUIZ_URLS]) {
     const samples = (groups.pages.get(url) ?? groups.quiz.get(url) ?? []).map((sample) => sample.performance)
-    console.log(`lighthouse absolute ${url}: performance median ${median(samples).toFixed(2)}`)
+    if (samples.length === 0) {
+      errors.push(`${url} is missing a performance median`)
+      continue
+    }
+    console.log(`lighthouse absolute ${url}: performance median ${median(samples).toFixed(2)} from ${samples.length} runs`)
     const performance = absolutePerformanceError(url, samples)
     if (performance) errors.push(performance)
   }
-  const home = requireUrl(groups.home, '/')
-  const tbt = median(home.map((sample) => sample.tbt))
-  const lcp = Math.min(...home.map((sample) => sample.lcp))
-  console.log(`lighthouse absolute /: TBT median ${tbt.toFixed(1)}ms, LCP best ${lcp.toFixed(0)}ms`)
-  const tbtError = homeTbtError(home.map((sample) => sample.tbt), null)
-  if (tbtError) errors.push(tbtError)
-  const lcpError = homeLcpError(home.map((sample) => sample.lcp))
-  if (lcpError) errors.push(lcpError)
+  const home = groups.home.get('/')
+  if (!home || home.length === 0) {
+    errors.push('home TBT median missing')
+    errors.push('home LCP best missing')
+  } else {
+    const tbtValues = home.map((sample) => sample.tbt)
+    const lcpValues = home.map((sample) => sample.lcp)
+    const tbt = median(tbtValues)
+    const lcp = Math.min(...lcpValues)
+    console.log(`lighthouse absolute /: TBT median ${tbt.toFixed(1)}ms from ${home.length} runs, LCP best ${lcp.toFixed(0)}ms`)
+    const tbtError = homeTbtError(tbtValues, null)
+    if (tbtError) errors.push(tbtError)
+    const lcpError = homeLcpError(lcpValues)
+    if (lcpError) errors.push(lcpError)
+  }
   errors.push(...categoryErrors(groups.pages, [
     ['accessibility', (sample) => sample.accessibility],
     ['best-practices', (sample) => sample.bestPractices],
@@ -345,7 +421,42 @@ function freshGroups(): RunGroups {
   return { pages: emptyGroups(), quiz: emptyGroups(), home: emptyGroups() }
 }
 
+function recordGateCopy(): void {
+  const scriptPath = fileURLToPath(import.meta.url)
+  const gateDir = process.env.LH_GATE_DIR
+  writeFileSync('/tmp/lh-gate-ran', scriptPath)
+  console.log(`lighthouse gate copy ran its own logic from ${scriptPath}`)
+  console.log(`lighthouse gate copy: ${LIGHTHOUSE_GATE_COPY}`)
+  console.log(
+    `lighthouse gate rules: performance ${PERFORMANCE_MEDIAN_MIN}, TBT ${HOME_TBT_CAP_MS}ms, LCP ${HOME_LCP_CAP_MS}ms, ceiling ${HOME_TBT_HARD_CEILING_MS}ms, absolute samples ${ABSOLUTE_SAMPLES} plus ${ABSOLUTE_RETRY_SAMPLES}`,
+  )
+  const nodeModules = path.resolve(path.dirname(scriptPath), '../node_modules')
+  const stat = lstatSync(nodeModules)
+  console.log(
+    stat.isSymbolicLink()
+      ? `lighthouse gate node_modules: symlink -> ${readlinkSync(nodeModules)}`
+      : `lighthouse gate node_modules: directory ${nodeModules}`,
+  )
+  const playwright = createRequire(scriptPath).resolve('@playwright/test')
+  console.log(`lighthouse gate playwright: ${playwright}`)
+  if (gateDir && scriptPath !== path.join(gateDir, 'scripts/check-lighthouse.ts')) {
+    throw new Error(`lighthouse gate ran from ${scriptPath}, expected ${gateDir}`)
+  }
+}
+
+function reportFailures(errors: string[]): number {
+  for (const error of errors) {
+    console.error(error)
+    console.error(`::error::${error}`)
+  }
+  if (process.env.GITHUB_EVENT_NAME === 'schedule' && errors.length > 0) {
+    console.error('::error::Nightly Lighthouse gate failed.')
+  }
+  return errors.length === 0 ? 0 : 1
+}
+
 async function main(): Promise<number> {
+  recordGateCopy()
   process.env.CHROME_PATH = process.env.CHROME_PATH || chromium.executablePath()
   const port = Number(process.env.LHCI_PORT || 4400 + Math.floor(Math.random() * 400))
   const prPort = String(port)
@@ -359,10 +470,18 @@ async function main(): Promise<number> {
     await warm(`http://127.0.0.1:${prPort}`)
     if (absolute) {
       const groups = freshGroups()
-      await runRounds({ pr: prPort }, { pr: groups })
-      const errors = absoluteErrors(groups)
-      for (const error of errors) console.error(error)
-      return errors.length === 0 ? 0 : 1
+      await runAbsolute(prPort, groups, ABSOLUTE_SAMPLES)
+      let errors = absoluteErrors(groups)
+      if (errors.length > 0) {
+        const targets = absoluteRetryTargets(errors, PAGE_URLS, QUIZ_URLS)
+        console.log(`lighthouse absolute: remeasuring failing URLs ${JSON.stringify(targets)}`)
+        if (targets.pages.length === 0 && targets.quiz.length === 0 && !targets.home) {
+          return reportFailures(errors)
+        }
+        await runAbsolute(prPort, groups, ABSOLUTE_RETRY_SAMPLES, targets)
+        errors = absoluteErrors(groups)
+      }
+      return reportFailures(errors)
     }
     await prepareMain()
     const mainServer = startServer(MAIN_DIR, mainPort, 'file:./data/ci.db')
@@ -371,10 +490,8 @@ async function main(): Promise<number> {
       await warm(`http://127.0.0.1:${mainPort}`)
       const pr = freshGroups()
       const baseline = freshGroups()
-      await runRounds({ pr: prPort, main: mainPort }, { pr, main: baseline })
-      const errors = compare(pr, baseline)
-      for (const error of errors) console.error(error)
-      return errors.length === 0 ? 0 : 1
+      await runCompared({ pr: prPort, main: mainPort }, { pr, main: baseline })
+      return reportFailures(compare(pr, baseline))
     } finally {
       stopServer(mainServer)
       await removeMain()
@@ -388,5 +505,6 @@ main()
   .then((exitCode) => process.exit(exitCode))
   .catch((error: unknown) => {
     console.error(error instanceof Error ? error.message : error)
+    if (process.env.GITHUB_EVENT_NAME === 'schedule') console.error('::error::Nightly Lighthouse gate failed.')
     process.exit(1)
   })

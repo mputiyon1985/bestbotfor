@@ -14,8 +14,9 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    # Two Lighthouse passes (this branch and main) plus e2e. A hang still ends here.
-    timeout-minutes: 45
+    # E2E plus Lighthouse. Absolute mode can remeasure failing URLs. A hang still ends here.
+    # This workflow file and scripts/ci-lighthouse.sh come from the pull request.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -59,8 +60,10 @@ jobs:
           NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
       - name: Lighthouse
         run: bash scripts/ci-lighthouse.sh
-        # Interleaved PR and main runs, plus a main build. A hang fails here.
-        timeout-minutes: 30
+        # The shell script and this workflow come from the pull request.
+        # The TypeScript gate runs from the origin/main worktree.
+        # A nightly failure fails this job so GitHub notifies. No extra service.
+        timeout-minutes: 40
         env:
           TURSO_DATABASE_URL: file:./data/ci.db
           TURSO_AUTH_TOKEN: local
