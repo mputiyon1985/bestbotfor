@@ -16,6 +16,7 @@ import { getStripe, stripeWebhookSecret } from './stripe'
 import { liveModeAllowed } from './stripe-key'
 import { sanitizeSponsorCompany } from './sponsor-company'
 import { linkSponsorCreative } from './sponsor-card'
+import { recordExpiredSponsorCheckout } from './sponsor-abandoned'
 import { alertFoundingOverCap } from './founding-cap-alert'
 import { listPaidFounders } from './sponsor-availability'
 import { FOUNDING_SPONSOR_CAP } from './sponsor-offerings'
@@ -150,6 +151,13 @@ async function applyWebhook(
 export const SPONSOR_REFUND_WEBHOOK_EVENTS = ['charge.refunded', 'refund.created', 'refund.updated'] as const
 
 /**
+ * checkout.session.expired is not sent by the live endpoint until it is added
+ * in the Dashboard (docs/runbooks/sponsor-payment-links.md). The handler is
+ * ready either way: an event that is not subscribed never arrives.
+ */
+export const SPONSOR_ABANDONED_WEBHOOK_EVENTS = ['checkout.session.expired'] as const
+
+/**
  * Events the webhook endpoint must send for sponsor subscriptions
  * (founding_sponsor, placement_subscription), on top of the checkout and
  * refund events. The post-merge runbook adds these to the live endpoint.
@@ -168,6 +176,7 @@ export const SPONSOR_SUBSCRIPTION_WEBHOOK_EVENTS = [
 const KNOWN_EVENT_TYPES = new Set<string>([
   ...SPONSOR_SUBSCRIPTION_WEBHOOK_EVENTS,
   ...SPONSOR_REFUND_WEBHOOK_EVENTS,
+  ...SPONSOR_ABANDONED_WEBHOOK_EVENTS,
 ])
 
 const stripeRef = z.union([z.string(), z.object({ id: z.string() })]).nullable().optional()
@@ -197,6 +206,8 @@ const sponsorshipCheckoutSchema = z.object({
 })
 
 function isSponsorshipEvent(event: Stripe.Event): boolean {
+  // An expired sponsor session is a lead, not a sponsorship row.
+  if (event.type === 'checkout.session.expired') return false
   if (!KNOWN_EVENT_TYPES.has(event.type) || !event.type.startsWith('checkout.session.')) return false
   const object = event.data?.object
   if (!object || typeof object !== 'object' || !('metadata' in object)) return false
@@ -826,6 +837,11 @@ async function applySponsorshipRefund(db: Database, stripe: Stripe, event: Strip
 }
 
 async function applyEvent(db: Database, stripe: Stripe, event: Stripe.Event, now?: number): Promise<void> {
+  if (event.type === 'checkout.session.expired') {
+    await recordExpiredSponsorCheckout(db, event, now ?? Date.now())
+    return
+  }
+
   if (isSponsorshipEvent(event)) {
     await applySponsorship(db, stripe, event, now)
     return

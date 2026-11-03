@@ -12,6 +12,7 @@ import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
 import { SponsoredPlacement, sponsoredCardIsVisible } from '@/components/sponsored-placement'
+import { SponsorPageCta } from '@/components/sponsor-page-cta'
 import { scheduleSponsorImpression } from '@/lib/sponsor-impressions'
 import { readActiveBestPlacement } from '@/lib/best-placement'
 import { getTask, listTaskCandidates } from '@/lib/catalog'
@@ -132,6 +133,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
         </OutboundLink>
 {top.hasAffiliateLink ? <AffiliateDisclosure affiliate /> : null}
       </p>
+      <SponsorPageCta taskSlug={task.slug} />
       {cta ? <NewsletterCta path={`/best/${task.slug}`} source="best" /> : null}
       {getCategoryGuide(task.slug) ? (
         <p data-category-guide-link>
@@ -196,9 +198,6 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
           <Link href={matchesPath(task.slug, 'any', 1)} className="inline-flex min-h-11 items-center font-semibold underline">
             See all matches
           </Link>
-        </p>
-        <p className="text-sm text-muted">
-          <Link href="/sponsor" className="underline underline-offset-4">Feature your tool here</Link>
         </p>
       </div>
       <section>

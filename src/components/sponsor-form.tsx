@@ -29,14 +29,30 @@ export type SponsorFormTask = { slug: string; name: string }
 
 const initial: SponsorFormState = { status: 'idle', message: '' }
 
-export function SponsorForm({ offerings, tasks }: { offerings: SponsorFormOffering[]; tasks: SponsorFormTask[] }) {
+export function SponsorForm({
+  offerings,
+  tasks,
+  initialTask,
+}: {
+  offerings: SponsorFormOffering[]
+  tasks: SponsorFormTask[]
+  /** Pre-selected /best task from ?task=, already checked against the task list. */
+  initialTask?: string
+}) {
   const [state, action, pending] = useActionState(sponsorCheckoutAction, initial)
   const firstAvailable = offerings.find((offering) => offering.available)?.id ?? offerings[0]?.id ?? ''
   const [offeringId, setOfferingId] = useState(firstAvailable)
   const [requestId, setRequestId] = useState('')
+  const [taskSlug, setTaskSlug] = useState(tasks.some((task) => task.slug === initialTask) ? (initialTask ?? '') : '')
   useEffect(() => {
     setRequestId(crypto.randomUUID())
   }, [])
+  useEffect(() => {
+    // The CTA links to /sponsor?task=<slug>. The slug only pre-selects a known
+    // /best page. It does not open checkout or skip the server gate.
+    const requested = new URLSearchParams(window.location.search).get('task') ?? ''
+    if (tasks.some((task) => task.slug === requested)) setTaskSlug(requested)
+  }, [tasks])
   const selected = offerings.find((offering) => offering.id === offeringId) ?? offerings[0]
   const checkoutReady = offerings.some((offering) => offering.available)
 
@@ -125,7 +141,8 @@ export function SponsorForm({ offerings, tasks }: { offerings: SponsorFormOfferi
           name="task_slug"
           required={selected?.target === 'task'}
           className="mt-2 min-h-12 w-full rounded-xl border border-line bg-card px-3"
-          defaultValue=""
+          value={taskSlug}
+          onChange={(event) => setTaskSlug(event.target.value)}
         >
           <option value="">Choose a /best page</option>
           {tasks.map((task) => (

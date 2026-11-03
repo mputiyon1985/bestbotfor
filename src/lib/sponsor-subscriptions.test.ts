@@ -224,7 +224,7 @@ describe('subscription checkout params', () => {
     expect((params.custom_text?.submit as { message?: string } | undefined)?.message).toBe(SPONSOR_SUBSCRIPTION_NOTICE)
   })
 
-  it('keeps the one-time checkout unchanged', () => {
+  it('keeps the one-time payment fields and adds abandoned-checkout recovery', () => {
     const parsed = parseSponsorCheckout(
       form({
         offering: 'placement_monthly',
@@ -248,7 +248,11 @@ describe('subscription checkout params', () => {
       'custom_text',
       'integration_identifier',
       'managed_payments',
+      'after_expiration',
+      'consent_collection',
     ])
+    expect(params.after_expiration?.recovery).toEqual({ enabled: true, allow_promotion_codes: false })
+    expect(params.consent_collection).toEqual({ promotions: 'auto' })
     expect(params.mode).toBe('payment')
     expect((params.custom_text?.submit as { message?: string } | undefined)?.message).toBe(SPONSOR_ONE_TIME_NOTICE)
     expect(params.metadata).not.toHaveProperty('billing')

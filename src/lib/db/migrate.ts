@@ -171,6 +171,42 @@ export async function adoptSuggestionsSchema(client: Client): Promise<void> {
 }
 
 /**
+ * Exact DDL for a fresh `sponsor_abandoned_checkouts` table. The SQL file and
+ * this helper share the idea: create when missing, add columns when present,
+ * drop nothing. A CHECK constraint is only on the fresh table. SQLite cannot
+ * add one later, and a missing constraint does not change what the app writes.
+ */
+export const SPONSOR_ABANDONED_CHECKOUTS_DDL = `CREATE TABLE IF NOT EXISTS sponsor_abandoned_checkouts (
+  stripe_checkout_session_id TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  offering TEXT NOT NULL,
+  expired_at INTEGER NOT NULL,
+  task_slug TEXT,
+  source TEXT NOT NULL,
+  recovery_url TEXT,
+  created_at INTEGER NOT NULL
+)`
+
+const SPONSOR_ABANDONED_ADOPT_COLUMNS: ReadonlyArray<{ name: string; ddl: string }> = [
+  { name: 'email', ddl: "TEXT NOT NULL DEFAULT ''" },
+  { name: 'offering', ddl: "TEXT NOT NULL DEFAULT ''" },
+  { name: 'expired_at', ddl: 'INTEGER NOT NULL DEFAULT 0' },
+  { name: 'task_slug', ddl: 'TEXT' },
+  { name: 'source', ddl: "TEXT NOT NULL DEFAULT 'checkout'" },
+  { name: 'recovery_url', ddl: 'TEXT' },
+  { name: 'created_at', ddl: 'INTEGER NOT NULL DEFAULT 0' },
+]
+
+/** Create the abandoned-checkout table when it is missing, then add any column the app expects. */
+export async function adoptSponsorAbandonedCheckouts(client: Client): Promise<void> {
+  await client.execute(SPONSOR_ABANDONED_CHECKOUTS_DDL)
+  await addMissingColumns(client, 'sponsor_abandoned_checkouts', SPONSOR_ABANDONED_ADOPT_COLUMNS)
+  await client.execute(
+    'CREATE INDEX IF NOT EXISTS sponsor_abandoned_checkouts_expired_at_idx ON sponsor_abandoned_checkouts (expired_at)',
+  )
+}
+
+/**
  * A migration file made only of `ALTER TABLE t ADD COLUMN c ...;` statements (and `--`
  * comment lines) is split into its statements, so the runner can skip a column that is
  * already present. That makes such a file safe to re-run after a partial apply: SQLite
@@ -267,6 +303,7 @@ export async function applyMigrations(url: string, authToken?: string, migration
   await adoptSponsorshipSchema(client)
   await adoptSponsorCardSchema(client)
   await adoptSuggestionsSchema(client)
+  await adoptSponsorAbandonedCheckouts(client)
 
   client.close()
 }

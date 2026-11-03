@@ -8,6 +8,7 @@ import { NewsletterCta } from '@/components/newsletter-cta'
 import { newsletterCtaEnabled } from '@/lib/flags'
 import { JsonLd } from '@/components/json-ld'
 import { ToolLogo } from '@/components/tool-logo'
+import { SponsorPageCta } from '@/components/sponsor-page-cta'
 import { isUnsafeCatalogSlug } from '@/lib/catalog-path'
 import { bestGuideCrumb, bestGuideHeading, taskGerund } from '@/lib/descriptions'
 import { loadFreePage } from '@/lib/free-page-data'
@@ -75,6 +76,7 @@ export default async function BestFreePage({ params }: { params: Promise<{ task:
         {bestFreeHeading(task.name).replace(/^Best/, 'The best')} is {top.name}. These are the {tools.length} highest-ranked tools for this job
         that you can start without paying, out of {totalFree} with a free plan in our catalog.
       </p>
+      <SponsorPageCta taskSlug={task.slug} />
       {cta ? <NewsletterCta path={path} source="best" /> : null}
       {indexable ? null : (
         <p role="note" className="text-sm text-muted">

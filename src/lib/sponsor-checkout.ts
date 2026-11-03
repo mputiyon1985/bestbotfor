@@ -191,6 +191,11 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
     notice,
   ]
   if (subscription) fingerprintFields.push('subscription', setupPriceId ?? '', String(trialDays), String(lockMonths))
+  // Recovery and the promotions checkbox are outside this hash on purpose.
+  // A session created before those fields keeps its idempotency key. Stripe
+  // rejects a retry that sends a different body under that key, so the retry
+  // fails closed instead of opening a second session. A new page load uses a
+  // new request id and a new key.
   const fingerprintSource = fingerprintFields.join('\n')
   const fingerprint = createHash('sha256').update(fingerprintSource).digest('hex').slice(0, 16)
   const founding = input.offering === 'founding_sponsor'
@@ -235,6 +240,7 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
         custom_text: shared.custom_text,
         integration_identifier: shared.integration_identifier,
         managed_payments: shared.managed_payments,
+        ...sponsorCheckoutRecovery(),
       },
     }
   }
@@ -256,9 +262,32 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
     line_items: lineItems,
     payment_method_collection: 'always',
     subscription_data: subscriptionData,
+    ...sponsorCheckoutRecovery(),
   }
   // The founding session ends 5 minutes before its hold stops counting toward
   // the cap (FOUNDING_HOLD_MS), so it cannot complete after the spot was freed.
   if (expiresAt != null) params.expires_at = expiresAt
   return { idempotencyKey, params }
+}
+
+/**
+ * Abandoned-cart recovery for a Checkout Session this app creates.
+ * allow_promotion_codes stays false: sponsor prices are fixed, and the
+ * original session does not offer a promotion code.
+ * consent_collection.promotions auto is what lets Stripe attach the buyer's
+ * email and a recovery URL to checkout.session.expired when they opt in.
+ * Stripe shows that checkbox for US buyers. This app does not send the email.
+ */
+export function sponsorCheckoutRecovery(): Pick<Stripe.Checkout.SessionCreateParams, 'after_expiration' | 'consent_collection'> {
+  return {
+    after_expiration: {
+      recovery: {
+        enabled: true,
+        allow_promotion_codes: false,
+      },
+    },
+    consent_collection: {
+      promotions: 'auto',
+    },
+  }
 }

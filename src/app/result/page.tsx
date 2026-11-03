@@ -8,6 +8,7 @@ import { DailyBotCapture } from '@/components/daily-bot-capture'
 import { PickCapNotice } from '@/components/pick-cap-notice'
 import { JsonLd } from '@/components/json-ld'
 import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
+import { SponsorPageCta } from '@/components/sponsor-page-cta'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
 import { EditorialCompact } from '@/components/editorial'
@@ -164,6 +165,7 @@ export default async function ResultPage({
         <Link href="/" className="mt-6 inline-flex min-h-12 items-center font-semibold underline">
           Start over
         </Link>
+        <SponsorPageCta taskSlug={result.task.slug} />
         <DailyBotCapture source="result" />
       </div>
     )
@@ -227,6 +229,8 @@ export default async function ResultPage({
       )}
 
       <DailyBotCapture source="result" />
+
+      <SponsorPageCta taskSlug={result.task.slug} />
 
       <section aria-labelledby="alternatives-heading">
         <h2 id="alternatives-heading" className="font-semibold text-3xl">Alternatives</h2>

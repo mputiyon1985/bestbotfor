@@ -582,3 +582,22 @@ export const signupsLoginAttempts = sqliteTable('signups_login_attempts', {
   failures: integer('failures').notNull(),
   windowStart: integer('window_start').notNull(),
 })
+
+/**
+ * Unpaid sponsor Checkout that reached expires_at. One row per session.
+ * The team reads it on /admin/sponsors. This app does not email the buyer.
+ */
+export const sponsorAbandonedCheckouts = sqliteTable(
+  'sponsor_abandoned_checkouts',
+  {
+    stripeCheckoutSessionId: text('stripe_checkout_session_id').primaryKey(),
+    email: text('email').notNull(),
+    offering: text('offering').notNull(),
+    expiredAt: integer('expired_at').notNull(),
+    taskSlug: text('task_slug'),
+    source: text('source').notNull(),
+    recoveryUrl: text('recovery_url'),
+    createdAt: integer('created_at').notNull(),
+  },
+  (table) => [index('sponsor_abandoned_checkouts_expired_at_idx').on(table.expiredAt)],
+)

@@ -11,6 +11,7 @@ import { JsonLd } from '@/components/json-ld'
 import { getGuide, guidePath } from '@/content/guides'
 import { EDITOR_BYLINE, categoryGuideArticleJsonLd, getCategoryGuide, type CategoryGuide } from '@/content/category-guides'
 import { GuideMarkdown } from '@/components/guide-markdown'
+import { SponsorPageCta } from '@/components/sponsor-page-cta'
 import { taskSeeds } from '@/data/catalog'
 import { bestGuideHeading } from '@/lib/descriptions'
 import { formatUsDate } from '@/lib/format'
@@ -159,7 +160,8 @@ function CategoryGuidePage({ guide, nonce }: { guide: CategoryGuide; nonce: stri
         <span data-byline>{EDITOR_BYLINE}</span>. Checked {formatUsDate(guide.checked)}.
       </p>
       <GuideMarkdown markdown={guide.body} />
-      {/* No verdict on category guides: the CTA takes the Daily Bot form's place after the body. */}
+      <SponsorPageCta taskSlug={guide.category} />
+      {/* No verdict on category guides: the newsletter CTA takes the Daily Bot form's place after the body. */}
       {cta ? <NewsletterCta path={path} source="guides" /> : <DailyBotCapture source="guides" />}
     </article>
   )

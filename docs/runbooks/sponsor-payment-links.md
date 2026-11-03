@@ -57,3 +57,31 @@ There is no customer portal. Live `/sponsor` says "To cancel, email mark@bestbot
 ## Disclosure
 
 The subscriptions section says "Placements carry a Sponsored label and never change rankings. See Disclosures." and links `/disclosure`. A Payment Link placement is published only through a `sponsorships` row and an approved card, so it carries that label.
+
+## Abandoned checkout recovery
+
+`/sponsor` creates Checkout Sessions in code (`src/lib/sponsor-checkout.ts`). Those sessions set `after_expiration.recovery.enabled` to true and `allow_promotion_codes` to false, because a sponsor price is fixed and the original session does not offer a promotion code. They also set `consent_collection.promotions` to `auto`. That is what lets Stripe attach the buyer's email and a recovery URL to `checkout.session.expired` when the buyer opts in. Stripe shows that checkbox for a US buyer. This app does not send email.
+
+A Payment Link cannot set `after_expiration` on the Checkout Session it opens. The Payment Links API has no such parameter, so an expired Payment Link session has no recovery URL. The Monthly link is `plink_1URyeXIJUbygfAucnLlkSP5u` ($299/mo). The founding link `plink_1URylTIJUbygfAuc07cebXfn` is retired. Do not reactivate it.
+
+The handler for `checkout.session.expired` stores one row in `sponsor_abandoned_checkouts`: email, offer, time, the Checkout Session id, the `/best` task when we have one, and a recovery URL only when Stripe sent one on `buy.stripe.com/r/…`, `checkout.stripe.com`, or `billing.stripe.com`. A paid session is not stored. A membership session is not stored. A Payment Link session is stored only when the payload includes an email. Stripe omits that email unless the buyer opted into promotional email. A second delivery of the same session does not add a row. Nothing here sends mail.
+
+`/admin/sponsors` lists those rows when the sponsor admin flag is on. In production that page stays 404 until that flag's launch. Until then the team reads the table directly:
+
+```sql
+SELECT email, offering, expired_at, task_slug, source, stripe_checkout_session_id
+FROM sponsor_abandoned_checkouts
+ORDER BY expired_at DESC;
+```
+
+Refer to a row by its `cs_…` id. Do not paste the buyer's email into Slack, chat, tickets, or the repo.
+
+### Dashboard settings (not applied; needs Mark's OK)
+
+Do this in the Stripe Dashboard, live mode. Do not call the API from this repo.
+
+1. Developers → Webhooks → endpoint `we_1URwkHIJUbygfAucFVXA9X0z` (`https://bestbotfor.com/api/stripe/webhook`). Add `checkout.session.expired`. Keep every event the endpoint already sends. Saving replaces the event list, so copy the current events first and add this one to them.
+2. Payment Links → open `plink_1URyeXIJUbygfAucnLlkSP5u` (Monthly, `https://buy.stripe.com/4gMdRa7vW8G6gg2ebyfrW02`). Edit it and turn on consent for promotional emails. The API field is `consent_collection.promotions` = `auto`. Leave promotion codes off (`allow_promotion_codes` stays false). There is no control on a Payment Link for `after_expiration.recovery`.
+3. Leave `plink_1URylTIJUbygfAuc07cebXfn` inactive.
+
+The unpaid $299 Sponsor Monthly session that expired on Nov 1, 2026 cannot be recovered by this change. Recovery is chosen when the session is created, and that session has already expired. Payment Links cannot set it per session. Future expired Monthly sessions are recorded once step 1 is live, and the email is present only after step 2 and the buyer's opt-in. The team follows up by hand. The in-app `/sponsor` checkout gets a recovery URL on later expirations without a further Dashboard change, once step 1 is live.

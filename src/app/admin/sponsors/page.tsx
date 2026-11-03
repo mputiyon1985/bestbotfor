@@ -7,6 +7,7 @@ import { adminSponsorsEnabled } from '@/lib/flags'
 import { foundingFoundersOverCap, type PaidFounder } from '@/lib/sponsor-availability'
 import { listPendingSponsorCards, listRefundPendingSponsorCards } from '@/lib/sponsor-card'
 import { listSponsorPlacementCounts, type SponsorPlacementCount } from '@/lib/sponsor-impressions'
+import { abandonedOfferLabel, listAbandonedSponsorCheckouts } from '@/lib/sponsor-abandoned'
 
 export const dynamic = 'force-dynamic'
 
@@ -26,11 +27,19 @@ export default async function SponsorCardsPage() {
   }
   let counts: SponsorPlacementCount[] = []
   let countsUnavailable = false
+  let abandoned: Awaited<ReturnType<typeof listAbandonedSponsorCheckouts>> = []
+  let abandonedUnavailable = false
   try {
     counts = await listSponsorPlacementCounts(db)
   } catch (error) {
     console.error('sponsor count lookup failed', error instanceof Error ? error.name : 'error')
     countsUnavailable = true
+  }
+  try {
+    abandoned = await listAbandonedSponsorCheckouts(db)
+  } catch (error) {
+    console.error('abandoned sponsor checkout lookup failed', error instanceof Error ? error.name : 'error')
+    abandonedUnavailable = true
   }
   return (
     <article className="max-w-2xl space-y-6">
@@ -67,6 +76,53 @@ export default async function SponsorCardsPage() {
       <h2 className="font-bold text-3xl">Refunds</h2>
       <p>Refund the payment in the Stripe dashboard, then mark the card refunded. A partial refund still hides the placement.</p>
       {refunds.length === 0 ? <p>No cards are waiting for a refund.</p> : <SponsorRefundQueue cards={refunds} />}
+      <h2 className="font-semibold text-3xl">Abandoned checkouts</h2>
+      <p>
+        Unpaid sponsor checkouts that expired. The email, the offer, and the time. This page does not email anyone.
+        A recovery link is Stripe’s, and only when that checkout had recovery turned on.
+      </p>
+      {abandonedUnavailable ? <p role="alert">Abandoned checkouts are unavailable.</p> : null}
+      {!abandonedUnavailable && abandoned.length === 0 ? <p>No abandoned sponsor checkouts.</p> : null}
+      {abandoned.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full border-collapse text-left text-sm">
+            <caption className="sr-only">Abandoned sponsor checkouts</caption>
+            <thead>
+              <tr className="border-b border-line">
+                <th scope="col" className="py-2 pr-3">When</th>
+                <th scope="col" className="py-2 pr-3">Email</th>
+                <th scope="col" className="py-2 pr-3">Offer</th>
+                <th scope="col" className="py-2 pr-3">Page</th>
+                <th scope="col" className="py-2">Session</th>
+              </tr>
+            </thead>
+            <tbody>
+              {abandoned.map((lead) => (
+                <tr key={lead.stripeCheckoutSessionId} className="border-b border-line align-top">
+                  <th scope="row" className="py-2 pr-3 font-normal">{new Date(lead.expiredAt).toISOString()}</th>
+                  <td className="py-2 pr-3">{lead.email}</td>
+                  <td className="py-2 pr-3">
+                    {abandonedOfferLabel(lead.offering)}
+                    {lead.source === 'payment_link' ? ' · Payment Link' : ''}
+                  </td>
+                  <td className="py-2 pr-3">{lead.taskSlug ? `/best/${lead.taskSlug}` : ''}</td>
+                  <td className="py-2">
+                    <span className="break-all">{lead.stripeCheckoutSessionId}</span>
+                    {lead.recoveryUrl ? (
+                      <>
+                        {' '}
+                        <a className="underline" href={lead.recoveryUrl} rel="noopener noreferrer">
+                          Recovery checkout
+                        </a>
+                      </>
+                    ) : null}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
       <h2 className="font-semibold text-3xl">Placement counts</h2>
       <p>Daily impressions are approved card renders. Card clicks are visits through the Sponsored card. Both are totals for the UTC day.</p>
       {countsUnavailable ? <p>Counts are unavailable.</p> : null}

@@ -37,8 +37,11 @@ export default function PrivacyPage() {
       </p>
       <p>
         If you subscribe, Stripe processes the payment. We do not store your full card number. We store the Stripe
-        customer id, subscription id, price id, and status so we know whether membership is active. Use Stripe test
-        cards only while this site is in test mode.
+        customer id, subscription id, price id, and status so we know whether membership is active. If you start a
+        sponsor checkout and leave before paying, we store the email from that checkout, the offer, and the time it
+        expired, so we can see the abandoned checkout. We do not email you about it. On Stripe’s page you can opt in
+        to promotional email. Only then can Stripe include a recovery link, which we store with that checkout. Use
+        Stripe test cards only while this site is in test mode.
       </p>
       <p>{CLICK_LOG_PARAGRAPH}</p>
       <h2 className="font-semibold text-3xl">Rate limits</h2>

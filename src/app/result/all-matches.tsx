@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { DailyBotCapture } from '@/components/daily-bot-capture'
+import { SponsorPageCta } from '@/components/sponsor-page-cta'
 import { JsonLd } from '@/components/json-ld'
 import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
 import { OutboundLink } from '@/components/outbound-link'
@@ -131,6 +132,7 @@ export function AllMatches({
           ) : null}
         </div>
       </nav>
+      <SponsorPageCta taskSlug={task.slug} />
       <DailyBotCapture source="result" />
     </article>
   )
