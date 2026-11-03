@@ -2,13 +2,16 @@ import { describe, expect, it } from 'vitest'
 import {
   ABSOLUTE_RETRY_SAMPLES,
   ABSOLUTE_SAMPLES,
+  absoluteCategoryError,
   absolutePerformanceError,
   absoluteRetryTargets,
   homeLcpError,
   homeTbtError,
   median,
   performanceErrors,
+  pullRequestCategoryError,
   pullRequestFirst,
+  readLighthouseMetrics,
 } from './lighthouse-gate'
 
 describe('lighthouse gate', () => {
@@ -62,5 +65,35 @@ describe('lighthouse gate', () => {
       quiz: [],
       home: true,
     })
+  })
+
+  it('rejects a non-finite score instead of treating it as a pass', () => {
+    expect(() => median([])).toThrow(/no values/)
+    expect(() => median([0.5, Number.NaN, 0.5])).toThrow(/non-finite/)
+    const healthyMain = [0.98, 0.97, 0.99]
+    expect(() => performanceErrors('/best/coding', [Number.NaN], healthyMain)).toThrow(/non-finite/)
+    expect(() => performanceErrors('/best/coding', [0.5, Number.NaN, 0.5], healthyMain)).toThrow(/non-finite/)
+  })
+
+  it('rejects NaN for every category in pull request and absolute mode', () => {
+    const nan = [Number.NaN]
+    const categories = ['accessibility', 'best-practices', 'seo'] as const
+    expect(() => performanceErrors('/', nan, [0.98, 0.98, 0.98])).toThrow(/non-finite/)
+    expect(() => homeTbtError(nan, [180, 190, 200])).toThrow(/non-finite/)
+    expect(() => homeLcpError(nan)).toThrow(/finite/)
+    for (const name of categories) {
+      expect(() => pullRequestCategoryError('/', name, nan)).toThrow(/non-finite/)
+    }
+    expect(() => absolutePerformanceError('/', nan)).toThrow(/non-finite/)
+    expect(() => homeTbtError(nan, null)).toThrow(/non-finite/)
+    expect(() => homeLcpError([1880, Number.NaN, 1900])).toThrow(/finite/)
+    for (const name of categories) {
+      expect(() => absoluteCategoryError('/', name, nan)).toThrow(/non-finite/)
+    }
+    const present = { performance: 0.98, accessibility: 0.98, bestPractices: 0.98, seo: 0.98, lcp: 1800, tbt: 180 }
+    for (const field of ['performance', 'accessibility', 'bestPractices', 'seo', 'lcp', 'tbt'] as const) {
+      expect(() => readLighthouseMetrics({ ...present, [field]: null })).toThrow(/finite/)
+      expect(() => readLighthouseMetrics({ ...present, [field]: Number.NaN })).toThrow(/finite/)
+    }
   })
 })

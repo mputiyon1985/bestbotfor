@@ -8,6 +8,7 @@ import { chromium } from '@playwright/test'
 import {
   ABSOLUTE_RETRY_SAMPLES,
   ABSOLUTE_SAMPLES,
+  absoluteCategoryError,
   absolutePerformanceError,
   absoluteRetryTargets,
   HOME_LCP_CAP_MS,
@@ -19,7 +20,9 @@ import {
   median,
   performanceErrors,
   PERFORMANCE_MEDIAN_MIN,
+  pullRequestCategoryError,
   pullRequestFirst,
+  readLighthouseMetrics,
 } from '../src/lib/lighthouse-gate'
 
 const ROOT = process.env.LH_APP_ROOT || process.cwd()
@@ -179,14 +182,14 @@ async function readSamples(outDir: string): Promise<Map<string, Sample[]>> {
   for (const name of names) {
     const report = JSON.parse(await readFile(path.join(outDir, name), 'utf8')) as Report
     const url = report.finalDisplayedUrl ? new URL(report.finalDisplayedUrl).pathname + new URL(report.finalDisplayedUrl).search : name
-    const sample: Sample = {
-      performance: report.categories?.performance?.score ?? Number.NaN,
-      accessibility: report.categories?.accessibility?.score ?? Number.NaN,
-      bestPractices: report.categories?.['best-practices']?.score ?? Number.NaN,
-      seo: report.categories?.seo?.score ?? Number.NaN,
-      lcp: report.audits?.['largest-contentful-paint']?.numericValue ?? Number.NaN,
-      tbt: report.audits?.['total-blocking-time']?.numericValue ?? Number.NaN,
-    }
+    const sample: Sample = readLighthouseMetrics({
+      performance: report.categories?.performance?.score,
+      accessibility: report.categories?.accessibility?.score,
+      bestPractices: report.categories?.['best-practices']?.score,
+      seo: report.categories?.seo?.score,
+      lcp: report.audits?.['largest-contentful-paint']?.numericValue,
+      tbt: report.audits?.['total-blocking-time']?.numericValue,
+    })
     const list = grouped.get(url) ?? []
     list.push(sample)
     grouped.set(url, list)
@@ -332,12 +335,16 @@ async function runAbsolute(port: string, groups: RunGroups, runs: number, filter
   }
 }
 
-function categoryErrors(groups: Map<string, Sample[]>, names: Array<[string, (sample: Sample) => number]>): string[] {
+function categoryErrors(
+  groups: Map<string, Sample[]>,
+  names: Array<[string, (sample: Sample) => number]>,
+  report: (url: string, name: string, samples: number[]) => string | null,
+): string[] {
   const errors: string[] = []
   for (const [url, samples] of groups) {
     for (const [name, pick] of names) {
-      const value = median(samples.map(pick))
-      if (value < 0.95) errors.push(`${url} ${name} median ${value.toFixed(2)} is under 0.95`)
+      const error = report(url, name, samples.map(pick))
+      if (error) errors.push(error)
     }
   }
   return errors
@@ -370,11 +377,11 @@ function compare(pr: RunGroups, baseline: RunGroups): string[] {
     ['accessibility', (sample) => sample.accessibility],
     ['best-practices', (sample) => sample.bestPractices],
     ['seo', (sample) => sample.seo],
-  ]))
+  ], pullRequestCategoryError))
   errors.push(...categoryErrors(pr.quiz, [
     ['accessibility', (sample) => sample.accessibility],
     ['best-practices', (sample) => sample.bestPractices],
-  ]))
+  ], pullRequestCategoryError))
   return errors
 }
 
@@ -409,11 +416,11 @@ function absoluteErrors(groups: RunGroups): string[] {
     ['accessibility', (sample) => sample.accessibility],
     ['best-practices', (sample) => sample.bestPractices],
     ['seo', (sample) => sample.seo],
-  ]))
+  ], absoluteCategoryError))
   errors.push(...categoryErrors(groups.quiz, [
     ['accessibility', (sample) => sample.accessibility],
     ['best-practices', (sample) => sample.bestPractices],
-  ]))
+  ], absoluteCategoryError))
   return errors
 }
 

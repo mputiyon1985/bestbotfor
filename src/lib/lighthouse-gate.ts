@@ -68,6 +68,9 @@ export function absoluteRetryTargets(
 
 export function median(values: number[]): number {
   if (values.length === 0) throw new Error('median of no values')
+  for (const value of values) {
+    if (!Number.isFinite(value)) throw new Error('median of a non-finite value')
+  }
   const sorted = [...values].sort((a, b) => a - b)
   const index = Math.floor((sorted.length - 1) / 2)
   const lower = sorted[index]
@@ -124,7 +127,64 @@ export function homeTbtError(pr: number[], main: number[] | null): string | null
 }
 
 export function homeLcpError(samples: number[]): string | null {
+  if (samples.length === 0) throw new Error('LCP of no values')
+  for (const sample of samples) {
+    if (!Number.isFinite(sample)) throw new Error('LCP is not a finite number')
+  }
   const best = Math.min(...samples)
   if (best <= HOME_LCP_CAP_MS) return null
   return `home LCP best ${best.toFixed(0)}ms is over ${HOME_LCP_CAP_MS}ms`
+}
+
+const CATEGORY_MEDIAN_MIN = 0.95
+
+function categoryMedianError(url: string, name: string, samples: number[]): string | null {
+  const value = median(samples)
+  if (value < CATEGORY_MEDIAN_MIN) return `${url} ${name} median ${value.toFixed(2)} is under 0.95`
+  return null
+}
+
+/** Accessibility, best-practices, and SEO on a pull request. A non-finite sample throws. */
+export function pullRequestCategoryError(url: string, name: string, samples: number[]): string | null {
+  return categoryMedianError(url, name, samples)
+}
+
+/** Accessibility, best-practices, and SEO on a main push or nightly run. A non-finite sample throws. */
+export function absoluteCategoryError(url: string, name: string, samples: number[]): string | null {
+  return categoryMedianError(url, name, samples)
+}
+
+export type LighthouseMetricInput = {
+  performance: number | null | undefined
+  accessibility: number | null | undefined
+  bestPractices: number | null | undefined
+  seo: number | null | undefined
+  lcp: number | null | undefined
+  tbt: number | null | undefined
+}
+
+function finiteMetric(name: string, value: number | null | undefined): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(`Lighthouse ${name} is not a finite number`)
+  }
+  return value
+}
+
+/** A null or missing Lighthouse score is a failed run, not a pass. */
+export function readLighthouseMetrics(metrics: LighthouseMetricInput): {
+  performance: number
+  accessibility: number
+  bestPractices: number
+  seo: number
+  lcp: number
+  tbt: number
+} {
+  return {
+    performance: finiteMetric('performance', metrics.performance),
+    accessibility: finiteMetric('accessibility', metrics.accessibility),
+    bestPractices: finiteMetric('best-practices', metrics.bestPractices),
+    seo: finiteMetric('seo', metrics.seo),
+    lcp: finiteMetric('LCP', metrics.lcp),
+    tbt: finiteMetric('TBT', metrics.tbt),
+  }
 }

@@ -56,9 +56,6 @@ export default tseslint.config(
       'test-results/**',
       'next-env.d.ts',
       '.lighthouseci/**',
-      'lighthouserc.cjs',
-      'lighthouserc.quiz.cjs',
-      'lighthouserc.home.cjs',
     ],
   },
   eslint.configs.recommended,
@@ -84,15 +81,6 @@ export default tseslint.config(
           ],
         },
       ],
-    },
-  },
-  {
-    files: ['lighthouserc.cjs'],
-    languageOptions: {
-      globals: {
-        module: 'readonly',
-        process: 'readonly',
-      },
     },
   },
 )
