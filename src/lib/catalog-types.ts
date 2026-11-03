@@ -3,7 +3,7 @@ import type { Skill } from './validation'
 
 export type PricingModel = 'free' | 'freemium' | 'paid'
 
-export type AffiliateStatus = 'none' | 'verify' | 'referral' | 'available' | 'closed'
+export type AffiliateStatus = 'none' | 'verify' | 'referral' | 'available' | 'inactive' | 'active' | 'closed'
 
 export type AffiliateSeed = {
   hasProgram: boolean
@@ -12,9 +12,9 @@ export type AffiliateSeed = {
   status: AffiliateStatus
   commissionNote: string | null
   /**
-   * Reviewed affiliate link shipped in code. Used by /go only when the DB has no
-   * affiliate_url, and only if it passes the tool's allowedHosts. The seed script
-   * still never writes it to the DB.
+   * Tracking link. The seed writes it only for a slug in APPROVED_ACTIVE_AFFILIATES
+   * whose status is "active". /go uses the stored URL only when status is active
+   * and the host is on allowedHosts. This repo ships every program without one.
    */
   affiliateUrl?: string
 }

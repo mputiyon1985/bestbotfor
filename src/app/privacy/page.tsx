@@ -4,7 +4,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { LawyerReviewNotice } from '@/components/lawyer-review-notice'
 import { newsletterCtaEnabled, userRatingsEnabled } from '@/lib/flags'
 import { pageMetadata } from '@/lib/metadata'
-import { CLICK_LOG_PARAGRAPH, FIRST_TOUCH_PRIVACY_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, newsletterSignupParagraph, rateLimitPrivacyParagraphs, RETENTION_JOB_PARAGRAPH, SHARING_PARAGRAPH, SUGGESTION_PRIVACY_PARAGRAPH, TURSO_BACKUP_PARAGRAPH } from '@/lib/privacy-copy'
+import { AFFILIATE_TRACKING_PARAGRAPH, CLICK_LOG_PARAGRAPH, FIRST_TOUCH_PRIVACY_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, newsletterSignupParagraph, rateLimitPrivacyParagraphs, RETENTION_JOB_PARAGRAPH, SHARING_PARAGRAPH, SUGGESTION_PRIVACY_PARAGRAPH, TURSO_BACKUP_PARAGRAPH } from '@/lib/privacy-copy'
 import { PRIVACY_RATINGS_PARAGRAPHS, PRIVACY_UPDATED, PRIVACY_UPDATED_WITH_RATINGS, RETENTION_ROWS } from '@/lib/ratings-policy-copy'
 
 export const dynamic = 'force-dynamic'
@@ -41,6 +41,7 @@ export default function PrivacyPage() {
         cards only while this site is in test mode.
       </p>
       <p>{CLICK_LOG_PARAGRAPH}</p>
+      <p>{AFFILIATE_TRACKING_PARAGRAPH}</p>
       <h2 className="font-semibold text-3xl">Rate limits</h2>
       {rateLimitPrivacyParagraphs().map((paragraph) => (
         <p key={paragraph}>{paragraph}</p>

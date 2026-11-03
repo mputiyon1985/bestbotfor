@@ -27,7 +27,7 @@ const faqs = [
   {
     question: 'Do you earn money from the recommendations?',
     answer:
-      'Most Visit buttons go straight to each tool’s own website. When a button uses an affiliate link, a note next to it says so, and we may earn a commission if you buy. Commissions and paid placements never buy a higher rank.',
+      'Some Visit links are affiliate links. When a button is one, a note next to it says “Affiliate link: we may earn a commission.” BestBotFor may earn a commission at no extra cost to you. Commissions never affect rankings or scores, and paid placements never buy a higher rank.',
   },
   {
     question: 'How current is the information?',

@@ -29,7 +29,10 @@ describe('trust copy', () => {
   })
   it('FAQ, About and Disclosures describe the near-button note', () => {
     for (const p of ['src/app/page.tsx', 'src/app/about/page.tsx', 'src/app/disclosure/page.tsx']) {
-      expect(read(p)).toMatch(/note (next to|right next to) (it|them) says so|“Affiliate link” note right next to them/)
+      const text = read(p)
+      expect(text).toContain('Affiliate link: we may earn a commission')
+      expect(text).toContain('at no extra cost to you')
+      expect(text).toMatch(/never affect rankings or scores/)
     }
   })
 })

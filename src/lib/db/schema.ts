@@ -83,7 +83,9 @@ export const toolProsCons = sqliteTable(
 
 /**
  * Affiliate URL is stored so a future enrollment can be recorded.
- * /go never reads affiliate_url. Redirects use tools.url only.
+ * /go reads affiliate_url only when status is exactly "active" and the host
+ * is on that tool's allowlist. Every other status redirects to tools.url.
+ * Nothing in this repo is seeded with status "active" or a tracking link.
  */
 export const affiliatePrograms = sqliteTable('affiliate_programs', {
   toolId: integer('tool_id').primaryKey(),
@@ -105,6 +107,10 @@ export const clicks = sqliteTable(
     ts: integer('ts').notNull(),
     country: text('country'),
     ipHash: text('ip_hash'),
+    /** 1 when /go sent this click to an active affiliate URL. 0 for the official site. */
+    affiliate: integer('affiliate', { mode: 'boolean' }).notNull().default(false),
+    /** affiliate_programs.tool_id for an affiliate click. Null otherwise. */
+    programId: integer('program_id'),
   },
   (table) => [index('clicks_ts_idx').on(table.ts)],
 )

@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { DailyBotCapture } from '@/components/daily-bot-capture'
 import { JsonLd } from '@/components/json-ld'
-import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
+import { AffiliateDisclosure, AffiliatePageNotice } from '@/components/affiliate-disclosure'
 import { OutboundLink } from '@/components/outbound-link'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { ToolLogo } from '@/components/tool-logo'
@@ -53,6 +53,7 @@ export function AllMatches({
       <p className="text-muted">
         {total} {noun} with a strong fit. Page {page} of {pageCount}. Ranked for {matchBudgetLabel[budget].toLowerCase()}.
       </p>
+      <AffiliatePageNotice />
       <nav aria-label="Filter by budget">
         <ul className="flex flex-wrap gap-2">
           {matchBudgets.map((item) => (

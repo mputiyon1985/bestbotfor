@@ -8,7 +8,7 @@ import { DailyBotCapture } from '@/components/daily-bot-capture'
 import { NewsletterCta } from '@/components/newsletter-cta'
 import { newsletterCtaEnabled } from '@/lib/flags'
 import { JsonLd } from '@/components/json-ld'
-import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
+import { AffiliateDisclosure, AffiliatePageNotice } from '@/components/affiliate-disclosure'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
 import { SponsoredPlacement, sponsoredCardIsVisible } from '@/components/sponsored-placement'
@@ -126,6 +126,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
         {bestGuideLead(task.name, top.name)} {top.shortDesc}
       </p>
       <p className="text-sm text-muted">Last reviewed {verified}. Prices change, so confirm them on the vendor’s site.</p>
+      <AffiliatePageNotice />
       <p>
         <OutboundLink slug={top.slug} affiliate={Boolean(top.hasAffiliateLink)} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
           Visit {top.name}
@@ -250,6 +251,7 @@ function EmptyBestPage({ name }: { name: string }) {
     <article className="space-y-6" data-best-empty>
       <h1 className="font-bold text-5xl leading-tight">{bestGuideHeading(name)}</h1>
       <p className="text-lg">We don’t have a pick for this job yet. We’re still reviewing tools for it.</p>
+      <AffiliatePageNotice />
       <p>
         <Link href="/best" className="inline-flex min-h-11 items-center font-semibold underline">
           See every job we cover

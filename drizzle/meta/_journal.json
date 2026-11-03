@@ -169,6 +169,13 @@
       "when": 1792195000000,
       "tag": "0025_signups_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1792196000000,
+      "tag": "0026_clicks_affiliate",
+      "breakpoints": true
     }
   ]
 }

@@ -85,6 +85,13 @@ export function rateLimitRetentionKept(input: RetentionCopyInput = {}): string {
 }
 
 export const CLICK_LOG_PARAGRAPH = clickLogParagraph()
+
+/**
+ * Shown because an active affiliate redirect can append a SubID and the
+ * network may set its own cookie on the tracking host after the visitor leaves.
+ */
+export const AFFILIATE_TRACKING_PARAGRAPH =
+  'When a Visit button uses an affiliate link, we store that the click was an affiliate click and which program it was. For PartnerStack, Impact, and Dub we also add a sub-id made from the page you clicked on and the click id, so we can match our log to the network’s report. The affiliate network may set its own cookie on its tracking site after you leave BestBotFor. That cookie is the network’s, not ours. We do not use it for rankings or scores.'
 export const RETENTION_JOB_PARAGRAPH = retentionJobParagraph()
 
 export const GPC_PRIVACY_PARAGRAPH =

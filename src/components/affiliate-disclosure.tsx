@@ -1,20 +1,18 @@
 import Link from 'next/link'
+import { AFFILIATE_BUTTON_NOTE, AFFILIATE_PAGE_NOTICE } from '@/lib/affiliate-copy'
 
-/** Shown right next to a Visit button. Affiliate wording appears only when the tool has a real affiliate URL. */
+/** Shown right next to a Visit button. The affiliate sentence appears only when that redirect is active. */
 export function AffiliateDisclosure({
   affiliate,
   vendor,
-  target = 'button',
 }: {
   affiliate: boolean
   vendor?: string
-  /** What the note sits next to: a Visit button, or a text link in a guide. */
-  target?: 'button' | 'link'
 }) {
   if (affiliate) {
     return (
       <span className="block text-sm text-muted" data-affiliate-disclosure="affiliate">
-        Affiliate link: we may earn a commission if you buy through this {target}. It does not change our rating.{' '}
+        {AFFILIATE_BUTTON_NOTE}{' '}
         <Link href="/disclosure" className="underline">Disclosures</Link>.
       </span>
     )
@@ -25,5 +23,15 @@ export function AffiliateDisclosure({
       This button opens {vendor}’s site. The address is the official URL in our catalog, not an affiliate link.{' '}
       <Link href="/disclosure" className="underline">Disclosures</Link>.
     </span>
+  )
+}
+
+/** Site-wide line on /best, tool, and result pages. It does not claim this particular button is an affiliate link. */
+export function AffiliatePageNotice() {
+  return (
+    <p className="text-sm text-muted" data-affiliate-page-notice>
+      {AFFILIATE_PAGE_NOTICE}{' '}
+      <Link href="/disclosure" className="underline">Disclosures</Link>.
+    </p>
   )
 }
