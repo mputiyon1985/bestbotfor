@@ -5923,7 +5923,7 @@ export const toolSeeds: ToolSeed[] = [
   tool({
     slug: 'xmind',
     addedAt: SCOUTED_2026_11_03,
-    name: 'Xmind 2027',
+    name: 'Xmind',
     vendor: 'Xmind',
     url: 'https://xmind.com',
     allowedHosts: ['xmind.com'],
@@ -5966,8 +5966,10 @@ export const toolSeeds: ToolSeed[] = [
     fits: [],
     affiliate: none,
   }),
-  // scout 2026-11-03 | category: Design | scout rating 3.9 (not shown) | launch: 2026-11-02 (Product Hunt #5 Product of the Day) | pricing: unknown. A free start is offered, and the pricing page could not be read.
-  // note: pricingModel stays paid because the column cannot be empty and a free tier was not verified. priceFromUsd null. hasFreeTier false.
+  // scout 2026-11-03 | category: Design | scout rating 3.9 (not shown) | launch: 2026-11-02 (Product Hunt #5 Product of the Day)
+  // checked 2026-11-03 at https://hera.video | "Get started for free"; schema.org offer price 0. https://hera.video/pricing is 404.
+  // https://hera.video/creators names Pro at $40 a month and Standard with no price, so $40 is not the from-price.
+  // note: hasFreeTier true and priceFromUsd null, so the label is the catalog line "Free tier, paid plans available" rather than "Paid".
   tool({
     slug: 'hera',
     addedAt: SCOUTED_2026_11_03,
@@ -5977,10 +5979,10 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['hera.video'],
     category: 'Design',
     shortDesc: 'A creative canvas where agents generate images and editable motion graphics for ads and social posts.',
-    longDesc: 'Hera is an AI-native canvas for images, design and editable motion graphics, directed by several agents at once. Outputs come back as layers for ads, launch videos and social posts. The pricing page could not be read, so no price or free tier is stored.',
-    pricingModel: 'paid',
+    longDesc: 'Hera is an AI-native canvas for images, design and editable motion graphics, directed by several agents at once. Outputs come back as layers for ads, launch videos and social posts. You can start for free. Paid plan prices are not published, so no from-price is stored.',
+    pricingModel: 'freemium',
     priceFromUsd: null,
-    hasFreeTier: false,
+    hasFreeTier: true,
     skillLevel: 'beginner',
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_11_03,
@@ -6012,7 +6014,7 @@ export const toolSeeds: ToolSeed[] = [
   tool({
     slug: 'screen-studio',
     addedAt: SCOUTED_2026_11_03,
-    name: 'Screen Studio 4.0',
+    name: 'Screen Studio',
     vendor: 'Screen Studio',
     url: 'https://screen.studio',
     allowedHosts: ['screen.studio'],
@@ -6103,8 +6105,10 @@ export const toolSeeds: ToolSeed[] = [
     fits: [],
     affiliate: none,
   }),
-  // scout 2026-11-03 | category: Research | scout rating 4.0 (not shown) | launch: 2026-11-02 (Product Hunt #10 of the day) | pricing: Pay-as-you-go. Answers from 5 cents each. $5 free credit, no card. First Deep report free. Deep and Light report prices not captured.
-  // note: the 5-cent figure is per call, not a monthly plan, so priceFromUsd stays null. Deep and Light prices unknown.
+  // scout 2026-11-03 | category: Research | scout rating 4.0 (not shown) | launch: 2026-11-02 (Product Hunt #10 of the day)
+  // checked 2026-11-03 at https://hyperresearch.ai/pricing | Light $9 per run; Deep $49 per run. Pay as you go is $0 a month.
+  // The first Deep run is free only after a card is added, once per account. Light is charged from the first run.
+  // note: per run, not a monthly plan, so priceFromUsd stays null and hasFreeTier stays false. The price label is "$9 per run and up".
   tool({
     slug: 'hyperresearch',
     addedAt: SCOUTED_2026_11_03,
@@ -6114,10 +6118,10 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['hyperresearch.ai'],
     category: 'Research',
     shortDesc: 'Agentic search that writes cited reports and checks each claim against its source.',
-    longDesc: 'Hyperresearch does the research and shows the evidence: cited reports where each claim is checked against its source, with the sources kept in a vault. An Answers MCP and API return a short answer with word-for-word quotes, or say the answer was not found. Calls start at 5 cents. A $5 credit needs no card, and the first Deep report is free. Deep and Light report prices were not captured.',
-    pricingModel: 'freemium',
+    longDesc: 'Hyperresearch does the research and shows the evidence: cited reports where each claim is checked against its source, with the sources kept in a vault. An Answers MCP and API return a short answer with word-for-word quotes, or say the answer was not found. Light is $9 per run. Deep is $49 per run. The first Deep run is free only after a card is added, once per account. Light runs are charged from the first one.',
+    pricingModel: 'paid',
     priceFromUsd: null,
-    hasFreeTier: true,
+    hasFreeTier: false,
     skillLevel: 'intermediate',
     platforms: ['Web', 'API'],
     lastVerifiedAt: SCOUTED_2026_11_03,
@@ -6171,7 +6175,7 @@ export const toolSeeds: ToolSeed[] = [
   tool({
     slug: 'display-dev',
     addedAt: SCOUTED_2026_11_03,
-    name: 'Display 1.0',
+    name: 'Display',
     vendor: 'Display',
     url: 'https://display.dev',
     allowedHosts: ['display.dev'],
@@ -6187,8 +6191,9 @@ export const toolSeeds: ToolSeed[] = [
     fits: [],
     affiliate: none,
   }),
-  // scout 2026-11-03 | category: Automation | scout rating 3.6 (not shown) | launch: 2026-11-02 (Product Hunt #9 Product of the Day) | pricing: unknown. Creating an inbox needs no signup or card. Paid prices were not found.
-  // note: pricingModel stays paid because the column cannot be empty and a free plan was not verified. priceFromUsd null. hasFreeTier false.
+  // scout 2026-11-03 | category: Automation | scout rating 3.6 (not shown) | launch: 2026-11-02 (Product Hunt #9 Product of the Day)
+  // checked 2026-11-03 at https://www.novu.co/blog/agent-inbox (Novu runs the product) | free for 100 conversations a month, no card. No paid list price on https://agentinbox.md.
+  // note: hasFreeTier true and priceFromUsd null, so the label is "Free tier, paid plans available" rather than "Paid".
   tool({
     slug: 'agent-inbox',
     addedAt: SCOUTED_2026_11_03,
@@ -6198,10 +6203,10 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['agentinbox.md'],
     category: 'Automation',
     shortDesc: 'Gives an AI agent an email address plus Slack and Telegram handles behind one API.',
-    longDesc: 'Agent Inbox gives every AI agent its own email address, Slack handle and Telegram handle behind one API. You message the agent from where you work and it replies in the same thread. It works with Claude, Grok, OpenAI, Hermes and other frameworks, and agents can receive one-time codes. Creating an inbox does not ask for a card. Paid prices were not published.',
-    pricingModel: 'paid',
+    longDesc: 'Agent Inbox gives every AI agent its own email address, Slack handle and Telegram handle behind one API. You message the agent from where you work and it replies in the same thread. It works with Claude, Grok, OpenAI, Hermes and other frameworks, and agents can receive one-time codes. It is free for 100 conversations a month and needs no card. Paid prices are not published.',
+    pricingModel: 'freemium',
     priceFromUsd: null,
-    hasFreeTier: false,
+    hasFreeTier: true,
     skillLevel: 'pro',
     platforms: ['API'],
     lastVerifiedAt: SCOUTED_2026_11_03,

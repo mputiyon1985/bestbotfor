@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { toolSeeds } from '@/data/catalog'
+import { priceLabel } from './format'
 import { resolveGoRedirect, resolveHeadGoRedirect, servesAffiliateLink } from './go-redirect'
 
 const SCOUT = '2026-11-03'
@@ -70,11 +71,20 @@ describe('bot scout 2026-11-03', () => {
     expect(seed('beacon-sh')).toMatchObject({ pricingModel: 'free', priceFromUsd: null, hasFreeTier: true })
     expect(seed('clayzo')).toMatchObject({ pricingModel: 'free', priceFromUsd: null, hasFreeTier: true })
     expect(seed('unleashx')).toMatchObject({ pricingModel: 'freemium', priceFromUsd: null, hasFreeTier: true })
-    expect(seed('xmind')).toMatchObject({ pricingModel: 'freemium', priceFromUsd: null, hasFreeTier: true })
-    expect(seed('hera')).toMatchObject({ pricingModel: 'paid', priceFromUsd: null, hasFreeTier: false })
+    expect(seed('xmind')).toMatchObject({ name: 'Xmind', pricingModel: 'freemium', priceFromUsd: null, hasFreeTier: true })
+    expect(seed('hera')).toMatchObject({ pricingModel: 'freemium', priceFromUsd: null, hasFreeTier: true })
+    expect(priceLabel(seed('hera'))).toBe('Free tier, paid plans available')
     expect(seed('greta-sh')).toMatchObject({ pricingModel: 'freemium', priceFromUsd: null, hasFreeTier: true })
-    expect(seed('hyperresearch')).toMatchObject({ pricingModel: 'freemium', priceFromUsd: null, hasFreeTier: true })
-    expect(seed('agent-inbox')).toMatchObject({ pricingModel: 'paid', priceFromUsd: null, hasFreeTier: false })
+    expect(seed('hyperresearch')).toMatchObject({ pricingModel: 'paid', priceFromUsd: null, hasFreeTier: false })
+    expect(seed('hyperresearch').longDesc).toContain('Light is $9 per run')
+    expect(seed('hyperresearch').longDesc).toContain('Deep is $49 per run')
+    expect(seed('hyperresearch').longDesc).toContain('after a card is added')
+    expect(priceLabel(seed('hyperresearch'))).toBe('$9 per run and up')
+    expect(seed('agent-inbox')).toMatchObject({ pricingModel: 'freemium', priceFromUsd: null, hasFreeTier: true })
+    expect(seed('agent-inbox').longDesc).toContain('100 conversations a month')
+    expect(priceLabel(seed('agent-inbox'))).toBe('Free tier, paid plans available')
+    expect(seed('screen-studio').name).toBe('Screen Studio')
+    expect(seed('display-dev').name).toBe('Display')
     expect(seed('cedric-ai').priceFromUsd).toBe(19)
     expect(seed('screen-studio')).toMatchObject({ pricingModel: 'paid', priceFromUsd: 29, hasFreeTier: false })
     expect(seed('clawsgo-science').priceFromUsd).toBe(9.9)
