@@ -5973,9 +5973,8 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: none,
   }),
   // scout 2026-11-03 | category: Design | scout rating 3.9 (not shown) | launch: 2026-11-02 (Product Hunt #5 Product of the Day)
-  // checked 2026-11-03 at https://hera.video | "Get started for free"; schema.org offer price 0. https://hera.video/pricing is 404.
-  // https://hera.video/creators names Pro at $40 a month and Standard with no price, so $40 is not the from-price.
-  // note: hasFreeTier true and priceFromUsd null, so the label is the catalog line "Free tier, paid plans available" rather than "Paid".
+  // checked 2026-11-03 at https://hera.video/creators | Pro is $40 a month. Standard is named with no dollar price, so priceFromUsd stays null.
+  // Creator program: 50% of what each paying user pays, capped at $250 per user. In-app personal link. Not approved: status inactive, no tracking URL, allowedHosts stays hera.video.
   tool({
     slug: 'hera',
     addedAt: SCOUTED_2026_11_03,
@@ -5985,7 +5984,7 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['hera.video'],
     category: 'Design',
     shortDesc: 'A creative canvas where agents generate images and editable motion graphics for ads and social posts.',
-    longDesc: 'Hera is an AI-native canvas for images, design and editable motion graphics, directed by several agents at once. Outputs come back as layers for ads, launch videos and social posts. You can start for free. Paid plan prices are not published, so no from-price is stored.',
+    longDesc: 'Hera is an AI-native canvas for images, design and editable motion graphics, directed by several agents at once. Outputs come back as layers for ads, launch videos and social posts. You can start for free. Pro is $40 a month. Standard is offered, and its price is not listed, so no from-price is stored.',
     pricingModel: 'freemium',
     priceFromUsd: null,
     hasFreeTier: true,
@@ -5993,7 +5992,13 @@ export const toolSeeds: ToolSeed[] = [
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_11_03,
     fits: [],
-    affiliate: none,
+    affiliate: {
+      hasProgram: true,
+      network: 'in-house',
+      sourceUrl: 'https://hera.video/creators',
+      status: 'inactive',
+      commissionNote: '50% of what each paying user pays, capped at $250 per user. Not approved, so no tracking link is used.',
+    },
   }),
   // scout 2026-11-03 | category: Design | scout rating 3.7 (not shown) | launch: 2026-11-02 (Product Hunt #6 Product of the Day) | pricing: Free. The scout pricing line included an install command; that command is not stored.
   tool({

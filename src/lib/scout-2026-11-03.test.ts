@@ -22,7 +22,7 @@ const SLUGS = [
   'agent-inbox',
 ] as const
 
-const INACTIVE = ['xmind', 'screen-studio', 'riverside-agents'] as const
+const INACTIVE = ['xmind', 'screen-studio', 'riverside-agents', 'hera'] as const
 
 function seed(slug: string) {
   const tool = toolSeeds.find((item) => item.slug === slug)
@@ -73,6 +73,8 @@ describe('bot scout 2026-11-03', () => {
     expect(seed('unleashx')).toMatchObject({ pricingModel: 'freemium', priceFromUsd: null, hasFreeTier: true })
     expect(seed('xmind')).toMatchObject({ name: 'Xmind', pricingModel: 'freemium', priceFromUsd: null, hasFreeTier: true })
     expect(seed('hera')).toMatchObject({ pricingModel: 'freemium', priceFromUsd: null, hasFreeTier: true })
+    expect(seed('hera').longDesc).toContain('Pro is $40 a month')
+    expect(seed('hera').longDesc).not.toContain('not published')
     expect(priceLabel(seed('hera'))).toBe('Free tier, paid plans available')
     expect(seed('greta-sh')).toMatchObject({ pricingModel: 'freemium', priceFromUsd: null, hasFreeTier: true })
     expect(seed('hyperresearch')).toMatchObject({ pricingModel: 'paid', priceFromUsd: null, hasFreeTier: false })
@@ -99,7 +101,7 @@ describe('bot scout 2026-11-03', () => {
     expect(seed('clayzo').longDesc).not.toContain('npx')
   })
 
-  it('seeds only the three unapproved programs as inactive, with no tracking URL', () => {
+  it('seeds unapproved programs as inactive, and a tracking link on an allowed host is still not served', () => {
     for (const slug of INACTIVE) {
       const tool = seed(slug)
       expect(tool.affiliate, slug).toMatchObject({
@@ -109,8 +111,15 @@ describe('bot scout 2026-11-03', () => {
       expect(tool.affiliate.affiliateUrl, slug).toBeUndefined()
       expect(tool.affiliate.sourceUrl, slug).toMatch(/^https:\/\//)
       expect(new URL(tool.affiliate.sourceUrl ?? '').hostname, slug).toBe(new URL(tool.url).hostname)
-      expect(servesAffiliateLink(slug, null, tool.affiliate.status), slug).toBe(false)
+      const tracking = `https://${new URL(tool.url).hostname}/?ref=bestbotfor`
+      expect(servesAffiliateLink(slug, tracking, 'active'), slug).toBe(true)
+      expect(servesAffiliateLink(slug, tracking, tool.affiliate.status), slug).toBe(false)
     }
+    expect(seed('hera').affiliate).toMatchObject({
+      network: 'in-house',
+      sourceUrl: 'https://hera.video/creators',
+      commissionNote: '50% of what each paying user pays, capped at $250 per user. Not approved, so no tracking link is used.',
+    })
     for (const slug of SLUGS) {
       if (INACTIVE.includes(slug as (typeof INACTIVE)[number])) continue
       expect(seed(slug).affiliate, slug).toMatchObject({
@@ -133,16 +142,17 @@ describe('bot scout 2026-11-03', () => {
       expect(new URL(head.location).origin + new URL(head.location).pathname, slug).toBe(official)
       expect(head.location, slug).not.toMatch(/impact\.com|lemonsqueezy|im_ref|via=|ref=/)
 
+      const tracking = `https://${new URL(tool.url).hostname}/?ref=bestbotfor`
       const get = await resolveGoRedirect({
         headers: new Headers(),
         ip: '203.0.113.50',
         siteUrl: 'https://bestbotfor.com',
         seedUrl: tool.url,
-        seedAffiliateUrl: tool.affiliate.affiliateUrl ?? null,
+        seedAffiliateUrl: tracking,
         seedAffiliateStatus: tool.affiliate.status,
         allowedHosts: tool.allowedHosts,
         limit: async () => ({ ok: true }),
-        loadTool: async () => ({ id: 1, url: tool.url, affiliateUrl: null, affiliateStatus: tool.affiliate.status }),
+        loadTool: async () => ({ id: 1, url: tool.url, affiliateUrl: tracking, affiliateStatus: tool.affiliate.status }),
       })
       expect(get.status, slug).toBe(302)
       if (get.status !== 302) continue
