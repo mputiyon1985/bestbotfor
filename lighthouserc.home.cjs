@@ -6,9 +6,8 @@ module.exports = {
   ci: {
     collect: {
       url: [`${base}/`],
-      // Quiet runs of / are about 1.9s. A busy runner can put all three samples
-      // near 2.3s (2026-11-03, best 2306ms) while the performance score stays
-      // above 0.95. Optimistic aggregation uses the best sample.
+      // Simulated LCP on a busy host lands in two clusters. The best of three
+      // matches a quiet run, which is the run the 2.1s budget was set against.
       numberOfRuns: 3,
       settings: {
         chromeFlags: '--no-sandbox --disable-dev-shm-usage',
@@ -18,7 +17,7 @@ module.exports = {
     assert: {
       aggregationMethod: 'optimistic',
       assertions: {
-        'largest-contentful-paint': ['error', { maxNumericValue: 2499 }],
+        'largest-contentful-paint': ['error', { maxNumericValue: 2099 }],
         'total-blocking-time': ['error', { maxNumericValue: 229 }],
       },
     },
