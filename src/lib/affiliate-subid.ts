@@ -9,7 +9,7 @@ const SUB_ID_PARAMS: Readonly<Record<string, string>> = {
   dub: 'externalId',
 }
 
-const SUB_ID_VALUE = /^[a-z0-9./_-]{1,200}$/i
+const SUB_ID_VALUE = /^[a-z0-9./_-]{1,260}$/i
 
 export function affiliateSubIdParam(network: string | null | undefined): string | null {
   if (!network) return null

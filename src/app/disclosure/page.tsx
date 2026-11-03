@@ -3,7 +3,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { LawyerReviewNotice } from '@/components/lawyer-review-notice'
 import { toolSeeds } from '@/data/catalog'
 import { DISCLOSURE_UPDATED } from '@/lib/affiliate-copy'
-import { PREPARED_AFFILIATE_SLUGS } from '@/lib/affiliate-admin'
+import { ACTIVE_AFFILIATE_STATUS, PREPARED_AFFILIATE_SLUGS } from '@/lib/affiliate-admin'
 import { userRatingsEnabled } from '@/lib/flags'
 import { pageMetadata } from '@/lib/metadata'
 import { DISCLOSURE_ADVERTISER_PARAGRAPH } from '@/lib/ratings-policy-copy'
@@ -23,29 +23,31 @@ export default function DisclosurePage() {
   const partners = PREPARED_AFFILIATE_SLUGS.map((slug) => toolSeeds.find((tool) => tool.slug === slug)).filter(
     (tool) => tool != null,
   )
+  const activePartners = partners.filter((tool) => tool.affiliate.status === ACTIVE_AFFILIATE_STATUS)
   return (
     <article className="max-w-2xl space-y-4">
       <Breadcrumbs items={[{ name: 'Home', path: '/' }, { name: 'Disclosures', path: '/disclosure' }]} />
       <h1 className="font-bold text-5xl">Disclosures</h1>
       <p>Updated {DISCLOSURE_UPDATED}.</p>
-      <p>
-        Some Visit links are affiliate links. BestBotFor may earn a commission at no extra cost to you. Commissions
-        never affect rankings or scores.
-      </p>
+      {activePartners.length > 0 ? (
+        <p>
+          Some Visit links are affiliate links. BestBotFor may earn a commission at no extra cost to you. Commissions
+          never affect rankings or scores.
+        </p>
+      ) : (
+        <p>No Visit button is an affiliate link right now. Commissions never affect rankings or scores.</p>
+      )}
       <p>
         A Visit button is an affiliate link only when that tool’s program is switched on and a tracking link is on file.
         The note right next to it says “Affiliate link: we may earn a commission.” Those links use rel=&quot;sponsored&quot;.
         Every other Visit button goes to the tool’s official website.
       </p>
-      <p>
-        These partner tools are prepared and switched off. None of them is active, and no affiliate link for them is
-        stored in the site.
-      </p>
       <ul className="list-disc space-y-1 pl-6">
         {partners.map((tool) => (
           <li key={tool.slug}>
             {tool.name}
-            {tool.affiliate.network ? ` (${tool.affiliate.network})` : ''} — switched off
+            {tool.affiliate.network ? ` (${tool.affiliate.network})` : ''} —{' '}
+            {tool.affiliate.status === ACTIVE_AFFILIATE_STATUS ? 'active' : 'switched off'}
           </li>
         ))}
       </ul>

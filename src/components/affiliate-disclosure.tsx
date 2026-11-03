@@ -30,7 +30,8 @@ export function AffiliateDisclosure({
  * client Link, so the note does not prefetch /disclosure or add a hydration
  * boundary on the long match lists.
  */
-export function AffiliatePageNotice() {
+export function AffiliatePageNotice({ active }: { active: boolean }) {
+  if (!active) return null
   return (
     <p className="text-sm text-muted" data-affiliate-page-notice>
       {AFFILIATE_PAGE_NOTICE}{' '}

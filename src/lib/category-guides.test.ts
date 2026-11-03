@@ -86,17 +86,15 @@ describe('guide markdown', () => {
     expect(xss).toContain('&lt;img')
   })
 
-  it('does not mark a switched-off program as sponsored', async () => {
+  it('marks an active affiliate /go link as sponsored and leaves a switched-off one plain', async () => {
     const { GuideMarkdown } = await import('@/components/guide-markdown')
     const synthesia = renderToStaticMarkup(
       createElement(GuideMarkdown, { markdown: 'Try [Synthesia](https://bestbotfor.com/go/synthesia?utm_source=site).\n' }),
     )
-    expect(synthesia).toContain('href="/go/synthesia?utm_source=site" rel="nofollow noopener"')
-    expect(synthesia).not.toContain('sponsored')
-    expect(synthesia).not.toContain('data-affiliate-disclosure')
+    expect(synthesia).toContain('href="/go/synthesia?utm_source=site" rel="sponsored nofollow noopener"')
+    expect(synthesia).toContain('data-affiliate-disclosure="affiliate"')
     const eleven = renderToStaticMarkup(createElement(GuideMarkdown, { markdown: '[ElevenLabs](https://bestbotfor.com/go/elevenlabs).\n' }))
-    expect(eleven).toContain('href="/go/elevenlabs" rel="nofollow noopener"')
-    expect(eleven).not.toContain('sponsored')
+    expect(eleven).toContain('href="/go/elevenlabs" rel="sponsored nofollow noopener"')
     const cursor = renderToStaticMarkup(createElement(GuideMarkdown, { markdown: 'Try [Cursor](https://bestbotfor.com/go/cursor).\n' }))
     expect(cursor).toContain('rel="nofollow noopener"')
     expect(cursor).not.toContain('sponsored')

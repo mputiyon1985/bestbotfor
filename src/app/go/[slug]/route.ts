@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { after, NextResponse } from 'next/server'
 import { toolSeeds } from '@/data/catalog'
 import { getTool } from '@/lib/catalog'
@@ -21,8 +22,8 @@ export const dynamic = 'force-dynamic'
  * Allowlist redirect. The destination is the tool's official URL unless that
  * program's status is exactly "active" and affiliate_programs.affiliate_url
  * passes the same host allowlist. Only utm_* query keys are passed on. An
- * active PartnerStack, Impact, or Dub click is logged first so its id can be
- * appended as a SubID. Every other click row is written after the response.
+ * active PartnerStack, Impact, or Dub click gets a random SubID, not the
+ * sequential click row id. The click row is written after the response.
  *
  * HEAD is the cheap path. Next would otherwise run this GET handler, which
  * logs a rate-limit or catalog deadline while still answering 302.
@@ -65,25 +66,17 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
 
   if (outcome.status !== 302) return text(outcome.body, outcome.status)
 
-  const click = outcome.click
   let location = outcome.location
-  if (click?.affiliate && click.subIdParam) {
-    try {
-      const inserted = await withDeadline(
-        db.insert(clicks).values(clickRow(click)).returning({ id: clicks.id }),
-        GO_DB_BUDGET_MS,
-      )
-      const id = inserted[0]?.id
-      if (typeof id === 'number') location = withAffiliateSubId(location, click.subIdParam, `${click.page}.${id}`)
-    } catch (error) {
-      // Do not write the row again. A deadline can fire after the insert commits,
-      // and a second row would no longer match the SubID.
-      console.error('click log failed', error instanceof Error ? error.name : 'error')
-    }
-  } else if (click) {
+  const click = outcome.click
+  const publicId = click?.affiliate && click.subIdParam ? randomUUID() : null
+  if (click?.subIdParam && publicId) {
+    location = withAffiliateSubId(location, click.subIdParam, `${click.page}.${publicId}`)
+  }
+  if (click) {
+    const row = clickRow(click, publicId)
     after(async () => {
       try {
-        await withDeadline(db.insert(clicks).values(clickRow(click)), GO_DB_BUDGET_MS)
+        await withDeadline(db.insert(clicks).values(row), GO_DB_BUDGET_MS)
       } catch (error) {
         console.error('click log failed', error instanceof Error ? error.name : 'error')
       }
@@ -93,7 +86,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
   return redirect(location)
 }
 
-function clickRow(click: GoClick) {
+function clickRow(click: GoClick, publicId: string | null) {
   return {
     toolId: click.toolId,
     page: click.page,
@@ -102,6 +95,7 @@ function clickRow(click: GoClick) {
     ipHash: click.ipHash,
     affiliate: click.affiliate,
     programId: click.programId,
+    publicId,
   }
 }
 

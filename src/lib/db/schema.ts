@@ -111,6 +111,8 @@ export const clicks = sqliteTable(
     affiliate: integer('affiliate', { mode: 'boolean' }).notNull().default(false),
     /** affiliate_programs.tool_id for an affiliate click. Null otherwise. */
     programId: integer('program_id'),
+    /** Random id used in a network SubID. Not the sequential primary key. */
+    publicId: text('public_id'),
   },
   (table) => [index('clicks_ts_idx').on(table.ts)],
 )

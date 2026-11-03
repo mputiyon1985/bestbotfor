@@ -53,7 +53,7 @@ export function AllMatches({
       <p className="text-muted">
         {total} {noun} with a strong fit. Page {page} of {pageCount}. Ranked for {matchBudgetLabel[budget].toLowerCase()}.
       </p>
-      <AffiliatePageNotice />
+      <AffiliatePageNotice active={tools.some((tool) => tool.hasAffiliateLink)} />
       <nav aria-label="Filter by budget">
         <ul className="flex flex-wrap gap-2">
           {matchBudgets.map((item) => (

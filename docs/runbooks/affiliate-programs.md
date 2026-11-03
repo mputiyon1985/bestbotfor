@@ -4,7 +4,7 @@ BestBotFor does not run paid search on a vendor’s brand terms. That includes t
 
 ## Nothing is live in this change
 
-Every prepared program ships with status `inactive`. The seed refuses status `active` and refuses an affiliate URL unless that tool’s slug is listed in `APPROVED_ACTIVE_AFFILIATES` in `src/lib/affiliate-admin.ts`. That list is empty. No affiliate id or tracking link is stored in the catalog.
+ElevenLabs and Synthesia are approved and seeded `active`, using the tracking links already on main. Descript, Murf, Papermark, Writesonic, and Lovable stay `inactive` with no tracking link. The seed refuses status `active` or an affiliate URL unless that tool’s slug is listed in `APPROVED_ACTIVE_AFFILIATES` in `src/lib/affiliate-admin.ts`. Prebuild runs that seed, so a deploy leaves the two approved programs active.
 
 Prepared, all switched off: ElevenLabs, Synthesia, Descript, Murf, Papermark, Writesonic, and Lovable.
 

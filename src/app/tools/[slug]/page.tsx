@@ -79,7 +79,7 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
         <Item label="Last reviewed" value={formatUsDate(tool.lastVerifiedAt)} />
         <Item label="Free tier" value={tool.hasFreeTier ? 'Yes' : 'No'} />
       </dl>
-      <AffiliatePageNotice />
+      <AffiliatePageNotice active={servesAffiliateLink(tool.slug, tool.affiliate.affiliateUrl, tool.affiliate.status)} />
       <p>
         <OutboundLink slug={tool.slug} affiliate={servesAffiliateLink(tool.slug, tool.affiliate.affiliateUrl, tool.affiliate.status)} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
           Visit {tool.name}

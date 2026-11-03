@@ -77,7 +77,7 @@ describe('/go inactive programs', () => {
   it('keeps the official site when the catalog read fails, and keeps utm_* passthrough', async () => {
     state.fail = true
     const res = await go('synthesia', '?utm_source=guide&x=1')
-    expect(res.headers.get('location')).toBe('https://www.synthesia.io/?utm_source=guide')
+    expect(res.headers.get('location')).toBe('https://www.synthesia.io/?via=mark-putiyon&utm_source=guide')
   })
 
   it('ignores a stored affiliate URL while status is not active, and an off-list URL when it is', async () => {
@@ -98,22 +98,26 @@ describe('/go inactive programs', () => {
 })
 
 describe('/go active SubID', () => {
-  it('appends a PartnerStack sid of page plus click id and records the program', async () => {
+  it('appends a random PartnerStack sid and keeps the main ElevenLabs tracking path', async () => {
     state.status = 'active'
     state.network = 'PartnerStack'
-    state.dbAffiliateUrl = 'https://partnerstack.com/elevenlabs?p=1'
-    state.returnId = 42
-    const res = await GET(
+    state.dbAffiliateUrl = 'https://try.elevenlabs.io/8hbaa9knuwda'
+    const first = await GET(
       new Request('https://bestbotfor.com/go/elevenlabs', { headers: { referer: 'https://bestbotfor.com/best/voice' } }),
       { params: Promise.resolve({ slug: 'elevenlabs' }) },
     )
-    const location = new URL(res.headers.get('location') ?? '')
-    expect(location.hostname).toBe('partnerstack.com')
-    expect(location.searchParams.get('p')).toBe('1')
-    expect(location.searchParams.get('sid')).toBe('/best/voice.42')
-    expect(location.searchParams.get('utm_source')).toBe('bestbotfor')
-    expect(state.inserted).toEqual([
-      expect.objectContaining({ toolId: 11, affiliate: true, programId: 11, page: '/best/voice' }),
-    ])
+    const second = await GET(
+      new Request('https://bestbotfor.com/go/elevenlabs', { headers: { referer: 'https://bestbotfor.com/best/voice' } }),
+      { params: Promise.resolve({ slug: 'elevenlabs' }) },
+    )
+    const sids = [first, second].map((res) => new URL(res.headers.get('location') ?? '').searchParams.get('sid'))
+    for (const sid of sids) {
+      expect(sid).toMatch(/^\/best\/voice\.[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/)
+      expect(sid).not.toMatch(/\/best\/voice\.\d+$/)
+    }
+    expect(sids[0]).not.toBe(sids[1])
+    const location = new URL(first.headers.get('location') ?? '')
+    location.searchParams.delete('sid')
+    expect(location.toString()).toBe('https://try.elevenlabs.io/8hbaa9knuwda?utm_source=bestbotfor&utm_medium=referral&utm_campaign=best')
   })
 })

@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { headers } from 'next/headers'
-import { AffiliatePageNotice } from '@/components/affiliate-disclosure'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { JsonLd } from '@/components/json-ld'
 import { bestGuideHeading } from '@/lib/descriptions'
@@ -58,7 +57,6 @@ export default async function BestHubPage() {
         One top pick for each job, chosen from {CATALOG_TOOL_COUNT} tools, with the closest alternatives on each page. Picks are editorial.
         Payment never buys a higher rank.
       </p>
-      <AffiliatePageNotice />
       <ul aria-label="Jobs" className="grid gap-3 md:grid-cols-2">
         {listed.map((row) => (
           <li key={row.taskSlug} className="min-w-0 rounded-2xl border border-line p-4">

@@ -87,28 +87,22 @@ describe('network tracking hosts', () => {
     return tool.allowedHosts
   }
 
-  it('allows each prepared program only its own tracking hosts, and only labels an active link', () => {
-    expect(officialHttpsUrl('https://try.elevenlabs.io/bestbotfor', hosts('elevenlabs'))).toBe('https://try.elevenlabs.io/bestbotfor')
-    expect(officialHttpsUrl('https://partnerstack.com/click', hosts('elevenlabs'))).toBe('https://partnerstack.com/click')
-    expect(officialHttpsUrl('https://acme.partnerstack.com/click', hosts('elevenlabs'))).toBe('https://acme.partnerstack.com/click')
-    expect(officialHttpsUrl('https://partnerstack.com.evil.com/click', hosts('elevenlabs'))).toBeNull()
-    expect(officialHttpsUrl('https://evil.try.elevenlabs.io/x', hosts('elevenlabs'))).toBeNull()
-    expect(servesAffiliateLink('elevenlabs', 'https://try.elevenlabs.io/bestbotfor', 'inactive')).toBe(false)
-    expect(servesAffiliateLink('elevenlabs', 'https://try.elevenlabs.io/bestbotfor', 'active')).toBe(true)
-    expect(servesAffiliateLink('cursor', 'https://try.elevenlabs.io/bestbotfor', 'active')).toBe(false)
+  it('pins a live tracking path and refuses shared-domain wildcards that have no link yet', () => {
+    const elevenPath = 'https://try.elevenlabs.io/8hbaa9knuwda'
+    expect(officialHttpsUrl(elevenPath, hosts('elevenlabs'))).toBe(elevenPath)
+    expect(officialHttpsUrl('https://try.elevenlabs.io/other', hosts('elevenlabs'))).toBeNull()
+    expect(officialHttpsUrl('https://try.elevenlabs.io/8hbaa9knuwdaevil', hosts('elevenlabs'))).toBeNull()
+    expect(officialHttpsUrl('https://partnerstack.com/click', hosts('elevenlabs'))).toBeNull()
+    expect(officialHttpsUrl('https://acme.partnerstack.com/click', hosts('elevenlabs'))).toBeNull()
+    expect(officialHttpsUrl('https://evil.try.elevenlabs.io/8hbaa9knuwda', hosts('elevenlabs'))).toBeNull()
+    expect(servesAffiliateLink('elevenlabs', elevenPath, 'active')).toBe(true)
+    expect(servesAffiliateLink('elevenlabs', 'https://try.elevenlabs.io/other', 'active')).toBe(false)
+    expect(servesAffiliateLink('cursor', elevenPath, 'active')).toBe(false)
 
-    expect(officialHttpsUrl('https://track.sjv.io/c/1', hosts('lovable'))).toBe('https://track.sjv.io/c/1')
-    expect(officialHttpsUrl('https://sjv.io/c/1', hosts('lovable'))).toBeNull()
-    expect(officialHttpsUrl('https://track.sjv.io.evil.com/c', hosts('lovable'))).toBeNull()
-    expect(officialHttpsUrl('https://track.sjv.io/c/1', hosts('elevenlabs'))).toBeNull()
-
-    expect(officialHttpsUrl('https://dub.sh/v0', hosts('v0'))).toBe('https://dub.sh/v0')
-    expect(officialHttpsUrl('https://dub.sh/v0', hosts('lovable'))).toBeNull()
-
-    expect(officialHttpsUrl('https://refer.papermark.com/example', hosts('papermark'))).toBe('https://refer.papermark.com/example')
-    expect(officialHttpsUrl('https://refer.papermark.com/example', hosts('elevenlabs'))).toBeNull()
-    expect(officialHttpsUrl('https://www.descript.com/', hosts('descript'))).not.toBeNull()
-    expect(officialHttpsUrl('https://partnerstack.com/d', hosts('descript'))).not.toBeNull()
-    expect(officialHttpsUrl('https://awin1.com/c', hosts('writesonic'))).toBeNull()
+    expect(officialHttpsUrl('https://track.sjv.io/c/1', hosts('lovable'))).toBeNull()
+    expect(officialHttpsUrl('https://dub.sh/v0', hosts('v0'))).toBeNull()
+    expect(officialHttpsUrl('https://refer.papermark.com/example', hosts('papermark'))).toBeNull()
+    expect(officialHttpsUrl('https://partnerstack.com/d', hosts('descript'))).toBeNull()
+    expect(officialHttpsUrl('https://www.synthesia.io/?via=mark-putiyon', hosts('synthesia'))).toBe('https://www.synthesia.io/?via=mark-putiyon')
   })
 })

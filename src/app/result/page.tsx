@@ -324,7 +324,7 @@ export default async function ResultPage({
         Share this page:{' '}
         <a className="underline [overflow-wrap:anywhere]" href={absoluteUrl(sharePath)}>{absoluteUrl(sharePath)}</a>
       </p>
-      <AffiliatePageNotice />
+      <AffiliatePageNotice active={result.picks.some((pick) => pick.hasAffiliateLink)} />
     </article>
   )
 }

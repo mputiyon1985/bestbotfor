@@ -4,12 +4,12 @@ import type { AffiliateStatus, ToolSeed } from './catalog-types'
 export const ACTIVE_AFFILIATE_STATUS = 'active' satisfies AffiliateStatus
 
 /**
- * Slugs the owner has approved to go live. Empty on purpose.
- * Switching one program on is a reviewed seed change: add the slug here, set
- * that tool's catalog status to "active", and set its affiliateUrl in the same
- * commit. The seed refuses every other active status or affiliate URL.
+ * Slugs the owner has approved to go live. The seed writes an affiliate URL
+ * only for these slugs, and only when that tool's status is "active".
+ * Every other program is refused if it is active or carries a tracking link.
  */
-export const APPROVED_ACTIVE_AFFILIATES: readonly string[] = []
+/** Mark approved these two to stay live through the merge. The other prepared programs stay off. */
+export const APPROVED_ACTIVE_AFFILIATES: readonly string[] = ['elevenlabs', 'synthesia']
 
 /** Prepared in this change. Each one ships switched off, with no tracking link. */
 export const PREPARED_AFFILIATE_SLUGS = [
