@@ -1,4 +1,4 @@
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 import type { Database } from './db'
 import { sponsorships } from './db/schema'
 import { SPONSOR_CONTACT_EMAIL } from './sponsor-checkout-gate'
@@ -9,21 +9,32 @@ export const NEWSLETTER_ISSUE_PASSED_ALERT_TAG = 'NEWSLETTER ISSUE PASSED'
 const ISSUE_DATE = /^(\d{4})-(\d{2})-(\d{2})$/
 
 /**
- * True when the issue date is a real UTC day strictly before the UTC day of
- * paidAt. An on-time payment stays unflagged after the issue goes out.
- * The same comparison is `issue_date < date(paid_at)` in the admin list.
+ * UTC midnight for a real calendar day, or null. 2026-02-31 is null.
+ * Checkout, the webhook alert, and the admin list all use this parser.
  */
-export function newsletterPaidAfterIssue(issueDate: string | null | undefined, paidAt: number): boolean {
-  const match = ISSUE_DATE.exec(issueDate ?? '')
-  if (!match || !Number.isFinite(paidAt)) return false
+export function parseIssueDay(value: string | null | undefined): number | null {
+  const match = ISSUE_DATE.exec(value ?? '')
+  if (!match) return null
   const year = Number(match[1])
   const month = Number(match[2])
   const day = Number(match[3])
-  const issue = new Date(Date.UTC(year, month - 1, day))
-  if (issue.getUTCFullYear() !== year || issue.getUTCMonth() !== month - 1 || issue.getUTCDate() !== day) return false
+  const utc = Date.UTC(year, month - 1, day)
+  const issue = new Date(utc)
+  if (issue.getUTCFullYear() !== year || issue.getUTCMonth() !== month - 1 || issue.getUTCDate() !== day) return null
+  return utc
+}
+
+/**
+ * True when the issue date is a real UTC day strictly before the UTC day of
+ * paidAt. An on-time payment stays unflagged after the issue goes out.
+ * An impossible date is not late. The admin list uses this same check.
+ */
+export function newsletterPaidAfterIssue(issueDate: string | null | undefined, paidAt: number): boolean {
+  const issue = parseIssueDay(issueDate)
+  if (issue == null || !Number.isFinite(paidAt)) return false
   const paid = new Date(paidAt)
   const paidDay = Date.UTC(paid.getUTCFullYear(), paid.getUTCMonth(), paid.getUTCDate())
-  return issue.getTime() < paidDay
+  return issue < paidDay
 }
 
 export type PassedNewsletterIssue = { sessionId: string; issueDate: string }
@@ -50,6 +61,7 @@ export async function listPassedNewsletterIssues(db: Database): Promise<PassedNe
     .select({
       sessionId: sponsorships.stripeCheckoutSessionId,
       issueDate: sponsorships.issueDate,
+      paidAt: sponsorships.paidAt,
     })
     .from(sponsorships)
     .where(
@@ -57,18 +69,29 @@ export async function listPassedNewsletterIssues(db: Database): Promise<PassedNe
         eq(sponsorships.offering, 'newsletter_slot'),
         eq(sponsorships.status, 'paid'),
         isNull(sponsorships.refundedAt),
-        sql`${sponsorships.issueDate} < date(${sponsorships.paidAt} / 1000, 'unixepoch')`,
       ),
     )
-  return rows.flatMap((row) => (row.issueDate ? [{ sessionId: row.sessionId, issueDate: row.issueDate }] : []))
+  return rows.flatMap((row) =>
+    row.issueDate && row.paidAt != null && newsletterPaidAfterIssue(row.issueDate, row.paidAt)
+      ? [{ sessionId: row.sessionId, issueDate: row.issueDate }]
+      : [],
+  )
 }
 
-export function flagPassedNewsletterIssue(input: {
-  sessionId: string
-  offeringId: string
-  issueDate: string | null
-  now: number
-}): void {
-  if (input.offeringId !== 'newsletter_slot' || !input.issueDate || !newsletterPaidAfterIssue(input.issueDate, input.now)) return
+/** Compares the issue date to the stored paid_at, not the time this event arrived. */
+export async function flagPassedNewsletterIssue(
+  db: Database,
+  input: {
+    sessionId: string
+    offeringId: string
+    issueDate: string | null
+  },
+): Promise<void> {
+  if (input.offeringId !== 'newsletter_slot' || !input.issueDate || parseIssueDay(input.issueDate) == null) return
+  const [row] = await db
+    .select({ paidAt: sponsorships.paidAt })
+    .from(sponsorships)
+    .where(eq(sponsorships.stripeCheckoutSessionId, input.sessionId))
+  if (row?.paidAt == null || !newsletterPaidAfterIssue(input.issueDate, row.paidAt)) return
   alertNewsletterIssuePassed({ sessionId: input.sessionId, issueDate: input.issueDate })
 }

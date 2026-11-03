@@ -319,11 +319,10 @@ async function applySponsorship(db: Database, stripe: Stripe, event: Stripe.Even
       offeringId: offering.id,
       now,
     })
-    flagPassedNewsletterIssue({
+    await flagPassedNewsletterIssue(db, {
       sessionId: parsed.data.id,
       offeringId: offering.id,
       issueDate: parsed.data.metadata.issue_date || null,
-      now,
     })
   }
 }
