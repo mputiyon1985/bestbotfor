@@ -4,6 +4,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    # Nightly absolute Lighthouse gate on main. 08:00 UTC.
+    - cron: '0 8 * * *'
 
 permissions:
   contents: read
@@ -55,9 +58,9 @@ jobs:
           TURSO_DATABASE_URL: file:./data/e2e.db
           NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
       - name: Lighthouse
-        run: npm run check:lighthouse
-        # This branch and main, 3 runs per URL. A hang fails here instead of running on.
-        timeout-minutes: 25
+        run: bash scripts/ci-lighthouse.sh
+        # Interleaved PR and main runs, plus a main build. A hang fails here.
+        timeout-minutes: 30
         env:
           TURSO_DATABASE_URL: file:./data/ci.db
           TURSO_AUTH_TOKEN: local

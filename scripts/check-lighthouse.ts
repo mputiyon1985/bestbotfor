@@ -1,11 +1,19 @@
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process'
-import { readdir, readFile, rename, rm } from 'node:fs/promises'
+import { mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { chromium } from '@playwright/test'
-import { homeLcpError, homeTbtError, median, performanceErrors } from '../src/lib/lighthouse-gate'
+import { absolutePerformanceError, homeLcpError, homeTbtError, median, performanceErrors } from '../src/lib/lighthouse-gate'
 
-const ROOT = process.cwd()
+const ROOT = process.env.LH_APP_ROOT || process.cwd()
 const MAIN_DIR = '/tmp/lh-main'
+const PAGE_URLS = ['/', '/best/coding', '/best/seo', '/tools', '/tools/chatgpt']
+const QUIZ_URLS = [
+  '/result?task=chat&budget=any&skill=beginner',
+  '/result?task=seo&budget=free&skill=beginner',
+  '/result?task=chat&view=all',
+  '/result?task=seo&view=all&budget=free',
+]
+const HOME_URLS = ['/']
 
 type Report = {
   finalDisplayedUrl?: string
@@ -22,9 +30,13 @@ type Sample = {
   tbt: number
 }
 
-const PAGE_CONFIG = 'lighthouserc.cjs'
-const QUIZ_CONFIG = 'lighthouserc.quiz.cjs'
-const HOME_CONFIG = 'lighthouserc.home.cjs'
+function absoluteGate(): boolean {
+  const event = process.env.GITHUB_EVENT_NAME ?? ''
+  const ref = process.env.GITHUB_REF ?? ''
+  if (process.env.LH_ABSOLUTE === '1') return true
+  if (event === 'schedule') return true
+  return event === 'push' && ref === 'refs/heads/main'
+}
 
 function serverEnv(origin: string, databaseUrl: string): NodeJS.ProcessEnv {
   return {
@@ -159,9 +171,6 @@ async function readSamples(outDir: string): Promise<Map<string, Sample[]>> {
     const list = grouped.get(url) ?? []
     list.push(sample)
     grouped.set(url, list)
-    console.log(
-      `lighthouse ${url}: LCP ${sample.lcp.toFixed(0)}ms, TBT ${sample.tbt.toFixed(0)}ms, performance ${sample.performance.toFixed(2)}`,
-    )
   }
   return grouped
 }
@@ -206,63 +215,84 @@ async function removeMain(): Promise<void> {
   }
 }
 
-async function collect(label: string, cwd: string, port: string, databaseUrl: string, command: 'autorun' | 'collect'): Promise<{
-  pages: Map<string, Sample[]>
-  quiz: Map<string, Sample[]>
-  home: Map<string, Sample[]>
-  exitCode: number
-}> {
-  const origin = `http://127.0.0.1:${port}`
-  const server = startServer(cwd, port, databaseUrl)
-  try {
-    await waitForServer(server, origin)
-    if (label === 'pr') await assertProductionRobots(origin)
-    await warm(origin)
-    let exitCode = 0
-    const dirs = {
-      pages: path.join(ROOT, `.lighthouseci-${label}-pages`),
-      quiz: path.join(ROOT, `.lighthouseci-${label}-quiz`),
-      home: path.join(ROOT, `.lighthouseci-${label}-home`),
-    }
-    await rm(dirs.pages, { recursive: true, force: true })
-    await rm(dirs.quiz, { recursive: true, force: true })
-    await rm(dirs.home, { recursive: true, force: true })
-    for (const [config, dir] of [
-      [PAGE_CONFIG, dirs.pages],
-      [QUIZ_CONFIG, dirs.quiz],
-      [HOME_CONFIG, dirs.home],
+function emptyGroups(): Map<string, Sample[]> {
+  return new Map()
+}
+
+function pushSample(groups: Map<string, Sample[]>, url: string, sample: Sample, label: string): void {
+  const list = groups.get(url) ?? []
+  list.push(sample)
+  groups.set(url, list)
+  console.log(
+    `lighthouse ${label} ${url}: LCP ${sample.lcp.toFixed(0)}ms, TBT ${sample.tbt.toFixed(0)}ms, performance ${sample.performance.toFixed(2)}`,
+  )
+}
+
+async function oneRun(port: string, urlPath: string): Promise<Sample> {
+  const outDir = path.join('/tmp', `lhci-out-${Date.now()}-${Math.random().toString(16).slice(2)}`)
+  const configPath = path.join('/tmp', 'lhci-one.cjs')
+  const chromePath = process.env.CHROME_PATH
+  const settings = {
+    chromeFlags: '--no-sandbox --disable-dev-shm-usage',
+    ...(chromePath ? { chromePath } : {}),
+  }
+  await mkdir('/tmp', { recursive: true })
+  await writeFile(
+    configPath,
+    `module.exports = { ci: { collect: { url: [${JSON.stringify(`http://127.0.0.1:${port}${urlPath}`)}], numberOfRuns: 1, settings: ${JSON.stringify(settings)} }, upload: { target: 'filesystem', outputDir: '.lighthouseci' } } }\n`,
+  )
+  const code = await runLhci('collect', configPath, outDir, port)
+  if (code !== 0) throw new Error(`lighthouse ${urlPath} exited ${code}`)
+  const groups = await readSamples(outDir)
+  const samples = groups.get(urlPath)
+  const sample = samples?.[0]
+  if (!sample) throw new Error(`no Lighthouse run for ${urlPath}`)
+  return sample
+}
+
+async function runRounds(ports: { pr: string; main?: string }, groups: { pr: RunGroups; main?: RunGroups }): Promise<void> {
+  for (let round = 0; round < 3; round += 1) {
+    for (const [bucket, urls] of [
+      ['pages', PAGE_URLS],
+      ['quiz', QUIZ_URLS],
+      ['home', HOME_URLS],
     ] as const) {
-      const code = await runLhci(command, config, dir, port)
-      if (code !== 0) exitCode = code
+      for (const urlPath of urls) {
+        pushSample(groups.pr[bucket], urlPath, await oneRun(ports.pr, urlPath), 'pr')
+        if (ports.main && groups.main) pushSample(groups.main[bucket], urlPath, await oneRun(ports.main, urlPath), 'main')
+      }
     }
-    return {
-      pages: await readSamples(dirs.pages),
-      quiz: await readSamples(dirs.quiz),
-      home: await readSamples(dirs.home),
-      exitCode,
-    }
-  } finally {
-    stopServer(server)
   }
 }
 
-function compare(pr: Awaited<ReturnType<typeof collect>>, main: Awaited<ReturnType<typeof collect>>): string[] {
+type RunGroups = { pages: Map<string, Sample[]>; quiz: Map<string, Sample[]>; home: Map<string, Sample[]> }
+
+function categoryErrors(groups: Map<string, Sample[]>, names: Array<[string, (sample: Sample) => number]>): string[] {
+  const errors: string[] = []
+  for (const [url, samples] of groups) {
+    for (const [name, pick] of names) {
+      const value = median(samples.map(pick))
+      if (value < 0.95) errors.push(`${url} ${name} median ${value.toFixed(2)} is under 0.95`)
+    }
+  }
+  return errors
+}
+
+function compare(pr: RunGroups, baseline: RunGroups): string[] {
   const errors: string[] = []
   const urls = new Set([...pr.pages.keys(), ...pr.quiz.keys()])
   for (const url of urls) {
     const prSamples = (pr.pages.get(url) ?? pr.quiz.get(url) ?? []).map((sample) => sample.performance)
-    const mainSamples = (main.pages.get(url) ?? main.quiz.get(url) ?? []).map((sample) => sample.performance)
+    const mainSamples = (baseline.pages.get(url) ?? baseline.quiz.get(url) ?? []).map((sample) => sample.performance)
     if (prSamples.length === 0 || mainSamples.length === 0) {
       errors.push(`${url} is missing a performance median`)
       continue
     }
-    const prMedian = median(prSamples)
-    const mainMedian = median(mainSamples)
-    console.log(`lighthouse compare ${url}: performance pr ${prMedian.toFixed(2)} main ${mainMedian.toFixed(2)}`)
+    console.log(`lighthouse compare ${url}: performance pr ${median(prSamples).toFixed(2)} main ${median(mainSamples).toFixed(2)}`)
     errors.push(...performanceErrors(url, prSamples, mainSamples))
   }
   const prHome = requireUrl(pr.home, '/')
-  const mainHome = requireUrl(main.home, '/')
+  const mainHome = requireUrl(baseline.home, '/')
   const prTbt = median(prHome.map((sample) => sample.tbt))
   const mainTbt = median(mainHome.map((sample) => sample.tbt))
   const prLcp = Math.min(...prHome.map((sample) => sample.lcp))
@@ -271,41 +301,86 @@ function compare(pr: Awaited<ReturnType<typeof collect>>, main: Awaited<ReturnTy
   if (tbt) errors.push(tbt)
   const lcp = homeLcpError(prHome.map((sample) => sample.lcp))
   if (lcp) errors.push(lcp)
-  for (const [name, pick] of [
-    ['accessibility', (sample: Sample) => sample.accessibility],
-    ['best-practices', (sample: Sample) => sample.bestPractices],
-    ['seo', (sample: Sample) => sample.seo],
-  ] as const) {
-    for (const [url, samples] of pr.pages) {
-      const value = median(samples.map(pick))
-      if (value < 0.95) errors.push(`${url} ${name} median ${value.toFixed(2)} is under 0.95`)
-    }
-  }
-  for (const [name, pick] of [
-    ['accessibility', (sample: Sample) => sample.accessibility],
-    ['best-practices', (sample: Sample) => sample.bestPractices],
-  ] as const) {
-    for (const [url, samples] of pr.quiz) {
-      const value = median(samples.map(pick))
-      if (value < 0.95) errors.push(`${url} ${name} median ${value.toFixed(2)} is under 0.95`)
-    }
-  }
+  errors.push(...categoryErrors(pr.pages, [
+    ['accessibility', (sample) => sample.accessibility],
+    ['best-practices', (sample) => sample.bestPractices],
+    ['seo', (sample) => sample.seo],
+  ]))
+  errors.push(...categoryErrors(pr.quiz, [
+    ['accessibility', (sample) => sample.accessibility],
+    ['best-practices', (sample) => sample.bestPractices],
+  ]))
   return errors
+}
+
+function absoluteErrors(groups: RunGroups): string[] {
+  const errors: string[] = []
+  for (const url of [...groups.pages.keys(), ...groups.quiz.keys()]) {
+    const samples = (groups.pages.get(url) ?? groups.quiz.get(url) ?? []).map((sample) => sample.performance)
+    console.log(`lighthouse absolute ${url}: performance median ${median(samples).toFixed(2)}`)
+    const performance = absolutePerformanceError(url, samples)
+    if (performance) errors.push(performance)
+  }
+  const home = requireUrl(groups.home, '/')
+  const tbt = median(home.map((sample) => sample.tbt))
+  const lcp = Math.min(...home.map((sample) => sample.lcp))
+  console.log(`lighthouse absolute /: TBT median ${tbt.toFixed(1)}ms, LCP best ${lcp.toFixed(0)}ms`)
+  const tbtError = homeTbtError(home.map((sample) => sample.tbt), null)
+  if (tbtError) errors.push(tbtError)
+  const lcpError = homeLcpError(home.map((sample) => sample.lcp))
+  if (lcpError) errors.push(lcpError)
+  errors.push(...categoryErrors(groups.pages, [
+    ['accessibility', (sample) => sample.accessibility],
+    ['best-practices', (sample) => sample.bestPractices],
+    ['seo', (sample) => sample.seo],
+  ]))
+  errors.push(...categoryErrors(groups.quiz, [
+    ['accessibility', (sample) => sample.accessibility],
+    ['best-practices', (sample) => sample.bestPractices],
+  ]))
+  return errors
+}
+
+function freshGroups(): RunGroups {
+  return { pages: emptyGroups(), quiz: emptyGroups(), home: emptyGroups() }
 }
 
 async function main(): Promise<number> {
   process.env.CHROME_PATH = process.env.CHROME_PATH || chromium.executablePath()
-  const port = process.env.LHCI_PORT || String(4400 + Math.floor(Math.random() * 400))
-  const pr = await collect('pr', ROOT, port, process.env.TURSO_DATABASE_URL || 'file:./data/ci.db', 'autorun')
-  if (pr.exitCode !== 0) return pr.exitCode
-  await prepareMain()
+  const port = Number(process.env.LHCI_PORT || 4400 + Math.floor(Math.random() * 400))
+  const prPort = String(port)
+  const mainPort = String(port + 1)
+  const absolute = absoluteGate()
+  console.log(absolute ? 'lighthouse gate: absolute (main push or nightly)' : 'lighthouse gate: pull request compared with origin/main')
+  const prServer = startServer(ROOT, prPort, process.env.TURSO_DATABASE_URL || 'file:./data/ci.db')
   try {
-    const baseline = await collect('main', MAIN_DIR, port, 'file:./data/ci.db', 'collect')
-    const errors = compare(pr, baseline)
-    for (const error of errors) console.error(error)
-    return errors.length === 0 ? 0 : 1
+    await waitForServer(prServer, `http://127.0.0.1:${prPort}`)
+    await assertProductionRobots(`http://127.0.0.1:${prPort}`)
+    await warm(`http://127.0.0.1:${prPort}`)
+    if (absolute) {
+      const groups = freshGroups()
+      await runRounds({ pr: prPort }, { pr: groups })
+      const errors = absoluteErrors(groups)
+      for (const error of errors) console.error(error)
+      return errors.length === 0 ? 0 : 1
+    }
+    await prepareMain()
+    const mainServer = startServer(MAIN_DIR, mainPort, 'file:./data/ci.db')
+    try {
+      await waitForServer(mainServer, `http://127.0.0.1:${mainPort}`)
+      await warm(`http://127.0.0.1:${mainPort}`)
+      const pr = freshGroups()
+      const baseline = freshGroups()
+      await runRounds({ pr: prPort, main: mainPort }, { pr, main: baseline })
+      const errors = compare(pr, baseline)
+      for (const error of errors) console.error(error)
+      return errors.length === 0 ? 0 : 1
+    } finally {
+      stopServer(mainServer)
+      await removeMain()
+    }
   } finally {
-    await removeMain()
+    stopServer(prServer)
   }
 }
 

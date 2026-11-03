@@ -1,8 +1,16 @@
 /** Cap from main before the Lighthouse noise change. Not 250 or 300. */
 export const HOME_TBT_CAP_MS = 229
 
+/**
+ * Hard ceiling for a PR even when it is only matching main.
+ * Mark can change this.
+ */
+export const HOME_TBT_HARD_CEILING_MS = 250
+
 /** Best of the home runs. The 2.1s budget was set against the quiet LCP cluster. */
 export const HOME_LCP_CAP_MS = 2099
+
+export const PERFORMANCE_MEDIAN_MIN = 0.95
 
 /**
  * A healthy main still requires the PR to clear 0.95, because the PR median
@@ -25,6 +33,12 @@ export function median(values: number[]): number {
   return (lower + upper) / 2
 }
 
+export function absolutePerformanceError(url: string, samples: number[]): string | null {
+  const value = median(samples)
+  if (value >= PERFORMANCE_MEDIAN_MIN) return null
+  return `${url} performance median ${value.toFixed(2)} is under ${PERFORMANCE_MEDIAN_MIN.toFixed(2)}`
+}
+
 export function performanceErrors(url: string, pr: number[], main: number[]): string[] {
   const prMedian = median(pr)
   const mainMedian = median(main)
@@ -32,24 +46,36 @@ export function performanceErrors(url: string, pr: number[], main: number[]): st
   if (prMedian < PERFORMANCE_FLOOR) {
     errors.push(`${url} performance median ${prMedian.toFixed(2)} is under ${PERFORMANCE_FLOOR.toFixed(2)}`)
   }
-  if (mainMedian - prMedian > PERFORMANCE_DELTA) {
+  if (mainMedian < PERFORMANCE_MEDIAN_MIN) {
+    if (prMedian < mainMedian) {
+      errors.push(`${url} performance median ${prMedian.toFixed(2)} is below main ${mainMedian.toFixed(2)}`)
+    }
+  } else if (mainMedian - prMedian > PERFORMANCE_DELTA) {
     errors.push(
       `${url} performance median ${prMedian.toFixed(2)} is more than ${PERFORMANCE_DELTA} below main ${mainMedian.toFixed(2)}`,
     )
   }
-  if (mainMedian >= 0.95 && prMedian < 0.95) {
+  if (mainMedian >= PERFORMANCE_MEDIAN_MIN && prMedian < PERFORMANCE_MEDIAN_MIN) {
     errors.push(`${url} performance median ${prMedian.toFixed(2)} is under 0.95 while main is ${mainMedian.toFixed(2)}`)
   }
   return errors
 }
 
-/** 229ms when main is at or under that cap. When main is noisier, the PR may match main and not go past it. */
-export function homeTbtError(pr: number[], main: number[]): string | null {
+/**
+ * On main, the median must be at most 229ms.
+ * On a PR, 229 still binds when main is at or under it. A noisier main can be
+ * matched, but not past HOME_TBT_HARD_CEILING_MS.
+ */
+export function homeTbtError(pr: number[], main: number[] | null): string | null {
   const prMedian = median(pr)
+  if (!main) {
+    if (prMedian <= HOME_TBT_CAP_MS) return null
+    return `home TBT median ${prMedian.toFixed(1)}ms is over ${HOME_TBT_CAP_MS}ms`
+  }
   const mainMedian = median(main)
-  const cap = Math.max(HOME_TBT_CAP_MS, mainMedian)
+  const cap = Math.min(HOME_TBT_HARD_CEILING_MS, Math.max(HOME_TBT_CAP_MS, mainMedian))
   if (prMedian <= cap) return null
-  return `home TBT median ${prMedian.toFixed(1)}ms is over ${cap.toFixed(1)}ms (cap ${HOME_TBT_CAP_MS}ms, main median ${mainMedian.toFixed(1)}ms)`
+  return `home TBT median ${prMedian.toFixed(1)}ms is over ${cap.toFixed(1)}ms (cap ${HOME_TBT_CAP_MS}ms, ceiling ${HOME_TBT_HARD_CEILING_MS}ms, main median ${mainMedian.toFixed(1)}ms)`
 }
 
 export function homeLcpError(samples: number[]): string | null {

@@ -124,7 +124,9 @@ function hmacHex(payload: string): string {
 
 /**
  * IPv6 rate-limit identity is the /64. Hosts in one prefix share a bucket.
- * IPv4 is unchanged. An address canonicalIp rejects stays as given.
+ * NAT64 embeds many IPv4 clients in one prefix (the well-known prefix
+ * 64:ff9b::/96 sits inside a single /64), so those clients share one bucket.
+ * That collapse stays. IPv4 is unchanged. An address canonicalIp rejects stays as given.
  */
 function rateLimitIdentity(ip: string): string {
   const canonical = canonicalIp(ip)
