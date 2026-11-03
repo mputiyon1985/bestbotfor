@@ -112,13 +112,12 @@ describe('bot scout 2026-11-03', () => {
       expect(tool.affiliate.sourceUrl, slug).toMatch(/^https:\/\//)
       expect(new URL(tool.affiliate.sourceUrl ?? '').hostname, slug).toBe(new URL(tool.url).hostname)
       const tracking = `https://${new URL(tool.url).hostname}/?ref=bestbotfor`
-      expect(servesAffiliateLink(slug, tracking, 'active'), slug).toBe(true)
       expect(servesAffiliateLink(slug, tracking, tool.affiliate.status), slug).toBe(false)
     }
     expect(seed('hera').affiliate).toMatchObject({
       network: 'in-house',
       sourceUrl: 'https://hera.video/creators',
-      commissionNote: '50% of what each paying user pays, capped at $250 per user. Not approved, so no tracking link is used.',
+      commissionNote: '50% of what each paying user pays, capped at $250 per user. BestBotFor has not joined this program.',
     })
     for (const slug of SLUGS) {
       if (INACTIVE.includes(slug as (typeof INACTIVE)[number])) continue
@@ -135,31 +134,44 @@ describe('bot scout 2026-11-03', () => {
   it('sends /go for each new tool to that tool’s official URL', async () => {
     for (const slug of SLUGS) {
       const tool = seed(slug)
-      const official = new URL(tool.url).origin + '/'
+      const host = new URL(tool.url).hostname
+      const official = `${new URL(tool.url).origin}/`
+      const tracking = `https://${host}/?ref=bestbotfor`
+      const allowedHosts = [host, `${host}/?ref=bestbotfor`]
       const head = resolveHeadGoRedirect(slug)
       expect(head, slug).toMatchObject({ status: 302 })
       if (head.status !== 302) continue
       expect(new URL(head.location).origin + new URL(head.location).pathname, slug).toBe(official)
       expect(head.location, slug).not.toMatch(/impact\.com|lemonsqueezy|im_ref|via=|ref=/)
 
-      const tracking = `https://${new URL(tool.url).hostname}/?ref=bestbotfor`
-      const get = await resolveGoRedirect({
+      const shared = {
         headers: new Headers(),
         ip: '203.0.113.50',
         siteUrl: 'https://bestbotfor.com',
         seedUrl: tool.url,
         seedAffiliateUrl: tracking,
-        seedAffiliateStatus: tool.affiliate.status,
-        allowedHosts: tool.allowedHosts,
+        allowedHosts,
         limit: async () => ({ ok: true }),
+      }
+      const inactive = await resolveGoRedirect({
+        ...shared,
+        seedAffiliateStatus: tool.affiliate.status,
         loadTool: async () => ({ id: 1, url: tool.url, affiliateUrl: tracking, affiliateStatus: tool.affiliate.status }),
       })
-      expect(get.status, slug).toBe(302)
-      if (get.status !== 302) continue
-      const destination = new URL(get.location)
-      expect(destination.origin + destination.pathname, slug).toBe(official)
-      expect(destination.hostname, slug).toBe(tool.allowedHosts[0])
-      expect(get.location, slug).not.toMatch(/impact\.com|lemonsqueezy|im_ref/)
+      expect(inactive.status, slug).toBe(302)
+      if (inactive.status !== 302) continue
+      expect(new URL(inactive.location).origin + new URL(inactive.location).pathname, slug).toBe(official)
+      expect(inactive.location, slug).not.toContain('ref=bestbotfor')
+
+      const active = await resolveGoRedirect({
+        ...shared,
+        seedAffiliateStatus: 'active',
+        loadTool: async () => ({ id: 1, url: tool.url, affiliateUrl: tracking, affiliateStatus: 'active' }),
+      })
+      expect(active.status, slug).toBe(302)
+      if (active.status !== 302) continue
+      expect(new URL(active.location).hostname, slug).toBe(host)
+      expect(active.location, slug).toContain('ref=bestbotfor')
     }
   })
 })
