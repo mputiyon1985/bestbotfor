@@ -1,5 +1,5 @@
 import { execFileSync, spawn, type ChildProcess } from 'node:child_process'
-import { readdir, readFile, rename, rm, symlink } from 'node:fs/promises'
+import { readdir, readFile, rename, rm } from 'node:fs/promises'
 import path from 'node:path'
 import { chromium } from '@playwright/test'
 import { homeLcpError, homeTbtError, median, performanceErrors } from '../src/lib/lighthouse-gate'
@@ -181,7 +181,8 @@ async function prepareMain(): Promise<void> {
   await rm(MAIN_DIR, { recursive: true, force: true })
   execFileSync('git', ['fetch', 'origin', 'main'], { cwd: ROOT, stdio: 'inherit' })
   execFileSync('git', ['worktree', 'add', '--detach', MAIN_DIR, 'origin/main'], { cwd: ROOT, stdio: 'inherit' })
-  await symlink(path.join(ROOT, 'node_modules'), path.join(MAIN_DIR, 'node_modules'))
+  // Turbopack will not follow a node_modules symlink that points outside the worktree.
+  execFileSync('npm', ['ci'], { cwd: MAIN_DIR, stdio: 'inherit', env: process.env })
   execFileSync('npm', ['run', 'build'], {
     cwd: MAIN_DIR,
     stdio: 'inherit',
