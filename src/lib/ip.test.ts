@@ -78,6 +78,20 @@ describe('rateLimitKey', () => {
     expect(rateLimitKey(null, 'result')).toBe(hmac(rateLimitSubkey('rotated-secret-key'), 'bestbotfor-rate|result|unknown'))
   })
 
+  it('keys an IPv6 address by its /64 and leaves an IPv4 address whole', () => {
+    process.env.RATE_LIMIT_HMAC_SECRET = 'dedicated-secret'
+    const subkey = rateLimitSubkey('dedicated-secret')
+    const inside = rateLimitKey('2001:db8:1:2::1', 'result')
+    const samePrefix = rateLimitKey('2001:db8:1:2:ffff::8', 'result')
+    const otherPrefix = rateLimitKey('2001:db8:1:3::1', 'result')
+    expect(inside).toBe(hmac(subkey, 'bestbotfor-rate|result|2001:0db8:0001:0002::/64'))
+    expect(samePrefix).toBe(inside)
+    expect(otherPrefix).toBe(hmac(subkey, 'bestbotfor-rate|result|2001:0db8:0001:0003::/64'))
+    expect(otherPrefix).not.toBe(inside)
+    expect(rateLimitKey('203.0.113.7', 'result')).toBe(hmac(subkey, 'bestbotfor-rate|result|203.0.113.7'))
+    expect(hashIp('2001:db8:1:2::1')).not.toBe(hashIp('2001:db8:1:2:ffff::8'))
+  })
+
   it('ignores a RATE_LIMIT_HMAC_SECRET shorter than 16 characters and derives with HKDF', () => {
     const short = 's'.repeat(15)
     process.env.RATE_LIMIT_HMAC_SECRET = short

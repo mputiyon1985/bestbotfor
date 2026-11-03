@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { isIP } from 'node:net'
 import type { TestInfo } from '@playwright/test'
 
@@ -21,10 +22,14 @@ export function e2eClientAddress(nonce: number, salt = 0): string {
   return address
 }
 
-/** One address per test, stable for that test's page and API requests. */
-export function e2eClientAddressForTest(testInfo: TestInfo): string {
-  const hex = testInfo.testId.replace(/[^0-9a-f]/gi, '').padEnd(8, '0')
-  const fromId = Number.parseInt(hex.slice(0, 8), 16)
-  const salt = ((testInfo.parallelIndex & 0xff) << 8) | ((testInfo.workerIndex & 0xf) << 4) | (testInfo.retry & 0xf)
-  return e2eClientAddress(fromId, salt)
+/**
+ * One address per test. The hash covers the whole test id. The first 8 hex
+ * digits are shared by tests in a file, so they are not the address.
+ * Retry is included so a second attempt does not reuse a full window.
+ */
+export function e2eClientAddressForTest(testInfo: Pick<TestInfo, 'testId' | 'retry'>): string {
+  const digest = createHash('sha256').update(`${testInfo.testId}\0${testInfo.retry}`).digest()
+  const nonce = digest.readUIntBE(0, 6)
+  const salt = digest.readUInt32BE(6)
+  return e2eClientAddress(nonce, salt)
 }

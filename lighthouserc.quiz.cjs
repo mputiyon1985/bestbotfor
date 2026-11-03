@@ -26,13 +26,9 @@ module.exports = {
       },
     },
     assert: {
-      // Median of the three runs per URL. LHCI's default is optimistic (the best
-      // run for minScore), which would quietly loosen the bar.
+      // Performance is compared to main in scripts/check-lighthouse.ts.
       aggregationMethod: 'median',
       assertions: {
-        // Same performance floor as lighthouserc.cjs. Unchanged code on two
-        // runners spanned 0.93–0.98. Accessibility and best-practices stay at 0.95.
-        'categories:performance': ['error', { minScore: 0.93 }],
         'categories:accessibility': ['error', { minScore: 0.95 }],
         'categories:best-practices': ['error', { minScore: 0.95 }],
       },

@@ -1,6 +1,6 @@
 import 'server-only'
 import { createHmac, hkdfSync, randomBytes } from 'node:crypto'
-import { forwardedClientIp } from './reviews/ip'
+import { canonicalIp, forwardedClientIp } from './reviews/ip'
 
 /**
  * Client address for a rate-limit bucket. The raw value is never written to the database.
@@ -122,9 +122,21 @@ function hmacHex(payload: string): string {
   return createHmac('sha256', rateLimitHmacSecret()).update(payload).digest('hex')
 }
 
+/**
+ * IPv6 rate-limit identity is the /64. Hosts in one prefix share a bucket.
+ * IPv4 is unchanged. An address canonicalIp rejects stays as given.
+ */
+function rateLimitIdentity(ip: string): string {
+  const canonical = canonicalIp(ip)
+  if (!canonical || !canonical.includes(':')) return canonical ?? ip
+  const groups = canonical.split(':')
+  if (groups.length !== 8) return canonical
+  return `${groups[0]}:${groups[1]}:${groups[2]}:${groups[3]}::/64`
+}
+
 /** Rate-limit bucket key. HMAC-SHA256, not a plain hash, so the address cannot be brute-forced offline. */
 export function rateLimitKey(ip: string | null, action: string): string {
-  return hmacHex(`bestbotfor-rate|${action}|${ip ?? 'unknown'}`)
+  return hmacHex(`bestbotfor-rate|${action}|${ip ? rateLimitIdentity(ip) : 'unknown'}`)
 }
 
 export function countryCode(headerStore: Headers): string | null {

@@ -21,13 +21,10 @@ module.exports = {
     assert: {
       aggregationMethod: 'median',
       assertions: {
+        // Best of three. The 2.1s budget matches the quiet cluster.
         'largest-contentful-paint': ['error', { maxNumericValue: 2099, aggregationMethod: 'optimistic' }],
-        // Median, not the best run. Quiet CI medians are about 150–200ms.
-        // A green run already recorded 238ms, and the #170 merge (no app change)
-        // measured 240, 250.5, and 275 (median 250.5). 229 only passed when the
-        // best of three was a quiet sample. 300 is above that noisy median and
-        // still fails a median at or above 300.
-        'total-blocking-time': ['error', { maxNumericValue: 300, aggregationMethod: 'median' }],
+        // 229ms is the cap from main. scripts/check-lighthouse.ts applies it to
+        // the median, and allows the PR to match main when main itself is over 229.
       },
     },
     upload: {

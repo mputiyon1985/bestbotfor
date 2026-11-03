@@ -17,14 +17,15 @@ describe('e2eClientAddress', () => {
     expect(e2eClientAddress(Date.now(), 0xf404)).not.toBe(e2eClientAddress(Date.now(), 0xdb8))
   })
 
-  it('keeps one stable address per test id', () => {
-    const info = { testId: 'abc123def456', parallelIndex: 2, workerIndex: 3, retry: 1 } as TestInfo
-    const address = e2eClientAddressForTest(info)
+  it('hashes the whole test id, so tests that share the first 8 hex digits differ', () => {
+    const info = { testId: 'abcdef12-chat-quiz', retry: 1 }
+    const address = e2eClientAddressForTest(info as TestInfo)
     expect(isIP(address)).toBe(6)
     expect(canonicalIp(address)).not.toBeNull()
-    expect(e2eClientAddressForTest(info)).toBe(address)
-    const other = e2eClientAddressForTest({ ...info, testId: 'fff123def456', retry: 0 } as TestInfo)
-    expect(canonicalIp(other)).not.toBeNull()
-    expect(other).not.toBe(address)
+    expect(e2eClientAddressForTest(info as TestInfo)).toBe(address)
+    const sameFile = e2eClientAddressForTest({ testId: 'abcdef12-tools-page', retry: 1 } as TestInfo)
+    expect(sameFile).not.toBe(address)
+    const prefixes = [address, sameFile].map((value) => canonicalIp(value)!.split(':').slice(0, 4).join(':'))
+    expect(prefixes[0]).not.toBe(prefixes[1])
   })
 })
