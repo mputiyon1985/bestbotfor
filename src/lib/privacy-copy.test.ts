@@ -3,7 +3,7 @@ import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { CLICK_HASH_RETENTION_MS, RATE_LIMIT_RETENTION_MS } from './data-retention'
 import { OG_RATE_WINDOW_MS } from './og'
-import { CLICK_LOG_PARAGRAPH, clickLogParagraph, FIRST_TOUCH_PRIVACY_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, NEWSLETTER_SIGNUP_PARAGRAPH, rateLimitPrivacyParagraphs, rateLimitRetentionKept, RETENTION_JOB_PARAGRAPH, retentionCopyOn, retentionJobParagraph, SHARING_PARAGRAPH, TURSO_BACKUP_PARAGRAPH, windowPhrase } from './privacy-copy'
+import { abandonedCheckoutPrivacyParagraph, CLICK_LOG_PARAGRAPH, clickLogParagraph, FIRST_TOUCH_PRIVACY_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, NEWSLETTER_SIGNUP_PARAGRAPH, rateLimitPrivacyParagraphs, rateLimitRetentionKept, RETENTION_JOB_PARAGRAPH, retentionCopyOn, retentionJobParagraph, SHARING_PARAGRAPH, TURSO_BACKUP_PARAGRAPH, windowPhrase } from './privacy-copy'
 import {
   CHECKOUT_RATE_WINDOW_MS,
   GO_RATE_WINDOW_MS,
@@ -180,6 +180,13 @@ describe('privacy policy facts', () => {
     const suggestionSentence = 'It clears the optional email on a suggestion after 90 days and deletes a suggestion after 24 months.'
     expect(retentionJobParagraph(false)).toContain(suggestionSentence)
     expect(retentionJobParagraph(true)).toContain(suggestionSentence)
+    const abandonedSentence = 'It deletes an abandoned sponsor checkout about 90 days after it expires.'
+    expect(retentionJobParagraph(false)).toContain(abandonedSentence)
+    expect(retentionJobParagraph(true)).toContain(abandonedSentence)
+    expect(abandonedCheckoutPrivacyParagraph(false)).toContain('only when you opt in')
+    expect(abandonedCheckoutPrivacyParagraph(false)).toContain('job is off')
+    expect(abandonedCheckoutPrivacyParagraph(true)).not.toContain('job is off')
+    expect(abandonedCheckoutPrivacyParagraph(true)).toContain('about 90 days after the checkout expires')
     expect(RETENTION_ROWS.find((row) => row.data === 'Rate-limit rows')?.kept).toBe(rateLimitRetentionKept())
     expect(PRIVACY_UPDATED).toBe('October 19, 2026')
 

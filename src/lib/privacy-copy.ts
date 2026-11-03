@@ -68,7 +68,7 @@ export function clickLogParagraph(input: RetentionCopyInput = {}): string {
 
 export function retentionJobParagraph(input: RetentionCopyInput = {}): string {
   const launch = retentionCopyOn(input)
-  const schedule = `it runs about once a day. It deletes a rate-limit row or a quiz-result row that is still there 24 hours after the window ends, so that deletion lands about 24 to 48 hours after the window ends. ${BACKLOG_CAVEAT} It removes the click address code after about 90 days and leaves the rest of the click row. It clears the optional email on a suggestion after 90 days and deletes a suggestion after 24 months.`
+  const schedule = `it runs about once a day. It deletes a rate-limit row or a quiz-result row that is still there 24 hours after the window ends, so that deletion lands about 24 to 48 hours after the window ends. ${BACKLOG_CAVEAT} It removes the click address code after about 90 days and leaves the rest of the click row. It clears the optional email on a suggestion after 90 days and deletes a suggestion after 24 months. It deletes an abandoned sponsor checkout about 90 days after it expires.`
   const sooner =
     'A quiz-result row can still be deleted sooner, when a later request runs cleanup after the window ends. That cleanup does not wait for this job.'
   const onSchedule = schedule.replace(/^./, (letter) => letter.toUpperCase())
@@ -143,6 +143,18 @@ export function suggestionPrivacyParagraph(input: RetentionCopyInput = {}): stri
 }
 
 export const SUGGESTION_PRIVACY_PARAGRAPH = suggestionPrivacyParagraph()
+
+const ABANDONED_CHECKOUT_BASE =
+  'If you start a sponsor checkout and leave before paying, we store your email, the offer, the time it expired, and that you opted in, only when you opt in to promotional email on Stripe’s checkout page. If you do not opt in, we store nothing from that expired checkout. We do not email you about it.'
+
+/** Abandoned sponsor checkouts are deleted about 90 days after they expire, by the same retention job. */
+export function abandonedCheckoutPrivacyParagraph(input: RetentionCopyInput = {}): string {
+  const rule = 'We delete that record about 90 days after the checkout expires.'
+  if (retentionCopyOn(input)) return `${ABANDONED_CHECKOUT_BASE} ${rule} The retention job does this about once a day.`
+  return `${ABANDONED_CHECKOUT_BASE} The retention job is off in production now, so until it is switched on that record has no fixed deletion date. When it is switched on, ${rule.charAt(0).toLowerCase()}${rule.slice(1)}`
+}
+
+export const ABANDONED_CHECKOUT_PRIVACY_PARAGRAPH = abandonedCheckoutPrivacyParagraph()
 
 export const SHARING_PARAGRAPH =
   'We use Clerk for accounts, Stripe for payments, Beehiiv for the digest when it is connected, Google Analytics for site measurement when it is configured and analytics is allowed, Vercel to host the site and for cookieless analytics, and Turso to store the database. We do not sell personal information.'

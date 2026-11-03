@@ -4,7 +4,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { LawyerReviewNotice } from '@/components/lawyer-review-notice'
 import { newsletterCtaEnabled, userRatingsEnabled } from '@/lib/flags'
 import { pageMetadata } from '@/lib/metadata'
-import { CLICK_LOG_PARAGRAPH, FIRST_TOUCH_PRIVACY_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, newsletterSignupParagraph, rateLimitPrivacyParagraphs, RETENTION_JOB_PARAGRAPH, SHARING_PARAGRAPH, SUGGESTION_PRIVACY_PARAGRAPH, TURSO_BACKUP_PARAGRAPH } from '@/lib/privacy-copy'
+import { ABANDONED_CHECKOUT_PRIVACY_PARAGRAPH, CLICK_LOG_PARAGRAPH, FIRST_TOUCH_PRIVACY_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, newsletterSignupParagraph, rateLimitPrivacyParagraphs, RETENTION_JOB_PARAGRAPH, SHARING_PARAGRAPH, SUGGESTION_PRIVACY_PARAGRAPH, TURSO_BACKUP_PARAGRAPH } from '@/lib/privacy-copy'
 import { PRIVACY_RATINGS_PARAGRAPHS, PRIVACY_UPDATED, PRIVACY_UPDATED_WITH_RATINGS, RETENTION_ROWS } from '@/lib/ratings-policy-copy'
 
 export const dynamic = 'force-dynamic'
@@ -37,12 +37,8 @@ export default function PrivacyPage() {
       </p>
       <p>
         If you subscribe, Stripe processes the payment. We do not store your full card number. We store the Stripe
-        customer id, subscription id, price id, and status so we know whether membership is active. If you start a
-        sponsor checkout and leave before paying, we store your email, the offer, the time it expired, and that you
-        opted in, only when you opt in to promotional email on Stripe’s checkout page. If you do not opt in, we store
-        nothing from that expired checkout. We do not email you about it. We delete that record about 90 days after
-        the checkout expires, when the retention job is on. The retention job is off in production now, so until it is
-        switched on that record has no fixed deletion date. Use Stripe test cards only while this site is in test mode.
+        customer id, subscription id, price id, and status so we know whether membership is active. {ABANDONED_CHECKOUT_PRIVACY_PARAGRAPH}{' '}
+        Use Stripe test cards only while this site is in test mode.
       </p>
       <p>{CLICK_LOG_PARAGRAPH}</p>
       <h2 className="font-semibold text-3xl">Rate limits</h2>
