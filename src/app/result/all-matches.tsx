@@ -79,7 +79,7 @@ export function AllMatches({
               <div className="flex min-w-0 items-start gap-3">
                 <ToolLogo name={tool.name} slug={tool.slug} />
                 <h2 className="min-w-0 font-semibold text-2xl">
-                  <Link href={`/tools/${tool.slug}`} className="underline-offset-4 hover:underline">
+                  <Link href={`/tools/${tool.slug}`} prefetch={false} className="underline-offset-4 hover:underline">
                     {tool.name}
                   </Link>
                 </h2>

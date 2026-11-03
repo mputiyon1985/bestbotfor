@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { AFFILIATE_BUTTON_NOTE, AFFILIATE_PAGE_NOTICE } from '@/lib/affiliate-copy'
 
 /** Shown right next to a Visit button. The affiliate sentence appears only when that redirect is active. */
@@ -13,7 +12,7 @@ export function AffiliateDisclosure({
     return (
       <span className="block text-sm text-muted" data-affiliate-disclosure="affiliate">
         {AFFILIATE_BUTTON_NOTE}{' '}
-        <Link href="/disclosure" className="underline">Disclosures</Link>.
+        <a href="/disclosure" className="underline">Disclosures</a>.
       </span>
     )
   }
@@ -21,17 +20,21 @@ export function AffiliateDisclosure({
   return (
     <span className="block text-sm text-muted" data-affiliate-disclosure="official">
       This button opens {vendor}’s site. The address is the official URL in our catalog, not an affiliate link.{' '}
-      <Link href="/disclosure" className="underline">Disclosures</Link>.
+      <a href="/disclosure" className="underline">Disclosures</a>.
     </span>
   )
 }
 
-/** Site-wide line on /best, tool, and result pages. It does not claim this particular button is an affiliate link. */
+/**
+ * Site-wide line on /best, tool, and result pages. A plain anchor, not a
+ * client Link, so the note does not prefetch /disclosure or add a hydration
+ * boundary on the long match lists.
+ */
 export function AffiliatePageNotice() {
   return (
     <p className="text-sm text-muted" data-affiliate-page-notice>
       {AFFILIATE_PAGE_NOTICE}{' '}
-      <Link href="/disclosure" className="underline">Disclosures</Link>.
+      <a href="/disclosure" className="underline">Disclosures</a>.
     </p>
   )
 }
