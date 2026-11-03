@@ -19,6 +19,8 @@ import { linkSponsorCreative } from './sponsor-card'
 import { recordExpiredSponsorCheckout } from './sponsor-abandoned'
 import { alertFoundingOverCap } from './founding-cap-alert'
 import { flagPlacementOverlap } from './sponsor-overlap'
+import { flagPassedNewsletterIssue } from './newsletter-issue'
+import { revalidateFoundingSpots } from './sponsor-availability'
 import { listPaidFounders } from './sponsor-availability'
 import { FOUNDING_SPONSOR_CAP } from './sponsor-offerings'
 
@@ -317,6 +319,12 @@ async function applySponsorship(db: Database, stripe: Stripe, event: Stripe.Even
       offeringId: offering.id,
       now,
     })
+    flagPassedNewsletterIssue({
+      sessionId: parsed.data.id,
+      offeringId: offering.id,
+      issueDate: parsed.data.metadata.issue_date || null,
+      now,
+    })
   }
 }
 
@@ -528,7 +536,10 @@ async function applySponsorSubscriptionCheckout(
     now,
   })
   if (status === 'paid') {
-    if (offering.id === 'founding_sponsor') await recountFounders(db, data.id)
+    if (offering.id === 'founding_sponsor') {
+      await recountFounders(db, data.id)
+      revalidateFoundingSpots()
+    }
     await flagPlacementOverlap(db, {
       sessionId: data.id,
       taskSlug: metadata.task_slug || null,
@@ -825,7 +836,10 @@ async function applySponsorshipRefund(db: Database, stripe: Stripe, event: Strip
       .set({ refundedAt: now, updatedAt: now })
       .where(and(eq(sponsorships.stripePaymentIntentId, intent), isNull(sponsorships.refundedAt)))
       .returning({ id: sponsorships.id })
-    if (direct.length > 0) return
+    if (direct.length > 0) {
+      revalidateFoundingSpots()
+      return
+    }
     const known = await db
       .select({ id: sponsorships.id })
       .from(sponsorships)
@@ -839,6 +853,7 @@ async function applySponsorshipRefund(db: Database, stripe: Stripe, event: Strip
       .update(sponsorships)
       .set({ refundedAt: now, updatedAt: now })
       .where(and(eq(sponsorships.stripeSubscriptionId, match.subscriptionId), isNull(sponsorships.refundedAt)))
+    revalidateFoundingSpots()
     return
   }
   // No invoice, or an invoice with no subscription: this is not a sponsor

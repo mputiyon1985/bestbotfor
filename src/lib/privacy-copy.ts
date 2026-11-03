@@ -145,7 +145,7 @@ export function suggestionPrivacyParagraph(input: RetentionCopyInput = {}): stri
 export const SUGGESTION_PRIVACY_PARAGRAPH = suggestionPrivacyParagraph()
 
 const ABANDONED_CHECKOUT_BASE =
-  'If you start a sponsor checkout and leave before paying, we store your email, the offer, the time it expired, and that you opted in, only when you opt in to promotional email on Stripe’s checkout page. If you do not opt in, we store nothing from that expired checkout. We do not email you about it.'
+  'If you start a sponsor checkout and leave before paying, we store your email, the offer, the time it expired, and that you opted in, only when you opt in to promotional email on Stripe’s checkout page (consent.promotions is opt_in). If you do opt in, we may send one follow-up email about that unfinished checkout. If you do not opt in, we store nothing from that expired checkout and there is no follow-up email.'
 
 /** Abandoned sponsor checkouts are deleted about 90 days after they expire, by the same retention job. */
 export function abandonedCheckoutPrivacyParagraph(input: RetentionCopyInput = {}): string {

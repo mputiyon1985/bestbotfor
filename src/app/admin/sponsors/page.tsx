@@ -9,6 +9,7 @@ import { listPendingSponsorCards, listRefundPendingSponsorCards } from '@/lib/sp
 import { listSponsorPlacementCounts, type SponsorPlacementCount } from '@/lib/sponsor-impressions'
 import { abandonedOfferLabel, listAbandonedSponsorCheckouts } from '@/lib/sponsor-abandoned'
 import { listPlacementOverlaps, type PlacementOverlap } from '@/lib/sponsor-overlap'
+import { listPassedNewsletterIssues, type PassedNewsletterIssue } from '@/lib/newsletter-issue'
 
 export const dynamic = 'force-dynamic'
 
@@ -32,6 +33,8 @@ export default async function SponsorCardsPage() {
   let abandonedUnavailable = false
   let overlaps: PlacementOverlap[] = []
   let overlapsUnavailable = false
+  let passedIssues: PassedNewsletterIssue[] = []
+  let passedIssuesUnavailable = false
   try {
     counts = await listSponsorPlacementCounts(db)
   } catch (error) {
@@ -49,6 +52,12 @@ export default async function SponsorCardsPage() {
   } catch (error) {
     console.error('placement overlap lookup failed', error instanceof Error ? error.name : 'error')
     overlapsUnavailable = true
+  }
+  try {
+    passedIssues = await listPassedNewsletterIssues(db)
+  } catch (error) {
+    console.error('newsletter issue lookup failed', error instanceof Error ? error.name : 'error')
+    passedIssuesUnavailable = true
   }
   return (
     <article className="max-w-2xl space-y-6">
@@ -103,10 +112,29 @@ export default async function SponsorCardsPage() {
           </ul>
         </section>
       ) : null}
+      {passedIssuesUnavailable ? <p role="alert">The newsletter issue check is unavailable.</p> : null}
+      {passedIssues.length > 0 ? (
+        <section role="alert" className="space-y-2 border border-danger p-3">
+          <h2 className="font-bold text-3xl">Newsletter issue already passed</h2>
+          <p>
+            A newsletter checkout was paid after its issue date. Nothing was refunded automatically: Mark decides to
+            refund or honor each one.
+          </p>
+          <ul className="list-disc pl-5">
+            {passedIssues.map((issue) => (
+              <li key={issue.sessionId}>
+                {issue.issueDate}
+                {` · ${issue.sessionId}`}
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
       <h2 className="font-semibold text-3xl">Abandoned checkouts</h2>
       <p>
         Unpaid sponsor checkouts that expired after the buyer opted in to promotional email. The email, the offer, and
-        the time. This page does not email anyone. Anyone who did not opt in is not listed.
+        the time. This page does not send email. One manual follow-up email is allowed, and only for someone on this
+        list. Anyone who did not opt in is not listed and gets no follow-up email.
       </p>
       {abandonedUnavailable ? <p role="alert">Abandoned checkouts are unavailable.</p> : null}
       {!abandonedUnavailable && abandoned.length === 0 ? <p>No abandoned sponsor checkouts.</p> : null}

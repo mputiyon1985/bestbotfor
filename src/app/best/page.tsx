@@ -59,7 +59,6 @@ export default async function BestHubPage() {
         One top pick for each job, chosen from {CATALOG_TOOL_COUNT} tools, with the closest alternatives on each page. Picks are editorial.
         Payment never buys a higher rank.
       </p>
-      <SponsorPageCta foundingSpotsLeft={foundingSpotsLeft} />
       <ul aria-label="Jobs" className="grid gap-3 md:grid-cols-2">
         {listed.map((row) => (
           <li key={row.taskSlug} className="min-w-0 rounded-2xl border border-line p-4">
@@ -79,6 +78,7 @@ export default async function BestHubPage() {
           </li>
         ))}
       </ul>
+      <SponsorPageCta foundingSpotsLeft={foundingSpotsLeft} />
       <p className="text-sm text-muted">
         <Link className="underline" href={LOADOUT_PATH}>Get the AI Loadout</Link>, every pick on one page.{' '}
         <Link className="underline" href={guidePath('how-to-choose-an-ai-tool')}>New to this? How to choose an AI tool</Link>.

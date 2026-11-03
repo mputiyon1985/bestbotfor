@@ -3,9 +3,25 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { SponsorPageCta } from '@/components/sponsor-page-cta'
 import { SponsorForm } from '@/components/sponsor-form'
+import { readFileSync } from 'node:fs'
 import { foundingCapPhrase, sponsorPageHref } from './sponsor-page-cta'
 
 describe('sponsor page CTA', () => {
+  it('caches the founding count for 60 seconds and drops that cache after a founding payment', () => {
+    const availability = readFileSync('src/lib/sponsor-availability.ts', 'utf8')
+    expect(availability).toContain('FOUNDING_SPOTS_REVALIDATE_SECONDS = 60')
+    expect(availability).toContain('revalidate: FOUNDING_SPOTS_REVALIDATE_SECONDS')
+    expect(availability).toContain('tags: [FOUNDING_SPOTS_CACHE_TAG]')
+    expect(availability).toContain('revalidateTag(FOUNDING_SPOTS_CACHE_TAG, { expire: 0 })')
+    const webhook = readFileSync('src/lib/stripe-webhook.ts', 'utf8')
+    expect(webhook).toContain('revalidateFoundingSpots()')
+    const hub = readFileSync('src/app/best/page.tsx', 'utf8')
+    const list = hub.indexOf('aria-label="Jobs"')
+    const cta = hub.indexOf('<SponsorPageCta')
+    expect(list).toBeGreaterThan(0)
+    expect(cta).toBeGreaterThan(list)
+  })
+
   it('links both labels to /sponsor and keeps a task slug on the query', () => {
     expect(sponsorPageHref('coding')).toBe('/sponsor?task=coding')
     expect(sponsorPageHref('chat-assistant')).toBe('/sponsor?task=chat-assistant')

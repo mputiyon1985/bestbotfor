@@ -1,4 +1,5 @@
 import { placementWindowMs } from './best-placement'
+import { revalidateTag, unstable_cache } from 'next/cache'
 import { getDb } from './db'
 import type { Database } from './db/client'
 import {
@@ -338,13 +339,31 @@ export async function foundingSpotsTaken(db: Database, now: number, excludeTask 
   return Number(result.rows[0]?.taken ?? 0)
 }
 
+/** Display cache for the founding count on public pages. Checkout still reads the database directly. */
+export const FOUNDING_SPOTS_CACHE_TAG = 'founding-spots-v1'
+export const FOUNDING_SPOTS_REVALIDATE_SECONDS = 60
+
+const cachedFoundingSpotsLeft = unstable_cache(async () => foundingSpotsLeft(getDb(), Date.now()), ['founding-spots-left-v1'], {
+  revalidate: FOUNDING_SPOTS_REVALIDATE_SECONDS,
+  tags: [FOUNDING_SPOTS_CACHE_TAG],
+})
+
 /** Founding spots still open, never below zero. A read error returns null so copy does not invent a count. */
-export async function readFoundingSpotsLeft(now = Date.now()): Promise<number | null> {
+export async function readFoundingSpotsLeft(): Promise<number | null> {
   try {
-    return await foundingSpotsLeft(getDb(), now)
+    return await cachedFoundingSpotsLeft()
   } catch (error) {
     console.error('founding spots read failed', error instanceof Error ? error.name : 'error')
     return null
+  }
+}
+
+/** Drop the display cache after a founding payment or refund so the next page read is current. */
+export function revalidateFoundingSpots(): void {
+  try {
+    revalidateTag(FOUNDING_SPOTS_CACHE_TAG, { expire: 0 })
+  } catch (error) {
+    console.error('founding spots revalidate failed', error instanceof Error ? error.name : 'error')
   }
 }
 
