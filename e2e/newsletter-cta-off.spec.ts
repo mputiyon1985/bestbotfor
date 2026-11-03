@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 // Main server: NEWSLETTER_CTA is blank, so nothing from the CTA renders and the existing forms stay.
 for (const path of ['/compare/chatgpt-vs-claude', '/alternatives/chatgpt', '/best/music', '/best/coding/free', '/guides/how-to-choose-an-ai-tool']) {

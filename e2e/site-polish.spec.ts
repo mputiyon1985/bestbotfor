@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { taskSeeds } from '../src/data/catalog'
 
 test('the footer links our Facebook, X and LinkedIn profiles accessibly', async ({ page }) => {

@@ -1,5 +1,5 @@
 import { createClient } from '@libsql/client'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 const KEY = 'bbf_first_touch'
 

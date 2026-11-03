@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto'
-import { canonicalIp } from '@/lib/reviews/ip'
+import { canonicalIp, platformSetsClientIp } from '@/lib/reviews/ip'
 import { signupsSessionSecret } from './config'
 
 export function readCookie(request: Request, name: string): string | null {
@@ -33,9 +33,7 @@ export function signupsRunsOnVercel(
     vercelEnv: process.env.VERCEL_ENV,
   },
 ): boolean {
-  if (env.vercel === '1') return true
-  const name = env.vercelEnv?.trim() ?? ''
-  return name === 'production' || name === 'preview'
+  return platformSetsClientIp(env)
 }
 
 /**

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { toolSeeds } from '../src/data/catalog'
 import { unratedSlugs } from '../src/data/scores-v23.seed'
 import { ratingRequiredSlugs } from '../src/lib/quiz-gate'

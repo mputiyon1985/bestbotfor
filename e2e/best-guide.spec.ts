@@ -1,5 +1,5 @@
 import { BEST_GUIDE_FIT_LEGEND } from '../src/lib/descriptions'
-import { expect, test, type Locator, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from './fixtures'
 import { BEST_GUIDE_TOOL_COUNT } from '../src/lib/descriptions'
 import { toolsForTask } from '../src/lib/recommend'
 import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'

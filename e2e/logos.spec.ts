@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { toolSeeds } from '../src/data/catalog'
 import { resolveToolLogo, TOOL_LOGO_SIZE } from '../src/lib/tool-logo'
 

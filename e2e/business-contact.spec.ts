@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test('rendered HTML: one <head>, Impact meta with value= inside it, phone in footer and JSON-LD', async ({ request }) => {
   for (const path of ['/', '/about', '/how-we-rate']) {

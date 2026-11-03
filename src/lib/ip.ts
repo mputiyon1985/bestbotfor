@@ -1,21 +1,20 @@
 import 'server-only'
 import { createHmac, hkdfSync, randomBytes } from 'node:crypto'
+import { forwardedClientIp } from './reviews/ip'
 
-function isIp(value: string): boolean {
-  if (/^\d{1,3}(?:\.\d{1,3}){3}$/.test(value)) return true
-  return value.includes(':') && /^[0-9a-f:.]+$/i.test(value)
-}
-
-/** First forwarded address. The raw value is never written to the database. */
-export function clientIp(headerStore: Headers): string | null {
-  const forwarded = headerStore.get('x-forwarded-for')
-  if (forwarded) {
-    const first = forwarded.split(',')[0]?.trim() ?? ''
-    if (isIp(first)) return first
-  }
-  const real = headerStore.get('x-real-ip')?.trim() ?? ''
-  if (real && isIp(real)) return real
-  return null
+/**
+ * Client address for a rate-limit bucket. The raw value is never written to the database.
+ * On Vercel this is `x-vercel-forwarded-for`. Off Vercel it is `x-forwarded-for`, then `x-real-ip`.
+ * An unusable address is null, and the bucket key becomes `unknown`.
+ */
+export function clientIp(
+  headerStore: Headers,
+  env: { vercel?: string; vercelEnv?: string } = {
+    vercel: process.env.VERCEL,
+    vercelEnv: process.env.VERCEL_ENV,
+  },
+): string | null {
+  return forwardedClientIp(headerStore, env)
 }
 
 /**
