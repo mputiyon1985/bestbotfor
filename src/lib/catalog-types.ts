@@ -3,7 +3,12 @@ import type { Skill } from './validation'
 
 export type PricingModel = 'free' | 'freemium' | 'paid'
 
-export type AffiliateStatus = 'none' | 'verify' | 'referral' | 'available' | 'closed'
+/**
+ * `inactive` is a program that exists but is not approved for use. The seed
+ * stores no affiliate URL, and /go keeps the official URL. The column is free
+ * text, so this value does not need a migration.
+ */
+export type AffiliateStatus = 'none' | 'verify' | 'referral' | 'available' | 'closed' | 'inactive'
 
 export type AffiliateSeed = {
   hasProgram: boolean
