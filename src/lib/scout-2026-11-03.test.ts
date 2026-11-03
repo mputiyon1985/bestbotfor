@@ -109,7 +109,7 @@ describe('bot scout 2026-11-03', () => {
       expect(tool.affiliate.affiliateUrl, slug).toBeUndefined()
       expect(tool.affiliate.sourceUrl, slug).toMatch(/^https:\/\//)
       expect(new URL(tool.affiliate.sourceUrl ?? '').hostname, slug).toBe(new URL(tool.url).hostname)
-      expect(servesAffiliateLink(slug, null), slug).toBe(false)
+      expect(servesAffiliateLink(slug, null, tool.affiliate.status), slug).toBe(false)
     }
     for (const slug of SLUGS) {
       if (INACTIVE.includes(slug as (typeof INACTIVE)[number])) continue
@@ -139,9 +139,10 @@ describe('bot scout 2026-11-03', () => {
         siteUrl: 'https://bestbotfor.com',
         seedUrl: tool.url,
         seedAffiliateUrl: tool.affiliate.affiliateUrl ?? null,
+        seedAffiliateStatus: tool.affiliate.status,
         allowedHosts: tool.allowedHosts,
         limit: async () => ({ ok: true }),
-        loadTool: async () => ({ id: 1, url: tool.url, affiliateUrl: null }),
+        loadTool: async () => ({ id: 1, url: tool.url, affiliateUrl: null, affiliateStatus: tool.affiliate.status }),
       })
       expect(get.status, slug).toBe(302)
       if (get.status !== 302) continue

@@ -30,7 +30,7 @@ afterEach(async () => {
 })
 
 describe('catalog seed', () => {
-  it('loads every seed tool into a fresh database with no affiliate links', async () => {
+  it('loads every seed tool and keeps only the approved affiliate links', async () => {
     const root = await mkdtemp(path.join(tmpdir(), 'bestbotfor-catalog-'))
     directories.push(root)
     const url = `file:${path.join(root, 'catalog.db')}`
@@ -53,8 +53,6 @@ describe('catalog seed', () => {
     expect(taskRows).toHaveLength(taskSeeds.length)
     expect(programs).toHaveLength(toolSeeds.length)
     expect(new Set(toolRows.map((row) => row.slug))).toEqual(new Set(toolSeeds.map((tool) => tool.slug)))
-    expect(programs.every((row) => row.affiliateUrl == null)).toBe(true)
-
     const programByTool = new Map(programs.map((row) => [row.toolId, row]))
     const idBySlug = new Map(toolRows.map((row) => [row.slug, row.id]))
     for (const tool of toolSeeds) {
@@ -63,6 +61,8 @@ describe('catalog seed', () => {
       expect(program?.status, tool.slug).toBe(tool.affiliate.status)
       expect(program?.hasProgram, tool.slug).toBe(tool.affiliate.hasProgram)
       expect(program?.sourceUrl, tool.slug).toBe(tool.affiliate.sourceUrl)
+      const storedUrl = program?.affiliateUrl ?? null
+      expect(storedUrl, tool.slug).toBe(tool.affiliate.status === 'active' ? (tool.affiliate.affiliateUrl ?? null) : null)
     }
 
     const expectedFits = toolSeeds.reduce((sum, tool) => sum + tool.fits.length, 0)

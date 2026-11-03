@@ -169,6 +169,20 @@
       "when": 1792195000000,
       "tag": "0025_signups_admin",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1792197000000,
+      "tag": "0027_clicks_affiliate",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1792198000000,
+      "tag": "0028_clicks_public_id",
+      "breakpoints": true
     }
   ]
 }

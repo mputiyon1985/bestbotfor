@@ -27,7 +27,7 @@ const faqs = [
   {
     question: 'Do you earn money from the recommendations?',
     answer:
-      'Most Visit buttons go straight to each tool’s own website. When a button uses an affiliate link, a note next to it says so, and we may earn a commission if you buy. Commissions and paid placements never buy a higher rank.',
+      'Some Visit links are affiliate links. When a button is one, a note next to it says “Affiliate link: we may earn a commission.” BestBotFor may earn a commission at no extra cost to you. Commissions never affect rankings or scores, and paid placements never buy a higher rank.',
   },
   {
     question: 'How current is the information?',
@@ -92,7 +92,7 @@ export default async function HomePage() {
         <ul className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {tasks.map((task) => (
             <li key={task.slug}>
-              <Link href={`/best/${task.slug}`} className="block min-h-12 rounded-2xl border border-line bg-card px-4 py-3 hover:border-accent">
+              <Link href={`/best/${task.slug}`} prefetch={false} className="block min-h-12 rounded-2xl border border-line bg-card px-4 py-3 hover:border-accent">
                 <span className="font-semibold">{task.name}</span>
                 <span className="mt-1 block text-sm text-muted">{task.description}</span>
               </Link>
@@ -106,7 +106,7 @@ export default async function HomePage() {
         <ul className="mt-4 grid gap-3 sm:grid-cols-2">
           {comparePairSeeds.slice(0, 8).map(([a, b]) => (
             <li key={`${a}-${b}`}>
-              <Link href={`/compare/${a}-vs-${b}`} className="block min-h-12 rounded-2xl border border-line px-4 py-3 font-semibold hover:border-accent">
+              <Link href={`/compare/${a}-vs-${b}`} prefetch={false} className="block min-h-12 rounded-2xl border border-line px-4 py-3 font-semibold hover:border-accent">
                 {label(a)} vs {label(b)}
               </Link>
             </li>

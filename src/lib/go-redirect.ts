@@ -1,4 +1,6 @@
 import { toolSeeds } from '@/data/catalog'
+import { ACTIVE_AFFILIATE_STATUS } from './affiliate-admin'
+import { affiliateSubIdParam } from './affiliate-subid'
 import { isUnsafeCatalogSlug } from './catalog-path'
 import { isDeadline, withDeadline } from './deadline'
 import { countryCode, hashIp, sameOriginPath } from './ip'
@@ -13,12 +15,21 @@ export type GoClick = {
   page: string
   country: string | null
   ipHash: string | null
+  /** True only when this redirect is sending the visitor to an active affiliate URL. */
+  affiliate: boolean
+  /** affiliate_programs.tool_id when affiliate is true. Null for an official-site click. */
+  programId: number | null
+  /** Network SubID query key, or null when this click does not append one. */
+  subIdParam: string | null
 }
 
 export type GoToolRecord = {
   id: number
   url: string
   affiliateUrl: string | null
+  /** affiliate_programs.status. Only "active" may use affiliateUrl. */
+  affiliateStatus?: string | null
+  network?: string | null
 }
 
 export type GoOutcome =
@@ -58,8 +69,13 @@ export async function resolveGoRedirect(input: {
   ip: string | null
   siteUrl: string
   seedUrl: string
-  /** Reviewed affiliate URL from the seed, used if the catalog read fails. */
+  /**
+   * Seed affiliate URL, used only when the catalog read fails and the seed
+   * status is active. An inactive seed never supplies a tracking link.
+   */
   seedAffiliateUrl?: string | null
+  seedAffiliateStatus?: string | null
+  seedNetwork?: string | null
   allowedHosts: readonly string[]
   deadlineMs?: number
   /** Incoming query string; only utm_* keys are carried to the destination. */
@@ -82,10 +98,11 @@ export async function resolveGoRedirect(input: {
   }
 
   const record = loaded.ok ? loaded.tool : null
+  const affiliateUrl = affiliateUrlForRedirect(record, loaded.ok, input)
   const decision = decideRedirect({
     tool: {
       url: record?.url ?? input.seedUrl,
-      affiliateUrl: record?.affiliateUrl ?? input.seedAffiliateUrl ?? null,
+      affiliateUrl,
       allowedHosts: input.allowedHosts,
     },
   })
@@ -96,6 +113,7 @@ export async function resolveGoRedirect(input: {
   const purpose = input.headers.get('purpose')
   const prefetch = input.headers.get('next-router-prefetch')
   const page = sameOriginPath(input.headers.get('referer'), input.siteUrl)
+  const network = record?.network ?? (!loaded.ok ? input.seedNetwork : null)
   const click =
     record && purpose !== 'prefetch' && prefetch !== '1'
       ? {
@@ -103,6 +121,9 @@ export async function resolveGoRedirect(input: {
           page,
           country: countryCode(input.headers),
           ipHash: hashIp(input.ip),
+          affiliate: decision.affiliate,
+          programId: decision.affiliate ? record.id : null,
+          subIdParam: decision.affiliate ? affiliateSubIdParam(network) : null,
         }
       : null
 
@@ -132,20 +153,39 @@ async function loadReviewedTool(
 }
 
 /**
- * True only when /go/[slug] will actually send this click to the affiliate URL:
- * it is set and its host is on the tool's reviewed list. Pages use this for the
- * "Affiliate link" note and rel="sponsored", so the label matches the redirect.
+ * The affiliate URL /go will consider. Status must be exactly "active".
+ * A loaded catalog row wins. The seed URL is used only when that read failed
+ * and the seed itself is active. Any other status, including a stored URL on
+ * an inactive program, falls through to tools.url.
  */
-export function servesAffiliateLink(slug: string, affiliateUrl: string | null | undefined): boolean {
-  const reviewed = toolSeeds.find((item) => item.slug === slug)
-  if (!reviewed) return false
-  return affiliateRedirectUrl(effectiveAffiliateUrl(slug, affiliateUrl), reviewed.allowedHosts) !== null
+function affiliateUrlForRedirect(
+  record: GoToolRecord | null,
+  loadedOk: boolean,
+  input: { seedAffiliateUrl?: string | null; seedAffiliateStatus?: string | null },
+): string | null {
+  if (record) {
+    if (record.affiliateStatus !== ACTIVE_AFFILIATE_STATUS) return null
+    return record.affiliateUrl
+  }
+  if (!loadedOk && input.seedAffiliateStatus === ACTIVE_AFFILIATE_STATUS) return input.seedAffiliateUrl ?? null
+  return null
 }
 
-/** The DB affiliate_url when set, else the reviewed one shipped in the seed. */
-export function effectiveAffiliateUrl(slug: string, dbAffiliateUrl: string | null | undefined): string | null {
-  if (dbAffiliateUrl) return dbAffiliateUrl
-  return toolSeeds.find((item) => item.slug === slug)?.affiliate.affiliateUrl ?? null
+/**
+ * True only when /go/[slug] will actually send this click to the affiliate URL:
+ * status is active, a URL is set, and its host is on the tool's reviewed list.
+ * Pages use this for the "Affiliate link" note and rel="sponsored", so the
+ * label matches the redirect. A missing status is not active.
+ */
+export function servesAffiliateLink(
+  slug: string,
+  affiliateUrl: string | null | undefined,
+  status: string | null | undefined,
+): boolean {
+  if (status !== ACTIVE_AFFILIATE_STATUS) return false
+  const reviewed = toolSeeds.find((item) => item.slug === slug)
+  if (!reviewed) return false
+  return affiliateRedirectUrl(affiliateUrl, reviewed.allowedHosts) !== null
 }
 
 const UTM_KEY = /^utm_[a-z]{1,20}$/

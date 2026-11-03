@@ -16,6 +16,7 @@ import { assertSafeDbTarget } from '../src/lib/db/guard'
 import { affiliatePrograms, tasks, toolProsCons, toolScores, toolTasks, toolVendorDomains, tools } from '../src/lib/db/schema'
 import { registrableDomain } from '../src/lib/reviews/domain'
 import { validateProsConsSeeds, validateRatingSeeds } from '../src/lib/editorial'
+import { affiliateSeedValues, isApprovedActiveAffiliate } from '../src/lib/affiliate-admin'
 import { reviewedToolUrl } from '../src/lib/redirect'
 
 /** Score rows that are not in the v2.3 file are deleted only when this is exactly `1`. */
@@ -137,6 +138,7 @@ for (const tool of toolSeeds) {
       })
   }
 
+  const affiliate = affiliateSeedValues(tool)
   await tx
     .insert(affiliatePrograms)
     .values({
@@ -144,8 +146,8 @@ for (const tool of toolSeeds) {
       hasProgram: tool.affiliate.hasProgram,
       network: tool.affiliate.network,
       sourceUrl: tool.affiliate.sourceUrl,
-      status: tool.affiliate.status,
-      affiliateUrl: null,
+      status: affiliate.status,
+      affiliateUrl: affiliate.affiliateUrl,
       commissionNote: tool.affiliate.commissionNote,
       verifiedAt: tool.lastVerifiedAt,
     })
@@ -155,8 +157,8 @@ for (const tool of toolSeeds) {
         hasProgram: tool.affiliate.hasProgram,
         network: tool.affiliate.network,
         sourceUrl: tool.affiliate.sourceUrl,
-        status: tool.affiliate.status,
-        affiliateUrl: null,
+        status: affiliate.status,
+        affiliateUrl: affiliate.affiliateUrl,
         commissionNote: tool.affiliate.commissionNote,
         verifiedAt: tool.lastVerifiedAt,
       },
@@ -260,8 +262,13 @@ for (const tool of toolSeeds) {
 }
 
 const storedPrograms = await tx.select().from(affiliatePrograms)
-if (storedPrograms.some((row) => row.affiliateUrl)) {
-  throw new Error('Seed wrote an affiliate URL. Redirects must stay on official sites.')
+const slugByToolId = new Map(toolRows.map((row) => [row.id, row.slug]))
+for (const row of storedPrograms) {
+  const slug = slugByToolId.get(row.toolId)
+  if (!slug) throw new Error('Affiliate program row has no tool')
+  if ((row.status === 'active' || row.affiliateUrl) && !isApprovedActiveAffiliate(slug)) {
+    throw new Error(`Seed wrote a live affiliate program for ${slug}. Activate one program at a time after the owner approves.`)
+  }
 }
 })
 

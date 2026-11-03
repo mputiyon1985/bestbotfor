@@ -15,6 +15,9 @@ export function OutboundLink({
   /** True when /go serves the affiliate URL. Only then is the link rel="sponsored". */
   affiliate?: boolean
 }) {
+  // noreferrer is intentionally omitted. noopener already blocks window.opener.
+  // noreferrer would also drop the Referer header, and PartnerStack and Impact
+  // use that header to confirm the click came from an approved site.
   return (
     <a
       href={`/go/${slug}`}

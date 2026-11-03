@@ -12,6 +12,11 @@ export default async function AdminPage() {
       <h1 className="font-bold text-5xl">Admin</h1>
       <p>This area is limited to allowlisted admins whose session used a second factor.</p>
       <p>Moderation and reports are not on this page yet.</p>
+      <p>
+        <Link href="/admin/affiliates" className="underline">
+          Affiliate programs (read-only)
+        </Link>
+      </p>
       {adminSponsorsEnabled() ? (
         <p>
           <Link href="/admin/sponsors" className="underline">
