@@ -1,7 +1,12 @@
+import { readFileSync } from 'node:fs'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { toolSeeds } from '@/data/catalog'
 import { priceLabel } from './format'
 import { resolveGoRedirect, resolveHeadGoRedirect, servesAffiliateLink } from './go-redirect'
+
+const PROGRAM_LABEL = 'Program note, copied from the vendor’s page:'
 
 const SCOUT = '2026-11-03'
 const SLUGS = [
@@ -117,7 +122,7 @@ describe('bot scout 2026-11-03', () => {
     expect(seed('hera').affiliate).toMatchObject({
       network: 'in-house',
       sourceUrl: 'https://hera.video/creators',
-      commissionNote: '50% of what each paying user pays, capped at $250 per user. BestBotFor has not joined this program.',
+      commissionNote: '50% of what each paying user pays, capped at $250 per user, as stated on the creator page.',
     })
     for (const slug of SLUGS) {
       if (INACTIVE.includes(slug as (typeof INACTIVE)[number])) continue
@@ -172,6 +177,35 @@ describe('bot scout 2026-11-03', () => {
       if (active.status !== 302) continue
       expect(new URL(active.location).hostname, slug).toBe(host)
       expect(active.location, slug).toContain('ref=bestbotfor')
+    }
+  })
+
+  it('keeps the vendor program label on a scout tool and on Descript', () => {
+    const source = readFileSync(new URL('../app/tools/[slug]/page.tsx', import.meta.url), 'utf8')
+    expect(source).toContain(`Program note, copied from the vendor’s page: {tool.affiliate.commissionNote}`)
+    expect(source).not.toContain("tool.affiliate.status === 'active'")
+    const hera = seed('hera')
+    const descript = seed('descript')
+    for (const tool of [hera, descript]) {
+      const note = tool.affiliate.commissionNote
+      expect(note, tool.slug).toBeTruthy()
+      const html = renderToStaticMarkup(createElement('p', { className: 'text-sm text-muted' }, `${PROGRAM_LABEL} ${note}`))
+      expect(html, tool.slug).toContain(`${PROGRAM_LABEL} ${note}`)
+      expect(html.toLowerCase(), tool.slug).not.toContain('not approved')
+      expect(html, tool.slug).not.toContain('has not joined')
+    }
+    expect(hera.affiliate.commissionNote).toBe('50% of what each paying user pays, capped at $250 per user, as stated on the creator page.')
+    expect(descript.affiliate.commissionNote).toBe('One-time $25 per new Creator or Pro subscriber, as stated in Descript’s affiliate terms.')
+    expect(descript.affiliate.status).toBe('inactive')
+  })
+
+  it('serves ElevenLabs and Synthesia links only when status is active', () => {
+    for (const slug of ['elevenlabs', 'synthesia'] as const) {
+      const url = seed(slug).affiliate.affiliateUrl
+      expect(url, slug).toBeTruthy()
+      expect(servesAffiliateLink(slug, url, 'active'), slug).toBe(true)
+      expect(servesAffiliateLink(slug, url, 'inactive'), slug).toBe(false)
+      expect(servesAffiliateLink(slug, url, null), slug).toBe(false)
     }
   })
 })

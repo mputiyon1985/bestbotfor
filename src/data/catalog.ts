@@ -5948,7 +5948,7 @@ export const toolSeeds: ToolSeed[] = [
       network: 'Impact',
       sourceUrl: 'https://xmind.com/affiliate',
       status: 'inactive',
-      commissionNote: 'Rate not published. Recurring not confirmed. BestBotFor has not joined this program.',
+      commissionNote: 'Rate not published. Recurring not confirmed.',
     },
   }),
   // scout 2026-11-03 | category: Meetings | scout rating 4.0 (not shown) | launch: 2026-11-02 (Product Hunt #4 Product of the Day) | pricing: Free 100,000 credits ($50) on sign-up, no card. Paid plans from $19/mo.
@@ -5997,7 +5997,7 @@ export const toolSeeds: ToolSeed[] = [
       network: 'in-house',
       sourceUrl: 'https://hera.video/creators',
       status: 'inactive',
-      commissionNote: '50% of what each paying user pays, capped at $250 per user. BestBotFor has not joined this program.',
+      commissionNote: '50% of what each paying user pays, capped at $250 per user, as stated on the creator page.',
     },
   }),
   // scout 2026-11-03 | category: Design | scout rating 3.7 (not shown) | launch: 2026-11-02 (Product Hunt #6 Product of the Day) | pricing: Free. The scout pricing line included an install command; that command is not stored.
@@ -6044,7 +6044,7 @@ export const toolSeeds: ToolSeed[] = [
       network: 'Lemon Squeezy',
       sourceUrl: 'https://screen.studio/affiliate',
       status: 'inactive',
-      commissionNote: 'In-house. 15% of the initial purchase only, not recurring. BestBotFor has not joined this program.',
+      commissionNote: '15% of the initial purchase only, not recurring, as stated on the affiliate page.',
     },
   }),
   // scout 2026-11-03 | category: Research | scout rating 4.1 (not shown) | launch: 2026-11-01 (Product Hunt #2 Product of the Day) | pricing: Free 1,500 sign-up credits, 2 parallel tasks. Paid $9.9, $29.9, $99.9 or $299.9 per month. Business $999/mo. Enterprise from $2,999/mo. Yearly saves 40%.
@@ -6092,7 +6092,7 @@ export const toolSeeds: ToolSeed[] = [
       network: 'Impact',
       sourceUrl: 'https://riverside.com/affiliate-program',
       status: 'inactive',
-      commissionNote: 'Up to 20% per customer referred. Recurring duration not stated. BestBotFor has not joined this program.',
+      commissionNote: 'Up to 20% per customer referred. Recurring duration not stated.',
     },
   }),
   // scout 2026-11-03 | category: Customer support (FLAG: scout category "Customer support" mapped to Agent builder) | scout rating 3.8 (not shown) | launch: 2026-11-01 (Product Hunt #4 Product of the Day) | pricing: Free $0 forever when you bring your own API key. Paid $19/mo and $59/mo, 7-day trial. Voice priced per session.

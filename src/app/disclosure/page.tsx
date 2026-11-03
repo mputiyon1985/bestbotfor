@@ -52,9 +52,8 @@ export default function DisclosurePage() {
         ))}
       </ul>
       <p>
-        When a program is active, the commission note on a tool profile is copied from the vendor’s own page. A
-        switched-off program says this site has not joined it. If the vendor did not publish a rate, we do not invent
-        one. A note on the page is not itself an affiliate link.
+        Commission notes on a tool profile are copied from the vendor’s own page. If the vendor did not publish a rate,
+        we do not invent one. A note on the page is not itself an affiliate link.
       </p>
       <p>Recommendations are opinions based on the catalog, not a promise that a tool will work for your project.</p>
       <p>{SPONSORSHIP_DISCLOSURE}</p>

@@ -93,11 +93,7 @@ export default async function ToolPage({ params }: { params: Promise<{ slug: str
         </section>
       ) : null}
       {tool.affiliate.commissionNote ? (
-        <p className="text-sm text-muted">
-          {tool.affiliate.status === 'active'
-            ? `Program note, copied from the vendor’s page: ${tool.affiliate.commissionNote}`
-            : tool.affiliate.commissionNote}
-        </p>
+        <p className="text-sm text-muted">Program note, copied from the vendor’s page: {tool.affiliate.commissionNote}</p>
       ) : null}
       <ScoreSection editorial={tool.editorial} />
       <ProsConsSection pros={tool.pros} cons={tool.cons} />
