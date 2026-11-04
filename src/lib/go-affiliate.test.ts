@@ -2,20 +2,25 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import { toolSeeds } from '@/data/catalog'
-import { officialHttpsUrl } from './redirect'
+import { affiliateRedirectUrl, officialHttpsUrl } from './redirect'
 import { resolveGoRedirect, resolveHeadGoRedirect, servesAffiliateLink, withUtmParams } from './go-redirect'
 
 vi.mock('@/lib/analytics', () => ({ track: () => {} }))
 
 const cursor = toolSeeds.find((tool) => tool.slug === 'cursor')!
 
-function go(affiliateUrl: string | null, affiliateStatus = 'inactive', network: string | null = null) {
+function go(
+  affiliateUrl: string | null,
+  affiliateStatus = 'inactive',
+  network: string | null = null,
+  allowedHosts: readonly string[] = cursor.allowedHosts,
+) {
   return resolveGoRedirect({
     headers: new Headers(),
     ip: null,
     siteUrl: 'https://bestbotfor.com',
     seedUrl: cursor.url,
-    allowedHosts: cursor.allowedHosts,
+    allowedHosts,
     limit: async () => ({ ok: true }),
     loadTool: async () => ({ id: 1, url: cursor.url, affiliateUrl, affiliateStatus, network }),
   })
@@ -26,13 +31,13 @@ describe('/go affiliate routing', () => {
   const affiliate = `https://${host}/?ref=bestbotfor`
 
   it('redirects to a reviewed-host affiliate URL only when status is active', async () => {
-    const outcome = await go(affiliate, 'active', 'PartnerStack')
+    const outcome = await go(affiliate, 'active', 'PartnerStack', ['cursor.com', 'cursor.com?ref=bestbotfor'])
     expect(outcome).toMatchObject({
       status: 302,
       location: `${affiliate}&utm_source=bestbotfor&utm_medium=referral&utm_campaign=direct`,
       click: { affiliate: true, programId: 1, subIdParam: 'sid' },
     })
-    expect(servesAffiliateLink('cursor', affiliate, 'active')).toBe(true)
+    expect(servesAffiliateLink('cursor', affiliate, 'active')).toBe(false)
   })
 
   it('falls back to the official URL when inactive, unset, or off the allowlist', async () => {
@@ -90,6 +95,7 @@ describe('network tracking hosts', () => {
   it('pins a live tracking path and refuses shared-domain wildcards that have no link yet', () => {
     const elevenPath = 'https://try.elevenlabs.io/8hbaa9knuwda'
     expect(officialHttpsUrl(elevenPath, hosts('elevenlabs'))).toBe(elevenPath)
+    expect(officialHttpsUrl('https://try.elevenlabs.io/8hbaa9knuwda/extra', hosts('elevenlabs'))).toBeNull()
     expect(officialHttpsUrl('https://try.elevenlabs.io/other', hosts('elevenlabs'))).toBeNull()
     expect(officialHttpsUrl('https://try.elevenlabs.io/8hbaa9knuwdaevil', hosts('elevenlabs'))).toBeNull()
     expect(officialHttpsUrl('https://partnerstack.com/click', hosts('elevenlabs'))).toBeNull()
@@ -103,6 +109,11 @@ describe('network tracking hosts', () => {
     expect(officialHttpsUrl('https://dub.sh/v0', hosts('v0'))).toBeNull()
     expect(officialHttpsUrl('https://refer.papermark.com/example', hosts('papermark'))).toBeNull()
     expect(officialHttpsUrl('https://partnerstack.com/d', hosts('descript'))).toBeNull()
-    expect(officialHttpsUrl('https://www.synthesia.io/?via=mark-putiyon', hosts('synthesia'))).toBe('https://www.synthesia.io/?via=mark-putiyon')
+    const synthesia = 'https://www.synthesia.io/?via=mark-putiyon'
+    expect(affiliateRedirectUrl(synthesia, hosts('synthesia'))).toBe(synthesia)
+    expect(affiliateRedirectUrl('https://www.synthesia.io/?via=other', hosts('synthesia'))).toBeNull()
+    expect(affiliateRedirectUrl('https://www.synthesia.io/?via=mark-putiyon&next=1', hosts('synthesia'))).toBeNull()
+    expect(affiliateRedirectUrl('https://www.synthesia.io/phish?via=mark-putiyon', hosts('synthesia'))).toBeNull()
+    expect(officialHttpsUrl('https://www.synthesia.io/', hosts('synthesia'))).toBe('https://www.synthesia.io/')
   })
 })

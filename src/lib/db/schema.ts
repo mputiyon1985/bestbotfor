@@ -85,7 +85,8 @@ export const toolProsCons = sqliteTable(
  * Affiliate URL is stored so a future enrollment can be recorded.
  * /go reads affiliate_url only when status is exactly "active" and the host
  * is on that tool's allowlist. Every other status redirects to tools.url.
- * Nothing in this repo is seeded with status "active" or a tracking link.
+ * ElevenLabs and Synthesia are seeded active with their tracking links.
+ * Every other program is not.
  */
 export const affiliatePrograms = sqliteTable('affiliate_programs', {
   toolId: integer('tool_id').primaryKey(),

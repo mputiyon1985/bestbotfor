@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test('devin desktop redirects permanently to windsurf', async ({ request }) => {
   const response = await request.get('/tools/devin-desktop', { maxRedirects: 0 })

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { freePlanNotes } from '../src/data/free-plan-notes'
 import { FREE_PAGE_TASKS, FREE_PAGE_TOOL_COUNT } from '../src/lib/free-plan'
 import { buildFreePage } from '../src/lib/free-page'

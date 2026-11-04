@@ -146,6 +146,39 @@ function trustedHeaderIp(headers: HeaderSource): string | null {
 }
 
 /**
+ * Vercel sets `x-vercel-forwarded-for`. Region is not required: a deploy that
+ * forgets it must still ignore a client-supplied `x-forwarded-for`.
+ * Local dev and Playwright set neither signal, which is the opt-out.
+ * Same rule as `signupsRunsOnVercel`.
+ */
+export function platformSetsClientIp(env: { vercel?: string; vercelEnv?: string }): boolean {
+  if (env.vercel === '1') return true
+  const name = env.vercelEnv?.trim() ?? ''
+  return name === 'production' || name === 'preview'
+}
+
+/**
+ * Address for rate-limit buckets.
+ * On Vercel, only `x-vercel-forwarded-for`. A missing or unusable value is null
+ * so callers share the unknown bucket instead of a client-chosen one.
+ * Off Vercel, `x-vercel-forwarded-for` is ignored because the client can set it.
+ * The fallback is the first `x-forwarded-for`, then `x-real-ip`.
+ */
+export function forwardedClientIp(headers: HeaderSource, env: { vercel?: string; vercelEnv?: string }): string | null {
+  if (platformSetsClientIp(env)) {
+    const vercel = firstHeader(headers, 'x-vercel-forwarded-for')
+    return vercel ? canonicalIp(vercel) : null
+  }
+  const forwarded = firstHeader(headers, 'x-forwarded-for')
+  if (forwarded) {
+    const ip = canonicalIp(forwarded)
+    if (ip) return ip
+  }
+  const real = firstHeader(headers, 'x-real-ip')
+  return real ? canonicalIp(real) : null
+}
+
+/**
  * Test hook. The header name lives in this branch so a build without
  * BBF_E2E_HOOKS=1 can drop it. A refusal increments a counter and does not log an IP.
  */

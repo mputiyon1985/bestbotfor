@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 /**
  * Playwright starts with VERCEL_ENV=test and USER_RATINGS blank, so the

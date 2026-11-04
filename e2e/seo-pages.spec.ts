@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { taskSeeds } from '../src/data/catalog'
 import { CATALOG_TOOL_COUNT } from '../src/lib/seo-pages'
 import { bestGuideHeading } from '../src/lib/descriptions'

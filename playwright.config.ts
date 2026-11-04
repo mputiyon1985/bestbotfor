@@ -16,7 +16,10 @@ const sharedEnv = {
   TURSO_AUTH_TOKEN: process.env.TURSO_AUTH_TOKEN || 'local',
   // Faults are denied unless VERCEL_ENV is development or test.
   // npm start sets NODE_ENV=production, so the servers below set VERCEL_ENV=test.
+  // Not a Vercel deploy. clientIp() must keep trusting x-forwarded-for here.
+  VERCEL: '',
   VERCEL_ENV: 'test',
+  VERCEL_REGION: '',
   RESULT_FAULTS: '1',
   // The two-process /result burst shares one file and needs the longer budget.
   RESULT_SHARED_LIMIT_MS: '800',
@@ -49,6 +52,8 @@ export default defineConfig({
   retries: process.env.CI ? 1 : 0,
   use: {
     trace: 'on-first-retry',
+    // e2e/fixtures.ts adds one valid x-forwarded-for per test on top of this.
+    // A static header here would put the whole suite back in one 30/min bucket.
   },
   projects: [
     {

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import path from 'node:path'
-import { expect, test, type Locator } from '@playwright/test'
+import { expect, test, type Locator } from './fixtures'
 import { comparePairSeeds, toolSeeds } from '../src/data/catalog'
 import { TOOL_LOGO_MARK_FILL, TOOL_LOGO_SIZE } from '../src/lib/logo-source'
 import { BEST_GUIDE_TOOL_COUNT } from '../src/lib/descriptions'

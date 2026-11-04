@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { PICKER_QUESTIONS } from '../src/components/picker-form'
 import { recommend } from '../src/lib/recommend'
 import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'
