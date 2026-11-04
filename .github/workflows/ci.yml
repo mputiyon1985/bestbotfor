@@ -4,6 +4,9 @@ on:
   pull_request:
   push:
     branches: [main]
+  schedule:
+    # Nightly absolute Lighthouse gate on main. 08:00 UTC.
+    - cron: '0 8 * * *'
 
 permissions:
   contents: read
@@ -11,8 +14,9 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-latest
-    # Backstop for any hung step; a normal run takes about 10 minutes.
-    timeout-minutes: 30
+    # E2E plus Lighthouse. Absolute mode can remeasure failing URLs. A hang still ends here.
+    # This workflow file and scripts/ci-lighthouse.sh come from the pull request.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -55,9 +59,11 @@ jobs:
           TURSO_DATABASE_URL: file:./data/e2e.db
           NEXT_PUBLIC_SITE_URL: http://127.0.0.1:3000
       - name: Lighthouse
-        run: npm run check:lighthouse
-        # 3 runs per URL take about 5 minutes; a hang fails here instead of running on.
-        timeout-minutes: 12
+        run: bash scripts/ci-lighthouse.sh
+        # The shell script and this workflow come from the pull request.
+        # The TypeScript gate runs from the origin/main worktree.
+        # A nightly failure fails this job so GitHub notifies. No extra service.
+        timeout-minutes: 40
         env:
           TURSO_DATABASE_URL: file:./data/ci.db
           TURSO_AUTH_TOKEN: local

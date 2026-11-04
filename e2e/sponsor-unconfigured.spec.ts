@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 // Runs on the founding-cap server, which has no STRIPE_PRICE_PLACEMENT_SUBSCRIPTION.
 // Read-only: it never starts a checkout, so it cannot touch that server's founding count.

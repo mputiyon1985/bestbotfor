@@ -1,5 +1,5 @@
 import { createClient, type Client } from '@libsql/client'
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 import Stripe from 'stripe'
 import { FOUNDING_SOLD_OUT, SPONSOR_TASK_FIELD_LABEL } from '../src/lib/sponsor-offerings'
 

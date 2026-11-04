@@ -126,7 +126,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
         {bestGuideLead(task.name, top.name)} {top.shortDesc}
       </p>
       <p className="text-sm text-muted">Last reviewed {verified}. Prices change, so confirm them on the vendor’s site.</p>
-      <AffiliatePageNotice active={ranked.some((tool) => tool.hasAffiliateLink)} />
+      <AffiliatePageNotice active={Boolean(top.hasAffiliateLink)} />
       <p>
         <OutboundLink slug={top.slug} affiliate={Boolean(top.hasAffiliateLink)} className="inline-flex min-h-12 items-center rounded-full bg-indigo px-5 font-medium text-white">
           Visit {top.name}

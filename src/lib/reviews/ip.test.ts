@@ -3,10 +3,12 @@ import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import {
   canonicalIp,
+  forwardedClientIp,
   ipHashes,
   isOnVercel,
   isVercelDeployment,
   networkPrefix,
+  platformSetsClientIp,
   readTestIpHookRefusals,
   resetTestIpHookRefusals,
   trustedClientIp,
@@ -50,6 +52,42 @@ describe('isVercelDeployment', () => {
       expect(isVercelDeployment(item.env), item.name).toBe(item.expected)
       expect(isOnVercel(item.env), item.name).toBe(item.expected)
     }
+  })
+})
+
+describe('forwardedClientIp', () => {
+  const off = { vercelEnv: 'test' }
+  const on = { vercel: '1', vercelEnv: 'production' }
+
+  it('uses the Vercel header on the platform and ignores a client-supplied forwarded header', () => {
+    expect(platformSetsClientIp(on)).toBe(true)
+    expect(platformSetsClientIp({ vercelEnv: 'preview' })).toBe(true)
+    expect(platformSetsClientIp(off)).toBe(false)
+    expect(platformSetsClientIp({})).toBe(false)
+    const both = headers({ 'x-vercel-forwarded-for': '203.0.113.7', 'x-forwarded-for': '198.51.100.4' })
+    expect(forwardedClientIp(both, on)).toBe('203.0.113.7')
+    expect(forwardedClientIp(both, { vercel: '1' })).toBe('203.0.113.7')
+    expect(forwardedClientIp(headers({ 'x-forwarded-for': '203.0.113.7' }), on)).toBeNull()
+    expect(forwardedClientIp(headers({ 'x-vercel-forwarded-for': 'not-an-ip' }), on)).toBeNull()
+    expect(forwardedClientIp(headers({ 'x-vercel-forwarded-for': '999.1.1.1', 'x-forwarded-for': '203.0.113.7' }), on)).toBeNull()
+  })
+
+  it('off Vercel ignores the Vercel header and accepts a real forwarded or real-ip address', () => {
+    expect(forwardedClientIp(headers({ 'x-vercel-forwarded-for': '203.0.113.7', 'x-forwarded-for': '198.51.100.4' }), off)).toBe(
+      '198.51.100.4',
+    )
+    expect(forwardedClientIp(headers({ 'x-vercel-forwarded-for': '203.0.113.7' }), off)).toBeNull()
+    expect(forwardedClientIp(headers({ 'x-forwarded-for': '203.0.113.7, 198.51.100.4' }), off)).toBe('203.0.113.7')
+    expect(forwardedClientIp(headers({ 'x-real-ip': '203.0.113.8' }), off)).toBe('203.0.113.8')
+    expect(forwardedClientIp(headers({ 'x-forwarded-for': 'not-an-ip', 'x-real-ip': '203.0.113.8' }), off)).toBe('203.0.113.8')
+  })
+
+  it('rejects an overlong IPv6 group and an out-of-range IPv4 octet', () => {
+    const overlong = `2001:db8:f404::${'a'.repeat(11)}`
+    expect(canonicalIp(overlong)).toBeNull()
+    expect(forwardedClientIp(headers({ 'x-forwarded-for': overlong }), off)).toBeNull()
+    expect(forwardedClientIp(headers({ 'x-forwarded-for': '999.1.1.1' }), off)).toBeNull()
+    expect(forwardedClientIp(headers({ 'x-forwarded-for': '::ffff:203.0.113.9' }), off)).toBe('203.0.113.9')
   })
 })
 
