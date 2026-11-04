@@ -132,7 +132,7 @@ describe('resolveGoRedirect', () => {
   it('uses an allowlisted affiliate URL only when that program is active', async () => {
     const active = await resolveGoRedirect({
       ...cursor,
-      allowedHosts: ['cursor.com', 'partnerstack.com'],
+      allowedHosts: ['cursor.com', 'partnerstack.com/click'],
       limit: async () => ({ ok: true }),
       loadTool: async () => ({
         id: 7,
@@ -154,7 +154,7 @@ describe('resolveGoRedirect', () => {
 
     const inactive = await resolveGoRedirect({
       ...cursor,
-      allowedHosts: ['cursor.com', 'partnerstack.com'],
+      allowedHosts: ['cursor.com', 'partnerstack.com/click'],
       limit: async () => ({ ok: true }),
       loadTool: async () => ({
         id: 7,

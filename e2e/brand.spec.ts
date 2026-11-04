@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { homeDescription } from '../src/lib/metadata'
 import {
   ANDROID_CHROME_192_PATH,

@@ -1,5 +1,6 @@
 import { spawn, type ChildProcess } from 'node:child_process'
-import { expect, request as playwrightRequest, test } from '@playwright/test'
+import { e2eClientAddress } from './client-address'
+import { expect, playwrightRequest, test } from './fixtures'
 import { ACTION_LIMITS } from '../src/lib/action-limit'
 
 const PEER_PORT = 3101
@@ -16,7 +17,9 @@ function startPeerServer(): { child: ChildProcess; baseURL: string; output: () =
       NODE_ENV: 'production',
       TURSO_DATABASE_URL: process.env.TURSO_DATABASE_URL || 'file:./data/e2e.db',
       TURSO_AUTH_TOKEN: process.env.TURSO_AUTH_TOKEN || 'local',
+      VERCEL: '',
       VERCEL_ENV: 'test',
+      VERCEL_REGION: '',
       RESULT_SHARED_LIMIT_MS: '800',
       RESULT_FAULTS: '1',
       // Same key as playwright.config.ts. A different secret makes a different
@@ -73,7 +76,7 @@ async function waitForPeer(baseURL: string, child: ChildProcess, output: () => s
  * A slow or healthy catalog must not answer 503. The limiter must still fire.
  */
 test('one valid quiz answers in under 1.5s', async ({ request }) => {
-  const headers = { 'x-forwarded-for': `2001:db8:1::${Date.now().toString(16)}` }
+  const headers = { 'x-forwarded-for': e2eClientAddress(Date.now(), 0x1) }
   const started = Date.now()
   const response = await request.get('/result?task=chat&budget=any&skill=beginner', { headers })
   const elapsed = Date.now() - started
@@ -85,7 +88,7 @@ test('40 valid quizzes at 4 concurrent return no 503s and some 429s', async () =
   test.setTimeout(120_000)
   const baseURL = process.env.NEXT_PUBLIC_SITE_URL || 'http://127.0.0.1:3000'
   const context = await playwrightRequest.newContext({ baseURL })
-  const headers = { 'x-forwarded-for': `2001:db8:40:4::${Date.now().toString(16)}` }
+  const headers = { 'x-forwarded-for': e2eClientAddress(Date.now(), 0x4004) }
   const path = '/result?task=chat&budget=any&skill=beginner'
   const total = 40
   const concurrency = 4
@@ -127,7 +130,7 @@ test('two server processes sharing one database file return some 429s and no 503
   test.setTimeout(180_000)
   const peer = startPeerServer()
   const primary = process.env.NEXT_PUBLIC_SITE_URL || 'http://127.0.0.1:3000'
-  const headers = { 'x-forwarded-for': `2001:db8:40:2::${Date.now().toString(16)}` }
+  const headers = { 'x-forwarded-for': e2eClientAddress(Date.now(), 0x4002) }
   const path = '/result?task=chat&budget=any&skill=beginner'
   const total = 40
   const concurrency = 4

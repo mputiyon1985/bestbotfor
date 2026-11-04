@@ -1,4 +1,4 @@
-import { expect, test, type Page, type Request } from '@playwright/test'
+import { expect, test, type Page, type Request } from './fixtures'
 
 function isGoogleRequest(url: string): boolean {
   let host: string

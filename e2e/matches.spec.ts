@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'
 import { listMatches, MATCHES_PAGE_SIZE, matchesPath, seeAllMatchesLabel } from '../src/lib/matches'
 import { paginationItems, showingLabel } from '../src/lib/pagination'

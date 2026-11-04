@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { isAdminPath } from '../src/lib/admin-path'
 import { ATTESTATION, DISCLOSURE_ADVERTISER_PARAGRAPH, LAWYER_REVIEW_NOTICE, PRIVACY_UPDATED_WITH_RATINGS, TERMS_UPDATED_WITH_RATINGS, TRANSPARENCY_PLACEHOLDER } from '../src/lib/ratings-policy-copy'
 

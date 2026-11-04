@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { ALTERNATIVE_PAGES, comparePairsFor, rankAlternatives } from '../src/lib/alternatives'
 import { ALTERNATIVES_NEWSLETTER_TOOLS } from '../src/lib/newsletter-source'
 import { toolsForTask } from '../src/lib/recommend'
