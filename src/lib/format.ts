@@ -6,6 +6,8 @@ const PRICE_LABEL_OVERRIDES: Readonly<Record<string, string>> = {
   n8n: N8N_PRICE_LABEL,
   // writesonic.com/pricing, Oct 21, 2026: no free plan; 7-day trial needs no card.
   writesonic: 'Free trial, no card; then $79 and up',
+  // hyperresearch.ai/pricing, Nov 3, 2026: Light $9 and Deep $49 are per run, not a monthly plan.
+  hyperresearch: '$9 per run and up',
 }
 
 export const budgetLabel: Record<Budget, string> = {
