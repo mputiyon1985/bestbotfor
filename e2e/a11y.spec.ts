@@ -1,5 +1,5 @@
 import AxeBuilder from '@axe-core/playwright'
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { toolCategories } from '../src/lib/tool-index'
 import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'
 

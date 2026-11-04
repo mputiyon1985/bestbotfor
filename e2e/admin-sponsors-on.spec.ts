@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 /**
  * This project starts with ADMIN_SPONSORS=on, USER_RATINGS blank, and VERCEL_ENV=test.

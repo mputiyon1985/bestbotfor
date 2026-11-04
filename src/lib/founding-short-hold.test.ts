@@ -12,7 +12,13 @@ let cardMode: 'ok' | 'fail' = 'ok'
 let stripeMode: 'ok' | 'throw' = 'ok'
 
 vi.mock('next/headers', () => ({
-  headers: async () => new Headers({ host: '127.0.0.1:3000', 'x-forwarded-for': ip }),
+  headers: async () =>
+    new Headers({
+      host: '127.0.0.1:3000',
+      // Preview ignores x-forwarded-for. The buyer address is Vercel's header.
+      'x-forwarded-for': '198.51.100.20',
+      'x-vercel-forwarded-for': ip,
+    }),
 }))
 vi.mock('next/navigation', () => ({
   redirect: (url: string) => {

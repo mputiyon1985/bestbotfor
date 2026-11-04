@@ -1,4 +1,5 @@
-import { expect, test } from '@playwright/test'
+import { e2eClientAddress } from './client-address'
+import { expect, test } from './fixtures'
 import {
   SPONSOR_FOUNDING_NOTICE,
   SPONSOR_INTEGRATION_IDENTIFIER,
@@ -137,7 +138,7 @@ test('one network address gets at most 2 new founding holds a day (Sentinel lock
   await page.route('https://checkout.stripe.com/**', async (route) => {
     await route.fulfill({ status: 200, contentType: 'text/html', body: '<main><h1>Stripe Checkout</h1></main>' })
   })
-  await page.setExtraHTTPHeaders({ 'x-forwarded-for': `2001:db8:f0::${Date.now().toString(16)}` })
+  await page.setExtraHTTPHeaders({ 'x-forwarded-for': e2eClientAddress(Date.now(), 0xf0) })
   const holdFounding = async (task: string, email: string) => {
     await page.goto('/sponsor')
     await page.getByRole('radio', { name: /Founding sponsor/ }).check()

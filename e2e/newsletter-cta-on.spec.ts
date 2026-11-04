@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Page } from './fixtures'
 
 // Runs on the newsletter-cta-on server (NEWSLETTER_CTA=on, VERCEL_ENV=test).
 

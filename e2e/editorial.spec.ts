@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { editorialSeeds } from '../src/data/scores-pros-cons.seed'
 import { keptProsConsSeeds, ratingSeeds, unratedSlugs } from '../src/data/scores-v23.seed'
 import { ratingAriaLabel, starFills } from '../src/lib/editorial'
