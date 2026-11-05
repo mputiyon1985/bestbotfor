@@ -11,6 +11,7 @@ const SCOUTED_2026_10_26 = '2026-10-26'
 const SCOUTED_2026_10_30 = '2026-10-30'
 const SCOUTED_2026_11_03 = '2026-11-03'
 const SCOUTED_2026_11_04 = '2026-11-04'
+const SCOUTED_2026_11_05 = '2026-11-05'
 const BACKLOG_BATCH_02 = '2026-10-25'
 const BACKLOG_BATCH_03 = '2026-10-25'
 
@@ -6402,6 +6403,116 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'intermediate',
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_11_04,
+    fits: [],
+    affiliate: none,
+  }),
+  // Bot scout 2026-11-05. Unrated: no editorial score, pros or cons until Forge rubric review.
+  // Scout ratings stay in the comments and are not shown. Euro prices stay null.
+  // No affiliate row is seeded. Public vendor offers are not reader deals and are not stored as deals.
+  // Sponsorship is unknown for all five.
+  // scout 2026-11-05 | category: Developer tools (FLAG: scout category "Developer tools" mapped to Development) | scout rating 4.0 (not shown) | launch: 2026-11-04 (Product Hunt #5) | pricing: Free €0/mo (3 inboxes, 3,000 emails/month, 3 GB, 100 sends/day); Pro €9/mo + usage (10 inboxes, 10,000 emails/month, custom domains, no footer; extra inboxes €1, extra emails €0.001); Enterprise custom. Startup credit: €500 usage plus six months of Pro for pre-seed, seed and bootstrapped teams (public vendor offer, not a reader deal).
+  // note: prices are EUR, not USD, so priceFromUsd stays null. The €0 plan is a free tier. The startup credit is the vendor's public offer and is not stored as a deal.
+  tool({
+    slug: 'openmail',
+    addedAt: SCOUTED_2026_11_05,
+    name: 'OpenMail',
+    vendor: 'OpenMail',
+    url: 'https://openmail.sh',
+    allowedHosts: ['openmail.sh'],
+    category: 'Development',
+    shortDesc: 'An email API that gives each AI agent its own inbox, with replies over webhook or WebSocket.',
+    longDesc: 'OpenMail is an email API that gives each AI agent its own inbox on your domain. Replies arrive over webhook or WebSocket, attachments are converted to text, and it includes a hosted MCP server plus plugins for OpenClaw and Hermes. The free plan is €0 a month: 3 inboxes, 3,000 emails a month, 3 GB and 100 sends a day. Pro is €9 a month plus usage. Prices are in euros, so no dollar from-price is stored. Pre-seed, seed and bootstrapped teams can get €500 of usage credit and six months of Pro on the vendor\'s public offer.',
+    pricingModel: 'freemium',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['API'],
+    lastVerifiedAt: SCOUTED_2026_11_05,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-05 | category: Marketing (FLAG: scout category "Marketing" mapped to Automation; Playad, the closest AI marketing-team tool, is Automation) | scout rating 3.9 (not shown) | launch: 2026-11-04 (Product Hunt #10) | pricing: Starter $49/mo (100 credits, Scout + Luna); Team $198/mo (250 credits, all AI employees, MCP access); Grow $398/mo (500 credits); Enterprise custom. Billing is monthly or yearly. No free plan found. A free store audit is offered.
+  // note: priceFromUsd is Starter $49/mo. No free tier is stated. The yearly toggle has no separate dollar price in the scout, so it is not stored. The store audit is not a free plan.
+  // affiliate: unknown. A creator pay-per-post program (not a commission program) pays per qualifying post; payouts through Dub; not recurring; apply page https://www.krev.ai/creators. Not seeded.
+  tool({
+    slug: 'krev-ai',
+    addedAt: SCOUTED_2026_11_05,
+    name: 'KREV AI',
+    vendor: 'KREV AI',
+    url: 'https://www.krev.ai',
+    allowedHosts: ['www.krev.ai'],
+    category: 'Automation',
+    shortDesc: 'Seven AI specialists that run research, creative, ads, social, email, Shopify and SEO for an ecommerce brand.',
+    longDesc: 'KREV AI is a team of seven AI specialists covering market research, creative, ads, social, email, Shopify and SEO for an ecommerce brand. Higher plans include MCP access. Starter is $49 a month. Team is $198 a month. Grow is $398 a month. Enterprise is custom. No free plan was found. A free store audit is offered, and that audit is not a free plan.',
+    pricingModel: 'paid',
+    priceFromUsd: 49,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web', 'API'],
+    lastVerifiedAt: SCOUTED_2026_11_05,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-05 | category: Productivity | scout rating 4.0 (not shown) | launch: 2026-11-05 (Show HN) | pricing: Free trial (25 credits, no card); Personal $9.99/mo (50 credits); Group $19.99/mo (150 credits, up to 6 members); Group Max $99.99/mo (1,000 credits, up to 10 members).
+  // note: priceFromUsd is Personal $9.99/mo. The 25-credit trial is not a free tier. No reader deal was found.
+  tool({
+    slug: 'cinnamon',
+    addedAt: SCOUTED_2026_11_05,
+    name: 'Cinnamon',
+    vendor: 'Cinnamon',
+    url: 'https://getcinnamon.ai',
+    allowedHosts: ['getcinnamon.ai'],
+    category: 'Productivity',
+    shortDesc: 'A shared household agent that plans trips, triages email, runs the calendar and watches prices, and asks before it acts.',
+    longDesc: 'Cinnamon is a shared household AI agent. It plans trips, triages the inbox, runs the calendar and watches prices. Shared and personal spaces stay separate, and it asks for approval before every external action. A trial includes 25 credits and needs no card. Personal is $9.99 a month. Group is $19.99 a month for up to 6 members. Group Max is $99.99 a month for up to 10 members. The trial is not a free plan.',
+    pricingModel: 'paid',
+    priceFromUsd: 9.99,
+    hasFreeTier: false,
+    skillLevel: 'beginner',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_05,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-05 | category: Developer tools (FLAG: scout category "Developer tools" mapped to Development) | scout rating 3.9 (not shown) | launch: 2026-11-05 (Show HN) | pricing: Mailbox $15/mo (30 mail items, 5 packages, 2 open-and-scan requests per month; extra items $0.50, extra scans $3.00); sign-up has no card. Postal mail sending and other products have separate usage pricing.
+  // note: priceFromUsd is Mailbox $15/mo. Sign-up with no card is not a free tier. Separate sending prices were not captured, so they are not stored.
+  tool({
+    slug: 'mailbox-bot',
+    addedAt: SCOUTED_2026_11_05,
+    name: 'Mailbox.bot',
+    vendor: 'Mailbox.bot',
+    url: 'https://mailbox.bot',
+    allowedHosts: ['mailbox.bot'],
+    category: 'Development',
+    shortDesc: 'Gives an AI agent a US street address and delivers scanned, OCR-ed mail through MCP and an API.',
+    longDesc: 'Mailbox.bot gives an AI agent a real US street address. Incoming letters and packages arrive as scanned, OCR-ed context through MCP, a REST API and webhooks. It can also send postal mail and offers agent email. Mailbox is $15 a month and includes 30 mail items, 5 packages and 2 open-and-scan requests. Extra items are $0.50 and extra scans are $3. Sign-up needs no card. That sign-up is not a free plan. Sending postal mail has separate usage pricing.',
+    pricingModel: 'paid',
+    priceFromUsd: 15,
+    hasFreeTier: false,
+    skillLevel: 'pro',
+    platforms: ['Web', 'API'],
+    lastVerifiedAt: SCOUTED_2026_11_05,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-05 | category: Productivity | scout rating 4.0 (not shown) | launch: 2026-11-05 (Show HN) | pricing: 14-day free trial, then Starter $199/mo (3 questionnaires), Team $449/mo (10), Scale from $899/mo; extra questionnaires $49 each; single questionnaire $249 once. First 25 answers free in 48 hours (public offer, not a reader deal). Paid plans are set up by email.
+  // note: priceFromUsd is Starter $199/mo. The 14-day trial is not a free tier. The 25-answer sample is the vendor's public offer and is not stored as a deal.
+  tool({
+    slug: 'rendro',
+    addedAt: SCOUTED_2026_11_05,
+    name: 'Rendro',
+    vendor: 'Rendro',
+    url: 'https://www.rendro.net',
+    allowedHosts: ['www.rendro.net'],
+    category: 'Productivity',
+    shortDesc: 'Drafts sourced answers to security questionnaires, RFPs and due-diligence forms from your own documents.',
+    longDesc: 'Rendro drafts answers to customer security questionnaires, RFPs and due-diligence forms from your own documents. Each answer cites its source, gaps are flagged, and the buyer\'s original file comes back filled in. A 14-day trial is available. Starter is $199 a month for 3 questionnaires. Team is $449 a month for 10. Scale starts at $899 a month. Extra questionnaires are $49 each, and a single questionnaire is $249 once. Paid plans are set up by email. The trial is not a free plan. The first 25 answers are free within 48 hours on the vendor\'s public offer.',
+    pricingModel: 'paid',
+    priceFromUsd: 199,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_05,
     fits: [],
     affiliate: none,
   }),
