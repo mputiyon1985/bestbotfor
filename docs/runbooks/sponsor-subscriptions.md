@@ -159,6 +159,8 @@ fi
 api "https://api.stripe.com/v1/webhook_endpoints/${WE}" | jq -r '"api_version=\(.api_version) status=\(.status) url=\(.url)"'
 ```
 
+The block above does not include `checkout.session.expired`. That event records an abandoned sponsor checkout. Add it only with Mark's OK, using the same read-and-keep pattern, and do not drop an event the endpoint already sends. The Dashboard steps are in `sponsor-payment-links.md`, "Abandoned checkout recovery". This change does not run that update.
+
 Then:
 
 0. **Founding go-live: done 2026-10-19 (Mark approved, James's go-live OK).** The cutover below has already run, in this order: #88 merged and deployed; the founding Payment Link `plink_1URylT…` deactivated in the Stripe dashboard by Mark (never by API), with 0 completed sales, so no `founding_link:` rows were needed; the preview test-mode run passed; then both `STRIPE_PRICE_FOUNDING_SETUP` and `STRIPE_PRICE_FOUNDING_MONTHLY` were set in Production. The founding Payment Link is retired: it is not in `SPONSOR_PAYMENT_LINKS` and live `/sponsor` never shows it, whichever founding Prices are set (Sentinel P3-6 on #97, `sponsor-payment-links.md`). The in-app founding offer is the only founding path. Do not reactivate the link. If the founding Prices are ever unset in Production (a rollback), the founding option goes disabled with no founding line; nothing else replaces it. Any future founding Payment Link sale would need its manual `founding_link:` row (sponsor-reject-refund runbook, Fulfillment step 5) so the shared count of 5 includes it.

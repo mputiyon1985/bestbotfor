@@ -5,6 +5,7 @@ import {
   RETENTION_BATCH_SIZE,
   RETENTION_MAX_BATCHES,
   clickHashCutoff,
+  abandonedCheckoutCutoff,
   suggestionEmailCutoff,
   suggestionRowCutoff,
   decideRetentionRequest,
@@ -75,6 +76,8 @@ function countsOnly(dryRun: boolean, counts?: Partial<RetentionReport>): Retenti
     suggestionEmailsCleared: 0,
     suggestionsEligible: counts?.suggestionsEligible ?? 0,
     suggestionsDeleted: 0,
+    abandonedCheckoutsEligible: counts?.abandonedCheckoutsEligible ?? 0,
+    abandonedCheckoutsDeleted: 0,
     truncated: false,
   }
 }
@@ -190,6 +193,28 @@ async function clearOldSuggestionEmails(client: Client, cutoff: number, batchSiz
   return cleared
 }
 
+async function abandonedCheckoutsReady(client: Client): Promise<boolean> {
+  const result = await client.execute('PRAGMA table_info(sponsor_abandoned_checkouts)')
+  const present = new Set(result.rows.map((row) => String(row.name)))
+  return ['stripe_checkout_session_id', 'expired_at', 'email'].every((column) => present.has(column))
+}
+
+async function deleteOldAbandonedCheckouts(client: Client, cutoff: number, batchSize: number, maxBatches: number): Promise<number> {
+  let deleted = 0
+  for (let batch = 0; batch < maxBatches; batch += 1) {
+    const result = await client.execute({
+      sql: `DELETE FROM sponsor_abandoned_checkouts WHERE stripe_checkout_session_id IN (
+        SELECT stripe_checkout_session_id FROM sponsor_abandoned_checkouts WHERE expired_at < ? LIMIT ?
+      )`,
+      args: [cutoff, batchSize],
+    })
+    const affected = countOf(result.rowsAffected)
+    deleted += affected
+    if (affected < batchSize) break
+  }
+  return deleted
+}
+
 export async function runDataRetention(
   db: RetentionClient,
   options: { dryRun: boolean; now: number; batchSize?: number; maxBatches?: number; url?: string; vercelEnv?: string; ratingsEnabled?: boolean },
@@ -236,7 +261,19 @@ export async function runDataRetention(
         ).rows[0]?.n,
       )
     : 0
-  const counted = { rateLimitsEligible, resultWindowsEligible, clickHashesEligible, suggestionEmailsEligible, suggestionsEligible }
+  const abandonedReady = await abandonedCheckoutsReady(client)
+  const abandonedCutoff = abandonedCheckoutCutoff(options.now)
+  const abandonedCheckoutsEligible = abandonedReady
+    ? await countRows(client, 'SELECT COUNT(*) AS n FROM sponsor_abandoned_checkouts WHERE expired_at < ?', abandonedCutoff)
+    : 0
+  const counted = {
+    rateLimitsEligible,
+    resultWindowsEligible,
+    clickHashesEligible,
+    suggestionEmailsEligible,
+    suggestionsEligible,
+    abandonedCheckoutsEligible,
+  }
   // Ratings off (prod today): reviews are never read or written here.
   const reviewsOn = options.ratingsEnabled === true && (await reviewTablesReady(client))
   const reviewTextEligible = reviewsOn ? await countWithdrawnReviewText(client) : 0
@@ -253,12 +290,23 @@ export async function runDataRetention(
   const suggestionEmailsCleared = suggestionsReady
     ? await clearOldSuggestionEmails(client, emailCutoff, batchSize, maxBatches)
     : 0
+  const abandonedCheckoutsDeleted = abandonedReady
+    ? await deleteOldAbandonedCheckouts(client, abandonedCutoff, batchSize, maxBatches)
+    : 0
   const reviewTextPurged = reviewsOn ? await purgeWithdrawnReviewText(client, batchSize, maxBatches, options.now) : 0
   return {
     event: 'data_retention',
     enabled: true,
     dryRun: false,
-    wrote: rateLimitsDeleted + resultWindowsDeleted + clickHashesCleared + suggestionsDeleted + suggestionEmailsCleared + reviewTextPurged > 0,
+    wrote:
+      rateLimitsDeleted +
+        resultWindowsDeleted +
+        clickHashesCleared +
+        suggestionsDeleted +
+        suggestionEmailsCleared +
+        abandonedCheckoutsDeleted +
+        reviewTextPurged >
+      0,
     rateLimitsEligible,
     rateLimitsDeleted,
     resultWindowsEligible,
@@ -269,6 +317,8 @@ export async function runDataRetention(
     suggestionEmailsCleared,
     suggestionsEligible,
     suggestionsDeleted,
+    abandonedCheckoutsEligible,
+    abandonedCheckoutsDeleted,
     ...(reviewsOn ? { reviewTextEligible, reviewTextPurged } : {}),
     truncated:
       reviewTextPurged < reviewTextEligible ||
@@ -276,7 +326,8 @@ export async function runDataRetention(
       resultWindowsDeleted < resultWindowsEligible ||
       clickHashesCleared < clickHashesEligible ||
       suggestionsDeleted < suggestionsEligible ||
-      suggestionEmailsCleared < suggestionEmailsEligible,
+      suggestionEmailsCleared < suggestionEmailsEligible ||
+      abandonedCheckoutsDeleted < abandonedCheckoutsEligible,
   }
 }
 

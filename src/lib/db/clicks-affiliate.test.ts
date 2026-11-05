@@ -1,4 +1,4 @@
-import { cp, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { cp, mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { createClient } from '@libsql/client'
@@ -83,29 +83,6 @@ describe('0027 clicks affiliate columns', () => {
   })
 })
 
-/**
- * PR #172's 0026, kept here as a fixture so this branch can prove ordering
- * without committing that file. The SQL matches cursor/sponsor-cta-recovery-f050.
- */
-const SPONSOR_0026_SQL = `-- Unpaid sponsor checkouts that expired. Additive. Nothing is dropped.
--- Safe to re-run: CREATE TABLE/INDEX IF NOT EXISTS, and applyMigrations
--- adds any missing column after the file (src/lib/db/migrate.ts).
-
-CREATE TABLE IF NOT EXISTS sponsor_abandoned_checkouts (
-  stripe_checkout_session_id TEXT PRIMARY KEY,
-  email TEXT NOT NULL,
-  offering TEXT NOT NULL,
-  expired_at INTEGER NOT NULL,
-  task_slug TEXT,
-  source TEXT NOT NULL CHECK (source IN ('checkout', 'payment_link')),
-  recovery_url TEXT,
-  created_at INTEGER NOT NULL
-);
-
-CREATE INDEX IF NOT EXISTS sponsor_abandoned_checkouts_expired_at_idx
-  ON sponsor_abandoned_checkouts (expired_at);
-`
-
 const CLICKS_FILE = '0027_clicks_affiliate.sql'
 const SPONSOR_FILE = '0026_sponsor_abandoned_checkouts.sql'
 
@@ -124,12 +101,18 @@ async function schemaState(url: string) {
   const sponsor = await client.execute(
     "SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'sponsor_abandoned_checkouts'",
   )
+  const sponsorColumns =
+    sponsor.rows.length === 1
+      ? (await client.execute('PRAGMA table_info(sponsor_abandoned_checkouts)')).rows.map((row) => String(row.name))
+      : []
   const ledger = await client.execute('SELECT id, applied_at FROM schema_migrations ORDER BY id')
   client.close()
   return {
     affiliate: names.includes('affiliate'),
     programId: names.includes('program_id'),
     sponsor: sponsor.rows.length === 1,
+    promotionsConsent: sponsorColumns.includes('promotions_consent'),
+    consentedAt: sponsorColumns.includes('consented_at'),
     ledger: ledger.rows.map((row) => String(row.id)),
     appliedAt: new Map(ledger.rows.map((row) => [String(row.id), Number(row.applied_at)])),
   }
@@ -139,10 +122,11 @@ describe('0026 and 0027 apply in either order', () => {
   it('applies the sponsor table first, then the click columns', async () => {
     const { dir, url } = await migrationCopy()
     await rm(path.join(dir, CLICKS_FILE))
-    await writeFile(path.join(dir, SPONSOR_FILE), SPONSOR_0026_SQL)
     await applyMigrations(url, undefined, dir)
     const afterSponsor = await schemaState(url)
     expect(afterSponsor.sponsor).toBe(true)
+    expect(afterSponsor.promotionsConsent).toBe(true)
+    expect(afterSponsor.consentedAt).toBe(true)
     expect(afterSponsor.affiliate).toBe(false)
     expect(afterSponsor.ledger).toContain(SPONSOR_FILE)
     expect(afterSponsor.ledger).not.toContain(CLICKS_FILE)
@@ -151,6 +135,8 @@ describe('0026 and 0027 apply in either order', () => {
     await applyMigrations(url, undefined, dir)
     const afterClicks = await schemaState(url)
     expect(afterClicks.sponsor).toBe(true)
+    expect(afterClicks.promotionsConsent).toBe(true)
+    expect(afterClicks.consentedAt).toBe(true)
     expect(afterClicks.affiliate).toBe(true)
     expect(afterClicks.programId).toBe(true)
     expect(afterClicks.ledger).toContain(SPONSOR_FILE)
@@ -159,32 +145,38 @@ describe('0026 and 0027 apply in either order', () => {
 
   it('applies the click columns first, then the sponsor table', async () => {
     const { dir, url } = await migrationCopy()
+    await rm(path.join(dir, SPONSOR_FILE))
     await applyMigrations(url, undefined, dir)
     const afterClicks = await schemaState(url)
     expect(afterClicks.affiliate).toBe(true)
     expect(afterClicks.programId).toBe(true)
-    expect(afterClicks.sponsor).toBe(false)
+    // adoptSponsorAbandonedCheckouts creates the table even when 0026 is absent.
+    // The ledger is what shows the real file has not run yet.
     expect(afterClicks.ledger).toContain(CLICKS_FILE)
     expect(afterClicks.ledger).not.toContain(SPONSOR_FILE)
 
-    await writeFile(path.join(dir, SPONSOR_FILE), SPONSOR_0026_SQL)
+    await cp(path.join(process.cwd(), 'drizzle', SPONSOR_FILE), path.join(dir, SPONSOR_FILE))
     await applyMigrations(url, undefined, dir)
     const afterSponsor = await schemaState(url)
     expect(afterSponsor.affiliate).toBe(true)
     expect(afterSponsor.programId).toBe(true)
     expect(afterSponsor.sponsor).toBe(true)
+    expect(afterSponsor.promotionsConsent).toBe(true)
+    expect(afterSponsor.consentedAt).toBe(true)
     expect(afterSponsor.ledger).toContain(CLICKS_FILE)
     expect(afterSponsor.ledger).toContain(SPONSOR_FILE)
+    expect(afterSponsor.ledger.filter((id) => id === SPONSOR_FILE)).toHaveLength(1)
   })
 
   it('applies both in filename order when they arrive together', async () => {
     const { dir, url } = await migrationCopy()
-    await writeFile(path.join(dir, SPONSOR_FILE), SPONSOR_0026_SQL)
     await applyMigrations(url, undefined, dir)
     const state = await schemaState(url)
     expect(state.affiliate).toBe(true)
     expect(state.programId).toBe(true)
     expect(state.sponsor).toBe(true)
+    expect(state.promotionsConsent).toBe(true)
+    expect(state.consentedAt).toBe(true)
     const sponsorAt = state.appliedAt.get(SPONSOR_FILE)
     const clicksAt = state.appliedAt.get(CLICKS_FILE)
     expect(sponsorAt).toBeTypeOf('number')

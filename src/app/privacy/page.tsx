@@ -4,7 +4,7 @@ import { Breadcrumbs } from '@/components/breadcrumbs'
 import { LawyerReviewNotice } from '@/components/lawyer-review-notice'
 import { newsletterCtaEnabled, userRatingsEnabled } from '@/lib/flags'
 import { pageMetadata } from '@/lib/metadata'
-import { AFFILIATE_TRACKING_PARAGRAPH, CLICK_LOG_PARAGRAPH, FIRST_TOUCH_PRIVACY_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, newsletterSignupParagraph, rateLimitPrivacyParagraphs, RETENTION_JOB_PARAGRAPH, SHARING_PARAGRAPH, SUGGESTION_PRIVACY_PARAGRAPH, TURSO_BACKUP_PARAGRAPH } from '@/lib/privacy-copy'
+import { ABANDONED_CHECKOUT_PRIVACY_PARAGRAPH, AFFILIATE_TRACKING_PARAGRAPH, CLICK_LOG_PARAGRAPH, FIRST_TOUCH_PRIVACY_PARAGRAPH, GPC_PRIVACY_PARAGRAPH, newsletterSignupParagraph, rateLimitPrivacyParagraphs, RETENTION_JOB_PARAGRAPH, SHARING_PARAGRAPH, SUGGESTION_PRIVACY_PARAGRAPH, TURSO_BACKUP_PARAGRAPH } from '@/lib/privacy-copy'
 import { PRIVACY_RATINGS_PARAGRAPHS, PRIVACY_UPDATED, PRIVACY_UPDATED_WITH_RATINGS, RETENTION_ROWS } from '@/lib/ratings-policy-copy'
 
 export const dynamic = 'force-dynamic'
@@ -37,8 +37,8 @@ export default function PrivacyPage() {
       </p>
       <p>
         If you subscribe, Stripe processes the payment. We do not store your full card number. We store the Stripe
-        customer id, subscription id, price id, and status so we know whether membership is active. Use Stripe test
-        cards only while this site is in test mode.
+        customer id, subscription id, price id, and status so we know whether membership is active. {ABANDONED_CHECKOUT_PRIVACY_PARAGRAPH}{' '}
+        Use Stripe test cards only while this site is in test mode.
       </p>
       <p>{CLICK_LOG_PARAGRAPH}</p>
       <p>{AFFILIATE_TRACKING_PARAGRAPH}</p>

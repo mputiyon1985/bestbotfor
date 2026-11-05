@@ -224,7 +224,7 @@ describe('subscription checkout params', () => {
     expect((params.custom_text?.submit as { message?: string } | undefined)?.message).toBe(SPONSOR_SUBSCRIPTION_NOTICE)
   })
 
-  it('keeps the one-time checkout unchanged', () => {
+  it('keeps the one-time payment fields and does not turn recovery on', () => {
     const parsed = parseSponsorCheckout(
       form({
         offering: 'placement_monthly',
@@ -249,6 +249,8 @@ describe('subscription checkout params', () => {
       'integration_identifier',
       'managed_payments',
     ])
+    expect(params).not.toHaveProperty('after_expiration')
+    expect(params).not.toHaveProperty('consent_collection')
     expect(params.mode).toBe('payment')
     expect((params.custom_text?.submit as { message?: string } | undefined)?.message).toBe(SPONSOR_ONE_TIME_NOTICE)
     expect(params.metadata).not.toHaveProperty('billing')

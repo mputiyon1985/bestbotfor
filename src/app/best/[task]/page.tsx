@@ -12,8 +12,10 @@ import { AffiliateDisclosure, AffiliatePageNotice } from '@/components/affiliate
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
 import { SponsoredPlacement, sponsoredCardIsVisible } from '@/components/sponsored-placement'
+import { SponsorPageCta } from '@/components/sponsor-page-cta'
 import { scheduleSponsorImpression } from '@/lib/sponsor-impressions'
 import { readActiveBestPlacement } from '@/lib/best-placement'
+import { readFoundingSpotsLeft } from '@/lib/sponsor-availability'
 import { getTask, listTaskCandidates } from '@/lib/catalog'
 import { getDb } from '@/lib/db'
 import { formatUsDate, priceLabel, skillLabel } from '@/lib/format'
@@ -63,10 +65,11 @@ export async function generateMetadata({ params }: { params: Promise<{ task: str
 export default async function BestPage({ params }: { params: Promise<{ task: string }> }) {
   const { task: slug } = await params
   if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) notFound()
-  const [loaded, headerStore, placement] = await Promise.all([
+  const [loaded, headerStore, placement, foundingSpotsLeft] = await Promise.all([
     listTaskCandidates(slug),
     headers(),
     readActiveBestPlacement(() => getDb(), slug),
+    readFoundingSpotsLeft(),
   ])
   const task = loaded?.task
   const ranked = loaded?.tools ?? []
@@ -198,9 +201,7 @@ export default async function BestPage({ params }: { params: Promise<{ task: str
             See all matches
           </Link>
         </p>
-        <p className="text-sm text-muted">
-          <Link href="/sponsor" className="underline underline-offset-4">Feature your tool here</Link>
-        </p>
+        <SponsorPageCta taskSlug={task.slug} foundingSpotsLeft={foundingSpotsLeft} />
       </div>
       <section>
         <h2 className="font-semibold text-3xl">Questions</h2>

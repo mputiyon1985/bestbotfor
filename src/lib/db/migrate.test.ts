@@ -181,6 +181,7 @@ describe('sqlite file directories', () => {
       '0023_subscriber_utm.sql',
       '0024_deals.sql',
       '0025_signups_admin.sql',
+      '0026_sponsor_abandoned_checkouts.sql',
       '0027_clicks_affiliate.sql',
       '0028_clicks_public_id.sql',
     ])
@@ -292,6 +293,7 @@ describe('sqlite file directories', () => {
       '0023_subscriber_utm.sql',
       '0024_deals.sql',
       '0025_signups_admin.sql',
+      '0026_sponsor_abandoned_checkouts.sql',
       '0027_clicks_affiliate.sql',
       '0028_clicks_public_id.sql',
     ])
@@ -344,7 +346,7 @@ describe('sqlite file directories', () => {
     await applyMigrations(url)
     const again = createClient({ url })
     const count = await again.execute('SELECT COUNT(*) AS n FROM schema_migrations')
-    expect(Number(count.rows[0]?.n)).toBe(MAIN_MIGRATIONS.length + 19)
+    expect(Number(count.rows[0]?.n)).toBe(MAIN_MIGRATIONS.length + 20)
     const stillThere = await again.execute({
       sql: "SELECT id FROM schema_migrations WHERE id = '0005_sponsorships.sql'",
     })
@@ -628,6 +630,7 @@ describe('drizzle journal', () => {
     expect(idxOf('0023_subscriber_utm')).toBe(21)
     expect(idxOf('0024_deals')).toBe(22)
     expect(idxOf('0025_signups_admin')).toBe(23)
+    expect(idxOf('0026_sponsor_abandoned_checkouts')).toBe(24)
     expect(idxOf('0027_clicks_affiliate')).toBe(25)
     expect(idxOf('0028_clicks_public_id')).toBe(26)
     const migration = await readFile(path.join(process.cwd(), 'drizzle/0013_sponsorship_paid_at.sql'), 'utf8')

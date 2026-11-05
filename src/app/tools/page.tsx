@@ -4,6 +4,8 @@ import { cache } from 'react'
 import { notFound } from 'next/navigation'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { SponsorPageCta } from '@/components/sponsor-page-cta'
+import { readFoundingSpotsLeft } from '@/lib/sponsor-availability'
 import { JsonLd } from '@/components/json-ld'
 import { itemListJsonLd } from '@/lib/jsonld'
 import { ToolLogo } from '@/components/tool-logo'
@@ -107,9 +109,10 @@ export async function generateMetadata({ searchParams }: { searchParams: Promise
 }
 
 export default async function ToolsPage({ searchParams }: { searchParams: Promise<SearchParams> }) {
-  const [{ resolved, listing }, headerStore] = await Promise.all([
+  const [{ resolved, listing }, headerStore, foundingSpotsLeft] = await Promise.all([
     loadToolsIndex(toolsCacheKey(await searchParams)),
     headers(),
+    readFoundingSpotsLeft(),
   ])
   const selected = resolved.selected
   const nonce = headerStore.get('x-nonce')
@@ -139,6 +142,7 @@ export default async function ToolsPage({ searchParams }: { searchParams: Promis
               : 'No tools are in the catalog yet.'}
         </p>
       </header>
+      {selected ? <SponsorPageCta foundingSpotsLeft={foundingSpotsLeft} /> : null}
       <nav
         aria-label="Filter by category"
         className="min-w-0 max-md:overflow-x-auto max-md:overflow-y-hidden max-md:overscroll-x-contain max-md:px-2 max-md:py-2"

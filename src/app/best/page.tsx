@@ -2,6 +2,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { SponsorPageCta } from '@/components/sponsor-page-cta'
+import { readFoundingSpotsLeft } from '@/lib/sponsor-availability'
 import { JsonLd } from '@/components/json-ld'
 import { bestGuideHeading } from '@/lib/descriptions'
 import { loadHubRows } from '@/lib/hub-data'
@@ -27,7 +29,7 @@ export const metadata: Metadata = pageMetadata({
 })
 
 export default async function BestHubPage() {
-  const [rows, headerStore] = await Promise.all([loadHubRows(), headers()])
+  const [rows, headerStore, foundingSpotsLeft] = await Promise.all([loadHubRows(), headers(), readFoundingSpotsLeft()])
   const nonce = headerStore.get('x-nonce')
   const crumbs = [
     { name: 'Home', path: '/' },
@@ -76,6 +78,7 @@ export default async function BestHubPage() {
           </li>
         ))}
       </ul>
+      <SponsorPageCta foundingSpotsLeft={foundingSpotsLeft} />
       <p className="text-sm text-muted">
         <Link className="underline" href={LOADOUT_PATH}>Get the AI Loadout</Link>, every pick on one page.{' '}
         <Link className="underline" href={guidePath('how-to-choose-an-ai-tool')}>New to this? How to choose an AI tool</Link>.

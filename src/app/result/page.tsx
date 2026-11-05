@@ -8,6 +8,8 @@ import { DailyBotCapture } from '@/components/daily-bot-capture'
 import { PickCapNotice } from '@/components/pick-cap-notice'
 import { JsonLd } from '@/components/json-ld'
 import { AffiliateDisclosure, AffiliatePageNotice } from '@/components/affiliate-disclosure'
+import { SponsorPageCta } from '@/components/sponsor-page-cta'
+import { readFoundingSpotsLeft } from '@/lib/sponsor-availability'
 import { OutboundLink } from '@/components/outbound-link'
 import { ToolLogo } from '@/components/tool-logo'
 import { EditorialCompact } from '@/components/editorial'
@@ -130,6 +132,7 @@ export default async function ResultPage({
   const nonce = headerStore.get('x-nonce')
   if (loaded.kind === 'miss') return <NotFoundPage />
   if (loaded.kind === 'matches') {
+    const foundingSpotsLeft = await readFoundingSpotsLeft()
     return (
       <AllMatches
         task={loaded.loaded.task}
@@ -139,6 +142,7 @@ export default async function ResultPage({
         total={loaded.loaded.total}
         tools={loaded.loaded.tools}
         nonce={nonce}
+        foundingSpotsLeft={foundingSpotsLeft}
       />
     )
   }
@@ -155,6 +159,7 @@ export default async function ResultPage({
   }
 
   const { answers, result } = loaded
+  const foundingSpotsLeft = await readFoundingSpotsLeft()
   const [top, ...alternatives] = result.picks
   if (!top) {
     return (
@@ -263,6 +268,8 @@ export default async function ResultPage({
           </p>
         ) : null}
       </section>
+
+      <SponsorPageCta taskSlug={result.task.slug} foundingSpotsLeft={foundingSpotsLeft} />
 
       <section>
         <h2 className="font-semibold text-3xl">Side by side</h2>

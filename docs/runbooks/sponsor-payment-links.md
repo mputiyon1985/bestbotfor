@@ -57,3 +57,52 @@ There is no customer portal. Live `/sponsor` says "To cancel, email mark@bestbot
 ## Disclosure
 
 The subscriptions section says "Placements carry a Sponsored label and never change rankings. See Disclosures." and links `/disclosure`. A Payment Link placement is published only through a `sponsorships` row and an approved card, so it carries that label.
+
+## Abandoned checkout recovery
+
+`/sponsor` creates Checkout Sessions in code (`src/lib/sponsor-checkout.ts`). Recovery is off for founding and for every `/best` placement. A recovered session stays payable for 30 days and does not recreate the founding hold or the page slot claim, so it can oversell the cap of 5 or double-book a page. The allowlist is `SPONSOR_RECOVERY_OFFERING_IDS` in that file. Today it contains only `newsletter_slot`, which has no cap and no page slot. Flip an id into that list only when a recovered payment cannot take a scarce spot.
+
+Where recovery is on, the session sets `after_expiration.recovery.enabled` to true, `allow_promotion_codes` to false, and `consent_collection.promotions` to `auto`. That last field is the checkbox setting. It is not the buyer's consent. The buyer's answer on the expired session is `consent.promotions`, and the only value we store is `opt_in`.
+
+A Payment Link cannot set `after_expiration` on the Checkout Session it opens. The Payment Links API has no such parameter. The Monthly link is `plink_1URyeXIJUbygfAucnLlkSP5u` ($299/mo). The founding link `plink_1URylTIJUbygfAuc07cebXfn` is retired. Do not reactivate it.
+
+`checkout.session.expired` stores a row in `sponsor_abandoned_checkouts` only when `consent.promotions` is `opt_in`. The row is the email, the offer, the expiry time, the Checkout Session id, the task when we have one, `promotions_consent` (`opt_in`), and `consented_at` (the expiry event time; Stripe does not send a separate consent clock). Anyone who did not opt in is not stored. A Payment Link session is stored only when its `payment_link` id is one this app knows (`plink_1URyeXIJUbygfAucnLlkSP5u` or the retired founding link) and the metadata offer does not disagree. A paid session is not stored. A membership session is not stored. A second delivery of the same session does not add a row.
+
+Follow-up is one manual email about the unfinished checkout, and only when `consent.promotions` is `opt_in` (the row's `promotions_consent` is `opt_in`). The app does not send that email. Without that opt-in there is no follow-up email.
+
+The existing data-retention cron deletes a row about 90 days after `expired_at`. No new cron was added. The purge does not write in production while `DATA_RETENTION_PRODUCTION_LAUNCH` is `false`. That constant lives in `src/lib/retention-flags.ts`. It is not an environment variable, and this change leaves it `false`. Turning the production purge on is Mark's call. Production writes only when all four of these are set:
+
+- `DATA_RETENTION_PRODUCTION_LAUNCH` is `true` (the code constant above; it ships `false`)
+- `CRON_SECRET` is set, at least 32 characters, and sent as `Authorization: Bearer …` on `GET /api/cron/data-retention`
+- `DATA_RETENTION_PURGE` is exactly `on`
+- `DATA_RETENTION_DRY_RUN` is exactly `off`
+
+`/admin/sponsors` lists the opted-in rows when the sponsor admin flag is on. In production that page stays 404 until that flag's launch. Until then:
+
+```sql
+SELECT email, offering, expired_at, task_slug, source, promotions_consent, consented_at, stripe_checkout_session_id
+FROM sponsor_abandoned_checkouts
+ORDER BY expired_at DESC;
+```
+
+Refer to a row by its `cs_…` id. Do not paste the buyer's email into Slack, chat, tickets, or the repo.
+
+A paid founding checkout that takes the count past 5, or a paid placement that lands on a page that already has an active placement, is kept, logged (`FOUNDING CAP EXCEEDED` or `PLACEMENT SLOT TAKEN`), and shown on `/admin/sponsors`. A paid `newsletter_slot` is kept, logged (`NEWSLETTER ISSUE PASSED`), and shown there only when the issue date is a real calendar day before the UTC day of the stored `paid_at`. An impossible date such as 2026-02-31 is not flagged. The completion alert reads that stored `paid_at`, so a later Stripe resend does not flag an on-time payment. Paying on time for a later issue is not flagged after that issue goes out. Nothing is refunded automatically.
+
+### Refunds and cancellations for those rows
+
+Do not approve the tool card until Mark decides to refund or honor the sale. The app does not call the Stripe refund API.
+
+1. Find the payment in the Stripe dashboard from the `cs_…` on the admin row. A subscription Checkout has no payment intent of its own, so take the `pi_…` from that period's invoice payment.
+2. To refund, refund that payment in the Stripe dashboard. A succeeded refund, including a partial refund, sets `refunded_at` on the matching `sponsorships` row and hides the placement. See `docs/runbooks/sponsor-reject-refund.md`.
+3. To stop future charges on a founding or placement subscription, cancel in the Stripe dashboard with **Cancel at end of period**. Canceling stops later invoices. The current period stays until its window ends unless you also refund. There is no customer portal. Live `/sponsor` says "To cancel, email mark@bestbotfor.com".
+
+### Dashboard settings (not applied; needs Mark's OK)
+
+Do this in the Stripe Dashboard, live mode. Do not call the API from this repo.
+
+1. Developers → Webhooks → endpoint `we_1URwkHIJUbygfAucFVXA9X0z` (`https://bestbotfor.com/api/stripe/webhook`). Add `checkout.session.expired`. Keep every event the endpoint already sends. Saving replaces the event list, so copy the current events first and add this one to them.
+2. Payment Links → open `plink_1URyeXIJUbygfAucnLlkSP5u` (Monthly, `https://buy.stripe.com/4gMdRa7vW8G6gg2ebyfrW02`). Edit it and turn on the promotional-email checkbox (`consent_collection.promotions` = `auto`). Leave promotion codes off. There is no control on a Payment Link for `after_expiration.recovery`. A buyer is stored only after they opt in.
+3. Leave `plink_1URylTIJUbygfAuc07cebXfn` inactive.
+
+The unpaid $299 Sponsor Monthly session that expired on Nov 1, 2026 cannot be recovered by this change. Recovery is chosen when the session is created, and that session has already expired. Payment Links cannot set it per session. Future expired Monthly sessions are recorded once step 1 is live and only when the buyer opted in. One manual follow-up email is allowed for those opted-in buyers, and for no one else. In-app founding and placement checkouts do not turn recovery on.

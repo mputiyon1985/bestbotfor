@@ -171,6 +171,13 @@
       "breakpoints": true
     },
     {
+      "idx": 24,
+      "version": "6",
+      "when": 1792196000000,
+      "tag": "0026_sponsor_abandoned_checkouts",
+      "breakpoints": true
+    },
+    {
       "idx": 25,
       "version": "6",
       "when": 1792197000000,
