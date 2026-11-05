@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { decompress } from 'wawoff2'
@@ -57,7 +57,13 @@ describe('brand sheet palette', () => {
       expect(existsSync(path.join(fonts, `Poppins-${weight}.ttf`))).toBe(false)
     }
     expect(existsSync(path.join(fonts, 'OFL.txt'))).toBe(true)
-    expect(existsSync(path.join(process.cwd(), 'docs/screenshots'))).toBe(false)
+    // Brand-kit dumps (before-home.png and the rest) stay out. The quiz-card
+    // folder is the only screenshot set kept in the repo.
+    const shots = path.join(process.cwd(), 'docs/screenshots')
+    expect(readdirSync(shots).sort()).toEqual(['quiz-card'])
+    for (const name of ['after-home.png', 'before-home.png', 'after-best-coding.png', 'before-best-coding.png']) {
+      expect(existsSync(path.join(shots, name))).toBe(false)
+    }
     const decoded = Buffer.from(await decompress(readFileSync(path.join(fonts, 'Poppins-Bold.woff2'))))
     expect(decoded.subarray(0, 4).toString('hex')).toBe('00010000')
   })

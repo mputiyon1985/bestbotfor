@@ -15,7 +15,7 @@ cleanup() {
     rm -f /tmp/lh-gate/node_modules
   fi
   git worktree remove --force /tmp/lh-gate >/dev/null 2>&1 || true
-  rm -rf /tmp/lh-gate
+  rm -rf /tmp/lh-gate /tmp/lh-app
   exit "$status"
 }
 trap cleanup EXIT
@@ -64,11 +64,27 @@ const resolved = require.resolve("@playwright/test")
 console.log("lighthouse gate playwright: " + resolved)
 '
 
+# The origin/main gate moves $LH_APP_ROOT/.lighthouseci to /tmp/lhci-out-* with rename().
+# On a runner where /tmp is another device, that throws EXDEV and the job stops
+# before any score is read. Clone the built checkout onto /tmp so the move stays
+# on one filesystem. The gate file and its thresholds stay the origin/main copy.
+lh_app_root="$root"
+if [[ "$(stat -c %d "$root")" != "$(stat -c %d /tmp)" ]]; then
+  echo "lighthouse app root: ${root} and /tmp are different devices; cloning the build onto /tmp"
+  rm -rf /tmp/lh-app
+  git clone --shared "$root" /tmp/lh-app
+  tar -C "$root" --exclude .git --exclude node_modules --exclude .lighthouseci -cf - . | tar -C /tmp/lh-app -xf -
+  ln -sfn "$root/node_modules" /tmp/lh-app/node_modules
+  lh_app_root=/tmp/lh-app
+else
+  echo "lighthouse app root: ${root} is on the same device as /tmp"
+fi
+
 rm -f /tmp/lh-gate-ran
 status=0
 (
   cd /tmp/lh-gate
-  LH_APP_ROOT="$root" LH_GATE_DIR=/tmp/lh-gate npx tsx scripts/check-lighthouse.ts
+  LH_APP_ROOT="$lh_app_root" LH_GATE_DIR=/tmp/lh-gate npx tsx scripts/check-lighthouse.ts
 ) || status=$?
 
 if [[ ! -f /tmp/lh-gate-ran ]]; then
