@@ -5948,7 +5948,7 @@ export const toolSeeds: ToolSeed[] = [
       network: 'Impact',
       sourceUrl: 'https://xmind.com/affiliate',
       status: 'inactive',
-      commissionNote: 'Rate not published. Recurring not confirmed. Not approved, so no tracking link is used.',
+      commissionNote: 'Rate not published. Recurring not confirmed.',
     },
   }),
   // scout 2026-11-03 | category: Meetings | scout rating 4.0 (not shown) | launch: 2026-11-02 (Product Hunt #4 Product of the Day) | pricing: Free 100,000 credits ($50) on sign-up, no card. Paid plans from $19/mo.
@@ -5973,9 +5973,8 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: none,
   }),
   // scout 2026-11-03 | category: Design | scout rating 3.9 (not shown) | launch: 2026-11-02 (Product Hunt #5 Product of the Day)
-  // checked 2026-11-03 at https://hera.video | "Get started for free"; schema.org offer price 0. https://hera.video/pricing is 404.
-  // https://hera.video/creators names Pro at $40 a month and Standard with no price, so $40 is not the from-price.
-  // note: hasFreeTier true and priceFromUsd null, so the label is the catalog line "Free tier, paid plans available" rather than "Paid".
+  // checked 2026-11-03 at https://hera.video/creators | Pro is $40 a month. Standard is named with no dollar price, so priceFromUsd stays null.
+  // Creator program: 50% of what each paying user pays, capped at $250 per user. In-app personal link. Not approved: status inactive, no tracking URL, allowedHosts stays hera.video.
   tool({
     slug: 'hera',
     addedAt: SCOUTED_2026_11_03,
@@ -5985,7 +5984,7 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['hera.video'],
     category: 'Design',
     shortDesc: 'A creative canvas where agents generate images and editable motion graphics for ads and social posts.',
-    longDesc: 'Hera is an AI-native canvas for images, design and editable motion graphics, directed by several agents at once. Outputs come back as layers for ads, launch videos and social posts. You can start for free. Paid plan prices are not published, so no from-price is stored.',
+    longDesc: 'Hera is an AI-native canvas for images, design and editable motion graphics, directed by several agents at once. Outputs come back as layers for ads, launch videos and social posts. You can start for free. Pro is $40 a month. Standard is offered, and its price is not listed, so no from-price is stored.',
     pricingModel: 'freemium',
     priceFromUsd: null,
     hasFreeTier: true,
@@ -5993,7 +5992,13 @@ export const toolSeeds: ToolSeed[] = [
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_11_03,
     fits: [],
-    affiliate: none,
+    affiliate: {
+      hasProgram: true,
+      network: 'in-house',
+      sourceUrl: 'https://hera.video/creators',
+      status: 'inactive',
+      commissionNote: '50% of what each paying user pays, capped at $250 per user, as stated on the creator page.',
+    },
   }),
   // scout 2026-11-03 | category: Design | scout rating 3.7 (not shown) | launch: 2026-11-02 (Product Hunt #6 Product of the Day) | pricing: Free. The scout pricing line included an install command; that command is not stored.
   tool({
@@ -6039,7 +6044,7 @@ export const toolSeeds: ToolSeed[] = [
       network: 'Lemon Squeezy',
       sourceUrl: 'https://screen.studio/affiliate',
       status: 'inactive',
-      commissionNote: 'In-house. 15% of the initial purchase only, not recurring. Not approved, so no tracking link is used.',
+      commissionNote: '15% of the initial purchase only, not recurring, as stated on the affiliate page.',
     },
   }),
   // scout 2026-11-03 | category: Research | scout rating 4.1 (not shown) | launch: 2026-11-01 (Product Hunt #2 Product of the Day) | pricing: Free 1,500 sign-up credits, 2 parallel tasks. Paid $9.9, $29.9, $99.9 or $299.9 per month. Business $999/mo. Enterprise from $2,999/mo. Yearly saves 40%.
@@ -6087,7 +6092,7 @@ export const toolSeeds: ToolSeed[] = [
       network: 'Impact',
       sourceUrl: 'https://riverside.com/affiliate-program',
       status: 'inactive',
-      commissionNote: 'Up to 20% per customer referred. Recurring duration not stated. Not approved, so no tracking link is used.',
+      commissionNote: 'Up to 20% per customer referred. Recurring duration not stated.',
     },
   }),
   // scout 2026-11-03 | category: Customer support (FLAG: scout category "Customer support" mapped to Agent builder) | scout rating 3.8 (not shown) | launch: 2026-11-01 (Product Hunt #4 Product of the Day) | pricing: Free $0 forever when you bring your own API key. Paid $19/mo and $59/mo, 7-day trial. Voice priced per session.
