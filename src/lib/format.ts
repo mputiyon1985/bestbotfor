@@ -64,6 +64,8 @@ type Priced = {
 }
 
 export function priceLabel(tool: Priced): string {
+  // The column cannot be empty, so the seed uses "paid" with no dollar amount.
+  if (tool.slug === 'modelpeers') return 'Pricing not published'
   if (tool.slug) {
     const override = PRICE_LABEL_OVERRIDES[tool.slug]
     if (override) return withAnnualBilling(tool.slug, override)

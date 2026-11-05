@@ -10,6 +10,7 @@ const SCOUTED_2026_10_25 = '2026-10-25'
 const SCOUTED_2026_10_26 = '2026-10-26'
 const SCOUTED_2026_10_30 = '2026-10-30'
 const SCOUTED_2026_11_03 = '2026-11-03'
+const SCOUTED_2026_11_04 = '2026-11-04'
 const BACKLOG_BATCH_02 = '2026-10-25'
 const BACKLOG_BATCH_03 = '2026-10-25'
 
@@ -6221,6 +6222,186 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'pro',
     platforms: ['API'],
     lastVerifiedAt: SCOUTED_2026_11_03,
+    fits: [],
+    affiliate: none,
+  }),
+  // Bot scout 2026-11-04. Unrated: no editorial score, pros or cons until Forge rubric review.
+  // Scout ratings stay in the comments and are not shown. Unknown prices stay null.
+  // Videco is the only affiliate row: inactive, no affiliate URL, no extra allowlist host.
+  // The other seven tools are `none`. Public promos are not reader deals and are not stored.
+  // scout 2026-11-04 | category: Developer tools (FLAG: scout category "Developer tools" mapped to Development) | scout rating 4.3 (not shown) | launch: 2026-11-03 (Product Hunt #1 Product of the Day) | pricing: Free $0 (10,000 tool calls and 10,000 trigger events per month, unlimited connected accounts); Growth $99/mo (100,000 tool calls, $0.50 per extra 1K); Enterprise custom.
+  // note: priceFromUsd is Growth $99/mo.
+  tool({
+    slug: 'scalekit-agentkit',
+    addedAt: SCOUTED_2026_11_04,
+    name: 'AgentKit by Scalekit',
+    vendor: 'Scalekit',
+    url: 'https://www.scalekit.com/',
+    allowedHosts: ['www.scalekit.com'],
+    category: 'Development',
+    shortDesc: 'An MCP gateway that gives agents one endpoint for thousands of tools, with per-user auth and a call log.',
+    longDesc: 'AgentKit by Scalekit is an MCP gateway. Agents reach 600+ connectors and 30,000+ tools through one endpoint, with managed per-user auth, virtual MCP servers scoped to an agent role, event triggers, and a log of every call. The free plan includes 10,000 tool calls and 10,000 trigger events a month. Growth is $99 a month.',
+    pricingModel: 'freemium',
+    priceFromUsd: 99,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['API'],
+    lastVerifiedAt: SCOUTED_2026_11_04,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-04 | category: Productivity | scout rating 3.7 (not shown) | launch: 2026-11-03 (Product Hunt #2 Product of the Day) | pricing: Free to get started; paid plans exist (annual billing gives 2 months free) but the plan prices were not readable on the pricing page.
+  // note: paid prices unknown, so priceFromUsd null. Free start is stated.
+  tool({
+    slug: 'teamily-ai',
+    addedAt: SCOUTED_2026_11_04,
+    name: 'Teamily AI',
+    vendor: 'Teamily',
+    url: 'https://teamily.ai/',
+    allowedHosts: ['teamily.ai'],
+    category: 'Productivity',
+    shortDesc: 'A messenger where people and always-on agents share memory, docs, meetings and calls.',
+    longDesc: 'Teamily AI is a messenger where people and always-on agents work together, with shared memory, multi-user multi-agent teams, docs, meetings, calls and workflow integrations. Apps are on the web, macOS, Windows, iOS and Android. You can start free. Paid plan prices were not readable on the pricing page. Annual billing is described as two months free.',
+    pricingModel: 'freemium',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['Web', 'macOS', 'Windows', 'iOS', 'Android'],
+    lastVerifiedAt: SCOUTED_2026_11_04,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-04 | category: Developer tools (FLAG: scout category "Developer tools" mapped to Development) | scout rating 4.2 (not shown) | launch: 2026-11-03 (Product Hunt #3 Product of the Day) | pricing: 30-day free trial, no card; Starter $29/mo (50 tests, 5,000 executions); Growth $89/mo (225 tests, 50,000 executions); Business $249/mo (750 tests, 200,000 executions); annual saves 20%.
+  // note: priceFromUsd is Starter $29/mo. The 30-day trial is not a free tier.
+  tool({
+    slug: 'testifly',
+    addedAt: SCOUTED_2026_11_04,
+    name: 'Testifly',
+    vendor: 'Testifly',
+    url: 'https://testifly.dev',
+    allowedHosts: ['testifly.dev'],
+    category: 'Development',
+    shortDesc: 'Autonomous QA that maps a site, writes end-to-end tests, and updates them when the UI changes.',
+    longDesc: 'Testifly is autonomous QA. You give it a URL and logins, and it maps user flows, generates end-to-end web tests, repairs them when the UI changes, runs them in CI, and can report through an MCP server plus Jira, Linear, Notion and Slack. A 30-day trial needs no card. Starter is $29 a month. The trial is not a free plan.',
+    pricingModel: 'paid',
+    priceFromUsd: 29,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web', 'API'],
+    lastVerifiedAt: SCOUTED_2026_11_04,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-04 | category: Marketing (FLAG: scout category "Marketing" mapped to Automation; Playad, the closest ad-campaign tool, is Automation) | scout rating 4.0 (not shown) | launch: 2026-11-03 (Product Hunt #4 Product of the Day) | pricing: Solo (developer) $20/mo with $20 usage credits ($200/yr); Scale $500/mo per workspace with $500 usage credits ($5,000/yr); Custom via workshop. Product Hunt listing also cites $0.25 per verified write and 0% of ad spend.
+  // note: priceFromUsd is Solo $20/mo. No free tier is stated. The per-write figure is not the from-price.
+  tool({
+    slug: 'synter',
+    addedAt: SCOUTED_2026_11_04,
+    name: 'Synter',
+    vendor: 'Synter',
+    url: 'https://synterai.com',
+    allowedHosts: ['synterai.com'],
+    category: 'Automation',
+    shortDesc: 'An agent that builds and launches ad campaigns across many platforms, with approval before anything goes live.',
+    longDesc: 'Synter is an agent media buyer. One MCP lets Claude, Cursor or ChatGPT build, launch and optimize ad campaigns across 43 ad platforms, with approval gates before anything goes live. Solo is $20 a month and includes $20 of usage credits. Scale is $500 a month per workspace.',
+    pricingModel: 'paid',
+    priceFromUsd: 20,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['API'],
+    lastVerifiedAt: SCOUTED_2026_11_04,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-04 | category: AI video | scout rating 4.1 (not shown) | launch: 2026-11-03 (Product Hunt #5 Product of the Day) | pricing: 7-day free trial; Pro $9.99/mo; Business $49/mo (custom domain, 100 AI credits/month).
+  // note: priceFromUsd is Pro $9.99/mo. The 7-day trial is not a free tier.
+  // A public promo in the scout is not a BestBotFor reader deal, so it is not stored.
+  // affiliate: Endorsely, 50% of subscription revenue on paid plans, recurring while the referral stays subscribed. Apply page is the vendor URL. Seeded inactive. No tracking link.
+  tool({
+    slug: 'videco',
+    addedAt: SCOUTED_2026_11_04,
+    name: 'Videco',
+    vendor: 'Videco',
+    url: 'https://videco.io',
+    allowedHosts: ['videco.io'],
+    category: 'AI video',
+    shortDesc: 'Turns demos and webinars into short clips, posts and blog drafts, and hosts the video.',
+    longDesc: 'Videco is a content studio and video host. It finds moments in demos and webinars, turns them into branded short clips, blog drafts and social posts, and hosts and embeds the videos with analytics and lead capture. A 7-day trial is available. Pro is $9.99 a month. Business is $49 a month and includes 100 AI credits a month. The trial is not a free plan.',
+    pricingModel: 'paid',
+    priceFromUsd: 9.99,
+    hasFreeTier: false,
+    skillLevel: 'beginner',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_04,
+    fits: [],
+    affiliate: {
+      hasProgram: true,
+      network: 'Endorsely',
+      sourceUrl: 'https://videco.io/affiliate',
+      status: 'inactive',
+      commissionNote: '50% of subscription revenue from referrals on paid plans, recurring while the referral stays subscribed. Switched off, with no tracking link stored.',
+    },
+  }),
+  // scout 2026-11-04 | category: Automation | scout rating 4.1 (not shown) | launch: 2026-11-03 (Product Hunt #8 Product of the Day) | pricing: Free $0 (3,000 messages/mo, 1 GB, 1 domain); Pro $9/mo; Team $49/mo; Scale $199/mo.
+  // note: priceFromUsd is Pro $9/mo.
+  tool({
+    slug: 'machinemail',
+    addedAt: SCOUTED_2026_11_04,
+    name: 'MachineMail',
+    vendor: 'MachineMail',
+    url: 'https://machinemail.dev',
+    allowedHosts: ['machinemail.dev'],
+    category: 'Automation',
+    shortDesc: 'An email API that gives each AI agent its own inbox and strips hidden instructions from inbound mail.',
+    longDesc: 'MachineMail is an email API for AI agents. Each agent gets its own inbox, with no per-inbox fee, over MCP or the API, including custom domains. Every inbound message gets a trust report, and hidden prompt-injection text is stripped before the agent reads it. The free plan includes 3,000 messages a month, 1 GB and 1 domain. Pro is $9 a month.',
+    pricingModel: 'freemium',
+    priceFromUsd: 9,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['API'],
+    lastVerifiedAt: SCOUTED_2026_11_04,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-04 | category: Developer tools (FLAG: scout category "Developer tools" mapped to Development) | scout rating 4.1 (not shown) | launch: 2026-11-03 (Product Hunt #10 Product of the Day) | pricing: Free $0 (1,000 credits/mo); Developer $20/mo (10,000 credits); Pro from $90/mo (100K credits and up); Enterprise custom. Eligible startups and nonprofits get 30% off an annual paid plan for 12 months.
+  // note: priceFromUsd is Developer $20/mo. The startup and nonprofit discount is the vendor's public pricing. It is not stored as a reader deal.
+  tool({
+    slug: 'context-dev',
+    addedAt: SCOUTED_2026_11_04,
+    name: 'Context.dev',
+    vendor: 'Context.dev',
+    url: 'https://context.dev',
+    allowedHosts: ['context.dev'],
+    category: 'Development',
+    shortDesc: 'A web data API that scrapes pages to Markdown, searches, crawls and monitors changes for agents.',
+    longDesc: 'Context.dev is a web data API for agents and apps. It scrapes a URL to Markdown, searches the web, crawls sites, searches people and companies, watches pages for changes, and pulls brand data such as logos, colors and fonts. SDKs, a CLI and MCP are included. The free plan includes 1,000 credits a month. Developer is $20 a month. Eligible startups and nonprofits can get 30% off an annual paid plan for 12 months on the vendor\'s public pricing.',
+    pricingModel: 'freemium',
+    priceFromUsd: 20,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['API'],
+    lastVerifiedAt: SCOUTED_2026_11_04,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-04 | category: Productivity | scout rating 3.8 (not shown) | launch: 2026-11-03 (Show HN) | pricing: unknown (site shows a free sign-in; no paid plan found).
+  // note: pricing unknown, so priceFromUsd null. pricingModel stays 'paid' because the column is free, freemium or paid and cannot be empty. A sign-in is not stored as a free tier. The price label says pricing is not published.
+  tool({
+    slug: 'modelpeers',
+    addedAt: SCOUTED_2026_11_04,
+    name: 'Modelpeers',
+    vendor: 'Modelpeers',
+    url: 'https://modelpeers.com',
+    allowedHosts: ['modelpeers.com'],
+    category: 'Productivity',
+    shortDesc: 'A changelog feed that tracks model and agent changes and sends a weekly digest for what you follow.',
+    longDesc: 'Modelpeers is a changelog feed for AI models and agents. It tracks vendor changelogs, deprecation, status and pricing pages, checks each change with two models, and sends a weekly digest for the models, agents or companies you follow. Pricing is not published. The site offers a sign-in, and no paid plan was found.',
+    pricingModel: 'paid',
+    priceFromUsd: null,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_04,
     fits: [],
     affiliate: none,
   }),
