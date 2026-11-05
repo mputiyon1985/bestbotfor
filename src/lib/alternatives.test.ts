@@ -62,7 +62,7 @@ describe('alternatives pages', () => {
     expect(alternativesDescription('Cursor', 'Write code')).toContain('Cursor alternatives for writing code')
   })
 
-  it('ranks up to six tools like /result, never the tool itself, all clearing the fit floor', () => {
+  it('ranks up to six tools by the match % on the page, never the tool itself, all clearing the fit floor', () => {
     for (const page of ALTERNATIVE_PAGES) {
       const candidates = toolsForTask(catalog, page.task)
       for (const budget of ['any', 'free', 'low'] as const) {
@@ -70,11 +70,59 @@ describe('alternatives pages', () => {
         expect(ranked.length).toBeLessThanOrEqual(ALTERNATIVES_COUNT)
         expect(ranked.map((tool) => tool.slug)).not.toContain(page.tool)
         for (const tool of ranked) expect(tool.fitScore).toBeGreaterThanOrEqual(MIN_QUIZ_FIT_SCORE)
-        const expected = listMatches(candidates.filter((tool) => tool.slug !== page.tool), budget).slice(0, ALTERNATIVES_COUNT)
-        expect(ranked.map((tool) => tool.slug)).toEqual(expected.map((tool) => tool.slug))
+        const eligible = listMatches(
+          candidates.filter((tool) => tool.slug !== page.tool),
+          budget,
+        )
+        const byMatch = eligible
+          .slice()
+          .sort((a, b) => b.fitScore - a.fitScore || a.name.localeCompare(b.name) || a.slug.localeCompare(b.slug))
+          .slice(0, ALTERNATIVES_COUNT)
+        expect(ranked.map((tool) => tool.slug)).toEqual(byMatch.map((tool) => tool.slug))
+        for (let index = 1; index < ranked.length; index++) {
+          const previous = ranked[index - 1]!
+          const next = ranked[index]!
+          expect(previous.fitScore, page.tool).toBeGreaterThanOrEqual(next.fitScore)
+        }
       }
       expect(rankAlternatives(candidates, page.tool, 'any').length, page.tool).toBeGreaterThanOrEqual(3)
     }
+  })
+
+  it('lists ElevenLabs and Cursor alternatives best to worst by the match % the page shows', () => {
+    // Live bug, 2026-11-05: skill adjustment (beginner +12, intermediate 0) ordered these
+    // by a score the page does not print. The row shows fitScore as "{n}% match".
+    const voice = rankAlternatives(toolsForTask(catalog, 'voice'), 'elevenlabs', 'any')
+    const wellsaid = voice.findIndex((tool) => tool.slug === 'wellsaid')
+    const fish = voice.findIndex((tool) => tool.slug === 'fish-audio')
+    expect(voice[wellsaid]?.fitScore).toBe(82)
+    expect(voice[fish]?.fitScore).toBe(76)
+    expect(wellsaid).toBeGreaterThanOrEqual(0)
+    expect(fish).toBeGreaterThan(wellsaid)
+    const speechify = voice.findIndex((tool) => tool.slug === 'speechify')
+    const typecast = voice.findIndex((tool) => tool.slug === 'typecast')
+    expect(voice[speechify]?.fitScore).toBe(voice[typecast]?.fitScore)
+    expect(typecast).toBeGreaterThan(speechify)
+    expect(voice.map((tool) => tool.fitScore)).toEqual([84, 82, 80, 76, 74, 74])
+
+    const coding = rankAlternatives(toolsForTask(catalog, 'coding'), 'cursor', 'any')
+    const codex = coding.find((tool) => tool.slug === 'openai-codex')
+    expect(codex?.fitScore).toBe(90)
+    // Claude is 80% for coding. It used to sit above Codex. It is outside the six highest matches.
+    expect(coding.some((tool) => tool.slug === 'claude')).toBe(false)
+    expect(coding.map((tool) => tool.slug)).toEqual([
+      'claude-code',
+      'github-copilot',
+      'openai-codex',
+      'cline',
+      'windsurf',
+      'augment-code',
+    ])
+    expect(coding.map((tool) => tool.fitScore)).toEqual([94, 92, 90, 88, 88, 86])
+    const cline = coding.findIndex((tool) => tool.slug === 'cline')
+    const devin = coding.findIndex((tool) => tool.slug === 'windsurf')
+    expect(coding[cline]?.fitScore).toBe(coding[devin]?.fitScore)
+    expect(devin).toBeGreaterThan(cline)
   })
 
   it('parses budget chips and rejects anything else', () => {

@@ -73,12 +73,20 @@ export function alternativesBudgetPath(toolSlug: string, budget: RankBudget): st
   return budget === 'any' ? alternativesPath(toolSlug) : `${alternativesPath(toolSlug)}?budget=${budget}`
 }
 
-/** Ranked alternatives: same ranking as /result (listMatches), without the tool itself. */
+/**
+ * Up to six alternatives for /alternatives/[tool].
+ * Membership is the quiz-eligible set for this budget (listMatches), without the tool itself.
+ * Order is the match % the row prints (`fitScore`), highest first. Budget only decides who is eligible.
+ * Equal percentages stay in name order, then slug. Affiliate status is not an input, and this list has no sponsor pin.
+ */
 export function rankAlternatives<T extends Parameters<typeof listMatches>[0][number]>(candidates: T[], toolSlug: string, budget: RankBudget) {
   return listMatches(
     candidates.filter((tool) => tool.slug !== toolSlug),
     budget,
-  ).slice(0, ALTERNATIVES_COUNT)
+  )
+    .slice()
+    .sort((a, b) => b.fitScore - a.fitScore || a.name.localeCompare(b.name) || a.slug.localeCompare(b.slug))
+    .slice(0, ALTERNATIVES_COUNT)
 }
 
 /** comparePairSeeds that include the tool, as [left, right] slugs. */
