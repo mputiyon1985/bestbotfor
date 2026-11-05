@@ -1,5 +1,6 @@
 import { request as httpRequest } from 'node:http'
-import { expect, test } from '@playwright/test'
+import { e2eClientAddress } from './client-address'
+import { expect, test } from './fixtures'
 import { homeDescription, homeTitle, notFoundDescription, notFoundTitle } from '../src/lib/metadata'
 import { CATALOG_TOOL_COUNT } from '../src/lib/seo-pages'
 import { toolCategories } from '../src/lib/tool-index'
@@ -23,9 +24,16 @@ function robotsDirectives(html: string): string[] {
 
 function rawStatus(path: string): Promise<{ status: number; body: string; headers: Record<string, string | string[] | undefined> }> {
   const base = new URL(process.env.NEXT_PUBLIC_SITE_URL || 'http://127.0.0.1:3000')
+  const client = process.env.E2E_CLIENT_ADDRESS
   return new Promise((resolve, reject) => {
     const req = httpRequest(
-      { hostname: base.hostname, port: base.port, path, method: 'GET' },
+      {
+        hostname: base.hostname,
+        port: base.port,
+        path,
+        method: 'GET',
+        headers: client ? { 'x-forwarded-for': client } : undefined,
+      },
       (res) => {
         const chunks: Buffer[] = []
         res.on('data', (chunk: Buffer) => chunks.push(chunk))
@@ -229,9 +237,9 @@ test('a result 404 has one robots meta', async () => {
 
 test('a failed result lookup 404s a missing task with one robots meta', async ({ request }) => {
   test.setTimeout(30_000)
-  // Parallel specs share 127.0.0.1. A full quiz window is a 429, which hides
-  // the lookup result this test is checking. One address keeps this window empty.
-  const client = `2001:db8:f404::${Date.now().toString(16)}`
+  // Own address, separate from the per-test fixture address, so these eight
+  // calls share one empty window. The last group of a raw timestamp is too long to be IPv6.
+  const client = e2eClientAddress(Date.now(), 0xf404)
   const headersFor = (fault: string) => ({ 'x-bbf-result-fault': fault, 'x-forwarded-for': client })
   const missing = '/result?task=marketing&budget=any&skill=beginner'
   for (const fault of ['lookup-throw', 'lookup-slow', 'limit-throw', 'limit-slow']) {
@@ -268,7 +276,7 @@ test('a result catalog that is still down answers 503, not 500', async ({ reques
 
 test('a tripped quiz rate limit returns 429 with Retry-After', async ({ request }) => {
   test.setTimeout(120_000)
-  const headers = { 'x-forwarded-for': `2001:db8::${Date.now().toString(16)}` }
+  const headers = { 'x-forwarded-for': e2eClientAddress(Date.now(), 0xdb8) }
   const path = '/result?task=chat&budget=any&skill=beginner'
   for (let attempt = 0; attempt < 30; attempt += 1) {
     const response = await request.get(path, { headers })

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { fewStrongOptionsLabel, overBudgetLabel, priceLabel } from '../src/lib/format'
 import { recommend } from '../src/lib/recommend'
 import { listedCatalogFromSeeds } from '../src/test/catalog-from-seeds'

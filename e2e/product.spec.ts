@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 
 test('previews ask crawlers not to index', async ({ page, request }) => {
   const home = await request.get('/')

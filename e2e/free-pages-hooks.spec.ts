@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { FREE_PAGE_TASKS } from '../src/lib/free-plan'
 import { FREE_PLAN_DROP_HEADER, FREE_PLAN_NOW_HEADER } from '../src/lib/free-page-hooks'
 

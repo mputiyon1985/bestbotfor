@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from './fixtures'
 import { editorialSeeds } from '../src/data/scores-pros-cons.seed'
 import { keptProsConsSeeds, ratingSeeds, unratedSlugs } from '../src/data/scores-v23.seed'
 import { ratingAriaLabel, starFills } from '../src/lib/editorial'
@@ -63,7 +63,7 @@ test('a scored tool shows fractional stars, the rubric, and no review schema', a
 
 test('unrated tools hide the score and keep pros and cons', async ({ page }) => {
   test.setTimeout(180_000)
-  expect(unratedSlugs).toHaveLength(173)
+  expect(unratedSlugs).toHaveLength(188)
   const unlisted = new Set(toolSeeds.filter((item) => item.unlisted).map((item) => item.slug))
   for (const slug of unratedSlugs.filter((item) => !unlisted.has(item))) {
     const tool = toolSeeds.find((item) => item.slug === slug)

@@ -13,9 +13,13 @@ describe('decideRedirect', () => {
   })
 
   it('uses the affiliate URL when it is https on a reviewed host', () => {
+    const pinned = ['chatgpt.com', 'chatgpt.com?via=bbf']
     expect(
-      decideRedirect({ tool: { url: 'https://chatgpt.com', affiliateUrl: 'https://chatgpt.com/?via=bbf', allowedHosts: chatgpt } }),
+      decideRedirect({ tool: { url: 'https://chatgpt.com', affiliateUrl: 'https://chatgpt.com/?via=bbf', allowedHosts: pinned } }),
     ).toEqual({ type: 'redirect', url: 'https://chatgpt.com/?via=bbf', affiliate: true })
+    expect(
+      decideRedirect({ tool: { url: 'https://chatgpt.com', affiliateUrl: 'https://chatgpt.com/?via=other', allowedHosts: pinned } }),
+    ).toEqual({ type: 'redirect', url: 'https://chatgpt.com/', affiliate: false })
     for (const bad of ['http://chatgpt.com/?via=bbf', 'javascript:alert(1)', 'https://chatgpt.com:8443/', 'https://u:p@chatgpt.com/', '']) {
       expect(decideRedirect({ tool: { url: 'https://chatgpt.com', affiliateUrl: bad, allowedHosts: chatgpt } })).toEqual({
         type: 'redirect',
