@@ -196,7 +196,8 @@ describe('bot scout 2026-11-03', () => {
     }
     expect(hera.affiliate.commissionNote).toBe('50% of what each paying user pays, capped at $250 per user, as stated on the creator page.')
     expect(descript.affiliate.commissionNote).toBe('One-time $25 per new Creator or Pro subscriber, as stated in Descript’s affiliate terms.')
-    expect(descript.affiliate.status).toBe('inactive')
+    expect(descript.affiliate.status).toBe('active')
+    expect(descript.affiliate.affiliateUrl).toBe('https://get.descript.com/mr4pi3y6tp4s')
   })
 
   it('serves ElevenLabs and Synthesia links only when status is active', () => {

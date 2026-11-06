@@ -17,8 +17,8 @@ export default async function AffiliateAdminPage() {
       </p>
       <h1 className="font-bold text-5xl">Affiliate programs</h1>
       <p>
-        Read-only. Status and the tracking link are set in the catalog seed, one program at a time, after the owner
-        approves. This page does not write the database. Approved activations: {APPROVED_ACTIVE_AFFILIATES.length}.
+        Read-only. Status and the tracking link are set in the catalog seed, and only for a slug the owner
+        has approved. This page does not write the database. Approved activations: {APPROVED_ACTIVE_AFFILIATES.length}.
       </p>
       <div className="overflow-x-auto">
         <table className="w-full min-w-[36rem] border-collapse text-left text-sm">

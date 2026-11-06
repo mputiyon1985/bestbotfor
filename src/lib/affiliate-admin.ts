@@ -8,10 +8,19 @@ export const ACTIVE_AFFILIATE_STATUS = 'active' satisfies AffiliateStatus
  * only for these slugs, and only when that tool's status is "active".
  * Every other program is refused if it is active or carries a tracking link.
  */
-/** Mark approved these two to stay live through the merge. The other prepared programs stay off. */
-export const APPROVED_ACTIVE_AFFILIATES: readonly string[] = ['elevenlabs', 'synthesia']
+/**
+ * Owner-approved live programs. Writesonic stays off. Lovable stays off:
+ * Impact declined that partnership on Oct 27.
+ */
+export const APPROVED_ACTIVE_AFFILIATES: readonly string[] = [
+  'elevenlabs',
+  'synthesia',
+  'descript',
+  'murf',
+  'papermark',
+]
 
-/** Prepared in this change. Each one ships switched off, with no tracking link. */
+/** Prepared programs. A slug here is live only when it is also in APPROVED_ACTIVE_AFFILIATES. */
 export const PREPARED_AFFILIATE_SLUGS = [
   'elevenlabs',
   'synthesia',
