@@ -12,6 +12,7 @@ const SCOUTED_2026_10_30 = '2026-10-30'
 const SCOUTED_2026_11_03 = '2026-11-03'
 const SCOUTED_2026_11_04 = '2026-11-04'
 const SCOUTED_2026_11_05 = '2026-11-05'
+const SCOUTED_2026_11_06 = '2026-11-06'
 const BACKLOG_BATCH_02 = '2026-10-25'
 const BACKLOG_BATCH_03 = '2026-10-25'
 
@@ -6513,6 +6514,178 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'intermediate',
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_11_05,
+    fits: [],
+    affiliate: none,
+  }),
+  // Bot scout 2026-11-06. Unrated: no editorial score, pros or cons until Forge rubric review.
+  // Scout ratings stay in the comments and are not shown.
+  // No affiliate row is seeded. Affiliate programs are unknown for all eight. Sponsorship is unknown for all eight.
+  // Public vendor offers are not reader deals and are not stored as deals.
+  // scout 2026-11-06 | category: Developer tools (FLAG: scout category "Developer tools" mapped to Development) | scout rating 4.2 (not shown) | launch: 2026-11-05 (Product Hunt #1) | pricing: iPhone $60/mo; Mac $90/mo; month-to-month, cancel anytime (device available until end of current billing period); prices in USD plus tax.
+  // note: priceFromUsd is iPhone $60/mo. No free plan was found. Affiliate unknown, not seeded.
+  tool({
+    slug: 'glasshand',
+    addedAt: SCOUTED_2026_11_06,
+    name: 'Glasshand',
+    vendor: 'Glasshand',
+    url: 'https://glasshand.com',
+    allowedHosts: ['glasshand.com'],
+    category: 'Development',
+    shortDesc: 'Rents dedicated real iPhones and Macs so AI agents can tap, type and run apps, then erases the device when you release it.',
+    longDesc: 'Glasshand rents dedicated real iPhones and Macs in a data center so AI agents (Claude Code, Codex, Cursor and others) can tap, type and run apps like a human. The device is erased and factory-reset when you release it. An iPhone is $60 a month. A Mac is $90 a month. Plans are month to month and can be cancelled anytime. The device stays available until the end of the current billing period. Prices are in USD plus tax. No free plan was found.',
+    pricingModel: 'paid',
+    priceFromUsd: 60,
+    hasFreeTier: false,
+    skillLevel: 'pro',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_06,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-06 | category: Productivity | scout rating 4.2 (not shown) | launch: 2026-11-05 (Product Hunt #3) | pricing: 5-day free trial $0 (card required; up to 3 Coworkers, 350 credits, unlimited seats); then $29/mo for 5 Coworkers with 500 credits/mo and unlimited seats; +$10/mo per additional 5 Coworkers; +$10/mo for +1,000 Rerun credits/mo; yearly billed option with about 20% off; self-host free under AGPL-3.0.
+  // note: priceFromUsd is Cloud $29/mo. Self-hosting is free, so this is a free tier. The 5-day cloud trial is not that free plan. Affiliate unknown, not seeded.
+  tool({
+    slug: 'rerun',
+    addedAt: SCOUTED_2026_11_06,
+    name: 'Rerun',
+    vendor: 'Rerun',
+    url: 'https://rerun.build',
+    allowedHosts: ['rerun.build'],
+    category: 'Productivity',
+    shortDesc: 'AI coworkers with their own tools, browser, memory and schedule that run on your ChatGPT or Claude subscription.',
+    longDesc: 'Rerun gives you AI coworkers with their own tools, browser, memory and schedule. They run on your ChatGPT or Claude subscription, or on OpenRouter, API keys or Rerun credits, and they pause for approval before risky actions. The project is open source under AGPL-3.0 and can be self-hosted. A 5-day trial is $0 and needs a card. It includes up to 3 coworkers, 350 credits and unlimited seats. Cloud is then $29 a month for 5 coworkers, 500 credits a month and unlimited seats. Five more coworkers are $10 a month, and 1,000 more Rerun credits a month are $10. Yearly billing is about 20% off. Self-hosting is free under AGPL-3.0. The trial is not a free plan.',
+    pricingModel: 'freemium',
+    priceFromUsd: 29,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Web', 'Self-hosted'],
+    lastVerifiedAt: SCOUTED_2026_11_06,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-06 | category: Developer tools (FLAG: scout category "Developer tools" mapped to Development) | scout rating 4.1 (not shown) | launch: 2026-11-05 (Product Hunt) | pricing: Usage: agent boxes $1/mo per 2 GB (unlimited awake hours, 5 GB disk included; extra disk $0.08/GB-mo); sandboxes from about $0.011/h (billed per second); Linux desktop $0.12/h awake; Windows desktop $0.18/h awake (licence included, Growth and up); Android phone $0.15/h awake. Plans: Starter $20/mo (7-day free trial up to $20 usage, 5 machines awake); Growth $100/mo (25 awake); Scale $500/mo (60 awake); Dedicated $5,000/mo (500 awake). AI credits sold separately at provider list price. Maritime for Startups: up to $10,000 in usage credits (public vendor offer, not a reader deal). Product URL is https://maritime.sh (maritime.ai is a different domain).
+  // note: priceFromUsd is Starter $20/mo. The 7-day trial is not a free tier. The startup credits are the vendor's public offer and are not stored as a deal.
+  tool({
+    slug: 'maritime',
+    addedAt: SCOUTED_2026_11_06,
+    name: 'Maritime',
+    vendor: 'Maritime',
+    url: 'https://maritime.sh',
+    allowedHosts: ['maritime.sh'],
+    category: 'Development',
+    shortDesc: 'Managed cloud computers for AI agents: persistent boxes, sandboxes, desktops and Android phones, billed per second.',
+    longDesc: 'Maritime is managed cloud computers for AI agents. It offers persistent agent boxes, disposable sandboxes, Linux and Windows desktops and Android phones, billed per second, with plan fees that convert into the same amount of usage credit. An agent box is $1 a month per 2 GB, with unlimited awake hours and 5 GB of disk. Extra disk is $0.08 per GB-month. Sandboxes start at about $0.011 an hour. A Linux desktop is $0.12 an hour awake. A Windows desktop is $0.18 an hour awake, licence included, on Growth and up. An Android phone is $0.15 an hour awake. Starter is $20 a month and includes a 7-day trial of up to $20 of usage, with 5 machines awake. Growth is $100 a month for 25 awake. Scale is $500 a month for 60 awake. Dedicated is $5,000 a month for 500 awake. AI credits are sold separately at provider list price. The trial is not a free plan. Maritime for Startups offers up to $10,000 in usage credits, $1,000 on accept and then matched spend up to $5,000 or $10,000 through a partner accelerator or fund, on the vendor\'s public offer.',
+    pricingModel: 'paid',
+    priceFromUsd: 20,
+    hasFreeTier: false,
+    skillLevel: 'pro',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_06,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-06 | category: Developer tools (FLAG: scout category "Developer tools" mapped to Development) | scout rating 4.0 (not shown) | launch: 2026-11-05 (Product Hunt #2) | pricing: Living Brain API: pay-as-you-go prepaid balance from $5; $8 per 1M model input tokens and $0.50 per 1M output tokens; optional auto top-up with a monthly cap. Living Brain Workspace: included with ChatChat Pro+ at $99/mo (3 team seats, one production project; $80 shared monthly credits for the first 3 billing cycles, then $50/cycle; 10 GB storage, 500,000 requests/mo). Business: custom.
+  // note: priceFromUsd is Workspace $99/mo, the monthly-billed price. The $5 API balance is prepaid, not a monthly plan, so it is not the from-price. No free plan was found. Affiliate unknown, not seeded.
+  tool({
+    slug: 'living-brain',
+    addedAt: SCOUTED_2026_11_06,
+    name: 'Living Brain',
+    vendor: 'Living Brain',
+    url: 'https://livingbrain.com',
+    allowedHosts: ['livingbrain.com'],
+    category: 'Development',
+    shortDesc: 'A persistent memory layer that agents can share across ChatGPT, Claude, Gemini, Cursor and custom tools.',
+    longDesc: 'Living Brain is an interoperable persistent memory layer for agents. It captures notes and conversations into a knowledge graph and reuses that context across ChatGPT, Claude, Gemini, Cursor and custom tools through a REST API, SDK, CLI and MCP. The API is pay as you go from a prepaid balance of $5, at $8 per 1 million model input tokens and $0.50 per 1 million output tokens, with optional auto top-up and a monthly cap. The Workspace is included with ChatChat Pro+ at $99 a month: 3 team seats, one production project, $80 of shared monthly credits for the first 3 billing cycles and then $50 a cycle, 10 GB of storage and 500,000 requests a month. Business is custom. No free plan was found.',
+    pricingModel: 'paid',
+    priceFromUsd: 99,
+    hasFreeTier: false,
+    skillLevel: 'pro',
+    platforms: ['API'],
+    lastVerifiedAt: SCOUTED_2026_11_06,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-06 | category: Marketing (FLAG: scout category "Marketing" mapped to Automation; Playad, the closest AI marketing-team tool, is Automation) | scout rating 4.0 (not shown) | launch: 2026-11-06 (toolhype / community submission) | pricing: Free Scan $0 one-time (10 buyer questions across 3 AI models, results kept 7 days, no card); Starter $49/mo or $490/yr (1 workspace, up to 25 active questions, up to 3 models, 3 team members); Growth $199/mo or $1,990/yr (3 workspaces, up to 100 active questions); Enterprise custom. MCP included on every plan including Free Scan.
+  // note: priceFromUsd is Starter $49/mo. The yearly prices are not the stored from-price. The one-time Free Scan is not a free tier. Affiliate unknown, not seeded.
+  tool({
+    slug: 'shareofask',
+    addedAt: SCOUTED_2026_11_06,
+    name: 'ShareOfAsk',
+    vendor: 'ShareOfAsk',
+    url: 'https://www.shareofask.com',
+    allowedHosts: ['www.shareofask.com'],
+    category: 'Automation',
+    shortDesc: 'Asks ChatGPT, Claude, Gemini, Grok and Google AI Overviews the questions buyers ask, and shows whether your brand is named.',
+    longDesc: 'ShareOfAsk tracks whether AI answers name your brand. It asks ChatGPT, Claude, Gemini, Grok and Google AI Overviews the questions buyers ask, and shows whether your brand is named, which competitors appear, citation sources and ranked actions. MCP is included on every plan, including the Free Scan. The Free Scan is $0 once: 10 buyer questions across 3 models, results kept for 7 days, and no card. Starter is $49 a month or $490 a year, with 1 workspace, up to 25 active questions, up to 3 models and 3 team members. Growth is $199 a month or $1,990 a year, with 3 workspaces and up to 100 active questions. Enterprise is custom. The Free Scan is not a free plan.',
+    pricingModel: 'paid',
+    priceFromUsd: 49,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web', 'API'],
+    lastVerifiedAt: SCOUTED_2026_11_06,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-06 | category: Developer tools (FLAG: scout category "Developer tools" mapped to Development) | scout rating 4.0 (not shown) | launch: 2026-11-04 (Product Hunt Launch of the Day) | pricing: 14-day free trial, every feature, no card. Solo $29/mo or $290/yr (4 agents at once, 64 GB sandboxes, $10 Cloud credit); Pro $89/mo or $890/yr (16 agents, 128 GB, $25 Cloud); Team $169/person/mo from 3 people (48 shared agents, 256 GB, $40 Cloud/person); Scale $199/person/mo from 5 people (160 shared, 500 GB, $50 Cloud/person). Own hosts (BYOC) $0.20 per host-hour; Cloud-only pay-as-you-go also available.
+  // note: priceFromUsd is Solo $29/mo. The 14-day trial is not a free tier. Affiliate unknown, not seeded.
+  tool({
+    slug: 'kosa8',
+    addedAt: SCOUTED_2026_11_06,
+    name: 'kosa8',
+    vendor: 'kosa8',
+    url: 'https://kosa8.com',
+    allowedHosts: ['kosa8.com'],
+    category: 'Development',
+    shortDesc: 'Secure microVM sandboxes that give each AI agent its own sealed machine on Mac, Linux or kosa8 Cloud.',
+    longDesc: 'kosa8 runs secure microVM sandboxes for AI agents on Mac and Linux. Each agent gets its own sealed machine with audited egress, optional local models, and save and undo, plus monthly kosa8 Cloud credit on every plan. A 14-day trial includes every feature and needs no card. Solo is $29 a month or $290 a year: 4 agents at once, 64 GB sandboxes and $10 of Cloud credit. Pro is $89 a month or $890 a year: 16 agents, 128 GB and $25 of Cloud credit. Team is $169 per person a month from 3 people: 48 shared agents, 256 GB and $40 of Cloud credit per person. Scale is $199 per person a month from 5 people: 160 shared agents, 500 GB and $50 of Cloud credit per person. Own hosts are $0.20 per host-hour, and Cloud-only pay as you go is also available. The trial is not a free plan.',
+    pricingModel: 'paid',
+    priceFromUsd: 29,
+    hasFreeTier: false,
+    skillLevel: 'pro',
+    platforms: ['macOS', 'Linux', 'Web'],
+    lastVerifiedAt: SCOUTED_2026_11_06,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-06 | category: Marketing (FLAG: scout category "Marketing" mapped to Automation; Playad, the closest AI marketing-team tool, is Automation) | scout rating 3.9 (not shown) | launch: 2026-11-05 (Product Hunt #9) | pricing: Plus $20/mo (5,000 credits, 1 seat); Pro $35/mo (10,000 credits, unlimited seats); Max $50/mo (20,000 credits); Scale $65/mo (30,000 credits); annual billing about 10% off. Credits cover briefs, reviews, brand additions and edits. API and MCP included on every plan. 1,000 signup credits (public vendor offer, not a reader deal). No free plan found.
+  // note: priceFromUsd is Plus $20/mo. Signup credits are the vendor's public offer and are not stored as a deal. Affiliate unknown, not seeded.
+  tool({
+    slug: 'rainbrand',
+    addedAt: SCOUTED_2026_11_06,
+    name: 'Rainbrand',
+    vendor: 'Rainbrand',
+    url: 'https://www.rainbrand.com',
+    allowedHosts: ['www.rainbrand.com'],
+    category: 'Automation',
+    shortDesc: 'Builds brand guidelines, logos, fonts and voice, then serves briefs and reviews to agents over API and MCP.',
+    longDesc: 'Rainbrand is a brand context layer for agents. It builds and maintains guidelines, logos, fonts and voice from your sites and files, then serves task-specific briefs and reviews over an API and MCP to ChatGPT, Claude, Codex, Cursor and product embeddings. Plus is $20 a month for 5,000 credits and 1 seat. Pro is $35 a month for 10,000 credits and unlimited seats. Max is $50 a month for 20,000 credits. Scale is $65 a month for 30,000 credits. Annual billing is about 10% off. Credits cover briefs, reviews, brand additions and edits. API and MCP are included on every plan. No free plan was found. Signup includes 1,000 credits on the vendor\'s public offer.',
+    pricingModel: 'paid',
+    priceFromUsd: 20,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web', 'API'],
+    lastVerifiedAt: SCOUTED_2026_11_06,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-06 | category: Developer tools (FLAG: scout category "Developer tools" mapped to Development) | scout rating 3.9 (not shown) | launch: 2026-11-06 (toolhype / community submission) | pricing: Free: 50 caption credits every 30 days, no card (YouTube/TikTok captions; TXT/JSON/SRT/VTT; unused credits do not roll over; AI transcription not included). Starter $19/mo or $190/yr (2,000 credits; extras $8 per 1,000). Pro $49/mo or $490/yr (6,000 credits; extras $7 per 1,000). Scale $149/mo or $1,490/yr (20,000 credits; extras $6 per 1,000). Failed jobs are not charged; exports are free. Creator captions are 1 credit. AI transcription for uploads and direct media is 2 credits per started minute on paid plans.
+  // note: priceFromUsd is Starter $19/mo. The free caption credits are a free tier. Affiliate unknown, not seeded.
+  tool({
+    slug: 'transcript-dock',
+    addedAt: SCOUTED_2026_11_06,
+    name: 'Transcript Dock',
+    vendor: 'Transcript Dock',
+    url: 'https://www.transcriptdock.com',
+    allowedHosts: ['www.transcriptdock.com'],
+    category: 'Development',
+    shortDesc: 'A video transcript API for YouTube and TikTok captions, with AI transcription on paid plans.',
+    longDesc: 'Transcript Dock is a video transcript API for agents and apps. YouTube and TikTok creator captions cost 1 credit. Optional AI transcription for uploads and direct media is 2 credits per started minute on paid plans. It includes webhooks, exports and an MCP server. The free plan is 50 caption credits every 30 days, with no card, for YouTube and TikTok captions and TXT, JSON, SRT and VTT exports. Unused credits do not roll over, and AI transcription is not included. Starter is $19 a month or $190 a year (2,000 credits; extra credits $8 per 1,000). Pro is $49 a month or $490 a year (6,000 credits; extras $7 per 1,000). Scale is $149 a month or $1,490 a year (20,000 credits; extras $6 per 1,000). Failed jobs are not charged, and exports are free.',
+    pricingModel: 'freemium',
+    priceFromUsd: 19,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['API'],
+    lastVerifiedAt: SCOUTED_2026_11_06,
     fits: [],
     affiliate: none,
   }),
