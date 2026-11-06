@@ -21,15 +21,19 @@ import { AFFILIATE_BUTTON_NOTE, AFFILIATE_PAGE_NOTICE, DISCLOSURE_UPDATED } from
 
 const read = (path: string) => readFileSync(new URL(`../../${path}`, import.meta.url), 'utf8')
 
-describe('prepared affiliate programs stay off', () => {
-  it('ships no active program and no tracking link', () => {
-    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia'])
-    const live = {
-      elevenlabs: 'https://try.elevenlabs.io/8hbaa9knuwda',
-      synthesia: 'https://www.synthesia.io?via=mark-putiyon',
-    }
+const LIVE_AFFILIATE_URLS = {
+  elevenlabs: 'https://try.elevenlabs.io/8hbaa9knuwda',
+  synthesia: 'https://www.synthesia.io?via=mark-putiyon',
+  descript: 'https://get.descript.com/mr4pi3y6tp4s',
+  murf: 'https://get.murf.ai/pxci5cc1lpk2',
+  papermark: 'https://refer.papermark.com/mark',
+} as const
+
+describe('approved affiliate programs', () => {
+  it('activates only the approved slugs and stores their exact tracking links', () => {
+    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark'])
     for (const tool of toolSeeds) {
-      const approved = tool.slug === 'elevenlabs' || tool.slug === 'synthesia'
+      const approved = (APPROVED_ACTIVE_AFFILIATES as readonly string[]).includes(tool.slug)
       if (!approved) {
         expect(tool.affiliate.status, tool.slug).not.toBe(ACTIVE_AFFILIATE_STATUS)
         expect(tool.affiliate.affiliateUrl ?? null, tool.slug).toBeNull()
@@ -40,18 +44,18 @@ describe('prepared affiliate programs stay off', () => {
       const tool = toolSeeds.find((item) => item.slug === slug)
       expect(tool, slug).toBeTruthy()
       expect(tool?.affiliate.hasProgram).toBe(true)
-      if (slug === 'elevenlabs' || slug === 'synthesia') {
+      if (slug in LIVE_AFFILIATE_URLS) {
         expect(tool?.affiliate.status).toBe('active')
-        expect(tool?.affiliate.affiliateUrl).toBe(live[slug])
+        expect(tool?.affiliate.affiliateUrl).toBe(LIVE_AFFILIATE_URLS[slug as keyof typeof LIVE_AFFILIATE_URLS])
       } else {
         expect(tool?.affiliate.status).toBe('inactive')
         expect(tool?.affiliate.affiliateUrl ?? null).toBeNull()
       }
     }
+    expect(toolSeeds.find((tool) => tool.slug === 'lovable')?.allowedHosts).toEqual(['lovable.dev'])
+    expect(toolSeeds.find((tool) => tool.slug === 'writesonic')?.allowedHosts).toEqual(['writesonic.com'])
     const catalog = read('src/data/catalog.ts')
-    expect(catalog).toContain(live.elevenlabs)
-    expect(catalog).toContain(live.synthesia)
-    expect(catalog).not.toContain('refer.papermark.com/mark')
+    for (const url of Object.values(LIVE_AFFILIATE_URLS)) expect(catalog).toContain(url)
     expect(catalog).not.toContain('*.sjv.io')
     expect(catalog).not.toContain('*.partnerstack.com')
     expect(catalog).not.toContain("'dub.sh'")
@@ -61,14 +65,14 @@ describe('prepared affiliate programs stay off', () => {
   it('refuses to seed an active program or a URL until that slug is approved', () => {
     expect(() =>
       affiliateSeedValues({
-        slug: 'descript',
-        affiliate: { hasProgram: true, network: 'PartnerStack', sourceUrl: null, status: 'active', commissionNote: null, affiliateUrl: 'https://partnerstack.com/x' },
+        slug: 'writesonic',
+        affiliate: { hasProgram: true, network: null, sourceUrl: null, status: 'active', commissionNote: null, affiliateUrl: 'https://partnerstack.com/x' },
       }),
     ).toThrow(/owner approval/)
     expect(() =>
       affiliateSeedValues({
-        slug: 'descript',
-        affiliate: { hasProgram: true, network: 'PartnerStack', sourceUrl: null, status: 'inactive', commissionNote: null, affiliateUrl: 'https://partnerstack.com/x' },
+        slug: 'lovable',
+        affiliate: { hasProgram: true, network: 'Impact', sourceUrl: null, status: 'inactive', commissionNote: null, affiliateUrl: 'https://track.sjv.io/c/1' },
       }),
     ).toThrow(/affiliate URL/)
   })
@@ -77,7 +81,7 @@ describe('prepared affiliate programs stay off', () => {
     const rows = affiliateAdminRows(toolSeeds)
     for (const slug of PREPARED_AFFILIATE_SLUGS) {
       const row = rows.find((item) => item.slug === slug)
-      const live = slug === 'elevenlabs' || slug === 'synthesia'
+      const live = slug in LIVE_AFFILIATE_URLS
       expect(row?.status).toBe(live ? 'active' : 'inactive')
       expect(row?.hasUrl).toBe(live)
       expect(row?.prepared).toBe(true)
@@ -145,6 +149,11 @@ describe('affiliate disclosure and ops', () => {
     expect(html).toContain(DISCLOSURE_UPDATED)
     expect(html).toContain('ElevenLabs (PartnerStack) — active')
     expect(html).toContain('Synthesia (Rewardful) — active')
+    expect(html).toContain('Descript (PartnerStack) — active')
+    expect(html).toContain('Murf — active')
+    expect(html).toContain('Papermark Data Rooms 2.0 (Papermark) — active')
+    expect(html).toContain('Writesonic — switched off')
+    expect(html).toContain('Lovable (Impact) — switched off')
     expect(html).toContain('switched off')
     for (const name of ['ElevenLabs', 'Synthesia', 'Descript', 'Murf', 'Papermark', 'Writesonic', 'Lovable']) {
       expect(html).toContain(name)

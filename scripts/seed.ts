@@ -267,7 +267,7 @@ for (const row of storedPrograms) {
   const slug = slugByToolId.get(row.toolId)
   if (!slug) throw new Error('Affiliate program row has no tool')
   if ((row.status === 'active' || row.affiliateUrl) && !isApprovedActiveAffiliate(slug)) {
-    throw new Error(`Seed wrote a live affiliate program for ${slug}. Activate one program at a time after the owner approves.`)
+    throw new Error(`Seed wrote a live affiliate program for ${slug}. That slug is not in APPROVED_ACTIVE_AFFILIATES.`)
   }
 }
 })

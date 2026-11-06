@@ -14,7 +14,8 @@ export type AffiliateSeed = {
   /**
    * Tracking link. The seed writes it only for a slug in APPROVED_ACTIVE_AFFILIATES
    * whose status is "active". /go uses the stored URL only when status is active
-   * and the host is on allowedHosts. This repo ships every program without one.
+   * and the host is on allowedHosts. A bare host does not authorize the link;
+   * the allowlist entry pins the tracking path or query, as ElevenLabs and Synthesia do.
    */
   affiliateUrl?: string
 }

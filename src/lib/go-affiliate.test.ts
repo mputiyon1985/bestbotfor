@@ -107,8 +107,34 @@ describe('network tracking hosts', () => {
 
     expect(officialHttpsUrl('https://track.sjv.io/c/1', hosts('lovable'))).toBeNull()
     expect(officialHttpsUrl('https://dub.sh/v0', hosts('v0'))).toBeNull()
-    expect(officialHttpsUrl('https://refer.papermark.com/example', hosts('papermark'))).toBeNull()
     expect(officialHttpsUrl('https://partnerstack.com/d', hosts('descript'))).toBeNull()
+
+    const descript = 'https://get.descript.com/mr4pi3y6tp4s'
+    expect(hosts('descript')).toEqual(['www.descript.com', 'get.descript.com/mr4pi3y6tp4s'])
+    expect(affiliateRedirectUrl(descript, hosts('descript'))).toBe(descript)
+    expect(affiliateRedirectUrl('https://get.descript.com/other', hosts('descript'))).toBeNull()
+    expect(affiliateRedirectUrl('https://get.descript.com/mr4pi3y6tp4s/extra', hosts('descript'))).toBeNull()
+    expect(affiliateRedirectUrl('https://get.descript.com/mr4pi3y6tp4sevil', hosts('descript'))).toBeNull()
+    expect(officialHttpsUrl('https://get.descript.com/', hosts('descript'))).toBeNull()
+    expect(servesAffiliateLink('descript', descript, 'active')).toBe(true)
+    expect(servesAffiliateLink('descript', descript, 'inactive')).toBe(false)
+
+    const murf = 'https://get.murf.ai/pxci5cc1lpk2'
+    expect(hosts('murf')).toEqual(['murf.ai', 'get.murf.ai/pxci5cc1lpk2'])
+    expect(affiliateRedirectUrl(murf, hosts('murf'))).toBe(murf)
+    expect(affiliateRedirectUrl('https://get.murf.ai/other', hosts('murf'))).toBeNull()
+    expect(officialHttpsUrl('https://get.murf.ai/', hosts('murf'))).toBeNull()
+    expect(servesAffiliateLink('murf', murf, 'active')).toBe(true)
+    expect(servesAffiliateLink('murf', murf, 'inactive')).toBe(false)
+
+    const papermark = 'https://refer.papermark.com/mark'
+    expect(hosts('papermark')).toEqual(['www.papermark.com', 'refer.papermark.com/mark'])
+    expect(affiliateRedirectUrl(papermark, hosts('papermark'))).toBe(papermark)
+    expect(officialHttpsUrl('https://refer.papermark.com/example', hosts('papermark'))).toBeNull()
+    expect(affiliateRedirectUrl('https://refer.papermark.com/example', hosts('papermark'))).toBeNull()
+    expect(officialHttpsUrl('https://refer.papermark.com/markevil', hosts('papermark'))).toBeNull()
+    expect(servesAffiliateLink('papermark', papermark, 'active')).toBe(true)
+    expect(servesAffiliateLink('papermark', papermark, 'inactive')).toBe(false)
     const synthesia = 'https://www.synthesia.io/?via=mark-putiyon'
     expect(affiliateRedirectUrl(synthesia, hosts('synthesia'))).toBe(synthesia)
     expect(affiliateRedirectUrl('https://www.synthesia.io/?via=other', hosts('synthesia'))).toBeNull()
