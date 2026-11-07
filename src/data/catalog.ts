@@ -13,6 +13,7 @@ const SCOUTED_2026_11_03 = '2026-11-03'
 const SCOUTED_2026_11_04 = '2026-11-04'
 const SCOUTED_2026_11_05 = '2026-11-05'
 const SCOUTED_2026_11_06 = '2026-11-06'
+const SCOUTED_2026_11_07 = '2026-11-07'
 const BACKLOG_BATCH_02 = '2026-10-25'
 const BACKLOG_BATCH_03 = '2026-10-25'
 
@@ -6690,6 +6691,188 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'pro',
     platforms: ['API'],
     lastVerifiedAt: SCOUTED_2026_11_06,
+    fits: [],
+    affiliate: none,
+  }),
+  // Bot scout 2026-11-07. Unrated: no editorial score, pros or cons until Forge rubric review.
+  // Scout ratings stay in the comments and are not shown.
+  // crystl is the only affiliate row. It is inactive: in-house, 25% recurring, not applied or accepted, no tracking URL.
+  // The other seven affiliate programs are unknown and are not seeded.
+  // No BestBotFor sponsorship is recorded. A partnerships or press contact is not a sponsorship and is not stored.
+  // Public vendor offers are not stored as deals.
+  // scout 2026-11-07 | category: Customer support (FLAG: scout category "Customer support" mapped to Agent builder; Embage, the closest website-agent tool, is Agent builder) | scout rating 4.1 (not shown) | launch: 2026-11-06 (Product Hunt #1) | pricing: Free $0 with your own OpenAI/OpenRouter key (up to 1,000 conversations/mo, Tobira badge); Lite $49/mo; Start $169/mo (optional assisted setup $899); Business $399/mo (optional setup $1,799, free with yearly); Premium $799/mo (optional setup $2,499); 6-month/yearly discounts up to 20%; prices in USD excl. taxes; 14-day money-back guarantee.
+  // note: priceFromUsd is Lite $49/mo. The $0 bring-your-own-key plan is a free tier. The money-back guarantee is not stored as a deal. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'tobira',
+    addedAt: SCOUTED_2026_11_07,
+    name: 'Tobira Site Agent',
+    vendor: 'Tobira',
+    url: 'https://tobira.ai',
+    allowedHosts: ['tobira.ai'],
+    category: 'Agent builder',
+    shortDesc: 'Turns a website into an AI agent that answers people and visiting AI agents, books demos and sends leads to chat or email.',
+    longDesc: 'Tobira Site Agent turns a website into an AI agent that answers people and visiting AI agents (ChatGPT, Claude, Gemini and others) from your own materials. It can book demos, take payments and send leads to WhatsApp, Telegram or email, and it gives your agent a public @handle in the Tobira agent network. The free plan is $0 with your own OpenAI or OpenRouter key, up to 1,000 conversations a month, and it shows a Tobira badge. Lite is $49 a month. Start is $169 a month. Business is $399 a month. Premium is $799 a month. Optional assisted setup is $899, $1,799 or $2,499 on Start, Business and Premium. Setup is free with yearly Business. Six-month and yearly billing can be up to 20% off. Prices are in USD and exclude taxes. A 14-day money-back guarantee is stated. The agent-to-agent network is early access.',
+    pricingModel: 'freemium',
+    priceFromUsd: 49,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_07,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-07 | category: Productivity | scout rating 4.1 (not shown) | launch: 2026-11-06 (Product Hunt #2) | pricing: Turnstone for Mac $0 forever (no card); Turnstone Cloud (coming soon, keeps agents running while your Mac is closed) $49/mo after a free first month for the first 1,000 people.
+  // note: priceFromUsd is Cloud $49/mo. The Mac app at $0 is a free tier. The first month of Cloud for the first 1,000 people is the vendor's public offer and is not stored as a deal. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'turnstone',
+    addedAt: SCOUTED_2026_11_07,
+    name: 'Turnstone',
+    vendor: 'Turnstone',
+    url: 'https://myturnstone.ai',
+    allowedHosts: ['myturnstone.ai'],
+    category: 'Productivity',
+    shortDesc: 'A free Mac app for persistent AI agents that run on the ChatGPT, Claude or other plans you already pay for.',
+    longDesc: 'Turnstone is a free Mac app for a team of persistent AI agents, starting with a Chief of Staff. Agents run on the AI subscriptions you already pay for (ChatGPT, Claude, Grok, Cursor, OpenRouter or Ollama), can switch models mid-conversation, keep local memory, run schedules and draft in your voice without sending until you approve. Turnstone for Mac is $0 with no card. Turnstone Cloud, which is not live yet, is $49 a month and keeps agents running while the Mac is closed. The first 1,000 people get their first month of Cloud free when it launches, on the vendor\'s public offer. That month is not a free plan. Agents only run while the Mac is on until Cloud launches.',
+    pricingModel: 'freemium',
+    priceFromUsd: 49,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['macOS'],
+    lastVerifiedAt: SCOUTED_2026_11_07,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-07 | category: Marketing (FLAG: scout category "Marketing" mapped to SEO; this is an SEO and AI-answer suite, and Surfer and the other SEO tools use SEO) | scout rating 4.0 (not shown) | launch: 2026-11-06 (Product Hunt #3, v3.0) | pricing: Essential $89/mo (1 brand, 15 AI prompts weekly, 5 articles/mo); Professional $199/mo (2 brands, 30 prompts every 2 days, 15 articles); Business $499/mo (5 brands, 80 prompts daily, 30 articles, 5 seats, link building); Agencies custom; excl. VAT; about 17% off yearly.
+  // note: priceFromUsd is Essential $89/mo. No free plan was found. The yearly discount is not the stored from-price and is not a catalog deal. Affiliate unknown, not seeded. A partnerships contact is listed; that is not a sponsorship.
+  tool({
+    slug: 'rankfender',
+    addedAt: SCOUTED_2026_11_07,
+    name: 'Rankfender 3.0',
+    vendor: 'Rankfender',
+    url: 'https://rankfender.com',
+    allowedHosts: ['rankfender.com'],
+    category: 'SEO',
+    shortDesc: 'An SEO and AI-answer platform that audits a site, tracks how assistants mention your brand and publishes articles.',
+    longDesc: 'Rankfender is an SEO and AI-answer visibility platform. It runs a site audit of about 60 checks, keyword and competitor research, and an AI content writer that can publish to WordPress. It tracks how ChatGPT, Claude, Gemini, Perplexity and up to four more assistants mention your brand, from weekly down to daily, and it can be run from Claude or ChatGPT. Essential is $89 a month for 1 brand, 15 AI prompts a week and 5 articles a month. Professional is $199 a month for 2 brands, 30 prompts every 2 days and 15 articles. Business is $499 a month for 5 brands, 80 prompts a day, 30 articles, 5 seats and link building. Agencies are custom. Prices exclude VAT. Yearly billing is about 17% off. No free plan was found.',
+    pricingModel: 'paid',
+    priceFromUsd: 89,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_07,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-07 | category: Developer tools (FLAG: scout category "Developer tools" mapped to Development) | scout rating 4.1 (not shown) | launch: 2026-11-06 (Product Hunt #6) | pricing: Apprentice $0 forever; crystl Guild $18/mo or $170/yr (orchestration, full agent CLI, unlimited scheduling, iPhone from anywhere, up to 3 devices).
+  // note: priceFromUsd is Guild $18/mo. Apprentice at $0 is a free tier. The yearly price is not the stored from-price. Affiliate codes that take 20% off the first year of annual Guild are not a catalog deal and are not stored. A press contact is listed; that is not a sponsorship.
+  // affiliate: in-house, 25% of every Guild membership referred, recurring on renewals, 60-day attribution. Apply page https://crystl.dev/affiliates/. Not applied or accepted. Seeded inactive. No tracking link.
+  tool({
+    slug: 'crystl',
+    addedAt: SCOUTED_2026_11_07,
+    name: 'crystl',
+    vendor: 'crystl',
+    url: 'https://crystl.dev',
+    allowedHosts: ['crystl.dev'],
+    category: 'Development',
+    shortDesc: 'A Mac terminal that runs many CLI coding agents side by side, each in its own git worktree.',
+    longDesc: 'crystl is a multitasking macOS terminal for CLI coding agents, including Claude Code, Codex, Antigravity CLI, Kimi Code, opencode and aider. It orchestrates several agents, gives each one a git worktree, shows floating approval cards, tracks tokens and runs schedules. A paid plan adds an iPhone companion. Apprentice is $0. crystl Guild is $18 a month or $170 a year and includes orchestration, the full agent CLI, unlimited scheduling, the iPhone companion and up to 3 devices.',
+    pricingModel: 'freemium',
+    priceFromUsd: 18,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['macOS'],
+    lastVerifiedAt: SCOUTED_2026_11_07,
+    fits: [],
+    affiliate: {
+      hasProgram: true,
+      network: 'in-house',
+      sourceUrl: 'https://crystl.dev/affiliates/',
+      status: 'inactive',
+      commissionNote:
+        '25% of every Guild membership referred, recurring on renewals, with 60-day attribution, as stated on the affiliate page. Not applied or accepted. No tracking link stored.',
+    },
+  }),
+  // scout 2026-11-07 | category: Productivity | scout rating 3.9 (not shown) | launch: 2026-11-07 (There's An AI For That, Just Released) | pricing: Free $0 (agent tasks on your own AI plan, text replies, on-device speech recognition); Plus $15/mo (full voice conversations, more accurate speech recognition, GPT-6.1 Sol chat); yearly saves 20%; new accounts get 7 days of Plus, no card.
+  // note: priceFromUsd is Plus $15/mo. The $0 plan is a free tier. The 7-day Plus trial is not a free plan. The yearly discount is not the stored from-price. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'nico',
+    addedAt: SCOUTED_2026_11_07,
+    name: 'Nico',
+    vendor: 'Nico',
+    url: 'https://nico.app',
+    allowedHosts: ['nico.app'],
+    category: 'Productivity',
+    shortDesc: 'A Mac voice agent that reads your screen and handles files, mail and web tasks on the AI plan you already have.',
+    longDesc: 'Nico is a voice-to-action agent for Mac. Hold the right Command key, speak, and it reads your screen, handles files and mail, works in its own browser or Chrome, and watches pages for changes. It runs on your existing ChatGPT, Claude or other AI plan and asks before anything irreversible. The free plan is $0 and includes agent tasks on your own AI plan, text replies and on-device speech recognition. Plus is $15 a month and adds full voice conversations, more accurate speech recognition and a GPT-6.1 Sol chat. Yearly billing saves 20%. New accounts get 7 days of Plus with no card. The trial is not a free plan. It needs an Apple silicon Mac with macOS 15.4 or later.',
+    pricingModel: 'freemium',
+    priceFromUsd: 15,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['macOS'],
+    lastVerifiedAt: SCOUTED_2026_11_07,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-07 | category: AI video | scout rating 3.9 (not shown) | launch: 2026-11-07 (There's An AI For That, Just Released) | pricing: Free $0 (AI editing for about 10 min of recordings/mo, 720p with watermark); Starter $15/mo, early access $7.50/mo billed $90/yr (about 90 min, 1080p, no watermark); Pro $30/mo, early access $15/mo billed $180/yr (about 300 min).
+  // note: priceFromUsd is Starter $15/mo. The $0 plan is a free tier. Early-access half price is yearly billing, so it is not the stored from-price, and it is the vendor's public pricing rather than a catalog deal. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'glass-editor',
+    addedAt: SCOUTED_2026_11_07,
+    name: 'Glass',
+    vendor: 'Glass',
+    url: 'https://glasseditor.app',
+    allowedHosts: ['glasseditor.app'],
+    category: 'AI video',
+    shortDesc: 'A Mac screen recorder that cuts false starts, zooms on clicks and hides emails and keys while you talk.',
+    longDesc: 'Glass is a Mac screen recorder that edits while you talk. It cuts false starts, repeats and dead time, speeds up spinners, zooms on clicks, blurs emails and keys it spots, adds captions and cleans the mic. You can then chat to request changes. The free plan is $0 and includes AI editing for about 10 minutes of recordings a month, at 720p with a watermark. Recording, manual editing and export stay free. Starter is $15 a month, about 90 minutes at 1080p with no watermark. Pro is $30 a month, about 300 minutes. Early access is half those monthly prices when billed yearly: Starter $90 a year and Pro $180 a year. That early-access price is the vendor\'s public pricing. It needs Apple silicon and macOS 15.2 or later.',
+    pricingModel: 'freemium',
+    priceFromUsd: 15,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['macOS'],
+    lastVerifiedAt: SCOUTED_2026_11_07,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-07 | category: Meetings | scout rating 3.8 (not shown) | launch: 2026-11-06 (Product Hunt #10) | pricing: One-time lifetime license (was $15, now $5) for 2 Macs or 2 PCs with all updates; 7-day trial, no card.
+  // note: priceFromUsd is the current one-time license, $5, same one-time convention as whoiscooking. The 7-day trial is not a free tier. The $5 launch price is the vendor's public pricing and is not stored as a deal. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'pauta',
+    addedAt: SCOUTED_2026_11_07,
+    name: 'Pauta',
+    vendor: 'Pauta',
+    url: 'https://www.pauta-ai.com/en',
+    allowedHosts: ['www.pauta-ai.com'],
+    category: 'Meetings',
+    shortDesc: 'A private meeting recorder for Mac and Windows that transcribes and summarizes on your computer, with no bot.',
+    longDesc: 'Pauta is a private meeting recorder for Mac and Windows. It transcribes and summarizes on your computer, with no bot, account or server, and it works offline. It recognizes speakers by voice, groups recordings into projects and answers questions across them. External AI such as Claude or ChatGPT is used only if you choose. A lifetime license is $5, paid once, for 2 Macs or 2 PCs, with all updates. It was $15. That launch price is the vendor\'s public pricing. A 7-day trial needs no card. The trial is not a free plan. iOS and Android are not available yet.',
+    pricingModel: 'paid',
+    priceFromUsd: 5,
+    hasFreeTier: false,
+    skillLevel: 'beginner',
+    platforms: ['macOS', 'Windows'],
+    lastVerifiedAt: SCOUTED_2026_11_07,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-07 | category: Productivity | scout rating 3.8 (not shown) | launch: 2026-11-06 (Show HN) | pricing: Free (v0.1.5, macOS 14+, Apple silicon and Intel); bring your own model keys or plans.
+  // note: pricingModel is free. No paid Infinity plan was found, so priceFromUsd stays null. Affiliate unknown, not seeded. A press contact is listed; that is not a sponsorship.
+  tool({
+    slug: 'infinity-chat',
+    addedAt: SCOUTED_2026_11_07,
+    name: 'Infinity',
+    vendor: 'Infinity',
+    url: 'https://infinitychat.app',
+    allowedHosts: ['infinitychat.app'],
+    category: 'Productivity',
+    shortDesc: 'A free Mac chat app where any part of an answer can branch into its own chat, across local and cloud models.',
+    longDesc: 'Infinity is a free Mac AI app. Any part of an answer can branch into its own chat, and a Canvas map shows every branch. Up to four models can answer at once, with Code and Assistant modes. It works with local models (Ollama, LM Studio, Apple Intelligence) and cloud providers, including your ChatGPT or Claude plan. The app is free (v0.1.5) on macOS 14 and later, on Apple silicon and Intel. You bring your own model keys or plans. No paid Infinity plan is listed. It needs no account, and the vendor says it has no in-app analytics.',
+    pricingModel: 'free',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['macOS'],
+    lastVerifiedAt: SCOUTED_2026_11_07,
     fits: [],
     affiliate: none,
   }),

@@ -27,7 +27,7 @@ describe('bot scout 2026-11-05', () => {
     expect(new Set(SLUGS).size).toBe(5)
     expect(toolSeeds.filter((tool) => SLUGS.includes(tool.slug as (typeof SLUGS)[number]))).toHaveLength(5)
     expect(new Set(toolSeeds.map((tool) => tool.slug)).size).toBe(toolSeeds.length)
-    expect(toolSeeds).toHaveLength(313)
+    expect(toolSeeds).toHaveLength(321)
     for (const slug of SLUGS) {
       const tool = seed(slug)
       expect(tool.addedAt, slug).toBe(SCOUT)
