@@ -16,6 +16,7 @@ const SCOUTED_2026_11_06 = '2026-11-06'
 const SCOUTED_2026_11_07 = '2026-11-07'
 const SCOUTED_2026_11_08 = '2026-11-08'
 const FRESHNESS_2026_11_09 = '2026-11-09'
+const SCOUTED_2026_11_10 = '2026-11-10'
 const BACKLOG_BATCH_02 = '2026-10-25'
 const BACKLOG_BATCH_03 = '2026-10-25'
 
@@ -7189,6 +7190,175 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['Web'],
     lastVerifiedAt: FRESHNESS_2026_11_09,
+    fits: [],
+    affiliate: none,
+  }),
+  // Bot scout 2026-11-10. Unrated: no editorial score, pros or cons until Forge rubric review.
+  // Scout ratings stay in the comments and are not shown.
+  // Dageno AI and Databox have affiliate programs. Both are inactive: not applied or accepted, no tracking URL.
+  // Cardboard, Arcjet, MCP1, Thrum and Voyager have unknown affiliate programs and use the empty affiliate.
+  // No BestBotFor sponsorship is recorded. Sponsorship is unknown and is not stored.
+  // Public vendor offers are not stored as deals.
+  // scout 2026-11-10 | category: Marketing (FLAG: scout category "Marketing" mapped to SEO; AI-search visibility, same mapping as Rankfender 3.0 and Notra) | scout rating 4.0 (not shown) | launch: 2026-11-09 (Product Hunt #2, Dageno AI 2.0) | pricing: Starter $49/mo; Growth $199/mo; Scale $410/mo; Custom custom. Annual billing saves about 15%. Free brand check on the homepage and a 7-day Starter trial (neither is a free plan).
+  // note: priceFromUsd is Starter $49/mo. No free plan was found. The annual discount and the trial are the vendor's public pricing and are not a catalog deal. Sponsorship unknown.
+  // affiliate: in-house (affiliate.dageno.ai). 30% of the first payment; 10-30% on each renewal; recurring. Apply page https://affiliate.dageno.ai/auth/register. Not applied or accepted. Seeded inactive. No tracking link. The apply host is not an allowlist host.
+  tool({
+    slug: 'dageno-ai',
+    addedAt: SCOUTED_2026_11_10,
+    name: 'Dageno AI',
+    vendor: 'Dageno AI',
+    url: 'https://dageno.ai',
+    allowedHosts: ['dageno.ai'],
+    category: 'SEO',
+    shortDesc: 'Tracks brand visibility across AI search platforms, with market, intent and GEO insights.',
+    longDesc: 'Dageno AI tracks AI visibility, the competitive landscape, search intent and GEO/AEO insights. It covers 12,000+ niche markets and 3,000,000+ brands, and it monitors 10 AI platforms, including ChatGPT, Gemini, Perplexity and Copilot, across 86+ countries and regions. Starter is $49 a month (1 project and a 50 prompt quota). Growth is $199 a month. Scale is $410 a month. Custom is custom pricing. Annual billing saves about 15%. A free brand check is on the homepage, and Starter has a 7-day trial. The brand check and the trial are not a free plan. No free plan was found. Amazon Alexa is only on custom enterprise plans. API access and custom exports are only on Scale and Custom.',
+    pricingModel: 'paid',
+    priceFromUsd: 49,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_10,
+    fits: [],
+    affiliate: {
+      hasProgram: true,
+      network: 'in-house (affiliate.dageno.ai)',
+      sourceUrl: 'https://affiliate.dageno.ai/auth/register',
+      status: 'inactive',
+      commissionNote:
+        '30% of the first payment, then 10-30% on each renewal. Not applied or accepted. No tracking link stored.',
+    },
+  }),
+  // scout 2026-11-10 | category: Analytics (FLAG: scout category "Analytics" mapped to Research; Tulu, the catalog's analytics product, is Research) | scout rating 4.0 (not shown) | launch: 2026-11-09 (Product Hunt #3, Databox CLI) | pricing: Business $399/mo billed annually ($4,788/yr) or $499/mo monthly; Custom from $15,000; Agency $79/mo billed annually plus account packs at $20/mo per pack; add-ons AI credit top-up $200/mo, Branding $80/mo, Advanced security $40/mo, Fiscal calendar $160/mo, OKRs $14/mo.
+  // note: priceFromUsd is Business monthly, $499. Agency at $79/mo is billed annually and is not the stored from-price. The annual Business price is the vendor's public billing and is not a catalog deal. No free plan was found. Sponsorship unknown.
+  // affiliate: FirstPromoter (also PartnerStack per its page). 20% recurring for 12 months, 90-day cookie. Program page https://databox.com/affiliate-program. The scout also recorded an apply URL, https://databox.firstpromoter.com/?camp_id=1751, and affiliates@databox.com. That apply URL carries a campaign id and is not stored as sourceUrl or as a tracking link. Not applied or accepted. Seeded inactive. No tracking link.
+  tool({
+    slug: 'databox',
+    addedAt: SCOUTED_2026_11_10,
+    name: 'Databox',
+    vendor: 'Databox',
+    url: 'https://databox.com',
+    allowedHosts: ['databox.com'],
+    category: 'Research',
+    shortDesc: 'Connects 130+ data sources and answers questions from live data with an AI analyst.',
+    longDesc: 'Databox is an analytics and reporting platform. It connects 130+ data sources, including tools, spreadsheets, databases and APIs, with a governed semantic layer, and an AI analyst answers from live data. A CLI brings it to the terminal. Business is $499 a month, or $399 a month billed annually ($4,788 a year), for 10 users, 30 data sources and 1,500 AI credits a month. Agency is $79 a month billed annually, plus account packs at $20 a month per pack. Custom implementation starts at $15,000. Add-ons are an AI credit top-up at $200 a month, branding at $80 a month, advanced security at $40 a month, a fiscal calendar at $160 a month and OKRs at $14 a month. No free plan was found. The lower annual Business price is the vendor\'s public billing.',
+    pricingModel: 'paid',
+    priceFromUsd: 499,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web', 'Terminal'],
+    lastVerifiedAt: SCOUTED_2026_11_10,
+    fits: [],
+    affiliate: {
+      hasProgram: true,
+      network: 'FirstPromoter (also PartnerStack per its page)',
+      sourceUrl: 'https://databox.com/affiliate-program',
+      status: 'inactive',
+      commissionNote:
+        '20% recurring for 12 months, with a 90-day cookie. Not applied or accepted. No tracking link stored.',
+    },
+  }),
+  // scout 2026-11-10 | category: Video (FLAG: scout category "Video" mapped to Video editing; Descript, VEED and Kapwing, the browser editors, are Video editing) | scout rating 4.0 (not shown) | launch: 2026-11-09 (Product Hunt #10) | pricing: Lite $10/mo or $8/mo annual; Starter $40 or $29; Creator $100 or $59; Pro $250 or $175 (monthly vs annual). Launch pricing for the first month: Lite $5, Starter $9, Creator $30, Pro $89.
+  // note: priceFromUsd is Lite monthly, $10. Annual prices are not the stored from-price. The first-month launch prices are the vendor's public pricing and are not a catalog deal. No free plan was found. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'cardboard-ai',
+    addedAt: SCOUTED_2026_11_10,
+    name: 'Cardboard',
+    vendor: 'Cardboard',
+    url: 'https://cardboard.ai',
+    allowedHosts: ['cardboard.ai'],
+    category: 'Video editing',
+    shortDesc: 'A browser and Mac video editor that generates footage and audio, and edits by chat or timeline.',
+    longDesc: 'Cardboard is an AI video editor in the browser and as a Mac app. It can generate video, images, music and sound effects from prompts, clone voices, source B-roll, and edit by chat or on a timeline. It works with ChatGPT and Claude, and it supports collaboration through share links. The vendor says renders are up to 12 times faster than real time, and Apple Silicon can process locally. Lite is $10 a month, or $8 a month billed annually. Starter is $40 a month, or $29 a month billed annually. Creator is $100 a month, or $59 a month billed annually. Pro is $250 a month, or $175 a month billed annually. Launch pricing for the first month is Lite $5, Starter $9, Creator $30 and Pro $89. That launch pricing is the vendor\'s public pricing. Lite exports are watermarked, and Lite has no generative AI. There is no phone or tablet app. No free plan was found.',
+    pricingModel: 'paid',
+    priceFromUsd: 10,
+    hasFreeTier: false,
+    skillLevel: 'beginner',
+    platforms: ['Web', 'macOS'],
+    lastVerifiedAt: SCOUTED_2026_11_10,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-10 | category: Security (FLAG: scout category "Security" mapped to Development; this is a code-level agent SDK, and developer SDKs use Development) | scout rating 3.9 (not shown) | launch: 2026-11-09 (Product Hunt #4, Arcjet AI security models) | pricing: Individual $25/mo (1 team member, 1 hour log retention, email support); Startup $299/mo (2 team members, 24 hour log retention, email and Slack support); Enterprise custom. Usage: Web Requests $5 per 1M; Agent Requests $50 per 1M. No free plan. 15-day trial.
+  // note: priceFromUsd is Individual $25/mo. The 15-day trial is not a free tier. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'arcjet',
+    addedAt: SCOUTED_2026_11_10,
+    name: 'Arcjet',
+    vendor: 'Arcjet',
+    url: 'https://arcjet.com',
+    allowedHosts: ['arcjet.com'],
+    category: 'Development',
+    shortDesc: 'Runtime security for AI agents, with prompt-injection checks, data redaction, tool guards and budgets.',
+    longDesc: 'Arcjet is a runtime security platform for AI agents. It observes, enforces and audits agent actions, with prompt-injection detection, sensitive-data protection, tool guards and budget controls. Allow, block, redact or hold decisions happen before the action runs. Sensitive-data detection for PII and secrets runs in-process, so that data does not leave the environment. It integrates with agent frameworks including LangChain, CrewAI and the Vercel AI SDK, and with coding agents including Claude Code, Cursor and Copilot. Individual is $25 a month: 1 team member, 1 hour of log retention and email support. Startup is $299 a month: 2 team members, 24 hours of log retention, and email and Slack support. Enterprise is custom: unlimited team members, SIEM export and priority support. Usage is $5 per 1 million web requests and $50 per 1 million agent requests. There is no free plan. A 15-day trial is not a free plan. It is a code-level SDK.',
+    pricingModel: 'paid',
+    priceFromUsd: 25,
+    hasFreeTier: false,
+    skillLevel: 'pro',
+    platforms: ['Web', 'API'],
+    lastVerifiedAt: SCOUTED_2026_11_10,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-10 | category: Development | scout rating 3.8 (not shown) | launch: 2026-11-09 (Product Hunt #8, by Appwrite) | pricing: unknown on mcp1.com. A third-party listing gave plan prices; those figures are unverified and are not stored.
+  // note: pricingModel stays 'paid' because the column is free, freemium or paid and cannot be empty. priceFromUsd stays null. The price label says pricing is not published. No free tier is stored. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'mcp1',
+    addedAt: SCOUTED_2026_11_10,
+    name: 'MCP1',
+    vendor: 'Appwrite',
+    url: 'https://mcp1.com',
+    allowedHosts: ['mcp1.com'],
+    category: 'Development',
+    shortDesc: 'A team gateway that puts MCP servers behind one URL, with access control and audit logs.',
+    longDesc: 'MCP1 is an MCP gateway for teams, from Appwrite. One URL reaches the team\'s MCP servers, with centralized authentication, access control and audit logs. Access can be limited by groups, gateways and read-only permissions. The vendor describes audit logs, usage analytics and success rates. Pricing was not readable on mcp1.com when this was scouted, so no price is stored. It is aimed at teams running many MCP servers.',
+    pricingModel: 'paid',
+    priceFromUsd: null,
+    hasFreeTier: false,
+    skillLevel: 'pro',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_10,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-10 | category: Development | scout rating 3.6 (not shown) | launch: 2026-11-08/09 (Show HN) | pricing: Free $0, no account. Pro $15/mo or $120/yr ($10/mo). Pro is free for each public repository (GitHub, GitLab, Bitbucket, Codeberg, Azure DevOps) while it stays public. 14-day Pro trial, no card. Buying opens soon.
+  // note: priceFromUsd is Pro monthly, $15. The yearly price is not the stored from-price. The free plan is a free tier. Pro free for public repositories and the 14-day trial are the vendor's public offers and are not a catalog deal. The trial is not a free plan. Pro purchasing is not open yet. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'thrum',
+    addedAt: SCOUTED_2026_11_10,
+    name: 'Thrum',
+    vendor: 'Thrum',
+    url: 'https://thrum.team',
+    allowedHosts: ['thrum.team'],
+    category: 'Development',
+    shortDesc: 'Lets coding agents message each other and coordinate reviews and merges across tools.',
+    longDesc: 'Thrum lets AI coding agents message each other and coordinate work across tools, including Claude Code, Codex, Cursor, OpenCode, GitHub Copilot and Muse. A coordinator can review work and manage merges. The free plan is $0 and needs no account. It includes multi-agent messaging, coordination, a web UI for monitoring and inbox replies. Pro is $15 a month or $120 a year. Pro is free for each public repository on GitHub, GitLab, Bitbucket, Codeberg or Azure DevOps while that repository stays public, and a 14-day Pro trial needs no card. Those are the vendor\'s public offers. The trial is not a free plan. Pro purchasing is not open yet. Pro adds typing to agents from the web UI, full-text search, memory editing, work-queue editing, an email bridge and a vault. The free plan does not include those. Token costs from the underlying AI tools are separate.',
+    pricingModel: 'freemium',
+    priceFromUsd: 15,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_10,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-10 | category: Productivity | scout rating 3.5 (not shown) | launch: 2026-11-09 (Product Hunt #6) | pricing: Free $0, available now, macOS. Plus $7/mo billed annually or $10 monthly, not yet available. Pro $14/mo billed annually or $20 monthly, not yet available. Early Supporter Pass $200 once for lifetime Plus, first 100, refundable before Plus launches.
+  // note: Plus and Pro are not available yet, so they are not the stored from-price and priceFromUsd stays null. The $0 plan is a free tier. The early supporter pass is the vendor's public offer and is not a catalog deal. The annual discount is not a catalog deal. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'voyager-fm',
+    addedAt: SCOUTED_2026_11_10,
+    name: 'Voyager',
+    vendor: 'Voyager',
+    url: 'https://voyager.fm',
+    allowedHosts: ['voyager.fm'],
+    category: 'Productivity',
+    shortDesc: 'A Mac file browser where you can chat with your own AI agents about selected files.',
+    longDesc: 'Voyager is a macOS file browser with AI agents in the file workflow. You can chat with agents about selected files, organize files with saved searches and keep project tabs. It runs locally on the Mac, with no cloud upload, and you bring your own AI agents. It needs macOS 13 or later. There is no Windows or Linux app. Free is $0 and is available now. Plus is listed at $10 a month, or $7 a month billed annually, and is not available yet. Pro is listed at $20 a month, or $14 a month billed annually, and is not available yet. Plus and Pro are where external app connections, S3 storage and cloud sync are listed. An Early Supporter Pass is $200 once for lifetime Plus, limited to the first 100, and refundable before Plus launches. That pass is the vendor\'s public offer.',
+    pricingModel: 'freemium',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['macOS'],
+    lastVerifiedAt: SCOUTED_2026_11_10,
     fits: [],
     affiliate: none,
   }),
