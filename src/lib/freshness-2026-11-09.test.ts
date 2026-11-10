@@ -32,9 +32,31 @@ describe('catalog freshness 2026-11-09', () => {
     expect(lindy.affiliate).toEqual({ ...NONE, status: 'verify' })
   })
 
-  it('does not add Codend and does not edit the five review tools', () => {
-    expect(toolSeeds.some((tool) => tool.slug === 'codend')).toBe(false)
-    expect(readFileSync(new URL('../data/catalog.ts', import.meta.url), 'utf8')).not.toMatch(/slug: 'codend'/)
+  it('leaves Codend as the single main row and does not edit the five review tools', () => {
+    const codendRows = toolSeeds.filter((tool) => tool.slug === 'codend')
+    expect(codendRows).toHaveLength(1)
+    expect(codendRows[0]).toEqual({
+      slug: 'codend',
+      addedAt: '2026-11-08',
+      name: 'Codend',
+      vendor: 'Codend',
+      url: 'https://codend.dev',
+      allowedHosts: ['codend.dev'],
+      category: 'Vibe coding',
+      shortDesc: 'A browser agent that builds and publishes web apps from a prompt and can open pull requests on GitHub.',
+      longDesc:
+        'Codend is a browser AI agent that builds, previews and publishes web apps from a prompt. It can take coding tasks on your GitHub repositories, such as bug fixes, tests and dependency upgrades, and hand back a pull request. It also runs scheduled automations and connects to GitHub and Notion. Plus is $8 a month for 800 credits. Pro is $20 a month for 2,000 credits, and it includes GitHub repositories and pull requests. Max is $100 a month for 10,000 credits. Yearly billing saves 15 percent. That discount is the vendor\'s public pricing. It is not the stored from-price. New accounts get 5 credits a day for the first 7 days and 10 welcome credits that do not expire. That allowance is not a free plan. Repository access is only on Pro and Max.',
+      pricingModel: 'paid',
+      priceFromUsd: 8,
+      hasFreeTier: false,
+      skillLevel: 'intermediate',
+      platforms: ['Web'],
+      lastVerifiedAt: '2026-11-08',
+      fits: [],
+      affiliate: NONE,
+    })
+    const catalog = readFileSync(new URL('../data/catalog.ts', import.meta.url), 'utf8')
+    expect(catalog.match(/slug: 'codend'/g)).toEqual(["slug: 'codend'"])
     expect(seed('runinfra')).toMatchObject({ pricingModel: 'paid', hasFreeTier: false, priceFromUsd: 10, lastVerifiedAt: '2026-10-22' })
     expect(seed('tulu')).toMatchObject({ pricingModel: 'paid', hasFreeTier: false, priceFromUsd: null, lastVerifiedAt: '2026-10-30' })
     expect(seed('sideos')).toMatchObject({ pricingModel: 'paid', hasFreeTier: false, priceFromUsd: null, lastVerifiedAt: '2026-10-24' })
