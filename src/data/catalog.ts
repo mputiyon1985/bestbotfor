@@ -14,6 +14,7 @@ const SCOUTED_2026_11_04 = '2026-11-04'
 const SCOUTED_2026_11_05 = '2026-11-05'
 const SCOUTED_2026_11_06 = '2026-11-06'
 const SCOUTED_2026_11_07 = '2026-11-07'
+const FRESHNESS_2026_11_09 = '2026-11-09'
 const BACKLOG_BATCH_02 = '2026-10-25'
 const BACKLOG_BATCH_03 = '2026-10-25'
 
@@ -6873,6 +6874,146 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'intermediate',
     platforms: ['macOS'],
     lastVerifiedAt: SCOUTED_2026_11_07,
+    fits: [],
+    affiliate: none,
+  }),
+  // freshness 2026-11-09 (Forge). Unrated (fits: []), addedAt so the quiz rating gate applies.
+  // Appended at the end of toolSeeds. Codend is not in this batch: open PR #185 adds that slug.
+  // Pages re-read 2026-11-10 against the cited sources. No affiliate URL, no tracking link, no reader deal.
+  // Lindy is unchanged. https://www.lindy.ai/pricing still starts Team at $29.99/mo for 3,000 credits.
+  // $49.99 on that page is the 5,000-credit option, not the from-price, so the draft's 29.99 -> 49.99 edit is not applied.
+  // source: https://www.alibabacloud.com/blog/introducing-qoder-lite-start-creating-with-qoder-for-%2410-a-month_603718 (November 3, 2026)
+  // https://qoder.com/pricing did not render plan prices. Pro+ and Ultra are named in the post with no dollar amount, so those prices stay unknown.
+  // Named products are Qoder IDE, the JetBrains plugin, CLI, Qoder Mobile and the web app. OS names are not given, so macOS, Windows, iOS and Android are not stored. CLI uses the existing Terminal platform.
+  tool({
+    slug: 'qoder',
+    addedAt: FRESHNESS_2026_11_09,
+    name: 'Qoder',
+    vendor: 'Alibaba Cloud',
+    url: 'https://qoder.com',
+    allowedHosts: ['qoder.com'],
+    category: 'Coding assistant',
+    shortDesc: 'An agentic coding platform (IDE, CLI, JetBrains plugin and mobile) with a $10 Lite plan.',
+    longDesc:
+      'Qoder is Alibaba Cloud\'s agentic coding family: Qoder IDE, a JetBrains plugin, a CLI, Qoder Mobile and a web app, with Cloud Agents, Repo Wiki, Skills, Hooks, MCP and bring-your-own-key. On November 3, 2026 it added Lite at $10 a month for 1,000 credits and cost-effective models. Free is $0, including a 2-week Pro trial of 300 credits, and staying on Free keeps a basic model with daily and monthly limits. Pro is $20 a month for 2,000 credits. Pro+ and Ultra are named as higher plans. The launch post does not give their dollar prices.',
+    pricingModel: 'freemium',
+    priceFromUsd: 10,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['Web', 'JetBrains', 'Terminal'],
+    lastVerifiedAt: FRESHNESS_2026_11_09,
+    fits: [],
+    affiliate: none,
+  }),
+  // source: https://boltai.com/pricing (Pro list $99, Pro+ list $199, Lifetime list $399; Mac, Windows, web, iPhone and Android; 30-day money-back)
+  // https://boltai.com/blog/boltai-3 datePublished 2026-11-09. The pricing page shows a BFCM2026 sale and the blog lists a different code price, so no sale dollar amount is stored.
+  // priceFromUsd is the $99 list price. The sale is the vendor's public pricing, not a reader deal. The draft's 14-day trial is not on the pricing page.
+  tool({
+    slug: 'boltai',
+    addedAt: FRESHNESS_2026_11_09,
+    name: 'BoltAI',
+    vendor: 'BoltAI',
+    url: 'https://boltai.com',
+    allowedHosts: ['boltai.com'],
+    category: 'Productivity',
+    shortDesc: 'A one-time license for ChatGPT, Claude, Gemini and local models, with your own API keys. BoltAI 3 adds agents.',
+    longDesc:
+      'BoltAI is an app you pay for once and use with your own API keys. BoltAI 3, published November 9, 2026, adds local models that need no account or key, Browser Use and Computer Use agents, Agent Skills and Image Studio. Pro is a one-time $99 list price, Pro+ is $199 and Lifetime is $399. The pricing page also shows a BFCM2026 sale. That sale is the vendor\'s public pricing, and the stored price is the $99 list price. There is a 30-day money-back guarantee and no free plan.',
+    pricingModel: 'paid',
+    priceFromUsd: 99,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['macOS', 'Windows', 'Web', 'iOS', 'Android'],
+    lastVerifiedAt: FRESHNESS_2026_11_09,
+    fits: [],
+    affiliate: none,
+  }),
+  // source: https://thunderphone.com/pricing (cost-plus, calls from about 2 cents a minute) ; https://thunderphone.com/blog/introducing-zeus (November 9, 2026)
+  // usage-based, so priceFromUsd stays null (same as deepgram). A US number at $1 a month is a line add-on and is not stored.
+  // Zeus costs nothing while it is new. That temporary waiver is not stored as a free plan.
+  tool({
+    slug: 'thunderphone',
+    addedAt: FRESHNESS_2026_11_09,
+    name: 'ThunderPhone',
+    vendor: 'ThunderPhone',
+    url: 'https://thunderphone.com',
+    allowedHosts: ['thunderphone.com'],
+    category: 'Voice',
+    shortDesc: 'A voice-agent platform with Zeus, an AI harness that builds, tests and tunes your phone agents.',
+    longDesc:
+      'ThunderPhone v3 launched November 9, 2026 with Zeus, an agent that builds, tests and tunes voice agents. Pricing is cost-plus: vendor list prices plus hosting and a 17 to 25 percent margin. Example calls on the pricing page run about 2 cents a minute (lean), 4.7 cents (receptionist) and 6.8 cents (premium voice). Zeus costs nothing while it is new. There is no flat monthly plan price.',
+    pricingModel: 'paid',
+    priceFromUsd: null,
+    hasFreeTier: false,
+    skillLevel: 'pro',
+    platforms: ['Web', 'API'],
+    lastVerifiedAt: FRESHNESS_2026_11_09,
+    fits: [],
+    affiliate: none,
+  }),
+  // source: https://cosyra.com/pricing (Core $20/mo, Pro $30/mo; 7-day App Store trial; Remote Control on your own computer is free)
+  // The page does not say Ubuntu, does not say agents are pre-installed, and does not give a November 5 launch date, so those draft lines are not stored.
+  // Remote Control is a free option, so this is freemium. The App Store trial is not the free tier. Stripe cloud subscriptions are paid from day one.
+  tool({
+    slug: 'cosyra',
+    addedAt: FRESHNESS_2026_11_09,
+    name: 'Cosyra',
+    vendor: 'Cosyra',
+    url: 'https://cosyra.com',
+    allowedHosts: ['cosyra.com'],
+    category: 'Development',
+    shortDesc: 'A cloud terminal for AI coding agents on your phone, with free remote control of your own computer.',
+    longDesc:
+      'Cosyra is a mobile cloud terminal for AI coding agents. You use the same workspace on a phone, a computer or a browser. Remote Control of your own Mac, Linux computer or VPS is free on any account, and only the cloud workspace needs a plan. Core is $20 a month (2 vCPU, 4 GB, 120 workspace hours) and Pro is $30 a month (2 vCPU, 8 GB burstable, 120 workspace hours). The subscription covers the workspace. You connect your own AI subscription or API account and pay that provider separately. The App Store offers a 7-day trial. That trial is not the free tier.',
+    pricingModel: 'freemium',
+    priceFromUsd: 20,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['iOS', 'Android', 'Web'],
+    lastVerifiedAt: FRESHNESS_2026_11_09,
+    fits: [],
+    affiliate: none,
+  }),
+  // source: https://host0.ai/pricing (Free $0 forever / Pro $9 a month, $90 a year / Team $99 coming soon) ; https://host0.ai
+  tool({
+    slug: 'host0',
+    addedAt: FRESHNESS_2026_11_09,
+    name: 'host0',
+    vendor: 'host0',
+    url: 'https://host0.ai',
+    allowedHosts: ['host0.ai'],
+    category: 'Development',
+    shortDesc: 'Hosting that turns what your coding agent builds into a shareable link.',
+    longDesc:
+      'host0 publishes the pages, sites, files and small team apps your coding agent creates, through a Bash skill or an optional MCP connector. It works with Claude Code, Codex and Cursor. Free is $0 forever, with no card, 5 apps, 500 MB and a host0 badge. Pro is $9 a month ($90 a year) for no badge, 100 apps, 10 GB, analytics and 30-day version history. A $99 Team plan is listed as coming soon.',
+    pricingModel: 'freemium',
+    priceFromUsd: 9,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Web', 'API'],
+    lastVerifiedAt: FRESHNESS_2026_11_09,
+    fits: [],
+    affiliate: none,
+  }),
+  // source: https://ponder.ing/pricing (monthly tab: Free $0 / Casual $14 / Plus $24 / Pro $42)
+  // https://ponder.ing/release-notes : data analysis is dated November 4, 2026. Draft is dated September 22, 2026 on the same page, so it is not described as part of the November 4 release.
+  tool({
+    slug: 'ponder',
+    addedAt: FRESHNESS_2026_11_09,
+    name: 'Ponder',
+    vendor: 'Ponder AI',
+    url: 'https://ponder.ing',
+    allowedHosts: ['ponder.ing'],
+    category: 'Research',
+    shortDesc: 'An AI research workspace that goes from sources and data analysis to a finished manuscript.',
+    longDesc:
+      'Ponder is an AI research assistant that works with mind maps and documents. Its November 4, 2026 release reads Excel, CSV, SPSS, Stata and SAS files, writes and runs the analysis, and saves charts that can go into a Word export. A Draft stage, dated September 22, 2026 on the same release notes, carries a project through to a manuscript. Free is $0 with 40 credits refreshed daily. Casual is $14 a month (1,100 credits), Plus is $24 and Pro is $42, billed monthly.',
+    pricingModel: 'freemium',
+    priceFromUsd: 14,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['Web'],
+    lastVerifiedAt: FRESHNESS_2026_11_09,
     fits: [],
     affiliate: none,
   }),
