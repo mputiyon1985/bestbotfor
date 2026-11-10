@@ -8,6 +8,10 @@ const PRICE_LABEL_OVERRIDES: Readonly<Record<string, string>> = {
   writesonic: 'Free trial, no card; then $79 and up',
   // hyperresearch.ai/pricing, Nov 3, 2026: Light $9 and Deep $49 are per run, not a monthly plan.
   hyperresearch: '$9 per run and up',
+  // mcp1.com, Nov 10, 2026: no price was readable on the product site. Unverified third-party figures are not stored.
+  mcp1: 'Pricing not published',
+  // voyager.fm, Nov 10, 2026: Free is available. Plus and Pro are listed and are not available yet, so they are not a from-price.
+  'voyager-fm': 'Free; Plus and Pro not available yet',
 }
 
 export const budgetLabel: Record<Budget, string> = {
