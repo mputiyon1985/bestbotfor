@@ -14,6 +14,7 @@ const SCOUTED_2026_11_04 = '2026-11-04'
 const SCOUTED_2026_11_05 = '2026-11-05'
 const SCOUTED_2026_11_06 = '2026-11-06'
 const SCOUTED_2026_11_07 = '2026-11-07'
+const SCOUTED_2026_11_08 = '2026-11-08'
 const BACKLOG_BATCH_02 = '2026-10-25'
 const BACKLOG_BATCH_03 = '2026-10-25'
 
@@ -6873,6 +6874,180 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'intermediate',
     platforms: ['macOS'],
     lastVerifiedAt: SCOUTED_2026_11_07,
+    fits: [],
+    affiliate: none,
+  }),
+  // Bot scout 2026-11-08. Unrated: no editorial score, pros or cons until Forge rubric review.
+  // Scout ratings stay in the comments and are not shown.
+  // No affiliate row is seeded. Affiliate programs are unknown for all eight.
+  // Codend's /affiliates page redirects to sign-up and publishes no terms, so it is not a program and no tracking URL is stored.
+  // No BestBotFor sponsorship is recorded. A partnerships or press contact is not a sponsorship and is not stored.
+  // Public vendor offers are not stored as deals.
+  // scout 2026-11-08 | category: Coding assistant | scout rating 4.1 (not shown) | launch: 2026-11-07 (Product Hunt #2) | pricing: Free $0 (30k reviewed lines of code/month, up to 3 members); Premium from $32/mo for 100k reviewed LOC with unlimited users, scaling through fixed monthly bands ($64, $128, $256, $512, $1,024); Enterprise custom (optional self-hosted deployment and self-hosted AI models, SSO). Priced by reviewed LOC, not seats.
+  // note: priceFromUsd is Premium $32/mo. The $0 plan is a free tier. Affiliate unknown, not seeded. A general Hexmos contact page is not a sponsorship. Vendor is Hexmos.
+  tool({
+    slug: 'livereview',
+    addedAt: SCOUTED_2026_11_08,
+    name: 'LiveReview',
+    vendor: 'Hexmos',
+    url: 'https://hexmos.com/livereview',
+    allowedHosts: ['hexmos.com'],
+    category: 'Coding assistant',
+    shortDesc: 'Risk-aware AI code review from Hexmos that scores each change and can auto-approve the lowest-risk ones.',
+    longDesc: 'LiveReview is risk-aware AI code review from Hexmos. It scores every pull request or merge request by blending an LLM, an ML model trained on your production incident and rollback signals, and a code graph of your codebase. It can auto-approve the lowest-risk 30 to 50 percent and route risky changes to engineers. It is source-available and self-hostable. The free plan is $0 for 30,000 reviewed lines of code a month and up to 3 members. Premium starts at $32 a month for 100,000 reviewed lines, with unlimited users, then fixed monthly bands at $64, $128, $256, $512 and $1,024. Enterprise is custom and can include self-hosted deployment, self-hosted AI models and SSO. Pricing is by reviewed lines of code, not seats.',
+    pricingModel: 'freemium',
+    priceFromUsd: 32,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['Web', 'Self-hosted'],
+    lastVerifiedAt: SCOUTED_2026_11_08,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-08 | category: Chat assistant | scout rating 3.8 (not shown) | launch: 2026-11-07 (Product Hunt #3) | pricing: Free on the App Store (iPhone, iPad, iMessage; iOS 18+); no paid plan listed on the App Store or Product Hunt ('Free Options').
+  // note: pricingModel is free. No paid Quest plan was found, so priceFromUsd stays null. Affiliate unknown, not seeded. Sponsorship unknown. Vendor is the product name; no separate company was named.
+  tool({
+    slug: 'quest-advisor',
+    addedAt: SCOUTED_2026_11_08,
+    name: 'Quest',
+    vendor: 'Quest',
+    url: 'https://new.quest',
+    allowedHosts: ['new.quest'],
+    category: 'Chat assistant',
+    shortDesc: 'A personal AI advisor in iMessage that keeps an editable memory and advises on your goals.',
+    longDesc: 'Quest is a personal AI advisor that lives in iMessage, with an iOS companion app. After you connect your apps it builds a Memory of 100 or more wiki files and a relationship map, then advises on goals it calls quests, builds mini-apps, has its own phone for messaging apps and can brief your other AI assistants. You can see, correct or delete that Memory. The app is free on the App Store for iPhone, iPad and iMessage, and it needs iOS 18 or later. No paid plan is listed on the App Store or Product Hunt. It is iOS and iMessage only.',
+    pricingModel: 'free',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['iOS'],
+    lastVerifiedAt: SCOUTED_2026_11_08,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-08 | category: Productivity | scout rating 3.8 (not shown) | launch: 2026-11-07 (Show HN) | pricing: Free $0 (1 board; unlimited milestones, tasks, decisions and Claude reads/writes; JSON export); Pro $18/mo or $180/yr (unlimited boards); Team $30/user/mo or $300/user/yr (coming soon). USD before tax.
+  // note: priceFromUsd is Pro $18/mo. The $0 plan is a free tier. The $180 yearly price is the vendor's public pricing, not the stored from-price, and it is not a catalog deal. Team is not available yet. Affiliate unknown, not seeded. A press or partnerships contact form is listed; that is not a sponsorship. Vendor is Hatobash, the team named in the scout.
+  tool({
+    slug: 'vondet',
+    addedAt: SCOUTED_2026_11_08,
+    name: 'Vondet',
+    vendor: 'Hatobash',
+    url: 'https://vondet.com/en',
+    allowedHosts: ['vondet.com'],
+    category: 'Productivity',
+    shortDesc: 'A planning board that Claude writes to over MCP, so tasks, milestones and decisions stay in one place.',
+    longDesc: 'Vondet is a planning board that Claude and Claude Code write to over MCP. The AI reads and records tasks, milestones and decisions, including the reasoning, so the plan stays in one place instead of a pile of Markdown files. The free plan is $0 for 1 board, with unlimited milestones, tasks, decisions and Claude reads and writes, plus JSON export. Pro is $18 a month or $180 a year for unlimited boards. Team is $30 per user a month or $300 per user a year, and it is not available yet. Prices are USD before tax. Sharing a board with other people is not built yet. The yearly Pro price is the vendor\'s public pricing. It is not the stored from-price.',
+    pricingModel: 'freemium',
+    priceFromUsd: 18,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_08,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-08 | category: Development | scout rating 3.8 (not shown) | launch: 2026-11-07 (Show HN) | pricing: Free allowance $0 (10 requests/minute, 100 MB traffic/month, unlimited keys and services); then capacity units at $0.50 per unit per month (1 unit = 50 req/min + 1 GB/month; e.g. 4 units $2, 20 units $10).
+  // note: priceFromUsd is $0.50 per capacity unit per month. The $0 allowance is a free tier. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'keycontain',
+    addedAt: SCOUTED_2026_11_08,
+    name: 'KeyContain',
+    vendor: 'KeyContain',
+    url: 'https://keycontain.com',
+    allowedHosts: ['keycontain.com'],
+    category: 'Development',
+    shortDesc: 'A gateway that gives each AI agent its own key, with per-action rules and phone approval for risky calls.',
+    longDesc: 'KeyContain is a gateway that gives each AI agent its own key with per-action permissions on Gmail, QuickBooks, GitHub, Cloudflare and other APIs. Routine calls pass. Risky ones wait for approval on your phone. Everything else is refused with a message the agent can read. The free allowance is $0: 10 requests a minute, 100 MB of traffic a month, and unlimited keys and services. Capacity is then $0.50 per unit a month. One unit is 50 requests a minute plus 1 GB a month. Four units are $2 and 20 units are $10. An approval wait can last up to 24 hours.',
+    pricingModel: 'freemium',
+    priceFromUsd: 0.5,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['Web', 'API'],
+    lastVerifiedAt: SCOUTED_2026_11_08,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-08 | category: Vibe coding | scout rating 3.8 (not shown) | launch: 2026-11-08 (Show HN) | pricing: Free $0 (5 credits daily for the first 7 days plus 10 welcome credits that never expire); Plus $8/mo (800 credits); Pro $20/mo (2,000 credits, GitHub repositories and PRs); Max $100/mo (10,000 credits); yearly billing saves 15%.
+  // note: priceFromUsd is Plus $8/mo. The 7-day daily credits and the 10 welcome credits are not a free tier. The 15% yearly discount is the vendor's public pricing, not the stored from-price, and it is not a catalog deal. Affiliate unknown. A /affiliates page redirects to sign-up and publishes no terms, so no program is seeded and no tracking URL is stored. A general contact address is not a sponsorship.
+  tool({
+    slug: 'codend',
+    addedAt: SCOUTED_2026_11_08,
+    name: 'Codend',
+    vendor: 'Codend',
+    url: 'https://codend.dev',
+    allowedHosts: ['codend.dev'],
+    category: 'Vibe coding',
+    shortDesc: 'A browser agent that builds and publishes web apps from a prompt and can open pull requests on GitHub.',
+    longDesc: 'Codend is a browser AI agent that builds, previews and publishes web apps from a prompt. It can take coding tasks on your GitHub repositories, such as bug fixes, tests and dependency upgrades, and hand back a pull request. It also runs scheduled automations and connects to GitHub and Notion. Plus is $8 a month for 800 credits. Pro is $20 a month for 2,000 credits, and it includes GitHub repositories and pull requests. Max is $100 a month for 10,000 credits. Yearly billing saves 15 percent. That discount is the vendor\'s public pricing. It is not the stored from-price. New accounts get 5 credits a day for the first 7 days and 10 welcome credits that do not expire. That allowance is not a free plan. Repository access is only on Pro and Max.',
+    pricingModel: 'paid',
+    priceFromUsd: 8,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_08,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-08 | category: Productivity | scout rating 3.7 (not shown) | launch: 2026-11-07 (Product Hunt #8) | pricing: One-time $19.90 for 2 Macs, all updates included, no subscription; free 48-hour trial with no credit card; 14-day money-back guarantee.
+  // note: priceFromUsd is the one-time license, $19.90, same one-time convention as pauta and whoiscooking. The 48-hour trial is not a free tier. The trial and the 14-day money-back guarantee are the vendor's public offer and are not stored as a deal. Affiliate unknown, not seeded. A general contact address is not a sponsorship.
+  tool({
+    slug: 'seam-notch',
+    addedAt: SCOUTED_2026_11_08,
+    name: 'seam',
+    vendor: 'seam',
+    url: 'https://getseam.app',
+    allowedHosts: ['getseam.app'],
+    category: 'Productivity',
+    shortDesc: 'A Mac menu-bar app that turns the notch into a Dynamic Island, with on-device dictation and translation.',
+    longDesc: 'seam is a Mac menu-bar app that turns the notch into a Dynamic Island. It does on-device voice dictation and translation into any app, plus music controls, a calendar, a focus timer and an alert when Claude Code finishes. Nothing leaves the Mac. A license is $19.90, paid once, for 2 Macs, with all updates and no subscription. A 48-hour trial needs no credit card, and there is a 14-day money-back guarantee. Both are the vendor\'s public offer. The trial is not a free plan.',
+    pricingModel: 'paid',
+    priceFromUsd: 19.9,
+    hasFreeTier: false,
+    skillLevel: 'beginner',
+    platforms: ['macOS'],
+    lastVerifiedAt: SCOUTED_2026_11_08,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-08 | category: Automation | scout rating 3.7 (not shown) | launch: 2026-11-07 (There's An AI For That, initial release) | pricing: Prices AUD/month excl. GST: Free $0 (1 invoice/month, email only); Starter $19 (10 invoices, 50 SMS); Growth $49 (50 invoices, 250 SMS); Scale $99 (200 invoices, 1,000 SMS); SMS top-ups $15 per 250; month to month. Australia and Xero only.
+  // note: prices are AUD excl. GST, not USD, so priceFromUsd stays null (same non-USD convention as Tulu). The $0 plan is a free tier. Australia and Xero only. Affiliate unknown, not seeded. The Partners page is for bookkeepers managing clients, not advertising, and it is not a sponsorship.
+  tool({
+    slug: 'churnproof',
+    addedAt: SCOUTED_2026_11_08,
+    name: 'Churnproof',
+    vendor: 'Churnproof',
+    url: 'https://churnproof.ai',
+    allowedHosts: ['churnproof.ai'],
+    category: 'Automation',
+    shortDesc: 'An AI assistant for Australian small businesses that chases overdue Xero invoices by SMS and email.',
+    longDesc: 'Churnproof is an AI employee for Australian small businesses. It connects to Xero, chases overdue invoices by SMS and email from its own Australian mobile number, reads replies, tracks promises and part payments, stops on disputes and keeps you updated by text. Prices are in AUD per month and exclude GST. The free plan is 0 AUD for 1 invoice a month, by email only. Starter is 19 AUD for 10 invoices and 50 SMS. Growth is 49 AUD for 50 invoices and 250 SMS. Scale is 99 AUD for 200 invoices and 1,000 SMS. SMS top-ups are 15 AUD per 250 messages. Plans are month to month. It is for Australia and Xero only for now. MYOB and Stripe are listed as coming.',
+    pricingModel: 'freemium',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_08,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-08 | category: Productivity | scout rating 3.6 (not shown) | launch: 2026-11-07 (Show HN) | pricing: Free alpha (v0.2.0) for Mac (Apple Silicon and Intel, notarized) and Windows 10/11; uses your own Claude Code/Codex login or OpenRouter key.
+  // note: pricingModel is free. No paid Spot plan was found, so priceFromUsd stays null. Affiliate unknown, not seeded. Deemwar's Partnership Program is for engineering clients, not advertising, and it is not a sponsorship. Vendor is Deemwar.
+  tool({
+    slug: 'spot-deemwar',
+    addedAt: SCOUTED_2026_11_08,
+    name: 'Spot',
+    vendor: 'Deemwar',
+    url: 'https://spot.deemwar.com',
+    allowedHosts: ['spot.deemwar.com'],
+    category: 'Productivity',
+    shortDesc: 'A free desktop voice and text agent for Mac and Windows that shows each step as it runs.',
+    longDesc: 'Spot is a desktop voice and text agent for Mac and Windows. Press a shortcut, say what you want, and it does the steps in a visible panel: check the battery or slowdowns, find and open files, add calendar events, send WhatsApp messages, or summarize GitHub commits. It uses the Claude Code or Codex app you already have, or an OpenRouter key. Spot is a free alpha (v0.2.0) for Mac, on Apple silicon and Intel, notarized, and for Windows 10 and 11. The Windows build is unsigned. No paid Spot plan is listed. On Mac it needs Accessibility and Screen Recording permission. Nothing is captured until you press the key.',
+    pricingModel: 'free',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['macOS', 'Windows'],
+    lastVerifiedAt: SCOUTED_2026_11_08,
     fits: [],
     affiliate: none,
   }),
