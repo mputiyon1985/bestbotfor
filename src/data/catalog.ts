@@ -17,6 +17,7 @@ const SCOUTED_2026_11_07 = '2026-11-07'
 const SCOUTED_2026_11_08 = '2026-11-08'
 const FRESHNESS_2026_11_09 = '2026-11-09'
 const SCOUTED_2026_11_10 = '2026-11-10'
+const SCOUTED_2026_11_11 = '2026-11-11'
 const BACKLOG_BATCH_02 = '2026-10-25'
 const BACKLOG_BATCH_03 = '2026-10-25'
 
@@ -7359,6 +7360,248 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['macOS'],
     lastVerifiedAt: SCOUTED_2026_11_10,
+    fits: [],
+    affiliate: none,
+  }),
+  // Bot scout 2026-11-11. Unrated: no editorial score, pros or cons until Forge rubric review.
+  // Scout ratings stay in the comments and are not shown.
+  // Alsona and Maxma have affiliate programs. Both are inactive: not applied or accepted, no tracking URL.
+  // Latch, Wren, Lottie AI, Rystic, Mimzie, Monity, Obeya and Co-Review have unknown affiliate programs and use the empty affiliate.
+  // No BestBotFor sponsorship is recorded. Sponsorship is unknown and is not stored.
+  // Public vendor offers are not stored as deals.
+  // scout 2026-11-11 | category: Sales (FLAG: scout category "Sales" mapped to Automation; Needle, the catalog's outbound tool, is Automation) | scout rating 4.2 (not shown) | launch: 2026-11-10 (Product Hunt #1) | pricing: Starter $99/mo; Pro $149/mo; Ultra $499/mo. 7-day free trial on all plans, no charge until the trial ends.
+  // note: priceFromUsd is Starter $99/mo. The trial is not a free plan. No free plan was found. Extra senders are $59/mo. Prospect caps are 500, 2,500 and 10,000 a month. Custom signals are only on Ultra. Sponsorship unknown.
+  // affiliate: Rewardful. 30% of revenue on full-priced referrals for the customer lifetime; 60-day cookie; PayPal payouts. Apply page https://alsona.getrewardful.com/signup. Not applied or accepted. Seeded inactive. No tracking link. The apply host is not an allowlist host.
+  tool({
+    slug: 'alsona',
+    addedAt: SCOUTED_2026_11_11,
+    name: 'Alsona',
+    vendor: 'Alsona',
+    url: 'https://alsona.com',
+    allowedHosts: ['alsona.com'],
+    category: 'Automation',
+    shortDesc: 'Finds buyers from buying signals and turns them into outreach that can book sales calls.',
+    longDesc:
+      'Alsona is an outbound sales agent. It tracks buying signals, including hiring, funding and podcast activity, and the vendor says it tracks 30 or more. It turns those signals into outreach, writes replies, and can wait for approval before sending. A unified inbox covers LinkedIn and email, and more than one sender can rotate. Starter is $99 a month, Pro is $149 a month and Ultra is $499 a month. Every plan has a 7-day trial with no charge until the trial ends. The trial is not a free plan. No free plan was found. Lower plans cap prospects at 500, 2,500 and 10,000 a month. An extra sender is $59 a month. Custom signals are only on Ultra. The trial is the vendor\'s public offer.',
+    pricingModel: 'paid',
+    priceFromUsd: 99,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_11,
+    fits: [],
+    affiliate: {
+      hasProgram: true,
+      network: 'Rewardful',
+      sourceUrl: 'https://alsona.getrewardful.com/signup',
+      status: 'inactive',
+      commissionNote:
+        '30% of revenue on full-priced referrals for the customer lifetime, with a 60-day cookie. PayPal payouts. Not applied or accepted. No tracking link stored.',
+    },
+  }),
+  // scout 2026-11-11 | category: Finance (FLAG: scout category "Finance" mapped to Productivity; Futureproof, the catalog's accounting-agent product, and Candor, the personal-finance product, are Productivity) | scout rating 4.2 (not shown) | launch: 2026-11-10 (Product Hunt #4) | pricing: Open $0/mo (50 credits); Solo $50/mo or $40/mo billed annually ($480/yr, 500 credits); Power $490/mo or $392/mo billed annually ($4,704/yr, 5,000 pooled credits); Team $1,499/mo or $1,199/mo billed annually ($14,388/yr, 20,000 pooled credits); Enterprise custom. Extra credits $100 per 1,000.
+  // note: priceFromUsd is Solo monthly, $50. The Open plan is a free tier. Annual prices are the vendor's public billing and are not the stored from-price. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'latch-ai',
+    addedAt: SCOUTED_2026_11_11,
+    name: 'Latch',
+    vendor: 'Latch',
+    url: 'https://www.latch.ai',
+    allowedHosts: ['www.latch.ai'],
+    category: 'Productivity',
+    shortDesc: 'Learns a recurring accounting task from one demonstration, then runs it in the tools you already use.',
+    longDesc:
+      'Latch automates recurring accounting work. You show the process once, and it repeats that work in tools you already use, including Excel, QuickBooks, Xero and NetSuite. You review the result. Open is $0 a month, with 50 credits a month. Solo is $50 a month, or $40 a month billed annually ($480 a year), with 500 credits a month. Power is $490 a month, or $392 a month billed annually ($4,704 a year), with 5,000 pooled credits a month. Team is $1,499 a month, or $1,199 a month billed annually ($14,388 a year), with 20,000 pooled credits a month. Enterprise is custom. Extra credits are $100 per 1,000. The lower annual prices are the vendor\'s public billing. They are not the stored from-price. Training each sidekick needs a desktop recording. The Open plan is the free tier.',
+    pricingModel: 'freemium',
+    priceFromUsd: 50,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_11,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-11 | category: Development (QA is not its own catalog category; Development already exists, same job as other developer QA tools) | scout rating 4.1 (not shown) | launch: 2026-11-10 (Product Hunt #5) | pricing: Free: first 10 completed test runs per workspace. Pay-as-you-go: $3 per completed test run. Enterprise: custom.
+  // note: $3 is per completed run, not a monthly plan, so priceFromUsd stays null. The first 10 runs are a free allowance. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'seldon-wren',
+    addedAt: SCOUTED_2026_11_11,
+    name: 'Wren',
+    vendor: 'Seldon',
+    url: 'https://www.seldon.com/products/wren',
+    allowedHosts: ['www.seldon.com'],
+    category: 'Development',
+    shortDesc: 'Runs behavioral tests you describe in plain English and keeps a recording of what failed.',
+    longDesc:
+      'Wren, from Seldon, uses behavioral QA agents to find failures in software workflows and keeps a recording of the run. You describe a test in plain English, and runs can go in parallel. The vendor says there are no seat fees. The first 10 completed test runs in a workspace are free. After that, a completed run is $3, which includes model usage, browser execution, findings and the recording. That price is per run, not a monthly plan, so no monthly from-price is stored. Enterprise volume pricing is custom. The 10 free runs are the free allowance.',
+    pricingModel: 'freemium',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_11,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-11 | category: Marketing (FLAG: scout category "Marketing" mapped to Automation; Playad, the catalog's ad-campaign product, is Automation. SEO was used for AI-search visibility, which this is not.) | scout rating 4.0 (not shown) | launch: 2026-11-10 (Product Hunt #2) | pricing: Starter $99/mo (up to $20k monthly ad spend); Standard $299/mo (up to $50k); Pro $899/mo (up to $200k); Enterprise custom; Agency custom. Incrementality test from $499; marketing mix model from $1,900/mo. 30-day trial with Pro access, no subscription fee, pay only for credits used. 1,000 credits = $1.
+  // note: priceFromUsd is Starter $99/mo. The trial is not a free plan. No free plan was found. Plan credits reset each cycle. Top-up credits roll over. Ad spend is billed by the ad platforms. Sponsorship unknown.
+  // affiliate: agency partner program with affiliate terms, listed on the Agency plan. Terms are not public. In-house, via sales. Apply page https://maxma.ai/pricing. Not applied or accepted. Seeded inactive. No tracking link. Commission is unknown and is not stored as a rate.
+  tool({
+    slug: 'maxma',
+    addedAt: SCOUTED_2026_11_11,
+    name: 'Maxma',
+    vendor: 'Maxma',
+    url: 'https://maxma.ai',
+    allowedHosts: ['maxma.ai'],
+    category: 'Automation',
+    shortDesc: 'An agent workspace for paid-ad teams, with dashboards, landing pages, creative and ad-platform actions.',
+    longDesc:
+      'Maxma is an agent platform for marketing teams that run paid ads. It builds dashboards, analysis, landing pages and creative, and it can act on ad platforms. Starter is $99 a month for up to $20,000 of monthly ad spend. Standard is $299 a month for up to $50,000. Pro is $899 a month for up to $200,000. Enterprise is custom above that. Agency is custom across workspaces. An incrementality test starts at $499. A marketing mix model starts at $1,900 a month. A 30-day trial gives Pro access with no subscription fee, and you pay only for credits used. The trial is not a free plan. No free plan was found. Plan credits reset each cycle. Top-up credits roll over. The vendor says 1,000 credits equal $1. Ad spend is billed by the ad platforms, not by Maxma. The trial is the vendor\'s public offer.',
+    pricingModel: 'paid',
+    priceFromUsd: 99,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_11,
+    fits: [],
+    affiliate: {
+      hasProgram: true,
+      network: 'in-house (via sales)',
+      sourceUrl: 'https://maxma.ai/pricing',
+      status: 'inactive',
+      commissionNote:
+        'Agency partner program with affiliate terms. Terms are not public. Not applied or accepted. No tracking link stored.',
+    },
+  }),
+  // scout 2026-11-11 | category: Design | scout rating 4.0 (not shown) | launch: 2026-11-10 (Product Hunt #7, Lottie AI) | pricing: Individual $19.99 per user/mo billed annually; Team $24.99 per user/mo billed annually; Team+ and Enterprise contact sales. Plans billed annually only. MCP free to try during beta.
+  // note: priceFromUsd is Individual $19.99 per user a month, billed annually. There is no monthly-billed price, so this slug is on the annual-billed list. The MCP beta is not a free plan. No free plan was found. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'lottiefiles',
+    addedAt: SCOUTED_2026_11_11,
+    name: 'Lottie AI',
+    vendor: 'LottieFiles',
+    url: 'https://lottiefiles.com/ai',
+    allowedHosts: ['lottiefiles.com'],
+    category: 'Design',
+    shortDesc: 'Turns a text prompt into an editable Lottie animation.',
+    longDesc:
+      'Lottie AI is the text-to-animation tool from LottieFiles. It generates editable Lottie motion. The vendor also offers a motion library and integrations with Figma, Webflow, Canva and After Effects. Individual is $19.99 per user a month, billed annually. Team is $24.99 per user a month, billed annually. Team+ and Enterprise are custom. Plans are billed annually, so the stored from-price is that annual Individual rate. AI generation credits are limited per plan. The vendor says the MCP is free to try during beta. That beta is not a free plan. No free plan was found.',
+    pricingModel: 'paid',
+    priceFromUsd: 19.99,
+    hasFreeTier: false,
+    skillLevel: 'beginner',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_11,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-11 | category: Development | scout rating 3.9 (not shown) | launch: 2026-11-10 (Show HN) | pricing: Free $0/mo, 10 hours/mo, GitHub/Linear/Slack, 1 seat. Pro $89.99/seat/mo, 14-day trial (card required), $0.012/simulator-minute past the pool. Enterprise custom.
+  // note: priceFromUsd is Pro monthly, $89.99. The $0 plan is a free tier. The card-required Pro trial is not a free plan. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'rystic',
+    addedAt: SCOUTED_2026_11_11,
+    name: 'Rystic',
+    vendor: 'Rystic',
+    url: 'https://rystic.ai',
+    allowedHosts: ['rystic.ai'],
+    category: 'Development',
+    shortDesc: 'Local, stateful simulators of APIs such as GitHub, Linear and Slack, for testing agents.',
+    longDesc:
+      'Rystic runs API simulators for training and testing. They run locally and in CI, with no rate limits, and you can set their state. Free is $0 a month: 10 hours a month, GitHub, Linear and Slack, and 1 seat. Pro is $89.99 per seat a month. A 14-day Pro trial needs a card. The trial is not a free plan. Past the included pool, simulator time is $0.012 a minute. Enterprise is custom, with a one-week trial and then a contract. The free plan is the free tier. The Pro trial is the vendor\'s public offer.',
+    pricingModel: 'freemium',
+    priceFromUsd: 89.99,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_11,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-11 | category: Productivity | scout rating 3.7 (not shown) | launch: 2026-11-10 (Show HN) | pricing: App $0. Bring your own AI plan $0 extra. Agent plans: Free $0/mo; Starter $8/mo; Plus $20/mo; Pro $100/mo; Max $200/mo. Usage past the plan is API cost plus 20%, up to a monthly cap. macOS beta only.
+  // note: priceFromUsd is Starter $8/mo. The $0 app and the Free agent plan are the free tier. Windows and Linux are mentioned and are not released, so they are not stored as platforms. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'mimzie',
+    addedAt: SCOUTED_2026_11_11,
+    name: 'Mimzie',
+    vendor: 'Mimzie',
+    url: 'https://mimzie.com',
+    allowedHosts: ['mimzie.com'],
+    category: 'Productivity',
+    shortDesc: 'A local workspace where several AI agents work on your files, using your own AI plans or Mimzie\'s.',
+    longDesc:
+      'Mimzie is a local AI workspace. It runs agents, including Claude, ChatGPT, Gemini and Grok, on files on your computer, and it tracks edits. The app is $0. Using your own AI plan adds $0. Mimzie\'s own agent plans are Free at $0 a month (free models, 1 GB of storage and 7 days of history), Starter at $8 a month (open models, 50 GB and full history), Plus at $20 a month, Pro at $100 a month and Max at $200 a month. Usage past the plan is the API cost plus 20%, up to a monthly cap. The download is a macOS beta. Windows and Linux are mentioned and are not released. The $0 app and the Free agent plan are the free tier.',
+    pricingModel: 'freemium',
+    priceFromUsd: 8,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['macOS'],
+    lastVerifiedAt: SCOUTED_2026_11_11,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-11 | category: Productivity | scout rating 3.6 (not shown) | launch: 2026-11-11 (Show HN) | pricing: Free plan. Personal and Business paid plans (prices not shown: unknown).
+  // note: paid prices were not on the fetched pages, so priceFromUsd stays null. The free plan is a free tier. Do not invent Personal or Business prices. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'monity',
+    addedAt: SCOUTED_2026_11_11,
+    name: 'Monity',
+    vendor: 'Monity',
+    url: 'https://monity.ai',
+    allowedHosts: ['monity.ai'],
+    category: 'Productivity',
+    shortDesc: 'Watches websites, PDFs and signed-in pages and alerts you when a change matches your prompt.',
+    longDesc:
+      'Monity watches websites, PDFs and signed-in pages for pricing, content, visual and document changes, and it alerts you when a change matches a prompt. There is a free plan, a free desktop app and a browser extension. It can notify Slack, Microsoft Teams and webhooks. Personal and Business are paid plans. Their prices were not shown, so no paid price is stored. The free plan is the free tier.',
+    pricingModel: 'freemium',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_11,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-11 | category: Development | scout rating 3.6 (not shown) | launch: 2026-11-11 (Show HN) | pricing: Free, open source (MIT).
+  // note: no paid plan was found, so priceFromUsd stays null and the model is free. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'obeya',
+    addedAt: SCOUTED_2026_11_11,
+    name: 'Obeya',
+    vendor: 'Obeya',
+    url: 'https://obeya.si',
+    allowedHosts: ['obeya.si'],
+    category: 'Development',
+    shortDesc: 'An open-source canvas where you direct coding agents, with voice control and narrated demos.',
+    longDesc:
+      'Obeya is a spatial workspace for directing AI coding agents. Each task is a card on an infinite canvas, and agents work in the background. It includes voice control and narrated demos. It works offline on a private network. It is free and open source under the MIT license. It runs on macOS, Windows and Linux, and it needs a Claude Code or Codex login. The Windows installer is not signed. There is a phone companion and no other mobile app. You pay the coding agent separately. Obeya itself has no paid plan.',
+    pricingModel: 'free',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['macOS', 'Windows', 'Linux'],
+    lastVerifiedAt: SCOUTED_2026_11_11,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-11 | category: Development | scout rating 3.5 (not shown) | launch: 2026-11-10 (Product Hunt #9) | pricing: Free, open source (MIT).
+  // note: no paid plan was found, so priceFromUsd stays null and the model is free. Affiliate unknown, not seeded. Sponsorship unknown. The catalog URL is the GitHub repository. No public offer was found.
+  tool({
+    slug: 'co-review',
+    addedAt: SCOUTED_2026_11_11,
+    name: 'Co-Review',
+    vendor: 'Co-Review',
+    url: 'https://github.com/sdsvn/co-review',
+    allowedHosts: ['github.com'],
+    category: 'Development',
+    shortDesc: 'Reviews a whole repository with your coding agent, with inline threads that stay attached to the code.',
+    longDesc:
+      'Co-Review reviews a whole repository with a coding agent. It writes an overview and findings, and inline comments stay attached to the code as it changes. It works with agents including Claude Code, Codex, Cursor and VS Code. It is free and open source under the MIT license. Builds are not code-signed, so macOS may warn, and Windows SmartScreen may warn on the first run. There is no prebuilt app for Intel Macs. No paid plan was found.',
+    pricingModel: 'free',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['macOS', 'Windows'],
+    lastVerifiedAt: SCOUTED_2026_11_11,
     fits: [],
     affiliate: none,
   }),

@@ -12,6 +12,8 @@ const PRICE_LABEL_OVERRIDES: Readonly<Record<string, string>> = {
   mcp1: 'Pricing not published',
   // voyager.fm, Nov 10, 2026: Free is available. Plus and Pro are listed and are not available yet, so they are not a from-price.
   'voyager-fm': 'Free; Plus and Pro not available yet',
+  // seldon.com/products/wren, Nov 11, 2026: $3 is per completed test run, not a monthly plan. The first 10 runs are free.
+  'seldon-wren': '10 free runs, then $3 per completed test run',
 }
 
 export const budgetLabel: Record<Budget, string> = {
