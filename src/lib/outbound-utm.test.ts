@@ -27,6 +27,9 @@ describe('outbound UTMs', () => {
     expect(withOutboundUtm(upper, 'tool')).toBe(upper)
     const hyphen = 'https://docsalot.dev/?utm-source=bestbotfor'
     expect(withOutboundUtm(hyphen, 'direct')).toBe(hyphen)
+    const cello = 'https://sendr.cello.so/LOp5fYtd9Jc'
+    expect(withOutboundUtm(cello, 'direct')).toBe(cello)
+    expect(withOutboundUtm(cello, 'tool')).toBe(cello)
   })
 
   it('keeps the host', () => {

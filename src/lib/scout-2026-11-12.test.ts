@@ -1,8 +1,13 @@
 import { readFileSync } from 'node:fs'
+import { createElement } from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
+import { AffiliateDisclosure } from '@/components/affiliate-disclosure'
+import { OutboundLink } from '@/components/outbound-link'
 import { toolSeeds } from '@/data/catalog'
 import { unratedSlugs } from '@/data/scores-v23.seed'
 import { APPROVED_ACTIVE_AFFILIATES, PREPARED_AFFILIATE_SLUGS } from './affiliate-admin'
+import { AFFILIATE_BUTTON_NOTE } from './affiliate-copy'
 import { priceLabel } from './format'
 import { resolveGoRedirect, resolveHeadGoRedirect, servesAffiliateLink } from './go-redirect'
 
@@ -23,8 +28,6 @@ const SLUGS = [
   'neura-hq',
   'valin',
 ] as const
-const PROGRAMS = ['sendr'] as const
-
 const NONE = {
   hasProgram: false,
   network: null,
@@ -55,11 +58,15 @@ describe('bot scout 2026-11-12', () => {
       expect(tool.fits, slug).toEqual([])
       expect(tool.unlisted, slug).toBeFalsy()
       expect(tool.needsVerification, slug).toBeFalsy()
-      expect(tool.affiliate.affiliateUrl, slug).toBeUndefined()
       expect(tool.url.includes('?'), slug).toBe(false)
       expect(tool.url.startsWith('https://'), slug).toBe(true)
-      const host = new URL(tool.url).hostname
-      expect(tool.allowedHosts, slug).toEqual([host])
+      if (slug === 'sendr') {
+        expect(tool.affiliate.affiliateUrl, slug).toBe('https://sendr.cello.so/LOp5fYtd9Jc')
+        expect(tool.allowedHosts, slug).toEqual(['www.sendr.ai', 'sendr.cello.so/LOp5fYtd9Jc'])
+      } else {
+        expect(tool.affiliate.affiliateUrl, slug).toBeUndefined()
+        expect(tool.allowedHosts, slug).toEqual([new URL(tool.url).hostname])
+      }
     }
   })
 
@@ -176,10 +183,12 @@ describe('bot scout 2026-11-12', () => {
     expect(seed('valin').longDesc).toContain("vendor's public offer")
   })
 
-  it('seeds only Sendr as an inactive program, and leaves the approved set unchanged', () => {
-    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot'])
-    expect(PREPARED_AFFILIATE_SLUGS).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'writesonic', 'lovable'])
+  it('activates Sendr’s exact tracking link and leaves the other thirteen off', () => {
+    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr'])
+    expect(APPROVED_ACTIVE_AFFILIATES).toHaveLength(7)
+    expect(PREPARED_AFFILIATE_SLUGS).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'writesonic', 'lovable'])
     for (const slug of SLUGS) {
+      if (slug === 'sendr') continue
       expect(APPROVED_ACTIVE_AFFILIATES, slug).not.toContain(slug)
       expect(PREPARED_AFFILIATE_SLUGS as readonly string[], slug).not.toContain(slug)
     }
@@ -187,38 +196,76 @@ describe('bot scout 2026-11-12', () => {
       hasProgram: true,
       network: 'Cello',
       sourceUrl: 'https://www.sendr.ai/affiliates#apply-form',
-      status: 'inactive',
+      status: 'active',
       commissionNote:
-        '20% of every payment. 30% of every payment for the first 100 founding affiliates, for life, while they stay active by referring 2 paying customers every 6 months. Up to $5,000 per customer. Claimed after a 30-day hold and paid by PayPal. Not applied or accepted. No tracking link stored.',
+        '20% of every payment. 30% of every payment for the first 100 founding affiliates, for life, while they stay active by referring 2 paying customers every 6 months. Up to $5,000 per customer. Claimed after a 30-day hold and paid by PayPal.',
+      affiliateUrl: 'https://sendr.cello.so/LOp5fYtd9Jc',
     })
-    expect(seed('sendr').allowedHosts).toEqual(['www.sendr.ai'])
+    expect(seed('sendr').allowedHosts).toEqual(['www.sendr.ai', 'sendr.cello.so/LOp5fYtd9Jc'])
+    expect(seed('sendr').priceFromUsd).toBe(119)
     expect(new URL(seed('sendr').affiliate.sourceUrl!).hostname).toBe('www.sendr.ai')
-    for (const slug of PROGRAMS) {
-      const tool = seed(slug)
-      expect(servesAffiliateLink(slug, null, tool.affiliate.status), slug).toBe(false)
-      expect(servesAffiliateLink(slug, tool.affiliate.sourceUrl, 'inactive'), slug).toBe(false)
-      expect(servesAffiliateLink(slug, `${tool.url}/?ref=bestbotfor`, 'inactive'), slug).toBe(false)
-    }
+    expect(servesAffiliateLink('sendr', 'https://sendr.cello.so/LOp5fYtd9Jc', 'active')).toBe(true)
+    expect(servesAffiliateLink('sendr', 'https://sendr.cello.so/LOp5fYtd9Jc', 'inactive')).toBe(false)
+    expect(servesAffiliateLink('sendr', seed('sendr').affiliate.sourceUrl, 'active')).toBe(false)
+    expect(servesAffiliateLink('sendr', 'https://sendr.cello.so/other', 'active')).toBe(false)
+    const visit = renderToStaticMarkup(createElement(OutboundLink, { slug: 'sendr', affiliate: true, children: 'Visit Sendr' }))
+    expect(visit).toContain('href="/go/sendr"')
+    expect(visit).toContain('rel="sponsored nofollow noopener"')
+    const note = renderToStaticMarkup(createElement(AffiliateDisclosure, { affiliate: true, vendor: 'Sendr' }))
+    expect(note).toContain(AFFILIATE_BUTTON_NOTE)
+    expect(note).toContain('Affiliate link')
     for (const slug of SLUGS) {
-      if (PROGRAMS.includes(slug as (typeof PROGRAMS)[number])) continue
+      if (slug === 'sendr') continue
       expect(seed(slug).affiliate, slug).toEqual(NONE)
       expect(servesAffiliateLink(slug, null, seed(slug).affiliate.status), slug).toBe(false)
     }
-    for (const slug of ['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot'] as const) {
+    for (const slug of ['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr'] as const) {
       expect(seed(slug).affiliate.status).toBe('active')
       expect(seed(slug).affiliate.affiliateUrl).toMatch(/^https:\/\//)
     }
     const catalog = readFileSync(new URL('../data/catalog.ts', import.meta.url), 'utf8')
     const scoutBlock = catalog.slice(catalog.indexOf('Bot scout 2026-11-12'))
-    expect(scoutBlock).not.toContain('affiliateUrl')
+    expect(scoutBlock.match(/affiliateUrl/g)).toEqual(['affiliateUrl'])
+    expect(scoutBlock.match(/status: 'active'/g)).toEqual(["status: 'active'"])
+    expect(scoutBlock).toContain('https://sendr.cello.so/LOp5fYtd9Jc')
     expect(scoutBlock).not.toContain('camp_id')
     expect(scoutBlock).not.toContain('rel="sponsored"')
-    expect(scoutBlock).not.toMatch(/status: 'active'/)
     expect(scoutBlock).not.toMatch(/\?ref=|\?via=|utm_/)
+  })
+
+  it('sends /go/sendr to the exact Cello link and HEAD to the official site', async () => {
+    const tool = seed('sendr')
+    const tracking = 'https://sendr.cello.so/LOp5fYtd9Jc'
+    expect(resolveHeadGoRedirect('sendr')).toMatchObject({ status: 302, location: 'https://www.sendr.ai/' })
+    const get = await resolveGoRedirect({
+      headers: new Headers(),
+      ip: '203.0.113.57',
+      siteUrl: 'https://bestbotfor.com',
+      seedUrl: tool.url,
+      seedAffiliateUrl: tool.affiliate.affiliateUrl ?? null,
+      seedAffiliateStatus: tool.affiliate.status,
+      seedNetwork: tool.affiliate.network,
+      allowedHosts: tool.allowedHosts,
+      limit: async () => ({ ok: true }),
+      loadTool: async () => ({
+        id: 1,
+        url: tool.url,
+        affiliateUrl: tool.affiliate.affiliateUrl ?? null,
+        affiliateStatus: tool.affiliate.status,
+        network: tool.affiliate.network,
+      }),
+    })
+    expect(get).toMatchObject({
+      status: 302,
+      location: tracking,
+      click: { affiliate: true, programId: 1, subIdParam: null },
+    })
+    if (get.status === 302) expect(new URL(get.location).search).toBe('')
   })
 
   it('sends /go for each new tool to that tool’s official URL with the standard UTM', async () => {
     for (const slug of SLUGS) {
+      if (slug === 'sendr') continue
       const tool = seed(slug)
       const official = new URL(tool.url)
       const officialPath = `${official.origin}${official.pathname}`

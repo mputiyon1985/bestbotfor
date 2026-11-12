@@ -19,6 +19,7 @@ export const APPROVED_ACTIVE_AFFILIATES: readonly string[] = [
   'murf',
   'papermark',
   'docsalot',
+  'sendr',
 ]
 
 /** Prepared programs. A slug here is live only when it is also in APPROVED_ACTIVE_AFFILIATES. */
@@ -29,6 +30,7 @@ export const PREPARED_AFFILIATE_SLUGS = [
   'murf',
   'papermark',
   'docsalot',
+  'sendr',
   'writesonic',
   'lovable',
 ] as const

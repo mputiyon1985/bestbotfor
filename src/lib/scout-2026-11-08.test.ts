@@ -106,7 +106,7 @@ describe('bot scout 2026-11-08', () => {
   })
 
   it('seeds no program, including Codend, and leaves the approved set unchanged', () => {
-    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot'])
+    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr'])
     for (const slug of SLUGS) {
       expect(APPROVED_ACTIVE_AFFILIATES, slug).not.toContain(slug)
       expect(seed(slug).affiliate, slug).toEqual(NONE)
@@ -118,7 +118,7 @@ describe('bot scout 2026-11-08', () => {
     const catalog = readFileSync(new URL('../data/catalog.ts', import.meta.url), 'utf8')
     const codend = catalog.slice(catalog.indexOf("slug: 'codend'"), catalog.indexOf("slug: 'seam-notch'"))
     expect(codend).not.toMatch(/affiliateUrl|hasProgram:\s*true|\/affiliates/)
-    for (const slug of ['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot'] as const) {
+    for (const slug of ['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr'] as const) {
       expect(seed(slug).affiliate.status).toBe('active')
       expect(seed(slug).affiliate.affiliateUrl).toMatch(/^https:\/\//)
     }

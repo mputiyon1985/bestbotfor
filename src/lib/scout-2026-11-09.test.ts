@@ -45,7 +45,7 @@ describe('bot scout 2026-11-09', () => {
     expect(categories.has('Writing')).toBe(true)
   })
 
-  it('activates only DocsAlot’s exact tracking link and leaves the other programs off', () => {
+  it('activates DocsAlot’s exact tracking link and leaves Dageno, Databox, and crystl off', () => {
     expect(APPROVED_ACTIVE_AFFILIATES).toContain('docsalot')
     for (const slug of ['dageno-ai', 'databox', 'crystl'] as const) {
       expect(APPROVED_ACTIVE_AFFILIATES, slug).not.toContain(slug)
@@ -54,8 +54,9 @@ describe('bot scout 2026-11-09', () => {
       expect(servesAffiliateLink(slug, null, seed(slug).affiliate.status), slug).toBe(false)
     }
     const sendr = toolSeeds.find((tool) => tool.slug === 'sendr')
-    expect(sendr?.affiliate.status).toBe('inactive')
-    expect(sendr?.affiliate.affiliateUrl).toBeUndefined()
+    expect(sendr?.affiliate.status).toBe('active')
+    expect(sendr?.affiliate.affiliateUrl).toBe('https://sendr.cello.so/LOp5fYtd9Jc')
+    expect(servesAffiliateLink('sendr', sendr?.affiliate.affiliateUrl, 'active')).toBe(true)
     expect(servesAffiliateLink('sendr', sendr?.affiliate.sourceUrl, 'inactive')).toBe(false)
 
     const tool = seed('docsalot')

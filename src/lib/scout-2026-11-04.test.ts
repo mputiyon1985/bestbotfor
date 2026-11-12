@@ -84,7 +84,7 @@ describe('bot scout 2026-11-04', () => {
   })
 
   it('seeds only Videco as an inactive program, and leaves the approved pair unchanged', () => {
-    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot'])
+    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr'])
     const videco = seed('videco')
     expect(videco.affiliate).toEqual({
       hasProgram: true,

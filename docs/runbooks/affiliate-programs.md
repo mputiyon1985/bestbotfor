@@ -4,11 +4,11 @@ BestBotFor does not run paid search on a vendor’s brand terms. That includes t
 
 ## Live programs
 
-ElevenLabs, Synthesia, Descript, Murf, Papermark, and DocsAlot are approved and seeded `active`. Writesonic and Lovable stay `inactive` with no tracking link. Lovable stays off: Impact declined the partnership on Oct 27. Papermark’s Stripe payouts are not connected; the click still uses the tracking link. DocsAlot’s tracking link is `https://docsalot.dev/?utm-source=bestbotfor`. The hyphen in `utm-source` is the vendor’s parameter. `/go/docsalot` does not rewrite it or add `utm_source`, `utm_medium`, or `utm_campaign`. Dageno, Databox, and crystl stay `inactive` with no tracking link.
+ElevenLabs, Synthesia, Descript, Murf, Papermark, DocsAlot, and Sendr are approved and seeded `active`. Writesonic and Lovable stay `inactive` with no tracking link. Lovable stays off: Impact declined the partnership on Oct 27. Papermark’s Stripe payouts are not connected; the click still uses the tracking link. DocsAlot’s tracking link is `https://docsalot.dev/?utm-source=bestbotfor`. The hyphen in `utm-source` is the vendor’s parameter. `/go/docsalot` does not rewrite it or add `utm_source`, `utm_medium`, or `utm_campaign`. Sendr’s tracking link is `https://sendr.cello.so/LOp5fYtd9Jc`. `/go/sendr` sends that URL and does not add `utm_source`, `utm_medium`, or `utm_campaign`. Dageno, Databox, and crystl stay `inactive` with no tracking link.
 
-The seed refuses status `active` or an affiliate URL unless that tool’s slug is listed in `APPROVED_ACTIVE_AFFILIATES` in `src/lib/affiliate-admin.ts`. Prebuild runs that seed, so a deploy leaves those six programs active.
+The seed refuses status `active` or an affiliate URL unless that tool’s slug is listed in `APPROVED_ACTIVE_AFFILIATES` in `src/lib/affiliate-admin.ts`. Prebuild runs that seed, so a deploy leaves those seven programs active.
 
-Prepared: ElevenLabs, Synthesia, Descript, Murf, Papermark, DocsAlot, Writesonic, and Lovable. Only the first six are switched on.
+Prepared: ElevenLabs, Synthesia, Descript, Murf, Papermark, DocsAlot, Sendr, Writesonic, and Lovable. Only the first seven are switched on.
 
 `/go/<slug>` reads `affiliate_programs.affiliate_url` only when that row’s status is exactly `active` and the host is on the tool’s allowlist. Every other status redirects to `tools.url`.
 

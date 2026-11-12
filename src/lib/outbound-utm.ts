@@ -6,6 +6,7 @@
  * inbound passthrough), so an affiliate URL's own UTMs, or UTMs passed in on
  * the /go link, are never overwritten or mixed with ours. A key counts when
  * it starts with utm_ or utm-. DocsAlot's tracking link uses the hyphen.
+ * Sendr's Cello code is the path. That exact link is not given a query.
  */
 const EXISTING_UTM_KEY = /^utm[_-]/i
 export const OUTBOUND_UTM_SOURCE = 'bestbotfor'
@@ -37,6 +38,10 @@ export function withOutboundUtm(destination: string, pageType: string): string {
   try {
     url = new URL(destination)
   } catch {
+    return destination
+  }
+  // Approved Sendr link. /go/sendr sends it with no utm_source, utm_medium, or utm_campaign.
+  if (url.hostname === 'sendr.cello.so' && url.pathname === '/LOp5fYtd9Jc' && url.search === '' && url.hash === '') {
     return destination
   }
   for (const key of url.searchParams.keys()) {
