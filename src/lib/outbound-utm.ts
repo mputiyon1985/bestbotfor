@@ -2,10 +2,12 @@
  * Our own attribution on outbound /go clicks:
  * utm_source=bestbotfor&utm_medium=referral&utm_campaign=<page type>.
  *
- * Added only when the destination carries no utm_* key at all (after the
+ * Added only when the destination carries no utm key at all (after the
  * inbound passthrough), so an affiliate URL's own UTMs, or UTMs passed in on
- * the /go link, are never overwritten or mixed with ours.
+ * the /go link, are never overwritten or mixed with ours. A key counts when
+ * it starts with utm_ or utm-. DocsAlot's tracking link uses the hyphen.
  */
+const EXISTING_UTM_KEY = /^utm[_-]/i
 export const OUTBOUND_UTM_SOURCE = 'bestbotfor'
 export const OUTBOUND_UTM_MEDIUM = 'referral'
 
@@ -38,7 +40,7 @@ export function withOutboundUtm(destination: string, pageType: string): string {
     return destination
   }
   for (const key of url.searchParams.keys()) {
-    if (key.toLowerCase().startsWith('utm_')) return destination
+    if (EXISTING_UTM_KEY.test(key)) return destination
   }
   url.searchParams.set('utm_source', OUTBOUND_UTM_SOURCE)
   url.searchParams.set('utm_medium', OUTBOUND_UTM_MEDIUM)
