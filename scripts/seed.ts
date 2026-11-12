@@ -263,12 +263,9 @@ for (const tool of toolSeeds) {
 
 const storedPrograms = await tx.select().from(affiliatePrograms)
 const slugByToolId = new Map(toolRows.map((row) => [row.id, row.slug]))
-// Tools that are not in this seed stay in place, including a live program left by another branch.
-// The guard covers only the rows this seed just wrote.
 for (const row of storedPrograms) {
   const slug = slugByToolId.get(row.toolId)
   if (!slug) throw new Error('Affiliate program row has no tool')
-  if (!knownSlugs.has(slug)) continue
   if ((row.status === 'active' || row.affiliateUrl) && !isApprovedActiveAffiliate(slug)) {
     throw new Error(`Seed wrote a live affiliate program for ${slug}. That slug is not in APPROVED_ACTIVE_AFFILIATES.`)
   }

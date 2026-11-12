@@ -188,52 +188,6 @@ describe('catalog seed', () => {
     expect(keptClick?.page).toBe('/sentinel')
   })
 
-  it('leaves a live affiliate on a tool that is not in this seed', async () => {
-    await useTempDatabase()
-    await seed()
-    const db = getDb()
-    const [extra] = await db
-      .insert(tools)
-      .values({
-        slug: 'docsalot',
-        name: 'Docsalot',
-        vendor: 'Test',
-        url: 'https://docsalot.example',
-        category: 'Test',
-        shortDesc: 'Keep',
-        longDesc: 'Keep',
-        pricingModel: 'paid',
-        priceFromUsd: null,
-        hasFreeTier: false,
-        skillLevel: 'beginner',
-        platforms: '[]',
-        lastVerifiedAt: '2026-11-12',
-        status: 'active',
-      })
-      .returning({ id: tools.id })
-    expect(extra?.id).toBeTruthy()
-    await db.insert(affiliatePrograms).values({
-      toolId: extra?.id ?? 0,
-      hasProgram: true,
-      network: 'in-house',
-      sourceUrl: 'https://docsalot.example/affiliates',
-      status: 'active',
-      affiliateUrl: 'https://docsalot.example/?ref=preview',
-      commissionNote: 'left by another branch',
-      verifiedAt: '2026-11-12',
-    })
-    await expect(seed()).resolves.toBeTruthy()
-    const [kept] = await db.select().from(affiliatePrograms).where(eq(affiliatePrograms.toolId, extra?.id ?? 0))
-    expect(kept?.status).toBe('active')
-    expect(kept?.affiliateUrl).toBe('https://docsalot.example/?ref=preview')
-    const sendr = await db
-      .select({ status: affiliatePrograms.status, affiliateUrl: affiliatePrograms.affiliateUrl })
-      .from(affiliatePrograms)
-      .innerJoin(tools, eq(tools.id, affiliatePrograms.toolId))
-      .where(eq(tools.slug, 'sendr'))
-    expect(sendr).toEqual([{ status: 'inactive', affiliateUrl: null }])
-  })
-
   it('deletes retired quiz fits and does not restore them on a later seed', async () => {
     await useTempDatabase()
     await seed()
