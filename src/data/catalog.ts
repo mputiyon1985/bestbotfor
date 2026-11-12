@@ -18,6 +18,7 @@ const SCOUTED_2026_11_08 = '2026-11-08'
 const FRESHNESS_2026_11_09 = '2026-11-09'
 const SCOUTED_2026_11_10 = '2026-11-10'
 const SCOUTED_2026_11_11 = '2026-11-11'
+const SCOUTED_2026_11_12 = '2026-11-12'
 const BACKLOG_BATCH_02 = '2026-10-25'
 const BACKLOG_BATCH_03 = '2026-10-25'
 
@@ -7602,6 +7603,328 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'pro',
     platforms: ['macOS', 'Windows'],
     lastVerifiedAt: SCOUTED_2026_11_11,
+    fits: [],
+    affiliate: none,
+  }),
+  // Bot scout 2026-11-12. Unrated: no editorial score, pros or cons until Forge rubric review.
+  // Scout ratings stay in the comments and are not shown.
+  // Sendr has an affiliate program. It is inactive: not applied or accepted, no tracking URL.
+  // CALL-E, ScroogeFrog AI, Shot.video, Skillbox, Stiro AI, Kippy AI, Plurai, three.dev, Relay, Foxpit, Mister Blocks, Neura HQ and Valin have unknown affiliate programs and use the empty affiliate.
+  // No BestBotFor sponsorship is recorded. Sponsorship is unknown and is not stored.
+  // Public vendor offers are not stored as deals.
+  // scout 2026-11-12 | category: Voice | scout rating 4.1 (not shown) | launch: 2026-11-11 (Product Hunt #3) | pricing: usage-based, domestic US/CA. One-shot outbound $0.0296 model fee per 10 s + $0.04/min carrier. Goal (batch) $0.0148 per 10 s + $0.02/min. Inbound Goal $0.0148 per 10 s + $0.0068/min. 100 free credits for new users.
+  // note: there is no monthly plan, so priceFromUsd stays null. The 100 credits are the vendor's public offer and are not a free plan. No free plan was found. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'call-e',
+    addedAt: SCOUTED_2026_11_12,
+    name: 'CALL-E',
+    vendor: 'CALL-E',
+    url: 'https://www.heycall-e.com',
+    allowedHosts: ['www.heycall-e.com'],
+    category: 'Voice',
+    shortDesc: 'Places phone calls for your AI assistant and returns the answer with a transcript.',
+    longDesc:
+      'CALL-E places phone calls for an AI assistant. You confirm, it dials, and you get the answer with a transcript. It can work through phone menus and hold, and it returns structured results with confidence labels. It works with ChatGPT and WhatsApp, and through an SDK and an API. Pricing is per call, not a monthly plan, so no monthly from-price is stored. For US and Canadian numbers, a one-shot outbound call is $0.0296 per 10 seconds plus $0.04 a minute for the carrier. Goal mode, used for a batch, is $0.0148 per 10 seconds plus $0.02 a minute. An inbound Goal call is $0.0148 per 10 seconds plus $0.0068 a minute. New users get 100 free credits. Those credits are the vendor\'s public offer and are not a free plan. No free plan was found. It places outbound calls. It does not answer or screen incoming calls. Production calling is limited to US and Canadian numbers. A model fee can apply even if the call does not connect.',
+    pricingModel: 'paid',
+    priceFromUsd: null,
+    hasFreeTier: false,
+    skillLevel: 'beginner',
+    platforms: ['Web', 'API'],
+    lastVerifiedAt: SCOUTED_2026_11_12,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-12 | category: Marketing (FLAG: scout category "Marketing" mapped to Automation; this is an ad-spend and Google Ads audit, the same job family as Maxma and Playad, which are Automation. SEO was used for AI-search visibility, which this is not.) | scout rating 4.0 (not shown) | launch: 2026-11-11 (Product Hunt #1) | pricing: Test $10/mo or $60/yr; Lite $99/mo or $599/yr; Medium $249/mo or $1,499/yr; Pro $499/mo or $2,999/yr; Custom contact. Annual billing shown at 50% off. 14-day free trial on all plans.
+  // note: priceFromUsd is Test monthly, $10. Annual prices are the vendor's public billing and are not the stored from-price. The trial is not a free plan. No free plan was found. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'scroogefrog',
+    addedAt: SCOUTED_2026_11_12,
+    name: 'ScroogeFrog AI',
+    vendor: 'ScroogeFrog',
+    url: 'https://scroogefrog.ai',
+    allowedHosts: ['scroogefrog.ai'],
+    category: 'Automation',
+    shortDesc: 'Audits website traffic and Google Ads spend and flags bots, fraud and wasted campaigns.',
+    longDesc:
+      'ScroogeFrog AI audits website traffic and Google Ads. It flags bots and fraud, finds wasted campaigns, and shows traffic quality on a dashboard. Test is $10 a month or $60 a year. Lite is $99 a month or $599 a year. Medium is $249 a month or $1,499 a year. Pro is $499 a month or $2,999 a year. Custom is priced by contacting the vendor. Annual prices are shown at 50% off the monthly rate. Every plan includes a 14-day trial. The trial is not a free plan. No free plan was found. The lower annual prices are the vendor\'s public billing. They are not the stored from-price. The audit covers website traffic and Google Ads. Custom fraud models are for agencies and larger advertisers. The trial is the vendor\'s public offer.',
+    pricingModel: 'paid',
+    priceFromUsd: 10,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_12,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-12 | category: Sales (FLAG: scout category "Sales" mapped to Automation; Needle and Alsona, the catalog's outbound tools, are Automation) | scout rating 4.0 (not shown) | launch: 2026-11-12 (Product Hunt, Sendr V4) | pricing: Monthly $99/mo; Annual $79/mo billed annually. 14-day free trial with 1,500 credits and 2 sending channels, no card. Included: 3,000 credits/month and 2 sending channels. Add-ons: +1,000 credits $10/mo, +1 channel $10/mo.
+  // note: priceFromUsd is the monthly plan, $99. The annual price is not the stored from-price. The trial is not a free plan. No free plan was found. Sponsorship unknown.
+  // affiliate: Cello. 20% of net revenue, recurring for the customer lifetime; 30% for the first 100 founding affiliates while they refer 2 paying customers every 6 months; capped at $5,000 per referred customer; 30-day hold; PayPal payouts. Apply page https://www.sendr.ai/affiliates#apply-form. Not applied or accepted. Seeded inactive. No tracking link. The apply page is on the official host, so no extra allowlist host is added.
+  tool({
+    slug: 'sendr',
+    addedAt: SCOUTED_2026_11_12,
+    name: 'Sendr',
+    vendor: 'Sendr',
+    url: 'https://www.sendr.ai',
+    allowedHosts: ['www.sendr.ai'],
+    category: 'Automation',
+    shortDesc: 'Builds outreach sequences from buying signals across email, LinkedIn and WhatsApp.',
+    longDesc:
+      'Sendr turns buying signals into outreach sequences across email, LinkedIn and WhatsApp, including personalized video. A campaign copilot drafts a campaign, and the vendor describes a contact database of verified emails and mobiles. The monthly plan is $99 a month. Billed annually it is $79 a month. The plan includes 3,000 credits a month and 2 sending channels. Another 1,000 credits are $10 a month, and another channel is $10 a month. A 14-day trial includes 1,500 credits and 2 channels and does not need a card. The trial is not a free plan. No free plan was found. The lower annual price is the vendor\'s public billing. It is not the stored from-price. The trial is the vendor\'s public offer.',
+    pricingModel: 'paid',
+    priceFromUsd: 99,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_12,
+    fits: [],
+    affiliate: {
+      hasProgram: true,
+      network: 'Cello',
+      sourceUrl: 'https://www.sendr.ai/affiliates#apply-form',
+      status: 'inactive',
+      commissionNote:
+        '20% of net revenue, recurring for the customer lifetime (30% for the first 100 founding affiliates while they refer 2 paying customers every 6 months). Capped at $5,000 per referred customer. 30-day hold. PayPal payouts. Not applied or accepted. No tracking link stored.',
+    },
+  }),
+  // scout 2026-11-12 | category: Video editing | scout rating 4.0 (not shown) | launch: 2026-11-11 (Product Hunt #8) | pricing: Free $0 (2 video credits and 5 B-roll credits, once). Creator $19/mo (20 video / 25 B-roll). Pro $39/mo (60 / 100). Studio $79/mo (150 / 250). Annual billing is 2 months free. Credit packs, for example 5 video credits $9 and 100 B-roll credits $9. A Black Friday offer (a year for about the price of two months) opens Nov 20 for the first 100.
+  // note: priceFromUsd is Creator monthly, $19. The $0 plan is a free tier. Its credits are granted once. Annual billing and the Black Friday offer are the vendor's public offers and are not the stored from-price. The Black Friday offer is not a catalog deal. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'shot-video',
+    addedAt: SCOUTED_2026_11_12,
+    name: 'Shot.video',
+    vendor: 'Shot.video',
+    url: 'https://shot.video',
+    allowedHosts: ['shot.video'],
+    category: 'Video editing',
+    shortDesc: 'Turns the laptop and phones you already own into a synced multi-camera shoot with an AI first edit.',
+    longDesc:
+      'Shot.video uses a laptop and phones you already own as a multi-camera studio. It syncs the angles and makes a first edit, with auto zoom, pan and B-roll. No extra camera and no app install are required. Free is $0: 2 video credits and 5 B-roll credits, granted once, with no card. Creator is $19 a month (20 video credits and 25 B-roll credits). Pro is $39 a month (60 and 100). Studio is $79 a month (150 and 250). Annual billing is two months free. Credit packs include 5 video credits for $9 and 100 B-roll credits for $9. A Black Friday offer, a year for about the price of two months, opens November 20 for the first 100. That offer and the annual billing are the vendor\'s public offers. They are not the stored from-price. The $0 plan is the free tier. Recording sessions are limited to 10 minutes. Subscription credits expire if the plan is cancelled.',
+    pricingModel: 'freemium',
+    priceFromUsd: 19,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_12,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-12 | category: Development | scout rating 3.9 (not shown) | launch: 2026-11-11 (Product Hunt #5) | pricing: Free £0/mo (up to 3 devices, 100 sources); Individual £6.99/mo after a 7-day trial; Team £12.99/member/mo billed per active member. Prices are in GBP. No dollar price is published.
+  // note: priceFromUsd stays null because the prices are in pounds. The £0 plan is a free tier. The 7-day Individual trial is not a free plan. Do not convert pounds to dollars. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'skillbox',
+    addedAt: SCOUTED_2026_11_12,
+    name: 'Skillbox',
+    vendor: 'Skillbox',
+    url: 'https://skillbox.so',
+    allowedHosts: ['skillbox.so'],
+    category: 'Development',
+    shortDesc: 'Keeps AI skills in one library and syncs the right ones to each project and machine.',
+    longDesc:
+      'Skillbox keeps AI skills in one library. You can import them from GitHub, GitLab or local files, track the source, see updates, and send the right skills to each project and machine. It scans skills and labels findings with STRIDE and OWASP. It can deliver skills to Claude Code, Cursor and Codex, with per-project activation and a conflict review. Prices are in pounds. Free is £0 a month, for up to 3 devices and 100 sources. Individual is £6.99 a month after a 7-day trial. Team is £12.99 a month for each member, billed for each active member. No dollar price is published, so no dollar from-price is stored. The £0 plan is the free tier. The 7-day Individual trial is not a free plan. Trim, AI drafting and chat preview need the Individual plan. The Team plan shows no annual price. The trial is the vendor\'s public offer.',
+    pricingModel: 'freemium',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_12,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-12 | category: Automation | scout rating 3.9 (not shown) | launch: 2026-11-11 (Product Hunt #14) | pricing: Developer $0/mo (50 runs/month, up to 5/day); Starter $149/mo (2,000 tasks/month, $0.075/task); Growth $599/mo (10,000 tasks/month, $0.06/task); Enterprise from $24,000/year (about $0.04/task).
+  // note: priceFromUsd is Starter monthly, $149. The $0 Developer plan is a free tier. The yearly Enterprise price is not the stored from-price. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'stiro',
+    addedAt: SCOUTED_2026_11_12,
+    name: 'Stiro AI',
+    vendor: 'Stiro',
+    url: 'https://stiro.ai',
+    allowedHosts: ['stiro.ai'],
+    category: 'Automation',
+    shortDesc: 'An in-app agent that clicks through product setup for each new user while they watch.',
+    longDesc:
+      'Stiro AI sits inside a product and does the setup with each user. The user says what they need, and it clicks, types and navigates the real app while they watch. There is no tour to record. Sensitive fields stay in the browser. Developer is $0 a month: 50 runs a month, up to 5 a day. Starter is $149 a month: 2,000 tasks a month at $0.075 a task. Growth is $599 a month: 10,000 tasks a month at $0.06 a task. Enterprise starts at $24,000 a year, about $0.04 a task. A task stops at 25 actions. Plans stop at their limit, with no overage. Developer, Starter and Growth have no SLA. The $0 Developer plan is the free tier. The yearly Enterprise price is not the stored from-price.',
+    pricingModel: 'freemium',
+    priceFromUsd: 149,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_12,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-12 | category: Chat assistant | scout rating 3.8 (not shown) | launch: 2026-11-11 (Product Hunt #15) | pricing: free US App Store download. Language Learning Premium $16.99/mo or $99.99/yr. Other listed tiers $7.99 and $79.99, billing period not stated.
+  // note: the $7.99 and $79.99 tiers do not state a billing period, so they are not a from-price, and $16.99 is not stored as priceFromUsd either. priceFromUsd stays null. The free download is a free tier. No deal was found. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'kippy-ai',
+    addedAt: SCOUTED_2026_11_12,
+    name: 'Kippy AI',
+    vendor: 'Kippy',
+    url: 'https://kippy.ai',
+    allowedHosts: ['kippy.ai'],
+    category: 'Chat assistant',
+    shortDesc: 'An AI speaking partner for language practice, with live calls, roleplays and pronunciation notes.',
+    longDesc:
+      'Kippy AI is a language tutor for speaking practice. You can call or chat with AI characters, run a custom roleplay, and ask for help in your own language. It gives pronunciation feedback. The US App Store lists a free download. Unlimited practice needs Language Learning Premium, at $16.99 a month or $99.99 a year. The store also lists $7.99 and $79.99. Those two prices do not state a billing period, so no monthly from-price is stored. The free download is the free tier. It is a speaking-practice app, not a full course. The site links to the iOS App Store.',
+    pricingModel: 'freemium',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['iOS'],
+    lastVerifiedAt: SCOUTED_2026_11_12,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-12 | category: Development | scout rating 3.8 (not shown) | launch: 2026-11-12 (Product Hunt, Plurai Simulation) | pricing: Simulation Free $0 (12,300 credits, one time); Base $60/mo (28,710 credits/mo); Business $210/mo (65,570 credits/mo). Post-training Starter free (1M tokens); pay as you go, Plurai SLM $0.0078 per 1M tokens, optimized LLM $0.3 per 1M tokens; Enterprise custom.
+  // note: priceFromUsd is Simulation Base monthly, $60. The free Simulation credits and the free post-training starter are the free tier. Token prices are not a monthly plan. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'plurai',
+    addedAt: SCOUTED_2026_11_12,
+    name: 'Plurai',
+    vendor: 'Plurai',
+    url: 'https://www.plurai.ai',
+    allowedHosts: ['www.plurai.ai'],
+    category: 'Development',
+    shortDesc: 'Simulates agent runs and post-trains models so agents get cheaper and faster over time.',
+    longDesc:
+      'Plurai is a self-improvement layer for AI agents. It simulates runs and post-trains models, and the vendor claims lower inference cost and latency after that training. A plugin works with Claude Code, GitHub Copilot CLI and OpenAI Codex. A Cursor plugin is listed as coming soon, so it is not a current integration. Simulation Free is $0 for 12,300 credits, once. Base is $60 a month for 28,710 credits a month. Business is $210 a month for 65,570 credits a month. Post-training Starter is free for 1 million tokens. After that, pay as you go: the Plurai small model is $0.0078 per 1 million tokens, and an optimized LLM is $0.30 per 1 million tokens. Enterprise is custom. The free Simulation credits and the free post-training starter are the free tier. The token prices are not a monthly plan. Credit use is hard to estimate up front. It is aimed at teams that already run agents.',
+    pricingModel: 'freemium',
+    priceFromUsd: 60,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_12,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-12 | category: Development | scout rating 3.8 (not shown) | launch: 2026-11-12 (Product Hunt) | pricing: Free $0/mo (about 50k requests, 1 GB, 5k scored requests, 30-day history, unlimited seats). Starter $79/mo (about 250k requests, 5 GB, 10k scored, 90-day history) with a launch offer of 6 months free for teams that sign up by Nov 22. Pro $249/mo (about 1M requests, 20 GB, 25k scored, 180-day history). Enterprise custom.
+  // note: priceFromUsd is Starter monthly, $79. The $0 plan is a free tier. Six months of Starter free is the vendor's public offer and is not a free plan. Signup is still framed as early access. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'three-dev',
+    addedAt: SCOUTED_2026_11_12,
+    name: 'three.dev',
+    vendor: 'three.dev',
+    url: 'https://three.dev',
+    allowedHosts: ['three.dev'],
+    category: 'Development',
+    shortDesc: 'Scores live agent traffic, groups failures, and hands the fixes to a coding agent.',
+    longDesc:
+      'three.dev scores live agent traffic, groups issues into failure modes, and lets a coding agent apply a fix with a before-and-after comparison. It connects over MCP. Free is $0 a month: about 50,000 requests, 1 GB of data, 5,000 scored requests, 30 days of history and unlimited seats. Starter is $79 a month: about 250,000 requests, 5 GB, 10,000 scored requests, 90 days of history and unlimited seats. Pro is $249 a month: about 1 million requests, 20 GB, 25,000 scored requests and 180 days of history. Enterprise is custom. Teams that sign up by November 22 get six months of Starter free. That offer is the vendor\'s public offer and is not a free plan. The $0 plan is the free tier. Signup is still framed as a request for early access. Scored-request quotas cap analysis on the lower plans.',
+    pricingModel: 'freemium',
+    priceFromUsd: 79,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_12,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-12 | category: Productivity | scout rating 3.7 (not shown) | launch: 2026-11-11 (Product Hunt #7) | pricing: Free $0 (20 relays/month). Pro $39/mo month to month, or $29/mo billed yearly, with a 30-day trial and unlimited relays. Enterprise custom.
+  // note: priceFromUsd is the month-to-month Pro price, $39. The $29 annual rate is not the stored from-price. The $0 plan is a free tier. The 30-day Pro trial is not a free plan. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'relay-ai',
+    addedAt: SCOUTED_2026_11_12,
+    name: 'Relay',
+    vendor: 'Relay',
+    url: 'https://relayto.ai',
+    allowedHosts: ['relayto.ai'],
+    category: 'Productivity',
+    shortDesc: 'Sends a document to a person and the context behind it to their AI agent.',
+    longDesc:
+      'Relay sends a document to a person and the context behind it to that person\'s AI agent. A person approves what is shared, and decisions route back to the sender. Free is $0 for 20 relays a month. Pro is $39 a month billed month to month, or $29 a month billed yearly, with unlimited relays and a 30-day trial. Enterprise is custom. The $29 rate is the vendor\'s public billing. It is not the stored from-price. The $0 plan is the free tier. The 30-day Pro trial is not a free plan. The trial is the vendor\'s public offer. Recipients get the most from it when they use an AI agent.',
+    pricingModel: 'freemium',
+    priceFromUsd: 39,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_12,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-12 | category: Coding assistant | scout rating 3.7 (not shown) | launch: 2026-11-12 (Product Hunt) | pricing: Pro $5 for the first month, then $12/mo. No free trial. The built-in chat engine is Windows-only for now. Other desktop platforms were not stated, so only Windows is stored.
+  // note: priceFromUsd is the ongoing monthly price, $12. The $5 first month is the vendor's public offer and is not the stored from-price. No free plan was found. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'foxpit',
+    addedAt: SCOUTED_2026_11_12,
+    name: 'Foxpit',
+    vendor: 'Foxpit',
+    url: 'https://foxpit.dev',
+    allowedHosts: ['foxpit.dev'],
+    category: 'Coding assistant',
+    shortDesc: 'Runs several coding agents as one team, with shared memory, real terminals and your approval.',
+    longDesc:
+      'Foxpit runs coding agents, including Claude Code, Codex, OpenCode and Antigravity, as one team. A lead agent splits the work, assigns it, and merges the result, and you approve changes. Agents share memory and use real terminals. It is local-first, sends no telemetry, and uses your own agent subscriptions. Pro is $5 for the first month, then $12 a month, with unlimited projects, agents and rooms. The $5 first month is the vendor\'s public offer. It is not the stored from-price. There is no free trial. No free plan was found. The built-in Foxpit Chat engine is Windows-only for now. Other desktop platforms were not stated, so only Windows is stored. You still pay each agent subscription separately.',
+    pricingModel: 'paid',
+    priceFromUsd: 12,
+    hasFreeTier: false,
+    skillLevel: 'pro',
+    platforms: ['Windows'],
+    lastVerifiedAt: SCOUTED_2026_11_12,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-12 | category: Design | scout rating 3.6 (not shown) | launch: 2026-11-11 (Product Hunt #20) | pricing: Free for the photo scan, build ideas and instructions. Custom builds for companies or gifts are by quote, and no quote price is published.
+  // note: the core tool is free, so the model is free and priceFromUsd stays null. The quote is not a published price and is not stored. No deal was found. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'mister-blocks',
+    addedAt: SCOUTED_2026_11_12,
+    name: 'Mister Blocks',
+    vendor: 'Mister Blocks',
+    url: 'https://misterblocks.com',
+    allowedHosts: ['misterblocks.com'],
+    category: 'Design',
+    shortDesc: 'Names loose LEGO bricks from a photo and writes free build ideas with step-by-step instructions.',
+    longDesc:
+      'Mister Blocks looks at a photo of loose LEGO bricks, names the pieces, and writes four build ideas with 3D step-by-step instructions. The photo scan, the ideas and the instructions are free. Custom builds for companies or gifts are by quote. No quote price is published, so no paid price is stored. It is not affiliated with LEGO. The photo needs to be well lit, on a white background.',
+    pricingModel: 'free',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_12,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-12 | category: Sales (FLAG: scout category "Sales" mapped to Automation; a conversational storefront that completes orders, same Sales mapping as Alsona and Needle) | scout rating 3.6 (not shown) | launch: 2026-11-12 (Product Hunt, Neura HQ) | pricing: Starter $99/mo (₹6,999, 2,000 credits); Growth $249/mo (₹17,499, 6,000 credits); Scale $499/mo (₹34,999, 15,000 credits). Quarterly 5% off, half-yearly 10% off, annual 2 months free. Extra credits: 1,000 for $59 (₹4,199) or 5,000 for $249 (₹17,499). 14-day trial, no card.
+  // note: priceFromUsd is Starter monthly, $99. Rupee figures are the same plans shown in INR and are not a second from-price. The trial is not a free plan. No free plan was found. Discounts are the vendor's public billing. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'neura-hq',
+    addedAt: SCOUTED_2026_11_12,
+    name: 'Neura HQ',
+    vendor: 'Neura HQ',
+    url: 'https://neurahq.ai',
+    allowedHosts: ['neurahq.ai'],
+    category: 'Automation',
+    shortDesc: 'A shop assistant that answers questions and completes orders in web chat and WhatsApp.',
+    longDesc:
+      'Neura HQ is a shop assistant for consumer brands. It recommends products, answers questions and completes the purchase in web chat and on WhatsApp, and it remembers the shopper. Starter is $99 a month (₹6,999) with 2,000 credits. Growth is $249 a month (₹17,499) with 6,000 credits. Scale is $499 a month (₹34,999) with 15,000 credits. Quarterly billing is 5% off, half-yearly is 10% off, and annual billing is two months free. Extra credits are 1,000 for $59 (₹4,199) or 5,000 for $249 (₹17,499). A 14-day trial needs no card. The trial is not a free plan. No free plan was found. The rupee amounts are the same plans shown in INR. They are not a second from-price. The discounts are the vendor\'s public billing. The trial is the vendor\'s public offer. WhatsApp fees are charged separately. One reply costs 1 credit, and a media reply costs 3. Custom API integrations are only on the higher plans.',
+    pricingModel: 'paid',
+    priceFromUsd: 99,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_12,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-12 | category: Productivity | scout rating 3.5 (not shown) | launch: 2026-11-11 (Product Hunt #13) | pricing: unknown. Currently a free TestFlight beta. No price is published.
+  // note: pricingModel stays 'paid' because the column is free, freemium or paid and cannot be empty. priceFromUsd stays null. The price label says pricing is not published. The free beta is the vendor's public offer and is not a free plan. Do not invent a price. https://valin.ai returns 301 to https://www.valin.ai/ (200). The catalog stores the scout URL. That redirect is not an extra allowlist host. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'valin',
+    addedAt: SCOUTED_2026_11_12,
+    name: 'Valin',
+    vendor: 'Valin',
+    url: 'https://valin.ai',
+    allowedHosts: ['valin.ai'],
+    category: 'Productivity',
+    shortDesc: 'Saves posts, videos and files on iPhone and iPad, then searches them with on-device AI.',
+    longDesc:
+      'Valin saves posts, videos, screenshots and PDFs, then lets you search them or ask questions. The AI runs on the iPhone or iPad. It needs no account, and it works offline once the models and the saved content are downloaded. It is a free TestFlight beta. No price is published, so no price is stored. The beta is the vendor\'s public offer and is not a free plan. It needs iOS 26 or iPadOS 26 and a device with 8 GB of memory or more. The models are about 3.43 GB. Video and audio processing can drain the battery.',
+    pricingModel: 'paid',
+    priceFromUsd: null,
+    hasFreeTier: false,
+    skillLevel: 'beginner',
+    platforms: ['iOS'],
+    lastVerifiedAt: SCOUTED_2026_11_12,
     fits: [],
     affiliate: none,
   }),

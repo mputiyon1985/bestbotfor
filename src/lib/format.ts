@@ -14,6 +14,8 @@ const PRICE_LABEL_OVERRIDES: Readonly<Record<string, string>> = {
   'voyager-fm': 'Free; Plus and Pro not available yet',
   // seldon.com/products/wren, Nov 11, 2026: $3 is per completed test run, not a monthly plan. The first 10 runs are free.
   'seldon-wren': '10 free runs, then $3 per completed test run',
+  // valin.ai, Nov 12, 2026: free TestFlight beta. No price is published, so none is stored.
+  valin: 'Pricing not published',
 }
 
 export const budgetLabel: Record<Budget, string> = {
