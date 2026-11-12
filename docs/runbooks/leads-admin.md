@@ -2,13 +2,13 @@
 
 `/admin/leads` is a password-gated list. The public site does not link to it. Do not add a link, a sitemap entry, or a nav item.
 
-The password is the server env var `BBF_LEADS_PASSWORD`. It is already set on Vercel for production and preview. Unset, empty, whitespace-only, or longer than 256 characters fails closed: the proxy and the page return 404. The value is compared in constant time. It is not sent to the browser, not put in the cookie, and not written to logs.
+The password is the server env var `BBF_LEADS_PASSWORD`. It is already set on Vercel for production and preview. Unset, empty, whitespace-only, or longer than 256 characters fails closed: the proxy and the page return 404. The check stretches both sides with scrypt (N=16384, r=8, p=1) and compares them with `timingSafeEqual`. The password is not sent to the browser, not put in the cookie, and not written to logs.
 
-No existing app secret is the session key. The signups secret, the rate-limit secret, and the Clerk and Stripe secrets belong to those features. The session HMAC key is HKDF-SHA256 derived from `BBF_LEADS_PASSWORD` (salt `bestbotfor/leads-session-hkdf-salt/v1`, info `bestbotfor/leads-session/v1`). Changing the password invalidates existing sessions.
+The session cookie is HMAC-SHA256 under `BBF_LEADS_SESSION_SECRET`, a separate random secret of at least 32 characters. That secret is not derived from the password. Unset or shorter than 32 characters fails closed with the same 404. Changing the session secret invalidates existing cookies. The cookie is httpOnly, Secure, SameSite=Strict, path `/admin/leads`, and expires after 12 hours, so a copied cookie does not last longer than that.
 
-A successful sign-in sets cookie `bbf_leads_session`: httpOnly, Secure, SameSite=Strict, path `/admin/leads`, max-age 604800 seconds (7 days). Log out on the page clears it. Failed attempts are stored in the existing `rate_limits` table, 8 per 15 minutes per IP. The stored key is an HMAC, not the address. On Vercel a missing trusted client IP is refused. A database error fails closed.
+Each sign-in attempt increments the existing `rate_limits` row before the password is compared: 8 per 15 minutes per IP. The stored key is an HMAC, not the address. On Vercel a missing trusted client IP is refused. A database error fails closed.
 
-`/admin/sponsors` is unchanged. It still depends on `ADMIN_SPONSORS` and the Clerk admin allowlist. This page does not.
+`/admin/sponsors` is unchanged. It still depends on `ADMIN_SPONSORS` and the Clerk admin allowlist. A request is treated as this password gate only when the proxy sets `x-bbf-leads` to the HMAC of the path under the session secret. A client header of `1` does not skip the Clerk admin check.
 
 ## Counts
 
@@ -113,15 +113,15 @@ Validation problems go to stderr as `row N: ...` without the cell value. `row 1`
 Either of these authorizes the request:
 
 - The `bbf_leads_session` cookie, from a same-origin request.
-- `Authorization: Bearer` set to the exact `BBF_LEADS_PASSWORD`. A wrong bearer counts toward the same 8-per-15-minutes limit. Do not log the header.
+- `Authorization: Bearer` set to `BBF_LEADS_IMPORT_TOKEN` (32 to 256 characters). This is not the page password. Unset refuses bearer import. The attempt counter increments before the token is compared. A wrong bearer counts toward the same 8-per-15-minutes limit. Do not log the header. The body is capped at 1,000,000 bytes actually read. `Content-Length` is not the cap.
 
 The response is `{ "upserted": N }` or `{ "errors": ["row 1: status must be ..."] }`. It does not echo addresses.
 
 ```sh
 curl -sS -X POST https://bestbotfor.com/admin/leads/import \
-  -H "Authorization: Bearer $BBF_LEADS_PASSWORD" \
+  -H "Authorization: Bearer $BBF_LEADS_IMPORT_TOKEN" \
   -H "Content-Type: application/json" \
   --data-binary @leads.json
 ```
 
-Keep the password in the environment of that shell. Do not put it in the command history if you can avoid it, and do not paste it into chat or logs.
+Keep the token in the environment of that shell. Do not put it in the command history if you can avoid it, and do not paste it into chat or logs.

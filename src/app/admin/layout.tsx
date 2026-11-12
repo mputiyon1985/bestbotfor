@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { headers } from 'next/headers'
 import { assertAdminArea } from '@/lib/admin'
-import { LEADS_REQUEST_HEADER } from '@/lib/leads/paths'
+import { LEADS_PATH_HEADER, LEADS_REQUEST_HEADER, leadsRequestAuthorized } from '@/lib/leads/paths'
 import { SIGNUPS_REQUEST_HEADER } from '@/lib/signups/paths'
 
 export const dynamic = 'force-dynamic'
@@ -16,7 +16,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   // Password-gated admin sections set their own request headers. The proxy
   // strips a client-supplied copy and sets each header only for that section.
   const headerStore = await headers()
-  const ownSession = headerStore.get(SIGNUPS_REQUEST_HEADER) === '1' || headerStore.get(LEADS_REQUEST_HEADER) === '1'
-  if (!ownSession) await assertAdminArea()
+  const signups = headerStore.get(SIGNUPS_REQUEST_HEADER) === '1'
+  const leads = leadsRequestAuthorized(headerStore.get(LEADS_PATH_HEADER) ?? '', headerStore.get(LEADS_REQUEST_HEADER))
+  if (!signups && !leads) await assertAdminArea()
   return children
 }

@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { requireLeadsSession } from '@/lib/leads/access'
 import { leadsPassword, leadsPasswordMatches } from '@/lib/leads/auth/password'
-import { checkLeadsAttempt, leadsAttemptKey, recordLeadsFailure } from '@/lib/leads/auth/rate-limit'
+import { consumeLeadsAttempt, leadsAttemptKey } from '@/lib/leads/auth/rate-limit'
 import { createLeadsSessionToken, LEADS_SESSION_COOKIE, leadsSessionCookie } from '@/lib/leads/auth/session'
-import { LEADS_HOME, LEADS_LIMIT_ERROR, LEADS_LOGIN_ERROR } from '@/lib/leads/paths'
+import { LEADS_HOME, LEADS_LIMIT_ERROR, LEADS_LOGIN, LEADS_LOGIN_ERROR, leadsSessionSecret } from '@/lib/leads/paths'
 import { isSameOrigin } from '@/lib/signups/auth/origin'
 import { applyPrivacyHeaders } from '@/lib/signups/privacy'
 
@@ -24,7 +24,7 @@ function unavailable(): NextResponse {
 }
 
 function redirectTo(request: Request, error: typeof LEADS_LOGIN_ERROR | typeof LEADS_LIMIT_ERROR | null): NextResponse {
-  const target = error ? `${LEADS_HOME}?e=${error}` : LEADS_HOME
+  const target = error ? `${LEADS_LOGIN}?e=${error}` : LEADS_HOME
   const response = NextResponse.redirect(new URL(target, request.url), 303)
   applyPrivacyHeaders(response.headers)
   return response
@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     return unavailable()
   }
 
-  const gate = await checkLeadsAttempt(db, bucket.key)
+  const gate = await consumeLeadsAttempt(db, bucket.key)
   if (gate === 'unavailable') return unavailable()
   if (gate === 'limited') return redirectTo(request, LEADS_LIMIT_ERROR)
 
@@ -62,16 +62,10 @@ export async function POST(request: Request) {
   const tooBig = Number.isFinite(length) && length > 10_000
   const password = tooBig || !isSameOrigin(request) ? '' : await readPassword(request)
   const expected = leadsPassword()
-  if (!expected || !leadsPasswordMatches(password, expected)) {
-    try {
-      await recordLeadsFailure(db, bucket.key)
-    } catch {
-      return unavailable()
-    }
-    return redirectTo(request, LEADS_LOGIN_ERROR)
-  }
+  const secret = leadsSessionSecret()
+  if (!expected || !secret || !leadsPasswordMatches(password, expected)) return redirectTo(request, LEADS_LOGIN_ERROR)
 
-  const { token } = createLeadsSessionToken(expected)
+  const { token } = createLeadsSessionToken(secret)
   const response = redirectTo(request, null)
   response.cookies.set(LEADS_SESSION_COOKIE, token, leadsSessionCookie)
   return response

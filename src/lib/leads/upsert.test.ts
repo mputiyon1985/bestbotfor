@@ -5,6 +5,7 @@ import path from 'node:path'
 import { promisify } from 'node:util'
 import { afterEach, describe, expect, it } from 'vitest'
 import { POST } from '@/app/admin/leads/import/route'
+import { readLimitedBody } from '@/lib/leads/body'
 import { createClient } from '@libsql/client'
 import guardConfig from '../../../config/db-guard.json'
 import { getDb, resetDbCache } from '@/lib/db/client'
@@ -18,6 +19,8 @@ import { withSignupsAuthDb } from '@/lib/signups/auth/fixture-db'
 
 const execFileAsync = promisify(execFile)
 const PASSWORD = 'test-leads-password-value'
+const SECRET = 'test-leads-session-secret-32chars-ok'
+const IMPORT_TOKEN = 'test-leads-import-token-value-32b'
 
 const ada = {
   company: 'Example Co',
@@ -59,6 +62,8 @@ afterEach(async () => {
   await closeDb?.()
   closeDb = undefined
   delete process.env.BBF_LEADS_PASSWORD
+  delete process.env.BBF_LEADS_SESSION_SECRET
+  delete process.env.BBF_LEADS_IMPORT_TOKEN
 })
 
 describe('lead upsert validation', () => {
@@ -102,6 +107,8 @@ describe('lead upsert storage', () => {
   it('creates the table, upserts on email, and matches the summary', async () => {
     closeDb = await withSignupsAuthDb()
     process.env.BBF_LEADS_PASSWORD = PASSWORD
+    process.env.BBF_LEADS_SESSION_SECRET = SECRET
+    process.env.BBF_LEADS_IMPORT_TOKEN = IMPORT_TOKEN
     const db = getDb()
     const info = await db.$client.execute('PRAGMA table_info(bbf_leads)')
     expect(info.rows.map((row) => String(row.name))).toEqual([
@@ -135,7 +142,7 @@ describe('lead upsert storage', () => {
     expect(updated).toMatchObject({ company: 'Updated Example', createdAt: 1_000, updatedAt: 2_000, status: 'replied' })
     expect(leadSummary(rows)).toMatchObject({ replied: 1, closedUsd: 1500, closedCount: 1, contacted: 0 })
 
-    const { token } = createLeadsSessionToken(PASSWORD)
+    const { token } = createLeadsSessionToken(SECRET)
     const response = await POST(
       importRequest(
         JSON.stringify([{ company: 'Third Example', contact_email: 'third@example.com', type: 'partner', status: 'bounced' }]),
@@ -161,11 +168,19 @@ describe('lead upsert storage', () => {
         'company,contact_email,type,status,amount_closed_usd\nBearer Example,bearer@example.com,affiliate,declined,\n',
         'text/csv',
         undefined,
-        PASSWORD,
+        IMPORT_TOKEN,
       ),
     )
     expect(bearer.status).toBe(200)
     expect((await listLeads(db)).some((row) => row.contactEmail === 'bearer@example.com' && row.status === 'declined')).toBe(true)
+
+    const small = await readLimitedBody(new Request('https://dash.example/admin/leads/import', { method: 'POST', body: 'ok' }), 1_000_000)
+    expect(small.ok).toBe(true)
+    const oversized = await readLimitedBody(
+      new Request('https://dash.example/admin/leads/import', { method: 'POST', body: Buffer.alloc(1_000_001) }),
+      1_000_000,
+    )
+    expect(oversized.ok).toBe(false)
   })
 })
 

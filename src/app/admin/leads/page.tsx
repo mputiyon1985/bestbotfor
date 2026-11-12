@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { requireLeadsSession } from '@/lib/leads/access'
 import { getDb } from '@/lib/db'
 import {
@@ -19,7 +19,7 @@ import {
   type LeadSummary,
 } from '@/lib/leads/model'
 import { listLeads } from '@/lib/leads/store'
-import { LEADS_HOME, LEADS_LIMIT_ERROR, LEADS_LOGIN, LEADS_LOGIN_ERROR, LEADS_LOGOUT } from '@/lib/leads/paths'
+import { LEADS_HOME, LEADS_LOGIN, LEADS_LOGOUT } from '@/lib/leads/paths'
 
 export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
@@ -36,41 +36,6 @@ const SORT_LABELS: Record<Exclude<LeadSort, 'warm'>, string> = {
   touches: 'Touches',
   next: 'Next date',
   amount: 'Amount',
-}
-
-function LoginForm({ error }: { error: 'credentials' | 'limited' | null }) {
-  return (
-    <div className="mx-auto max-w-sm rounded-lg border border-line bg-card p-6">
-      <h1 className="text-3xl font-bold">Leads</h1>
-      <p className="mt-2 text-sm text-muted">Password.</p>
-      {error === 'credentials' ? (
-        <p className="mt-3 text-danger" role="alert">
-          Invalid credentials.
-        </p>
-      ) : null}
-      {error === 'limited' ? (
-        <p className="mt-3 text-danger" role="alert">
-          Too many attempts. Try again later.
-        </p>
-      ) : null}
-      <form method="post" action={LEADS_LOGIN} className="mt-4 flex flex-col gap-3">
-        <label className="flex flex-col gap-1 text-sm text-muted">
-          Password
-          <input
-            name="password"
-            type="password"
-            autoComplete="current-password"
-            required
-            autoFocus
-            className="min-h-11 rounded-lg border border-line bg-paper px-3 text-ink"
-          />
-        </label>
-        <button type="submit" className="mt-1 min-h-11 rounded-lg bg-indigo font-semibold text-white">
-          Sign in
-        </button>
-      </form>
-    </div>
-  )
 }
 
 function SummaryCards({ summary }: { summary: LeadSummary }) {
@@ -164,12 +129,7 @@ function LeadTable({ rows, query }: { rows: readonly LeadRow[]; query: LeadQuery
 export default async function LeadsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const access = await requireLeadsSession()
   if (!access.configured) notFound()
-  if (!access.session) {
-    const params = await searchParams
-    const code = typeof params.e === 'string' ? params.e : ''
-    const error = code === LEADS_LIMIT_ERROR ? 'limited' : code === LEADS_LOGIN_ERROR ? 'credentials' : null
-    return <LoginForm error={error} />
-  }
+  if (!access.session) redirect(LEADS_LOGIN)
 
   const query = parseLeadQuery(await searchParams)
   let rows: LeadRow[] = []

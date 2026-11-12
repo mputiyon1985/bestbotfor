@@ -9,7 +9,7 @@ import { isAdminPath } from '@/lib/admin-path'
 import { LOGIN_CSRF_COOKIE, LOGIN_CSRF_HEADER, loginCsrfCookie } from '@/lib/signups/auth/login-csrf'
 import { signupsAuthConfigured } from '@/lib/signups/auth/config'
 import { decideSignupsGate } from '@/lib/signups/gate'
-import { decideLeadsGate, isLeadsAdminPath, leadsAuthConfigured, LEADS_REQUEST_HEADER } from '@/lib/leads/paths'
+import { decideLeadsGate, isLeadsAdminPath, LEADS_PATH_HEADER, LEADS_REQUEST_HEADER, leadsAuthConfigured, leadsRequestProof, leadsSessionSecret, normalizeLeadsPath } from '@/lib/leads/paths'
 import { isSignupsAdminPath, SIGNUPS_LOGIN, SIGNUPS_REQUEST_HEADER } from '@/lib/signups/paths'
 import { applyPrivacyHeaders } from '@/lib/signups/privacy'
 import { isJunkPath } from '@/lib/junk-path'
@@ -41,14 +41,22 @@ function nextWithNonce(request: NextRequest, csrf?: string): NextResponse {
   // Drop a client-supplied copy. Only this proxy sets the signups marker.
   requestHeaders.delete(SIGNUPS_REQUEST_HEADER)
   requestHeaders.delete(LEADS_REQUEST_HEADER)
+  requestHeaders.delete(LEADS_PATH_HEADER)
   requestHeaders.set('x-nonce', nonce)
   requestHeaders.set('x-bbf-method', request.method)
   requestHeaders.set('Content-Security-Policy', csp)
   if (isSignupsAdminPath(request.nextUrl.pathname)) requestHeaders.set(SIGNUPS_REQUEST_HEADER, '1')
-  if (isLeadsAdminPath(request.nextUrl.pathname)) requestHeaders.set(LEADS_REQUEST_HEADER, '1')
+  const leadsPath = normalizeLeadsPath(request.nextUrl.pathname)
+  if (isLeadsAdminPath(leadsPath)) {
+    requestHeaders.set(LEADS_PATH_HEADER, leadsPath)
+    const secret = leadsSessionSecret()
+    if (secret) requestHeaders.set(LEADS_REQUEST_HEADER, leadsRequestProof(leadsPath, secret))
+  }
   if (csrf) requestHeaders.set(LOGIN_CSRF_HEADER, csrf)
   const response = NextResponse.next({ request: { headers: requestHeaders } })
   response.headers.delete(SIGNUPS_REQUEST_HEADER)
+  response.headers.delete(LEADS_REQUEST_HEADER)
+  response.headers.delete(LEADS_PATH_HEADER)
   if (csrf) response.cookies.set(LOGIN_CSRF_COOKIE, csrf, loginCsrfCookie)
   return adminHeaders(applySecurity(response, nonce), request.nextUrl.pathname)
 }

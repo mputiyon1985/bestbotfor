@@ -4,14 +4,14 @@ import { clientIp, rateLimitKey } from '@/lib/ip'
 import { platformSetsClientIp } from '@/lib/reviews/ip'
 import { consumeRateLimit } from '@/lib/rate-limit'
 
-/** Failed password attempts per IP. A success does not increment the counter. */
+/** Attempts per IP before the password or import token is compared. */
 export const LEADS_LOGIN_LIMIT = 8
 export const LEADS_LOGIN_WINDOW_MS = 15 * 60 * 1000
 
 const LEADS_LOGIN_ACTION = 'leads-login'
 
 /**
- * Bucket for a failed attempt. On Vercel a missing trusted IP is refused
+ * Bucket for an attempt. On Vercel a missing trusted IP is refused
  * and does not share one bucket. Off Vercel the first forwarded address is used.
  * The stored key is an HMAC from rateLimitKey, not the address.
  */
@@ -22,23 +22,15 @@ export function leadsAttemptKey(request: Request): { action: 'ok'; key: string }
   return { action: 'ok', key: rateLimitKey(ip, LEADS_LOGIN_ACTION) }
 }
 
-export async function checkLeadsAttempt(db: Database, key: string, now = Date.now()): Promise<'ok' | 'limited' | 'unavailable'> {
+/**
+ * Increment the window first, in one statement, and only then may the caller
+ * compare a password or import token. A database error fails closed.
+ */
+export async function consumeLeadsAttempt(db: Database, key: string, now = Date.now()): Promise<'ok' | 'limited' | 'unavailable'> {
   try {
-    const result = await db.$client.execute({
-      sql: 'SELECT count, reset_at FROM rate_limits WHERE "key" = ?',
-      args: [key],
-    })
-    const count = Number(result.rows[0]?.count ?? 0)
-    const resetAt = Number(result.rows[0]?.reset_at ?? 0)
-    if (!Number.isFinite(count) || !Number.isFinite(resetAt)) return 'unavailable'
-    if (count >= LEADS_LOGIN_LIMIT && resetAt > now) return 'limited'
-    return 'ok'
+    const result = await consumeRateLimit(db, key, LEADS_LOGIN_LIMIT, LEADS_LOGIN_WINDOW_MS, now)
+    return result.ok ? 'ok' : 'limited'
   } catch {
     return 'unavailable'
   }
-}
-
-/** Persist one failed attempt. Throws when the write fails so the caller can fail closed. */
-export async function recordLeadsFailure(db: Database, key: string, now = Date.now()): Promise<void> {
-  await consumeRateLimit(db, key, LEADS_LOGIN_LIMIT, LEADS_LOGIN_WINDOW_MS, now)
 }

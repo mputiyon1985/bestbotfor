@@ -56,10 +56,8 @@ const ALLOWED = new Set([
   // Signups admin login state on the site database: session rows, used
   // authenticator steps, and login-attempt counters. No subscriber emails.
   'src/lib/signups/auth/store.ts',
-  // Leads admin. The upsert writes bbf_leads. The rate-limit file only reads
-  // rate_limits; the increment goes through src/lib/rate-limit.ts.
+  // Leads admin. The upsert writes bbf_leads. Login attempts increment through src/lib/rate-limit.ts.
   'src/lib/leads/store.ts',
-  'src/lib/leads/auth/rate-limit.ts',
   // Withdrawn-review purge, called only by the data-retention cron while user ratings are on.
   'src/lib/reviews/purge.ts',
 ])

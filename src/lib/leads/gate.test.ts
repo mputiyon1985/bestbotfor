@@ -1,10 +1,11 @@
 import { NextRequest } from 'next/server'
 import { afterEach, describe, expect, it } from 'vitest'
 import { proxy } from '@/proxy'
-import { decideLeadsGate } from '@/lib/leads/paths'
+import { decideLeadsGate, leadsRequestAuthorized, leadsRequestProof } from '@/lib/leads/paths'
 
 const event = { waitUntil() {} }
 const PASSWORD = 'test-leads-password-value'
+const SECRET = 'test-leads-session-secret-32chars-ok'
 
 async function get(path: string) {
   const response = await proxy(new NextRequest(new URL(path, 'https://dash.example')), event as never)
@@ -20,6 +21,7 @@ async function get(path: string) {
 
 afterEach(() => {
   delete process.env.BBF_LEADS_PASSWORD
+  delete process.env.BBF_LEADS_SESSION_SECRET
   delete process.env.ADMIN_SPONSORS
   delete process.env.USER_RATINGS
   delete process.env.VERCEL_ENV
@@ -40,10 +42,14 @@ describe('leads proxy gate', () => {
     expect(decideLeadsGate('/admin/sponsors')).toBe('skip')
     expect(decideLeadsGate('/admin/leadsomething')).toBe('skip')
     expect((await get('/admin/sponsors')).body).toBe('Not found.')
+    process.env.BBF_LEADS_PASSWORD = PASSWORD
+    delete process.env.BBF_LEADS_SESSION_SECRET
+    expect((await get('/admin/leads')).status).toBe(404)
   })
 
   it('opens the leads page when the password is set and keeps it uncached', async () => {
     process.env.BBF_LEADS_PASSWORD = PASSWORD
+    process.env.BBF_LEADS_SESSION_SECRET = SECRET
     delete process.env.ADMIN_SPONSORS
     process.env.VERCEL_ENV = 'test'
     const response = await get('/admin/leads')
@@ -57,5 +63,13 @@ describe('leads proxy gate', () => {
     expect(slashed.location).toBe('https://dash.example/admin/leads')
     expect(slashed.cache).toContain('no-store')
     expect(slashed.robots).toMatch(/noindex/i)
+    expect(leadsRequestAuthorized('/admin/leads', '1', SECRET)).toBe(false)
+    expect(leadsRequestAuthorized('/admin/sponsors', leadsRequestProof('/admin/leads', SECRET), SECRET)).toBe(false)
+    expect(leadsRequestAuthorized('/admin/leads', leadsRequestProof('/admin/leads', SECRET), SECRET)).toBe(true)
+    const spoofed = await proxy(
+      new NextRequest('https://dash.example/admin/sponsors', { headers: { 'x-bbf-leads': '1', 'x-bbf-leads-path': '/admin/leads' } }),
+      event as never,
+    )
+    expect(await spoofed?.text()).toBe('Not found.')
   })
 })
