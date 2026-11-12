@@ -130,6 +130,11 @@ html {
   font-weight: 700;
 }
 
+/* Same face as the headline, at the inherited weight. The home lede is the largest paint; a Poppins swap must not move it. */
+.font-lcp {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
 /* Vertical rule in the homepage stat. Indigo at the top, mint at the bottom. */
 .hero-stat-rule {
   width: 4px;

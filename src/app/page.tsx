@@ -53,7 +53,7 @@ export default async function HomePage() {
             Answer 3 quick questions
           </p>
           <h1 className="mt-3 font-headline text-4xl leading-tight md:mt-2.5 md:text-5xl md:leading-[1.08]">{TAGLINE}</h1>
-          <p className="mt-2 max-w-xl text-base text-muted md:mt-2 md:text-[17px] md:leading-normal">
+          <p className="font-lcp mt-2 max-w-xl text-base text-muted md:mt-2 md:text-[17px] md:leading-normal">
             Answer three quick questions: what you want to do, what you can spend, and how experienced you are. You’ll get one AI tool for the job and up to six alternatives, with a plain-English reason for each.
           </p>
         </div>
