@@ -16,8 +16,15 @@ import { getStripe } from '@/lib/stripe'
 
 export async function checkoutAction(formData: FormData): Promise<void> {
   if (!isClerkConfigured()) redirect('/sign-in')
-  const { auth } = await import('@clerk/nextjs/server')
+  const { auth, currentUser } = await import('@clerk/nextjs/server')
   const { userId } = await auth.protect()
+  let buyerEmail: string | null = null
+  try {
+    const user = await currentUser()
+    buyerEmail = user?.primaryEmailAddress?.emailAddress ?? null
+  } catch (error) {
+    console.error('membership checkout email lookup failed', error instanceof Error ? error.name : 'error')
+  }
   const stripe = getStripe()
   const plan = parseMemberPlan(formData.get('plan'))
   if (!stripe || !userId || !plan || !membershipConfigured()) redirect('/pricing')
@@ -38,6 +45,7 @@ export async function checkoutAction(formData: FormData): Promise<void> {
     plan,
     userId,
     customer,
+    email: buyerEmail,
     foundingOpen: pricing.founding.open,
     foundingEligible,
     successUrl: absoluteUrl('/members?checkout=success'),

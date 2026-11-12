@@ -606,6 +606,8 @@ export const sponsorAbandonedCheckouts = sqliteTable(
     taskSlug: text('task_slug'),
     source: text('source').notNull(),
     recoveryUrl: text('recovery_url'),
+    /** Set once, when the one recovery email for this session is claimed. Null until then. */
+    recoveryEmailSentAt: integer('recovery_email_sent_at'),
     /** Buyer's choice. Rows exist only for opt_in. */
     promotionsConsent: text('promotions_consent').notNull(),
     /** Expiry event time, the clock on which we observed the opt-in. */

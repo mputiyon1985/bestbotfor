@@ -184,6 +184,7 @@ export const SPONSOR_ABANDONED_CHECKOUTS_DDL = `CREATE TABLE IF NOT EXISTS spons
   task_slug TEXT,
   source TEXT NOT NULL,
   recovery_url TEXT,
+  recovery_email_sent_at INTEGER,
   promotions_consent TEXT NOT NULL DEFAULT '',
   consented_at INTEGER NOT NULL DEFAULT 0,
   created_at INTEGER NOT NULL
@@ -196,6 +197,7 @@ const SPONSOR_ABANDONED_ADOPT_COLUMNS: ReadonlyArray<{ name: string; ddl: string
   { name: 'task_slug', ddl: 'TEXT' },
   { name: 'source', ddl: "TEXT NOT NULL DEFAULT 'checkout'" },
   { name: 'recovery_url', ddl: 'TEXT' },
+  { name: 'recovery_email_sent_at', ddl: 'INTEGER' },
   { name: 'promotions_consent', ddl: "TEXT NOT NULL DEFAULT ''" },
   { name: 'consented_at', ddl: 'INTEGER NOT NULL DEFAULT 0' },
   { name: 'created_at', ddl: 'INTEGER NOT NULL DEFAULT 0' },
@@ -252,6 +254,13 @@ async function applyAddColumnFile(
   statements: ReadonlyArray<{ table: string; column: string; statement: string }>,
 ): Promise<void> {
   for (const { table, column, statement } of statements) {
+    // A later file can be on disk before the table's own file. Skipping leaves
+    // the ledger row, and the adopt step adds the column once the table exists.
+    const tables = await client.execute({
+      sql: "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?",
+      args: [table],
+    })
+    if (tables.rows.length === 0) continue
     const info = await client.execute(`PRAGMA table_info(${table})`)
     if (info.rows.some((row) => String(row.name) === column)) continue
     await client.execute(statement)

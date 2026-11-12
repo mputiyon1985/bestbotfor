@@ -74,12 +74,34 @@ describe('checkout params', () => {
     expect(p.mode).toBe('subscription')
     expect(p.subscription_data).not.toHaveProperty('trial_period_days')
     expect(p).not.toHaveProperty('allow_promotion_codes')
+    expect(p).not.toHaveProperty('after_expiration')
+    expect(p.consent_collection).toEqual({ promotions: 'auto' })
     expect(p.subscription_data?.metadata).toEqual({ clerkUserId: 'user_1', plan: 'annual' })
+  })
+  it('prefills the signed-in email and does not pass it beside an existing customer', () => {
+    const fresh = membershipCheckoutParams({ ...base, plan: 'monthly', foundingOpen: false, email: ' Member@Example.com ' })!
+    expect(fresh.customer_email).toBe('Member@Example.com')
+    expect(fresh.metadata).toMatchObject({ email: 'Member@Example.com', plan: 'monthly' })
+    expect(fresh).not.toHaveProperty('customer')
+    expect(fresh.after_expiration).toEqual({ recovery: { enabled: true, allow_promotion_codes: false } })
+    const returning = membershipCheckoutParams({
+      ...base,
+      plan: 'monthly',
+      foundingOpen: false,
+      customer: 'cus_123',
+      email: 'member@example.com',
+    })!
+    expect(returning.customer).toBe('cus_123')
+    expect(returning).not.toHaveProperty('customer_email')
+    expect(returning.metadata).toMatchObject({ email: 'member@example.com' })
+    expect(membershipCheckoutParams({ ...base, plan: 'monthly', foundingOpen: false, email: 'not-an-email' })).not.toHaveProperty('customer_email')
   })
   it('monthly never gets the coupon', () => {
     const p = membershipCheckoutParams({ ...base, plan: 'monthly', foundingOpen: true })!
     expect(p.line_items).toEqual([{ price: 'price_monthly123', quantity: 1 }])
     expect(p).not.toHaveProperty('discounts')
+    expect(p.after_expiration).toEqual({ recovery: { enabled: true, allow_promotion_codes: false } })
+    expect(p.consent_collection).toEqual({ promotions: 'auto' })
   })
   it('returns null when the price env is unset', () => {
     expect(membershipCheckoutParams({ ...base, env: {}, plan: 'annual', foundingOpen: true })).toBeNull()
