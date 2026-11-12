@@ -35,7 +35,14 @@ export const RETIRED_FOUNDING_PAYMENT_LINK_ID = 'plink_1URylTIJUbygfAuc07cebXfn'
 const MONTHLY_PAYMENT_LINK_ID = SPONSOR_PAYMENT_LINKS.find((link) => link.id === 'sponsor_monthly')?.paymentLinkId
 if (!MONTHLY_PAYMENT_LINK_ID) throw new Error('monthly sponsor payment link is missing')
 
-/** Payment Link id to the offer stored on an expired session. Monthly is the live link. */
+/**
+ * Payment Link id to the offer stored on an expired session.
+ * Monthly is the live subscription link. Featured week and newsletter mention
+ * are on /sponsor and are left out on purpose: neither claims a slot, a
+ * featured week can land on a page that is already booked, and a stored email
+ * is only for a follow-up we should not send. See
+ * docs/runbooks/sponsor-payment-links.md.
+ */
 const PAYMENT_LINK_OFFER: Readonly<Record<string, string>> = {
   [RETIRED_FOUNDING_PAYMENT_LINK_ID]: 'founding_sponsor',
   [MONTHLY_PAYMENT_LINK_ID]: 'sponsor_monthly',
@@ -121,6 +128,24 @@ function paymentLinkId(value: unknown): string | null {
   return null
 }
 
+/** Any Payment Link id on the session, including ones this app does not sell. */
+function rawPaymentLinkId(value: unknown): string | null {
+  if (typeof value === 'string' && value.startsWith('plink_')) return value
+  if (value && typeof value === 'object' && 'id' in value && typeof value.id === 'string' && value.id.startsWith('plink_')) {
+    return value.id
+  }
+  return null
+}
+
+/**
+ * Featured week and newsletter mention. Left out of PAYMENT_LINK_OFFER so an
+ * expired session is not stored. Also refused here, so adding the id to that
+ * map later still does not store or email it.
+ */
+const ONE_TIME_PAYMENT_LINK_IDS: ReadonlySet<string> = new Set(
+  SPONSOR_PAYMENT_LINKS.filter((link) => link.billing === 'one_time').map((link) => link.paymentLinkId),
+)
+
 function taskSlugFrom(metadata: Record<string, unknown>, session: Record<string, unknown>): string | null {
   const direct = typeof metadata.task_slug === 'string' ? metadata.task_slug : ''
   if (slugSchema.safeParse(direct).success) return direct
@@ -154,8 +179,11 @@ function membershipOffering(metadata: Record<string, unknown>): 'membership_mont
  * Lead from checkout.session.expired, or null when we will not store it.
  * No Stripe read. A row is stored only when the buyer opted in
  * (`consent.promotions` is `opt_in`) and the session is an unpaid sponsor
- * checkout, a known Payment Link, or a membership checkout. A recovery URL
- * is kept only for offerings that may reopen Checkout.
+ * checkout, the Monthly or retired founding Payment Link, or a membership
+ * checkout. A recovery URL is kept only for offerings that may reopen
+ * Checkout. Featured week, newsletter mention, and any other
+ * `source=payment_link` session without `kind=sponsorship` are not stored
+ * and therefore not emailed. The Monthly link stays on the allowlist.
  */
 export function parseExpiredSponsorCheckout(event: { type?: string; created?: number; data?: { object?: unknown } }, now: number): AbandonedSponsorLead | null {
   if (event.type !== 'checkout.session.expired') return null
@@ -169,6 +197,7 @@ export function parseExpiredSponsorCheckout(event: { type?: string; created?: nu
 
   if (!promotionsOptIn(record)) return null
   const metadata = metadataRecord(record)
+  const rawLinkId = rawPaymentLinkId(record.payment_link)
   const linkId = paymentLinkId(record.payment_link)
   const linkOffer = linkId ? PAYMENT_LINK_OFFER[linkId] : null
   const metaOffer = typeof metadata.offer === 'string' ? metadata.offer : ''
@@ -176,6 +205,14 @@ export function parseExpiredSponsorCheckout(event: { type?: string; created?: nu
   // Metadata alone is not enough. The Payment Link id has to be one we know,
   // and its offer has to agree when metadata names one.
   const paymentLink = !inApp && linkOffer != null && (metaOffer === '' || metaOffer === linkOffer)
+  const sourceIsPaymentLink = metadata.source === 'payment_link' || rawLinkId != null
+  // One-time links, and any other Payment Link session that is not the
+  // Monthly or retired founding allowlist, are not leads. kind=sponsorship
+  // stays on the in-app path. A Payment Link session is not a membership.
+  if (sourceIsPaymentLink && metadata.kind !== 'sponsorship') {
+    if (rawLinkId != null && ONE_TIME_PAYMENT_LINK_IDS.has(rawLinkId)) return null
+    if (!paymentLink) return null
+  }
   const membership = !inApp && !paymentLink ? membershipOffering(metadata) : null
 
   if (!inApp && !paymentLink && !membership) return null

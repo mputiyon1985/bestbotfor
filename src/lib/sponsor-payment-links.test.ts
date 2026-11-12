@@ -58,9 +58,13 @@ async function pageHtml(env: Partial<Record<(typeof ENV_KEYS)[number], string | 
   return renderToStaticMarkup(await SponsorPage())
 }
 
+function paymentLinkCards(html: string): string[] {
+  return [...html.matchAll(/<li class="rounded-2xl border border-line px-4 py-3">([\s\S]*?)<\/li>/g)].map((match) => match[1] ?? '')
+}
+
 describe('sponsor payment links', () => {
   it('points only at Stripe-hosted https Payment Links', async () => {
-    expect(SPONSOR_PAYMENT_LINKS.map((link) => link.id)).toEqual(['sponsor_monthly'])
+    expect(SPONSOR_PAYMENT_LINKS.map((link) => link.id)).toEqual(['sponsor_monthly', 'featured_week', 'newsletter_mention'])
     for (const link of SPONSOR_PAYMENT_LINKS) {
       const url = new URL(link.url)
       expect(url.protocol).toBe('https:')
@@ -68,17 +72,35 @@ describe('sponsor payment links', () => {
       expect(url.search).toBe('')
       expect(link.paymentLinkId).toMatch(/^plink_[A-Za-z0-9]+$/)
     }
+    expect(SPONSOR_PAYMENT_LINKS.find((link) => link.id === 'featured_week')).toMatchObject({
+      paymentLinkId: 'plink_1Uaz53IJUbygfAucHbIqUfzb',
+      url: 'https://buy.stripe.com/28E28s2bCaOeaVI4AYfrW06',
+      title: 'Featured spot · 1 week',
+      terms: '$99 one-time. No auto-renewal.',
+      cta: 'Buy a featured week',
+      billing: 'one_time',
+    })
+    expect(SPONSOR_PAYMENT_LINKS.find((link) => link.id === 'newsletter_mention')).toMatchObject({
+      paymentLinkId: 'plink_1Uaz54IJUbygfAuckBQccflM',
+      url: 'https://buy.stripe.com/dRmaEYbMc6xY8NA2sQfrW07',
+      title: 'Newsletter mention',
+      terms: '$49 one-time. No auto-renewal.',
+      cta: 'Buy a newsletter mention',
+      billing: 'one_time',
+    })
   })
 
   it('states the Monthly terms with no commitment', async () => {
-    const [monthly] = SPONSOR_PAYMENT_LINKS
-    expect(monthly.terms).toBe('$299/mo. Cancel anytime.')
+    const monthly = SPONSOR_PAYMENT_LINKS.find((link) => link.id === 'sponsor_monthly')
+    expect(monthly?.billing).toBe('subscription')
+    expect(monthly?.terms).toBe('$299/mo. Cancel anytime.')
     for (const link of SPONSOR_PAYMENT_LINKS) expect(link.terms.toLowerCase()).not.toContain('commitment')
   })
 
-  it('shows both subscriptions next to the one-time options when live billing is on', async () => {
+  it('shows the Payment Links next to the one-time options when live billing is on', async () => {
     const html = await pageHtml({ VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey })
-    expect(html).toContain('Sponsor subscriptions')
+    expect(html).toContain('id="sponsor-payment-links"')
+    expect(html).toContain('>Payment Links<')
     expect(html).toContain(SPONSOR_SUBSCRIPTION_NOTICE)
     expect(html).toContain('Featured placement: $299 for one month.')
     for (const link of SPONSOR_PAYMENT_LINKS) {
@@ -86,20 +108,53 @@ describe('sponsor payment links', () => {
       expect(html).toContain(link.terms)
       expect(html).toContain(link.cta)
     }
-    expect(html.indexOf('Sponsor subscriptions')).toBeGreaterThan(html.indexOf('Newsletter sponsor slot:'))
+    expect(html.indexOf('id="sponsor-payment-links"')).toBeGreaterThan(html.indexOf('Featured placement: $299 for one month.'))
     expect(html).toContain('Continue to checkout')
     expect(html).toContain(`${SPONSOR_SUBSCRIPTION_DISCLOSURE} <a class="underline" href="/disclosure">Disclosures</a>.`)
     expect(html).toContain(`${SPONSOR_CANCEL_LINE} <a class="inline-flex min-h-11 items-center font-semibold underline" href="${SPONSOR_CONTACT_MAILTO}">${SPONSOR_CONTACT_EMAIL}</a>`)
     expect(html.replace(/<[^>]+>/g, '')).toContain('To cancel, email mark@bestbotfor.com')
     expect(html.replace(/<[^>]+>/g, '')).toContain('Placements carry a Sponsored label and never change rankings. See Disclosures.')
     expect(html).toContain(`Questions or custom deals? <a class="inline-flex min-h-11 items-center font-semibold underline" href="${SPONSOR_CONTACT_MAILTO}">${SPONSOR_CONTACT_EMAIL}</a>`)
+    expect(html).toContain('The Payment Links below are separate Stripe links with their own prices set in Stripe.')
+    expect(html).not.toContain('The Payment Link below is a separate Stripe link with its own price set in Stripe.')
+  })
+
+  it('does not show the renewal notice or the cancel line on a one-time link', async () => {
+    const html = await pageHtml({ VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey })
+    const cards = paymentLinkCards(html)
+    expect(cards).toHaveLength(SPONSOR_PAYMENT_LINKS.length)
+    const cardFor = (id: (typeof SPONSOR_PAYMENT_LINKS)[number]['id']) => {
+      const link = SPONSOR_PAYMENT_LINKS.find((item) => item.id === id)
+      const card = cards.find((item) => item.includes(`href="${link?.url}"`))
+      expect(card, id).toBeTruthy()
+      return card ?? ''
+    }
+    const monthly = cardFor('sponsor_monthly')
+    expect(monthly).toContain(SPONSOR_SUBSCRIPTION_NOTICE)
+    expect(monthly).toContain(SPONSOR_CANCEL_LINE)
+    expect(monthly).toContain('renews monthly')
+    const oneTime = SPONSOR_PAYMENT_LINKS.filter((link) => link.billing === 'one_time')
+    expect(oneTime.map((link) => link.id)).toEqual(['featured_week', 'newsletter_mention'])
+    for (const link of oneTime) {
+      const card = cardFor(link.id)
+      expect(card).toContain(link.terms)
+      expect(card).toContain('No auto-renewal.')
+      expect(card).not.toContain(SPONSOR_SUBSCRIPTION_NOTICE)
+      expect(card).not.toContain(SPONSOR_CANCEL_LINE)
+      expect(card.toLowerCase()).not.toContain('renews')
+      expect(card).not.toContain('To cancel')
+    }
+    expect(html.split(SPONSOR_SUBSCRIPTION_NOTICE)).toHaveLength(2)
+    expect(html).toContain(`${SPONSOR_SUBSCRIPTION_DISCLOSURE} <a class="underline" href="/disclosure">Disclosures</a>.`)
   })
 
   it('hides the live links on test checkout and on closed production', async () => {
     const preview = await pageHtml({ VERCEL_ENV: 'preview', STRIPE_SECRET_KEY: testKey })
     const closed = await pageHtml({ VERCEL_ENV: 'production', STRIPE_SECRET_KEY: testKey })
     for (const html of [preview, closed]) {
-      expect(html).not.toContain('Sponsor subscriptions')
+      expect(html).not.toContain('id="sponsor-payment-links"')
+      expect(html).not.toContain('Buy a featured week')
+      expect(html).not.toContain('Buy a newsletter mention')
       expect(html).not.toContain(SPONSOR_PAYMENT_LINK_HOST)
     }
     for (const html of [preview, closed]) {
@@ -114,7 +169,9 @@ describe('sponsor payment links', () => {
   it('hides the live links on preview even with the live flag and a live key', async () => {
     for (const env of ['preview', 'development', 'test']) {
       const html = await pageHtml({ VERCEL_ENV: env, STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey })
-      expect(html).not.toContain('Sponsor subscriptions')
+      expect(html).not.toContain('id="sponsor-payment-links"')
+      expect(html).not.toContain('Buy a featured week')
+      expect(html).not.toContain('Buy a newsletter mention')
       expect(html).not.toContain(SPONSOR_PAYMENT_LINK_HOST)
       expect(html).not.toContain(SPONSOR_CANCEL_LINE)
       expect(html).not.toContain('Questions or custom deals?')
@@ -124,7 +181,9 @@ describe('sponsor payment links', () => {
   it('hides the live links on production with a live key but without the live flag', async () => {
     for (const flag of [undefined, '', 'TRUE', '1', `${allowLive} `]) {
       const html = await pageHtml({ VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: flag, STRIPE_SECRET_KEY: liveKey })
-      expect(html).not.toContain('Sponsor subscriptions')
+      expect(html).not.toContain('id="sponsor-payment-links"')
+      expect(html).not.toContain('Buy a featured week')
+      expect(html).not.toContain('Buy a newsletter mention')
       expect(html).not.toContain(SPONSOR_PAYMENT_LINK_HOST)
       expect(html).not.toContain(SPONSOR_CANCEL_LINE)
       expect(html).not.toContain('Questions or custom deals?')
@@ -135,7 +194,8 @@ describe('sponsor payment links', () => {
     const live = { VERCEL_ENV: 'production', STRIPE_ALLOW_LIVE: allowLive, STRIPE_SECRET_KEY: liveKey }
     // Deactivated in Stripe at the 2026-10-19 go-live and removed from the code (Sentinel P3-6 on #97).
     const RETIRED_FOUNDING_LINK = { id: 'plink_1URylTIJUbygfAuc07cebXfn', url: 'https://buy.stripe.com/fZudRabMce0q5BoebyfrW04' }
-    const [monthlyLink] = SPONSOR_PAYMENT_LINKS
+    const monthlyLink = SPONSOR_PAYMENT_LINKS.find((link) => link.id === 'sponsor_monthly')
+    if (!monthlyLink) throw new Error('monthly sponsor payment link is missing')
     const foundingRadio = (html: string) => html.match(/<input[^>]*value="founding_sponsor"[^>]*>/)?.[0] ?? ''
 
     it('is not in the link list', () => {
@@ -188,9 +248,11 @@ describe('sponsor payment links', () => {
         expect(html).not.toContain('one-time and subscription')
       }
       const html = await pageHtml({ ...live, ...unset })
-      // The Monthly Payment Link card (the only one left) and its terms still show on live production.
-      expect(html).toContain(`href="${SPONSOR_PAYMENT_LINKS[0].url}"`)
-      expect(html).toContain(SPONSOR_PAYMENT_LINKS[0].terms)
+      // Every Payment Link still shows on live production when the in-app subscription Prices are unset.
+      for (const link of SPONSOR_PAYMENT_LINKS) {
+        expect(html).toContain(`href="${link.url}"`)
+        expect(html).toContain(link.terms)
+      }
     })
 
     it('keeps the founding line out when only one founding Price is set, or a value is not a Price id', async () => {

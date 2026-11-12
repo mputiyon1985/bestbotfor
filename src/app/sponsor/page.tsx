@@ -136,6 +136,7 @@ export default async function SponsorPage() {
         {surface === 'live' ? ` ${SPONSOR_PAYMENT_LINKS_NOTE}` : null}
         {surface === 'closed' ? null : " You’ll see the final price on Stripe’s checkout page before you pay."}
       </p>
+      {/* Renewal notice and the cancel line are on the Monthly card only. */}
       {surface === 'live' ? <SponsorPaymentLinks /> : null}
       {surface === 'live' ? (
         <p>
