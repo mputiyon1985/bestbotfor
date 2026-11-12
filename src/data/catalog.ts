@@ -16,6 +16,7 @@ const SCOUTED_2026_11_06 = '2026-11-06'
 const SCOUTED_2026_11_07 = '2026-11-07'
 const SCOUTED_2026_11_08 = '2026-11-08'
 const FRESHNESS_2026_11_09 = '2026-11-09'
+const SCOUTED_2026_11_09 = '2026-11-09'
 const SCOUTED_2026_11_10 = '2026-11-10'
 const SCOUTED_2026_11_11 = '2026-11-11'
 const BACKLOG_BATCH_02 = '2026-10-25'
@@ -7193,6 +7194,40 @@ export const toolSeeds: ToolSeed[] = [
     lastVerifiedAt: FRESHNESS_2026_11_09,
     fits: [],
     affiliate: none,
+  }),
+  // Bot scout 2026-11-09. Unrated: no editorial score, pros or cons until Forge rubric review.
+  // The scout rating stays in the comment and is not shown. fits stays empty.
+  // No BestBotFor sponsorship is recorded. Sponsorship is unknown and is not stored.
+  // Public vendor offers are not stored as deals. The Product Hunt code PH50 is not a BestBotFor reader deal and is not stored.
+  // scout 2026-11-09 | category: Development (FLAG: scout category "Development" mapped to Writing; Mintlify, the catalog's docs platform, is Writing) | scout rating 3.8 (not shown) | launch: 2026-11-08 (Product Hunt #6 on the daily leaderboard; the site cites #2 Product of the Day) | pricing: Startup $79/mo (1 public docs site, hosted MCP, AI help widget); Team $149/mo (custom domain, private docs, 250 AI messages/mo); Enterprise custom. No per-seat charge. pricing.md dated 2026-07-04 still shows $39/$99; the live pricing page was used.
+  // note: priceFromUsd is Startup $79/mo. No free plan was found. The stale $39 and $99 figures are not the stored from-price. Sponsorship unknown. Vendor is the product name. Affiliate network is unknown (the scout described an in-house email intake and did not name a network), so no network is stored.
+  // affiliate: yes. 50% for the life of the customer, across all plans, recurring. Apply page https://docs.docsalot.dev/partners/affiliates. Approved and seeded active. Tracking URL https://docsalot.dev/?utm-source=bestbotfor (hyphen in utm-source). The apply host is not an allowlist host. The allowlist pins that exact query. Dageno, Databox and crystl stay inactive.
+  tool({
+    slug: 'docsalot',
+    addedAt: SCOUTED_2026_11_09,
+    name: 'DocsAlot',
+    vendor: 'DocsAlot',
+    url: 'https://docsalot.dev',
+    allowedHosts: ['docsalot.dev', 'docsalot.dev/?utm-source=bestbotfor'],
+    category: 'Writing',
+    shortDesc: 'A hosted docs platform that publishes public docs, an AI help widget, and agent-readable files from the same source.',
+    longDesc:
+      'DocsAlot is a hosted docs-as-code platform. It turns repositories, help-center articles and API references into public docs, and it produces llms.txt, skill.md and a hosted MCP endpoint from the same source. It includes an AI help widget, a Slack and Discord support bot, and an AI-visibility audit. Startup is $79 a month for 1 public docs site, a hosted MCP server and the AI help widget. Team is $149 a month and adds a custom domain, private docs and 250 AI messages a month. Enterprise is custom. There is no per-seat charge. No free plan was found. A machine-readable pricing.md dated 2026-07-04 still lists $39 and $99. Those figures are not the stored from-price. The live pricing page was used.',
+    pricingModel: 'paid',
+    priceFromUsd: 79,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_09,
+    fits: [],
+    affiliate: {
+      hasProgram: true,
+      network: null,
+      sourceUrl: 'https://docs.docsalot.dev/partners/affiliates',
+      status: 'active',
+      commissionNote: '50% for the life of the customer, across all plans, as stated on the affiliates page.',
+      affiliateUrl: 'https://docsalot.dev/?utm-source=bestbotfor',
+    },
   }),
   // Bot scout 2026-11-10. Unrated: no editorial score, pros or cons until Forge rubric review.
   // Scout ratings stay in the comments and are not shown.

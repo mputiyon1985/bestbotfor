@@ -135,6 +135,17 @@ describe('network tracking hosts', () => {
     expect(officialHttpsUrl('https://refer.papermark.com/markevil', hosts('papermark'))).toBeNull()
     expect(servesAffiliateLink('papermark', papermark, 'active')).toBe(true)
     expect(servesAffiliateLink('papermark', papermark, 'inactive')).toBe(false)
+
+    const docsalot = 'https://docsalot.dev/?utm-source=bestbotfor'
+    expect(hosts('docsalot')).toEqual(['docsalot.dev', 'docsalot.dev/?utm-source=bestbotfor'])
+    expect(affiliateRedirectUrl(docsalot, hosts('docsalot'))).toBe(docsalot)
+    expect(affiliateRedirectUrl('https://docsalot.dev/?utm-source=other', hosts('docsalot'))).toBeNull()
+    expect(affiliateRedirectUrl('https://docsalot.dev/?utm-source=bestbotfor&next=1', hosts('docsalot'))).toBeNull()
+    expect(affiliateRedirectUrl('https://docsalot.dev/phish?utm-source=bestbotfor', hosts('docsalot'))).toBeNull()
+    expect(affiliateRedirectUrl('https://docs.docsalot.dev/?utm-source=bestbotfor', hosts('docsalot'))).toBeNull()
+    expect(officialHttpsUrl('https://docsalot.dev/', hosts('docsalot'))).toBe('https://docsalot.dev/')
+    expect(servesAffiliateLink('docsalot', docsalot, 'active')).toBe(true)
+    expect(servesAffiliateLink('docsalot', docsalot, 'inactive')).toBe(false)
     const synthesia = 'https://www.synthesia.io/?via=mark-putiyon'
     expect(affiliateRedirectUrl(synthesia, hosts('synthesia'))).toBe(synthesia)
     expect(affiliateRedirectUrl('https://www.synthesia.io/?via=other', hosts('synthesia'))).toBeNull()

@@ -59,7 +59,7 @@ describe('live affiliate redirects match main', () => {
     })
   })
 
-  it('sends Descript, Murf, and Papermark to their exact tracking links', async () => {
+  it('sends Descript, Murf, Papermark, and DocsAlot to their exact tracking links', async () => {
     const activated = {
       descript: {
         stored: 'https://get.descript.com/mr4pi3y6tp4s',
@@ -78,6 +78,12 @@ describe('live affiliate redirects match main', () => {
         location: 'https://refer.papermark.com/mark?utm_source=bestbotfor&utm_medium=referral&utm_campaign=direct',
         subIdParam: null,
         official: 'https://www.papermark.com/',
+      },
+      docsalot: {
+        stored: 'https://docsalot.dev/?utm-source=bestbotfor',
+        location: 'https://docsalot.dev/?utm-source=bestbotfor',
+        subIdParam: null,
+        official: 'https://docsalot.dev/',
       },
     } as const
 
