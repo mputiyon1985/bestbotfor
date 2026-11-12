@@ -70,6 +70,54 @@ test('the stat stacks on a phone and sits in a row on a desktop', async ({ page 
   expect(buttonBox.y + buttonBox.height).toBeLessThanOrEqual(800)
 })
 
+test('the stat stays stacked from 768px through 1023px and does not shift', async ({ page }) => {
+  await page.addInitScript(() => {
+    const record = window as Window & { __cls?: number }
+    record.__cls = 0
+    new PerformanceObserver((list) => {
+      for (const entry of list.getEntries()) {
+        const shift = entry as PerformanceEntry & { hadRecentInput?: boolean; value?: number }
+        if (!shift.hadRecentInput) record.__cls = (record.__cls ?? 0) + (shift.value ?? 0)
+      }
+    }).observe({ type: 'layout-shift', buffered: true })
+  })
+
+  for (const width of [768, 1023]) {
+    await page.setViewportSize({ width, height: 900 })
+    await page.goto('/')
+    const stat = page.locator('[data-hero-stat]')
+    const num = stat.locator('[data-hero-count]')
+    const copy = stat.locator('[data-hero-copy]')
+    const rule = stat.locator('[data-hero-rule]')
+    await expect(rule).toBeHidden()
+    await expect(stat).toContainText('ranked.')
+    const firstNum = await num.boundingBox()
+    const firstCopy = await copy.boundingBox()
+    expect(firstNum, `${width}px count`).not.toBeNull()
+    expect(firstCopy, `${width}px words`).not.toBeNull()
+    if (!firstNum || !firstCopy) return
+    expect(firstCopy.y, `${width}px stacks the words under the count`).toBeGreaterThan(firstNum.y + firstNum.height - 1)
+    expect(Math.abs(firstCopy.x - firstNum.x), `${width}px words share the count's left edge`).toBeLessThan(2)
+    const overflow = await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)
+    expect(overflow, `${width}px has no horizontal scroll`).toBe(true)
+    // The font swap is scheduled at 300ms. The stat is on the system face, so its box stays put.
+    await page.waitForTimeout(800)
+    const laterNum = await num.boundingBox()
+    const laterCopy = await copy.boundingBox()
+    expect(laterNum).not.toBeNull()
+    expect(laterCopy).not.toBeNull()
+    if (!laterNum || !laterCopy) return
+    expect(Math.abs(laterNum.x - firstNum.x), `${width}px count x`).toBeLessThanOrEqual(1)
+    expect(Math.abs(laterNum.y - firstNum.y), `${width}px count y`).toBeLessThanOrEqual(1)
+    expect(Math.abs(laterNum.width - firstNum.width), `${width}px count width`).toBeLessThanOrEqual(1)
+    expect(Math.abs(laterNum.height - firstNum.height), `${width}px count height`).toBeLessThanOrEqual(1)
+    expect(Math.abs(laterCopy.y - firstCopy.y), `${width}px words y`).toBeLessThanOrEqual(1)
+    expect(Math.abs(laterCopy.height - firstCopy.height), `${width}px words height`).toBeLessThanOrEqual(1)
+    const cls = await page.evaluate(() => (window as Window & { __cls?: number }).__cls ?? 0)
+    expect(cls, `${width}px layout shift`).toBeLessThan(0.01)
+  }
+})
+
 test('the hero stat keeps its contrast in dark mode', async ({ page }) => {
   await page.emulateMedia({ colorScheme: 'dark' })
   await page.goto('/')
