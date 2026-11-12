@@ -185,6 +185,8 @@ describe('sqlite file directories', () => {
       '0027_clicks_affiliate.sql',
       '0028_clicks_public_id.sql',
       '0029_checkout_recovery_email.sql',
+      '0030_checkout_recovery_suppression.sql',
+      '0031_checkout_recovery_claim.sql',
     ])
     const tables = await client.execute(
       "SELECT name FROM sqlite_master WHERE type = 'table' AND name IN ('stripe_events', 'sponsorships') ORDER BY name",
@@ -298,6 +300,8 @@ describe('sqlite file directories', () => {
       '0027_clicks_affiliate.sql',
       '0028_clicks_public_id.sql',
       '0029_checkout_recovery_email.sql',
+      '0030_checkout_recovery_suppression.sql',
+      '0031_checkout_recovery_claim.sql',
     ])
     const columns = await after.execute('PRAGMA table_info(sponsorships)')
     const beforeCols = before.rows.map((row) => ({
@@ -638,6 +642,8 @@ describe('drizzle journal', () => {
     expect(idxOf('0027_clicks_affiliate')).toBe(25)
     expect(idxOf('0028_clicks_public_id')).toBe(26)
     expect(idxOf('0029_checkout_recovery_email')).toBe(27)
+    expect(idxOf('0030_checkout_recovery_suppression')).toBe(28)
+    expect(idxOf('0031_checkout_recovery_claim')).toBe(29)
     const migration = await readFile(path.join(process.cwd(), 'drizzle/0013_sponsorship_paid_at.sql'), 'utf8')
     const executable = executableSql(migration).toLowerCase()
     expect(executable).not.toContain('add column if not exists')

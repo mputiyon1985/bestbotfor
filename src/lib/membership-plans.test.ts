@@ -76,6 +76,7 @@ describe('checkout params', () => {
     expect(p).not.toHaveProperty('allow_promotion_codes')
     expect(p).not.toHaveProperty('after_expiration')
     expect(p.consent_collection).toEqual({ promotions: 'auto' })
+    expect(p.metadata).toMatchObject({ founding_coupon: '1', plan: 'annual' })
     expect(p.subscription_data?.metadata).toEqual({ clerkUserId: 'user_1', plan: 'annual' })
   })
   it('prefills the signed-in email and does not pass it beside an existing customer', () => {
@@ -102,6 +103,7 @@ describe('checkout params', () => {
     expect(p).not.toHaveProperty('discounts')
     expect(p.after_expiration).toEqual({ recovery: { enabled: true, allow_promotion_codes: false } })
     expect(p.consent_collection).toEqual({ promotions: 'auto' })
+    expect(p.metadata).toMatchObject({ founding_coupon: '0' })
   })
   it('returns null when the price env is unset', () => {
     expect(membershipCheckoutParams({ ...base, env: {}, plan: 'annual', foundingOpen: true })).toBeNull()

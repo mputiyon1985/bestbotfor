@@ -34,7 +34,11 @@ export function membershipCheckoutParams(input: {
   // Stripe rejects customer and customer_email together. An existing Customer
   // already carries the email. A new buyer gets the signed-in address prefilled
   // so an abandoned session still has an email once they opt in.
-  const metadata: Record<string, string> = { clerkUserId: input.userId, plan: input.plan }
+  const metadata: Record<string, string> = {
+    clerkUserId: input.userId,
+    plan: input.plan,
+    founding_coupon: coupon ? '1' : '0',
+  }
   if (email) metadata.email = email
   return {
     mode: 'subscription',

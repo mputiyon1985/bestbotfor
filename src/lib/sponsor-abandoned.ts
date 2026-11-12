@@ -1,16 +1,24 @@
 import 'server-only'
 
-import { and, desc, eq, isNull, sql } from 'drizzle-orm'
+import { and, desc, eq, isNull, lt, or, sql } from 'drizzle-orm'
 import type Stripe from 'stripe'
 import {
   checkoutRecoveryMessage,
   checkoutRecoveryUrlAllowed,
   postRecoveryEmail,
+  recoveryCompliance,
   recoveryMailConfig,
+  sessionFoundingCoupon,
   type CheckoutRecoveryMessage,
   type RecoveryMailSkip,
   type RecoverySendResult,
 } from './checkout-recovery-mail'
+import {
+  CHECKOUT_RECOVERY_UNSUBSCRIBE_PATH,
+  checkoutRecoveryUnsubscribeToken,
+  recoveryEmailSuppressed,
+} from './checkout-recovery-unsubscribe'
+import { getSiteUrl } from './site'
 import type { Database } from './db'
 import { sponsorAbandonedCheckouts } from './db/schema'
 import { isStripeHostedUrl } from './redirect'
@@ -186,7 +194,9 @@ export function parseExpiredSponsorCheckout(event: { type?: string; created?: nu
       : null
   // Drop a URL that would reopen a scarce Checkout. Founding and placements
   // do not turn recovery on; this also ignores one if a session somehow has it.
-  const recoveryUrl = checkoutRecoveryUrlAllowed(offering) ? rawRecoveryUrl : null
+  const recoveryUrl = checkoutRecoveryUrlAllowed(offering, sessionFoundingCoupon(metadata, record.discounts))
+    ? rawRecoveryUrl
+    : null
 
   return {
     sessionId: id,
@@ -200,6 +210,9 @@ export function parseExpiredSponsorCheckout(event: { type?: string; created?: nu
     consentedAt: expiredAt,
   }
 }
+
+/** How long a crashed send keeps the lease before another delivery may try again. */
+export const RECOVERY_EMAIL_CLAIM_LEASE_MS = 60_000
 
 export type RecoveryMailer = (message: CheckoutRecoveryMessage) => Promise<RecoverySendResult>
 
@@ -243,12 +256,27 @@ export async function recordExpiredSponsorCheckout(
       },
     })
 
+  const compliance = recoveryCompliance(process.env)
+  if (!compliance.ok) {
+    logRecoveryEmail(lead.sessionId, compliance.reason)
+    return
+  }
+  if (await recoveryEmailSuppressed(db, lead.email)) {
+    logRecoveryEmail(lead.sessionId, 'suppressed')
+    return
+  }
+  const token = checkoutRecoveryUnsubscribeToken(compliance.compliance.unsubscribeSecret, lead.email)
+  const unsubscribeUrl = token
+    ? `${getSiteUrl()}${CHECKOUT_RECOVERY_UNSUBSCRIBE_PATH}?token=${encodeURIComponent(token)}`
+    : ''
   const message = checkoutRecoveryMessage({
     sessionId: lead.sessionId,
     email: lead.email,
     offerLabel: abandonedOfferLabel(lead.offering),
     offering: lead.offering,
     recoveryUrl: lead.recoveryUrl,
+    postalAddress: compliance.compliance.postalAddress,
+    unsubscribeUrl,
   })
   if (!message) return
 
@@ -265,12 +293,16 @@ export async function recordExpiredSponsorCheckout(
 
   const claimed = await db
     .update(sponsorAbandonedCheckouts)
-    .set({ recoveryEmailSentAt: now })
+    .set({ recoveryEmailClaimedAt: now })
     .where(
       and(
         eq(sponsorAbandonedCheckouts.stripeCheckoutSessionId, lead.sessionId),
         isNull(sponsorAbandonedCheckouts.recoveryEmailSentAt),
         eq(sponsorAbandonedCheckouts.promotionsConsent, 'opt_in'),
+        or(
+          isNull(sponsorAbandonedCheckouts.recoveryEmailClaimedAt),
+          lt(sponsorAbandonedCheckouts.recoveryEmailClaimedAt, now - RECOVERY_EMAIL_CLAIM_LEASE_MS),
+        ),
       ),
     )
     .returning({ id: sponsorAbandonedCheckouts.stripeCheckoutSessionId })
@@ -283,17 +315,27 @@ export async function recordExpiredSponsorCheckout(
     result = 'retry'
   }
   if (result === 'sent') {
+    await db
+      .update(sponsorAbandonedCheckouts)
+      .set({ recoveryEmailSentAt: now })
+      .where(eq(sponsorAbandonedCheckouts.stripeCheckoutSessionId, lead.sessionId))
     logRecoveryEmail(lead.sessionId, 'sent')
     return
   }
   await db
     .update(sponsorAbandonedCheckouts)
-    .set({ recoveryEmailSentAt: null })
-    .where(eq(sponsorAbandonedCheckouts.stripeCheckoutSessionId, lead.sessionId))
+    .set({ recoveryEmailClaimedAt: null })
+    .where(
+      and(
+        eq(sponsorAbandonedCheckouts.stripeCheckoutSessionId, lead.sessionId),
+        eq(sponsorAbandonedCheckouts.recoveryEmailClaimedAt, now),
+        isNull(sponsorAbandonedCheckouts.recoveryEmailSentAt),
+      ),
+    )
   logRecoveryEmail(lead.sessionId, result)
-  // A reject is permanent for this delivery (a 4xx from the mail API). Leave
-  // the claim clear so the row still shows as unsent. A retry is a 429, a 5xx,
-  // or a network error: throw so Stripe delivers the event again.
+  // A reject is a 4xx from the mail API. The lease is cleared and sent_at stays
+  // null, so the row still shows as unsent. A retry is a 429, a 5xx, or a
+  // network error: throw so Stripe delivers the event again.
   if (result === 'retry') throw new Error('checkout recovery email retry')
 }
 

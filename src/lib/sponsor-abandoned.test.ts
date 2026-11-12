@@ -3,13 +3,15 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { createClient } from '@libsql/client'
 import { readFileSync } from 'node:fs'
-import { afterEach, describe, expect, it } from 'vitest'
+import { eq } from 'drizzle-orm'
+import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type Stripe from 'stripe'
 import { createTestDatabase } from '@/test/db'
 import { applyMigrations } from './db/migrate'
 import { sponsorAbandonedCheckouts, sponsorships } from './db/schema'
 import { handleStripeWebhook } from './stripe-webhook'
-import { parseExpiredSponsorCheckout, recordExpiredSponsorCheckout, sponsorRecoveryUrl } from './sponsor-abandoned'
+import { parseExpiredSponsorCheckout, recordExpiredSponsorCheckout, RECOVERY_EMAIL_CLAIM_LEASE_MS, sponsorRecoveryUrl } from './sponsor-abandoned'
+import { suppressRecoveryEmail } from './checkout-recovery-unsubscribe'
 import type { CheckoutRecoveryMessage } from './checkout-recovery-mail'
 
 const SECRET = 'whsec_test_secret'
@@ -318,6 +320,21 @@ describe('checkout.session.expired webhook', () => {
 })
 
 describe('recovery email', () => {
+  const previous = {
+    postal: process.env.CHECKOUT_RECOVERY_POSTAL_ADDRESS,
+    secret: process.env.CHECKOUT_RECOVERY_UNSUBSCRIBE_SECRET,
+  }
+  beforeEach(() => {
+    process.env.CHECKOUT_RECOVERY_POSTAL_ADDRESS = '1 Test Street, Test City, TS 00000'
+    process.env.CHECKOUT_RECOVERY_UNSUBSCRIBE_SECRET = 'u'.repeat(32)
+  })
+  afterEach(() => {
+    if (previous.postal === undefined) delete process.env.CHECKOUT_RECOVERY_POSTAL_ADDRESS
+    else process.env.CHECKOUT_RECOVERY_POSTAL_ADDRESS = previous.postal
+    if (previous.secret === undefined) delete process.env.CHECKOUT_RECOVERY_UNSUBSCRIBE_SECRET
+    else process.env.CHECKOUT_RECOVERY_UNSUBSCRIBE_SECRET = previous.secret
+  })
+
   function optedIn(offering: string, id = 'cs_test_mail', extra: Record<string, unknown> = {}): Stripe.Event {
     return expired('evt_mail', {
       id,
@@ -343,7 +360,9 @@ describe('recovery email', () => {
     expect(sent).toHaveLength(1)
     expect(sent[0]?.to).toBe('buyer@example.com')
     expect(sent[0]?.text).toContain('https://bestbotfor.com/sponsor')
-    expect(sent[0]?.text).toContain('unsubscribe')
+    expect(sent[0]?.text).toContain('1 Test Street, Test City, TS 00000')
+    expect(sent[0]?.text).toContain('/checkout-recovery/unsubscribe?token=')
+    expect(sent[0]?.listUnsubscribePost).toBe('List-Unsubscribe=One-Click')
     expect(sent[0]?.text).not.toContain('buy.stripe.com/r/')
     expect(sent[0]?.html).toContain('privacy@bestbotfor.com')
     expect(sent[0]?.html).toContain('Mark Putiyon')
@@ -406,6 +425,97 @@ describe('recovery email', () => {
     await close()
   })
 
+  it('does not claim or send when the postal address is blank', async () => {
+    const { db, close } = await createTestDatabase()
+    process.env.CHECKOUT_RECOVERY_POSTAL_ADDRESS = '  '
+    let calls = 0
+    await recordExpiredSponsorCheckout(db, optedIn('newsletter_slot', 'cs_test_no_address'), 12, async () => {
+      calls += 1
+      return 'sent'
+    })
+    expect(calls).toBe(0)
+    const leads = await db.select().from(sponsorAbandonedCheckouts)
+    expect(leads[0]?.recoveryEmailSentAt).toBeNull()
+    expect(leads[0]?.recoveryEmailClaimedAt).toBeNull()
+    await close()
+  })
+
+  it('does not send to a suppressed address', async () => {
+    const { db, close } = await createTestDatabase()
+    await suppressRecoveryEmail(db, 'Buyer@Example.com', 'one_click', 1)
+    let calls = 0
+    await recordExpiredSponsorCheckout(db, optedIn('newsletter_slot', 'cs_test_suppressed'), 13, async () => {
+      calls += 1
+      return 'sent'
+    })
+    expect(calls).toBe(0)
+    const leads = await db.select().from(sponsorAbandonedCheckouts)
+    expect(leads[0]?.recoveryEmailClaimedAt).toBeNull()
+    expect(leads[0]?.recoveryEmailSentAt).toBeNull()
+    await close()
+  })
+
+  it('keeps a fresh lease and allows another try after the lease expires', async () => {
+    const { db, close } = await createTestDatabase()
+    const event = optedIn('newsletter_slot', 'cs_test_lease', {
+      after_expiration: { recovery: { url: 'https://buy.stripe.com/r/test_lease' } },
+    })
+    await recordExpiredSponsorCheckout(db, event, 100, async () => 'sent')
+    const held = await db.select().from(sponsorAbandonedCheckouts)
+    expect(held[0]?.recoveryEmailSentAt).toBe(100)
+    await db
+      .update(sponsorAbandonedCheckouts)
+      .set({ recoveryEmailSentAt: null, recoveryEmailClaimedAt: 100 })
+      .where(eq(sponsorAbandonedCheckouts.stripeCheckoutSessionId, 'cs_test_lease'))
+    let calls = 0
+    await recordExpiredSponsorCheckout(db, { ...event, id: 'evt_lease_held' } as Stripe.Event, 100 + 1_000, async () => {
+      calls += 1
+      return 'sent'
+    })
+    expect(calls).toBe(0)
+    await recordExpiredSponsorCheckout(
+      db,
+      { ...event, id: 'evt_lease_free' } as Stripe.Event,
+      100 + RECOVERY_EMAIL_CLAIM_LEASE_MS + 1,
+      async () => {
+        calls += 1
+        return 'sent'
+      },
+    )
+    expect(calls).toBe(1)
+    const freed = await db.select().from(sponsorAbandonedCheckouts)
+    expect(freed[0]?.recoveryEmailSentAt).toBe(100 + RECOVERY_EMAIL_CLAIM_LEASE_MS + 1)
+    await close()
+  })
+
+  it('drops a membership recovery URL when the founding coupon was attached', () => {
+    const withCoupon = parseExpiredSponsorCheckout(
+      expired('evt_member_coupon', {
+        id: 'cs_test_member_coupon',
+        payment_status: 'unpaid',
+        consent: { promotions: 'opt_in' },
+        customer_email: 'member@example.com',
+        metadata: { clerkUserId: 'user_1', plan: 'annual', founding_coupon: '1' },
+        discounts: [{ coupon: 'bbf_founding_19_first_year' }],
+        after_expiration: { recovery: { url: 'https://buy.stripe.com/r/test_member_coupon' } },
+      }),
+      50,
+    )
+    expect(withCoupon?.recoveryUrl).toBeNull()
+    const open = parseExpiredSponsorCheckout(
+      expired('evt_member_open', {
+        id: 'cs_test_member_open',
+        payment_status: 'unpaid',
+        consent: { promotions: 'opt_in' },
+        customer_email: 'member@example.com',
+        metadata: { clerkUserId: 'user_1', plan: 'annual', founding_coupon: '0' },
+        after_expiration: { recovery: { url: 'https://buy.stripe.com/r/test_member_open' } },
+      }),
+      50,
+    )
+    expect(open?.recoveryUrl).toBe('https://buy.stripe.com/r/test_member_open')
+  })
+
   it('records an opted-in Payment Link and does not send when mail is off', async () => {
     const { db, close } = await createTestDatabase()
     const event = expired('evt_link_mail', {
@@ -451,7 +561,19 @@ describe('sponsor abandoned checkout migration', () => {
     const again = createClient({ url })
     const names = (await again.execute('PRAGMA table_info(sponsor_abandoned_checkouts)')).rows.map((row) => String(row.name))
     expect(names).toEqual(
-      expect.arrayContaining(['email', 'offering', 'expired_at', 'task_slug', 'source', 'recovery_url', 'recovery_email_sent_at', 'promotions_consent', 'consented_at', 'created_at']),
+      expect.arrayContaining([
+        'email',
+        'offering',
+        'expired_at',
+        'task_slug',
+        'source',
+        'recovery_url',
+        'recovery_email_claimed_at',
+        'recovery_email_sent_at',
+        'promotions_consent',
+        'consented_at',
+        'created_at',
+      ]),
     )
     const dropped = await again.execute('SELECT email FROM sponsor_abandoned_checkouts')
     expect(dropped.rows).toEqual([])

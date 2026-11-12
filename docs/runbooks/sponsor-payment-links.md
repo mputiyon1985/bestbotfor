@@ -112,3 +112,7 @@ This change does not call the Stripe API and does not edit the live Payment Link
 - `CHECKOUT_RECOVERY_RESEND_API_KEY` — Resend API key (`re_…`). Test mode sends use a test key.
 - `CHECKOUT_RECOVERY_FROM` — verified From address, for example `BestBotFor <mark@bestbotfor.com>`.
 - `CHECKOUT_RECOVERY_EMAIL_LIVE` — leave unset. The exact value `true` is required before a live (`livemode: true`) event is emailed.
+- `CHECKOUT_RECOVERY_POSTAL_ADDRESS` — the postal address printed in every recovery email. Blank or unset skips the send and does not claim it. This repo does not contain an address.
+- `CHECKOUT_RECOVERY_UNSUBSCRIBE_SECRET` — at least 32 characters, not trimmed. Signs the one-click unsubscribe token. Missing or shorter skips the send.
+
+An opted-out address is stored in `checkout_recovery_suppressions` and is not emailed again. That table is not part of the 90-day abandoned-checkout purge. The email's List-Unsubscribe header points at `https://bestbotfor.com/checkout-recovery/unsubscribe?token=…` and also lists privacy@bestbotfor.com. `List-Unsubscribe-Post` is `List-Unsubscribe=One-Click`. A GET shows a confirmation form and does not opt the address out. A POST, including the one-click body, records the opt-out with no login.

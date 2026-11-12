@@ -184,6 +184,7 @@ export const SPONSOR_ABANDONED_CHECKOUTS_DDL = `CREATE TABLE IF NOT EXISTS spons
   task_slug TEXT,
   source TEXT NOT NULL,
   recovery_url TEXT,
+  recovery_email_claimed_at INTEGER,
   recovery_email_sent_at INTEGER,
   promotions_consent TEXT NOT NULL DEFAULT '',
   consented_at INTEGER NOT NULL DEFAULT 0,
@@ -197,6 +198,7 @@ const SPONSOR_ABANDONED_ADOPT_COLUMNS: ReadonlyArray<{ name: string; ddl: string
   { name: 'task_slug', ddl: 'TEXT' },
   { name: 'source', ddl: "TEXT NOT NULL DEFAULT 'checkout'" },
   { name: 'recovery_url', ddl: 'TEXT' },
+  { name: 'recovery_email_claimed_at', ddl: 'INTEGER' },
   { name: 'recovery_email_sent_at', ddl: 'INTEGER' },
   { name: 'promotions_consent', ddl: "TEXT NOT NULL DEFAULT ''" },
   { name: 'consented_at', ddl: 'INTEGER NOT NULL DEFAULT 0' },
@@ -208,6 +210,17 @@ const SPONSOR_ABANDONED_ADOPT_COLUMNS: ReadonlyArray<{ name: string; ddl: string
  * the app expects. A row with no recorded opt-in is removed: those were written
  * before consent was required, and we do not keep an email without it.
  */
+export const CHECKOUT_RECOVERY_SUPPRESSIONS_DDL = `CREATE TABLE IF NOT EXISTS checkout_recovery_suppressions (
+  email TEXT PRIMARY KEY,
+  suppressed_at INTEGER NOT NULL,
+  source TEXT NOT NULL
+)`
+
+/** Suppression list for checkout recovery email. Additive. Nothing is deleted. */
+export async function adoptCheckoutRecoverySuppressions(client: Client): Promise<void> {
+  await client.execute(CHECKOUT_RECOVERY_SUPPRESSIONS_DDL)
+}
+
 export async function adoptSponsorAbandonedCheckouts(client: Client): Promise<void> {
   await client.execute(SPONSOR_ABANDONED_CHECKOUTS_DDL)
   await addMissingColumns(client, 'sponsor_abandoned_checkouts', SPONSOR_ABANDONED_ADOPT_COLUMNS)
@@ -324,6 +337,7 @@ export async function applyMigrations(url: string, authToken?: string, migration
   await adoptSponsorCardSchema(client)
   await adoptSuggestionsSchema(client)
   await adoptSponsorAbandonedCheckouts(client)
+  await adoptCheckoutRecoverySuppressions(client)
 
   client.close()
 }

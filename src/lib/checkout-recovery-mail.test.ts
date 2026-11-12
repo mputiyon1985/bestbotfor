@@ -2,12 +2,17 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   checkoutRecoveryHref,
   checkoutRecoveryMessage,
+  checkoutRecoveryUrlAllowed,
   postRecoveryEmail,
+  recoveryCompliance,
   recoveryMailConfig,
+  recoveryPostalAddress,
 } from './checkout-recovery-mail'
 import { EMAIL_SIGNATURE_TEXT } from './email-signature'
 
 const config = { apiKey: 're_test_key_123', from: 'BestBotFor <mark@bestbotfor.com>' }
+const postal = '1 Test Street\nTest City TS 00000'
+const unsubscribeUrl = 'https://bestbotfor.com/checkout-recovery/unsubscribe?token=test-token'
 
 describe('checkout recovery email', () => {
   it('sends a scarce offer back to /sponsor and never includes a recovery URL', () => {
@@ -23,15 +28,31 @@ describe('checkout recovery email', () => {
       offerLabel: 'Founding sponsor',
       offering: 'founding_sponsor',
       recoveryUrl: 'https://buy.stripe.com/r/test_secret',
+      postalAddress: postal,
+      unsubscribeUrl,
       siteUrl: 'https://bestbotfor.com',
     })
     expect(message?.text).toContain('https://bestbotfor.com/sponsor')
+    expect(message?.text).toContain(postal)
+    expect(message?.text).toContain(unsubscribeUrl)
     expect(message?.text).not.toContain('buy.stripe.com/r/')
-    expect(message?.text).toContain('unsubscribe')
+    expect(message?.text).toContain('privacy@bestbotfor.com')
     expect(message?.text).toContain(EMAIL_SIGNATURE_TEXT)
-    expect(message?.html).toContain('privacy@bestbotfor.com')
+    expect(message?.html).toContain('1 Test Street<br>Test City TS 00000')
     expect(message?.html).not.toMatch(/<script/i)
-    expect(message?.listUnsubscribe).toBe('<mailto:privacy@bestbotfor.com?subject=Unsubscribe>')
+    expect(message?.listUnsubscribe).toBe(`<${unsubscribeUrl}>, <mailto:privacy@bestbotfor.com?subject=Unsubscribe>`)
+    expect(message?.listUnsubscribePost).toBe('List-Unsubscribe=One-Click')
+    expect(
+      checkoutRecoveryMessage({
+        sessionId: 'cs_test_founding',
+        email: 'buyer@example.com',
+        offerLabel: 'Founding sponsor',
+        offering: 'founding_sponsor',
+        recoveryUrl: null,
+        postalAddress: '  ',
+        unsubscribeUrl,
+      }),
+    ).toBeNull()
   })
 
   it('uses the Stripe recovery URL for the newsletter and the public Payment Link otherwise', () => {
@@ -56,6 +77,16 @@ describe('checkout recovery email', () => {
         siteUrl: 'https://bestbotfor.com',
       }),
     ).toEqual({ href: 'https://bestbotfor.com/pricing', reopensCheckout: false })
+    expect(checkoutRecoveryUrlAllowed('membership_annual', true)).toBe(false)
+    expect(checkoutRecoveryUrlAllowed('membership_monthly', false)).toBe(true)
+    expect(
+      checkoutRecoveryHref({
+        offering: 'membership_annual',
+        recoveryUrl: 'https://buy.stripe.com/r/test_coupon',
+        foundingCoupon: true,
+        siteUrl: 'https://bestbotfor.com',
+      }),
+    ).toEqual({ href: 'https://bestbotfor.com/pricing', reopensCheckout: false })
     expect(
       checkoutRecoveryHref({
         offering: 'placement_subscription',
@@ -73,6 +104,8 @@ describe('checkout recovery email', () => {
         offerLabel: 'Founding sponsor',
         offering: 'founding_sponsor',
         recoveryUrl: null,
+        postalAddress: postal,
+        unsubscribeUrl,
       }),
     ).toBeNull()
     expect(
@@ -82,6 +115,8 @@ describe('checkout recovery email', () => {
         offerLabel: 'Founding sponsor',
         offering: 'founding_sponsor',
         recoveryUrl: null,
+        postalAddress: postal,
+        unsubscribeUrl,
       }),
     ).toBeNull()
   })
@@ -100,6 +135,16 @@ describe('checkout recovery email', () => {
       reason: 'mail-not-configured',
     })
     expect(recoveryMailConfig({ ...env, CHECKOUT_RECOVERY_FROM: 'bad\nfrom@example.com' }, false).ok).toBe(false)
+    expect(recoveryPostalAddress({})).toBeNull()
+    expect(recoveryPostalAddress({ CHECKOUT_RECOVERY_POSTAL_ADDRESS: '   ' })).toBeNull()
+    expect(recoveryCompliance({ CHECKOUT_RECOVERY_POSTAL_ADDRESS: '   ', CHECKOUT_RECOVERY_UNSUBSCRIBE_SECRET: 's'.repeat(32) })).toEqual({
+      ok: false,
+      reason: 'postal-address-missing',
+    })
+    expect(recoveryCompliance({ CHECKOUT_RECOVERY_POSTAL_ADDRESS: postal })).toEqual({
+      ok: false,
+      reason: 'unsubscribe-secret-missing',
+    })
   })
 
   it('posts one idempotent message and classifies Resend status codes', async () => {
@@ -109,15 +154,21 @@ describe('checkout recovery email', () => {
       offerLabel: 'Newsletter sponsor slot',
       offering: 'newsletter_slot',
       recoveryUrl: 'https://buy.stripe.com/r/test_send',
+      postalAddress: postal,
+      unsubscribeUrl,
       siteUrl: 'https://bestbotfor.com',
     })
     if (!message) throw new Error('message')
     const fetchImpl = vi.fn(async (_url: string, init?: RequestInit) => {
-      const body = JSON.parse(String(init?.body)) as { to: string[]; headers: { 'List-Unsubscribe': string } }
+      const body = JSON.parse(String(init?.body)) as {
+        to: string[]
+        headers: { 'List-Unsubscribe': string; 'List-Unsubscribe-Post': string }
+      }
       expect(body.to).toEqual(['buyer@example.com'])
       expect(body.headers['List-Unsubscribe']).toContain('mailto:privacy@bestbotfor.com')
       const headers = new Headers(init?.headers)
       expect(headers.get('Idempotency-Key')).toBe('checkout-recovery-cs_test_send')
+      expect(body.headers['List-Unsubscribe-Post']).toBe('List-Unsubscribe=One-Click')
       expect(headers.get('Authorization')).toBe('Bearer re_test_key_123')
       return new Response('{}', { status: 200 })
     })
