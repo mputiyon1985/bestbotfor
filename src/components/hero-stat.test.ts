@@ -49,7 +49,7 @@ describe('HeroStat', () => {
     expect(html).toContain('text-accent')
     expect(html).toContain('text-hero-pick')
     expect(html).toContain('text-[6rem]')
-    expect(html).toContain('text-2xl')
+    expect(html).toContain('text-xl')
     expect(html).toContain('whitespace-nowrap')
     expect(html).not.toContain('<img')
   })
@@ -59,7 +59,7 @@ describe('HeroStat', () => {
     const light = css.slice(css.indexOf(':root'), css.indexOf('@media'))
     const pick = light.match(/--hero-pick:\s*(#[0-9A-Fa-f]{6})/)?.[1]
     expect(pick).toBe('#0b9b6c')
-    // 24px bold and up is large text. The digit stays at least text-2xl.
+    // 20px bold and up is large text. The digit stays at least text-xl.
     expect(contrast(pick ?? '#000000', BRAND.white)).toBeGreaterThanOrEqual(3)
     expect(contrast(BRAND.indigo, BRAND.white)).toBeGreaterThanOrEqual(4.5)
     expect(contrast(BRAND.mint, BRAND.ink)).toBeGreaterThanOrEqual(4.5)

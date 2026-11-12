@@ -67,15 +67,15 @@ function ChoicePills({
 /**
  * Server-rendered. A client form was hydrating on every home visit and adding blocking time.
  * The card is capped and centered so the questions do not span the page. The desktop
- * negative margin cancels most of the homepage's 4rem section gap so the card and its
- * button still sit above the fold at 1280×800.
+ * negative margin cancels most of the homepage's 4rem section gap. From 768px up
+ * the card and its button sit above an 800px fold; the large layout eases that pull.
  */
 export function PickerForm({ tasks }: { tasks: CatalogTask[] }) {
   return (
     <form
       action="/result"
       method="get"
-      className="mx-auto mt-3 w-full max-w-[40rem] space-y-2.5 rounded-3xl border border-line bg-card p-4 pb-28 shadow-sm md:-mt-14 md:space-y-2 md:px-5 md:pt-4 md:pb-2"
+      className="mx-auto mt-3 w-full max-w-[40rem] space-y-2.5 rounded-3xl border border-line bg-card p-4 pb-28 shadow-sm md:-mt-16 md:space-y-2 md:px-5 md:pt-4 md:pb-2 lg:-mt-14"
     >
       <fieldset className="min-w-0">
         <legend className="font-semibold text-lg leading-tight">{PICKER_QUESTIONS[0]}</legend>

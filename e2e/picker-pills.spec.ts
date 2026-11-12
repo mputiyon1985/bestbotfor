@@ -20,6 +20,12 @@ const desktop = [
   { width: 1280, height: 800 },
 ] as const
 
+const fold = [
+  { width: 768, height: 800 },
+  { width: 1023, height: 800 },
+  { width: 1280, height: 800 },
+] as const
+
 test('budget and experience are radio rows that move with the keyboard', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 800 })
   await page.goto('/')
@@ -75,6 +81,24 @@ test('budget and experience are radio rows that move with the keyboard', async (
   await page.getByLabel('Pick the closest job.').selectOption('chat')
   await page.getByRole('button', { name: 'See my best bot' }).click()
   await expect(page).toHaveURL(/\/result\?task=chat&budget=low&skill=intermediate$/)
+})
+
+test('the quiz card and the See my best bot button stay above an 800px fold', async ({ page }) => {
+  for (const viewport of fold) {
+    await page.setViewportSize(viewport)
+    await page.goto('/')
+    await page.evaluate(() => document.fonts.ready)
+    const form = page.locator('form[action="/result"]')
+    const button = page.getByRole('button', { name: 'See my best bot' })
+    const formBox = await form.boundingBox()
+    const buttonBox = await button.boundingBox()
+    expect(formBox, `${viewport.width} card`).not.toBeNull()
+    expect(buttonBox, `${viewport.width} button`).not.toBeNull()
+    if (!formBox || !buttonBox) return
+    expect(formBox.y, `${viewport.width} card starts on screen`).toBeGreaterThanOrEqual(0)
+    expect(formBox.y + formBox.height, `${viewport.width} card bottom`).toBeLessThanOrEqual(viewport.height)
+    expect(buttonBox.y + buttonBox.height, `${viewport.width} button bottom`).toBeLessThanOrEqual(viewport.height)
+  }
 })
 
 test('the quiz card, including the button, fits above the fold on desktop', async ({ page }) => {
