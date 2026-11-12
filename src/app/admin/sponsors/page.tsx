@@ -132,9 +132,7 @@ export default async function SponsorCardsPage() {
       ) : null}
       <h2 className="font-semibold text-3xl">Abandoned checkouts</h2>
       <p>
-        Unpaid sponsor checkouts that expired after the buyer opted in to promotional email. The email, the offer, and
-        the time. This page does not send email. One manual follow-up email is allowed, and only for someone on this
-        list. Anyone who did not opt in is not listed and gets no follow-up email.
+        Unpaid sponsor and membership checkouts that expired after the buyer opted in to promotional email. The email, the offer, and the time. When recovery mail is configured, one email is sent for each session. One manual follow-up email is allowed when that send did not happen. Anyone who did not opt in is not listed and gets no follow-up email.
       </p>
       {abandonedUnavailable ? <p role="alert">Abandoned checkouts are unavailable.</p> : null}
       {!abandonedUnavailable && abandoned.length === 0 ? <p>No abandoned sponsor checkouts.</p> : null}

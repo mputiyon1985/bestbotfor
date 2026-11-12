@@ -218,6 +218,9 @@ describe('subscription checkout params', () => {
     if (!parsed.ok) return
     const { params } = sponsorCheckoutParams({ ...parsed.value, ...urls })
     expect(params.mode).toBe('subscription')
+    expect(params.customer_email).toBe('sponsor@example.com')
+    expect(params.consent_collection).toEqual({ promotions: 'auto' })
+    expect(params).not.toHaveProperty('after_expiration')
     expect(params.line_items).toEqual([{ price: 'price_e2e_subscription', quantity: 1 }])
     expect(params.subscription_data).not.toHaveProperty('trial_period_days')
     expect(params.subscription_data?.metadata).toMatchObject({ offering: 'placement_subscription', price_lock_months: '0' })
@@ -248,9 +251,11 @@ describe('subscription checkout params', () => {
       'custom_text',
       'integration_identifier',
       'managed_payments',
+      'consent_collection',
     ])
+    expect(params.customer_email).toBe('sponsor@example.com')
     expect(params).not.toHaveProperty('after_expiration')
-    expect(params).not.toHaveProperty('consent_collection')
+    expect(params.consent_collection).toEqual({ promotions: 'auto' })
     expect(params.mode).toBe('payment')
     expect((params.custom_text?.submit as { message?: string } | undefined)?.message).toBe(SPONSOR_ONE_TIME_NOTICE)
     expect(params.metadata).not.toHaveProperty('billing')

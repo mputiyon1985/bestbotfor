@@ -9,8 +9,11 @@ const ALLOWED = new Set([
   // Pending Beehiiv backfill claims a row before the call, then marks it synced.
   'src/lib/newsletter-backfill.ts',
   'src/lib/stripe-webhook.ts',
-  // Expired sponsor Checkout leads (email, offer, time). No email is sent.
+  // Expired Checkout leads (email, offer, time) and the recovery-email lease.
+  // sent_at is set only after the provider accepts. Opt-in only.
   'src/lib/sponsor-abandoned.ts',
+  // Checkout recovery unsubscribe list. One row per address. Not deleted on a schedule.
+  'src/lib/checkout-recovery-unsubscribe.ts',
   // Sponsor tool cards, their review audit log, and the checkout slot claim.
   'src/lib/sponsor-card.ts',
   'src/lib/sponsor-availability.ts',
