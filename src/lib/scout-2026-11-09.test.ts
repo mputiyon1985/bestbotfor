@@ -53,7 +53,10 @@ describe('bot scout 2026-11-09', () => {
       expect(seed(slug).affiliate.affiliateUrl, slug).toBeUndefined()
       expect(servesAffiliateLink(slug, null, seed(slug).affiliate.status), slug).toBe(false)
     }
-    expect(toolSeeds.find((tool) => tool.slug === 'sendr')).toBeUndefined()
+    const sendr = toolSeeds.find((tool) => tool.slug === 'sendr')
+    expect(sendr?.affiliate.status).toBe('inactive')
+    expect(sendr?.affiliate.affiliateUrl).toBeUndefined()
+    expect(servesAffiliateLink('sendr', sendr?.affiliate.sourceUrl, 'inactive')).toBe(false)
 
     const tool = seed('docsalot')
     expect(tool.affiliate).toEqual({
