@@ -186,9 +186,10 @@ export function sponsorCheckoutParams(input: SponsorCheckoutInput & {
     notice,
   ]
   if (subscription) fingerprintFields.push('subscription', setupPriceId ?? '', String(trialDays), String(lockMonths))
-  // Recovery stays out of this hash. Founding and placement sessions do not
-  // send it. A newsletter session that does is a different body, so a retry
-  // of an older key fails closed at Stripe instead of opening a second session.
+  // Recovery and the promotions checkbox stay out of this hash. Every sponsor
+  // session asks for promotional consent. Only the newsletter slot also turns
+  // on after_expiration.recovery. A retry of a key minted before that body
+  // changed fails closed at Stripe instead of opening a second session.
   const fingerprintSource = fingerprintFields.join('\n')
   const fingerprint = createHash('sha256').update(fingerprintSource).digest('hex').slice(0, 16)
   const founding = input.offering === 'founding_sponsor'
@@ -277,24 +278,29 @@ export function sponsorRecoveryEnabled(offeringId: string): boolean {
 }
 
 /**
- * Recovery fields for one offering, or an empty object when recovery is off.
+ * Promotions consent on every sponsor Checkout, plus a Stripe recovery URL
+ * only for offerings in SPONSOR_RECOVERY_OFFERING_IDS.
  * allow_promotion_codes stays false: the original session does not offer a code.
  * consent_collection.promotions auto asks the buyer; it is not itself consent.
- * This app does not send email.
+ * Stripe does not email the buyer. The expired-session handler does, and only
+ * after consent.promotions is opt_in.
  */
 export function sponsorCheckoutRecovery(
   offeringId: string,
-): Pick<Stripe.Checkout.SessionCreateParams, 'after_expiration' | 'consent_collection'> | Record<string, never> {
-  if (!sponsorRecoveryEnabled(offeringId)) return {}
+): Pick<Stripe.Checkout.SessionCreateParams, 'after_expiration' | 'consent_collection'> {
+  const consent = {
+    consent_collection: {
+      promotions: 'auto' as const,
+    },
+  }
+  if (!sponsorRecoveryEnabled(offeringId)) return consent
   return {
+    ...consent,
     after_expiration: {
       recovery: {
         enabled: true,
         allow_promotion_codes: false,
       },
-    },
-    consent_collection: {
-      promotions: 'auto',
     },
   }
 }

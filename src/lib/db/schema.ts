@@ -593,8 +593,9 @@ export const signupsLoginAttempts = sqliteTable('signups_login_attempts', {
 })
 
 /**
- * Unpaid sponsor Checkout that reached expires_at. One row per session.
- * The team reads it on /admin/sponsors. This app does not email the buyer.
+ * Unpaid sponsor or membership Checkout that reached expires_at. One row per session.
+ * The team reads it on /admin/sponsors. One recovery email is sent when the buyer
+ * opted in, mail is configured, the postal address is set, and the address is not suppressed.
  */
 export const sponsorAbandonedCheckouts = sqliteTable(
   'sponsor_abandoned_checkouts',
@@ -606,6 +607,10 @@ export const sponsorAbandonedCheckouts = sqliteTable(
     taskSlug: text('task_slug'),
     source: text('source').notNull(),
     recoveryUrl: text('recovery_url'),
+    /** Lease while a send is in flight. A crash leaves this set until the lease expires. */
+    recoveryEmailClaimedAt: integer('recovery_email_claimed_at'),
+    /** Set after the mail provider accepts the message. Null until then. */
+    recoveryEmailSentAt: integer('recovery_email_sent_at'),
     /** Buyer's choice. Rows exist only for opt_in. */
     promotionsConsent: text('promotions_consent').notNull(),
     /** Expiry event time, the clock on which we observed the opt-in. */
@@ -614,6 +619,16 @@ export const sponsorAbandonedCheckouts = sqliteTable(
   },
   (table) => [index('sponsor_abandoned_checkouts_expired_at_idx').on(table.expiredAt)],
 )
+
+/**
+ * Addresses that opted out of checkout recovery email. Kept so a later expired
+ * session does not email them again. Not deleted on the abandoned-checkout schedule.
+ */
+export const checkoutRecoverySuppressions = sqliteTable('checkout_recovery_suppressions', {
+  email: text('email').primaryKey(),
+  suppressedAt: integer('suppressed_at').notNull(),
+  source: text('source').notNull(),
+})
 
 /**
  * Private outreach list for /admin/leads. contact_email is stored lowercased

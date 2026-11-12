@@ -6,6 +6,7 @@ import { drizzle } from 'drizzle-orm/libsql'
 import * as schema from '@/lib/db/schema'
 import type { Database } from '@/lib/db/client'
 import {
+  adoptCheckoutRecoverySuppressions,
   adoptSponsorAbandonedCheckouts,
   adoptSponsorCardSchema,
   adoptSponsorshipSchema,
@@ -27,6 +28,7 @@ export async function createTestDatabase(): Promise<{ db: Database; url: string;
   await adoptSponsorCardSchema(client)
   await adoptSuggestionsSchema(client)
   await adoptSponsorAbandonedCheckouts(client)
+  await adoptCheckoutRecoverySuppressions(client)
   const db = drizzle(client, { schema })
   return {
     db,

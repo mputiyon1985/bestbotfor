@@ -195,7 +195,28 @@
       "idx": 27,
       "version": "6",
       "when": 1792199000000,
-      "tag": "0029_bbf_leads",
+      "tag": "0029_checkout_recovery_email",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "6",
+      "when": 1792200000000,
+      "tag": "0030_checkout_recovery_suppression",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1792201000000,
+      "tag": "0031_checkout_recovery_claim",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1792202000000,
+      "tag": "0032_bbf_leads",
       "breakpoints": true
     }
   ]

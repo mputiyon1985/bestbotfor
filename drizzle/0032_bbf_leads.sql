@@ -1,7 +1,7 @@
 -- Private leads for the password-gated /admin/leads page. Additive.
 -- Existing tables stay as they are. Safe to re-run.
--- Next free number on main after 0028. Open PR #191 adds 0029-0031.
--- If that PR merges first, renumber this file and its journal idx.
+-- Next free number after main 26a6d4f (#191), which owns 0029-0031.
+-- Journal idx 30. Tag 0032_bbf_leads.
 -- The deploy applies this file automatically: every production build,
 -- including the one a merge to main triggers, runs prebuild
 -- (scripts/prepare-db.ts). Mark's OK is needed before this migration is merged.
