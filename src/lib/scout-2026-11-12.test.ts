@@ -197,8 +197,7 @@ describe('bot scout 2026-11-12', () => {
       network: 'Cello',
       sourceUrl: 'https://www.sendr.ai/affiliates#apply-form',
       status: 'active',
-      commissionNote:
-        '20% of every payment. 30% of every payment for the first 100 founding affiliates, for life, while they stay active by referring 2 paying customers every 6 months. Up to $5,000 per customer. Claimed after a 30-day hold and paid by PayPal.',
+      commissionNote: '30% of monthly subscription revenue, up to $5,000 per referral.',
       affiliateUrl: 'https://sendr.cello.so/LOp5fYtd9Jc',
     })
     expect(seed('sendr').allowedHosts).toEqual(['www.sendr.ai', 'sendr.cello.so/LOp5fYtd9Jc'])
@@ -261,6 +260,29 @@ describe('bot scout 2026-11-12', () => {
       click: { affiliate: true, programId: 1, subIdParam: null },
     })
     if (get.status === 302) expect(new URL(get.location).search).toBe('')
+
+    for (const search of ['?utm_source=x', '?utm_source=x&utm_medium=email&foo=1', '?ref=other']) {
+      const queried = await resolveGoRedirect({
+        headers: new Headers(),
+        ip: '203.0.113.57',
+        siteUrl: 'https://bestbotfor.com',
+        search,
+        seedUrl: tool.url,
+        seedAffiliateUrl: tool.affiliate.affiliateUrl ?? null,
+        seedAffiliateStatus: tool.affiliate.status,
+        seedNetwork: tool.affiliate.network,
+        allowedHosts: tool.allowedHosts,
+        limit: async () => ({ ok: true }),
+        loadTool: async () => ({
+          id: 1,
+          url: tool.url,
+          affiliateUrl: tool.affiliate.affiliateUrl ?? null,
+          affiliateStatus: tool.affiliate.status,
+          network: tool.affiliate.network,
+        }),
+      })
+      expect(queried, search).toMatchObject({ status: 302, location: tracking })
+    }
   })
 
   it('sends /go for each new tool to that tool’s official URL with the standard UTM', async () => {

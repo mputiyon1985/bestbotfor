@@ -7693,7 +7693,7 @@ export const toolSeeds: ToolSeed[] = [
   }),
   // scout 2026-11-12 | category: Sales (FLAG: scout category "Sales" mapped to Automation; Needle and Alsona, the catalog's outbound tools, are Automation) | scout rating 4.0 (not shown) | launch: 2026-11-12 (Product Hunt, Sendr V4) | pricing: checked 2026-11-12 at https://www.sendr.ai/pricing. Public offers in the page schema: Monthly $119; Annual Bundle $1,199. 14-day free trial with 1,500 credits and 2 sending channels, no card. Included: 3,000 credits/month and 2 sending channels. Add-ons: +1,000 credits $10/mo, +1 channel $10/mo.
   // note: priceFromUsd is Monthly, $119. The Annual Bundle is $1,199, not a monthly rate, and is not the stored from-price. The trial is not a free plan. No free plan was found. Sponsorship unknown.
-  // affiliate: Cello. Approved and seeded active. 20% of every payment (30% of every payment for the first 100 founding affiliates, for life, while they stay active by referring 2 paying customers every 6 months). Up to $5,000 per customer. 30-day hold. PayPal. Apply page https://www.sendr.ai/affiliates#apply-form. Tracking URL https://sendr.cello.so/LOp5fYtd9Jc. The allowlist pins that path. /go/sendr sends that URL and does not add other parameters. The apply page stays on the official host.
+  // affiliate: Cello. Approved and seeded active. 30% of monthly subscription revenue, up to $5,000 per referral. Apply page https://www.sendr.ai/affiliates#apply-form. Tracking URL https://sendr.cello.so/LOp5fYtd9Jc. The allowlist pins that path. /go/sendr sends that URL and drops every query parameter. The apply page stays on the official host.
   tool({
     slug: 'sendr',
     addedAt: SCOUTED_2026_11_12,
@@ -7717,8 +7717,7 @@ export const toolSeeds: ToolSeed[] = [
       network: 'Cello',
       sourceUrl: 'https://www.sendr.ai/affiliates#apply-form',
       status: 'active',
-      commissionNote:
-        '20% of every payment. 30% of every payment for the first 100 founding affiliates, for life, while they stay active by referring 2 paying customers every 6 months. Up to $5,000 per customer. Claimed after a 30-day hold and paid by PayPal.',
+      commissionNote: '30% of monthly subscription revenue, up to $5,000 per referral.',
       affiliateUrl: 'https://sendr.cello.so/LOp5fYtd9Jc',
     },
   }),

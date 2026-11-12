@@ -30,6 +30,7 @@ describe('outbound UTMs', () => {
     const cello = 'https://sendr.cello.so/LOp5fYtd9Jc'
     expect(withOutboundUtm(cello, 'direct')).toBe(cello)
     expect(withOutboundUtm(cello, 'tool')).toBe(cello)
+    expect(withOutboundUtm(`${cello}?utm_source=x&foo=1`, 'direct')).toBe(cello)
   })
 
   it('keeps the host', () => {
