@@ -257,12 +257,13 @@ describe('sponsorCheckoutParams', () => {
     expect(otherOrigin.idempotencyKey).not.toBe(first.idempotencyKey)
     expect(otherOrigin.params.success_url).toBe('http://127.0.0.1:3000/sponsor/success?session_id={CHECKOUT_SESSION_ID}')
     expect(otherOrigin.params.cancel_url).toBe('http://127.0.0.1:3000/sponsor/cancel')
+    expect(first.params.customer_email).toBe('sponsor@example.com')
     expect(first.params).not.toHaveProperty('after_expiration')
-    expect(first.params).not.toHaveProperty('consent_collection')
+    expect(first.params.consent_collection).toEqual({ promotions: 'auto' })
     expect(first.params).not.toHaveProperty('allow_promotion_codes')
-    expect(sponsorCheckoutRecovery('placement_weekly')).toEqual({})
-    expect(sponsorCheckoutRecovery('founding_sponsor')).toEqual({})
-    expect(sponsorCheckoutRecovery('placement_subscription')).toEqual({})
+    expect(sponsorCheckoutRecovery('placement_weekly')).toEqual({ consent_collection: { promotions: 'auto' } })
+    expect(sponsorCheckoutRecovery('founding_sponsor')).toEqual({ consent_collection: { promotions: 'auto' } })
+    expect(sponsorCheckoutRecovery('placement_subscription')).toEqual({ consent_collection: { promotions: 'auto' } })
   })
 
   it('turns recovery on only for the newsletter slot, with promotion codes off', () => {

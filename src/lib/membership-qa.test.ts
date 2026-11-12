@@ -74,6 +74,8 @@ describe('one founding seat per person', () => {
     const action = readFileSync('src/app/pricing/actions.ts', 'utf8')
     const members = readFileSync('src/lib/members.ts', 'utf8')
     expect(members).toContain('or(eq(subscriptions.clerkUserId, userId), eq(subscriptions.stripeCustomerId, customer))')
+    expect(action).toContain('currentUser()')
+    expect(action).toContain('email: buyerEmail')
     expect(action).toContain("stripe.subscriptions.list({ customer, status: 'all'")
     expect(action).toMatch(/catch \(error\) \{\n\s+console\.error\('founding eligibility lookup failed'[^\n]*\n\s+return false/)
   })
