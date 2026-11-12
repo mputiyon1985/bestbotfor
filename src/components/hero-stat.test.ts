@@ -30,10 +30,11 @@ function contrast(foreground: string, background: string): number {
 
 describe('HeroStat', () => {
   it('follows the count it is given and says that count once', () => {
-    expect(spoken(1260)).toBe(`1,260 tools ${VISIBLE_TOOL_COUNT_WORD}. 1 right pick for you.`)
-    expect(spoken(2)).toBe(`2 tools ${VISIBLE_TOOL_COUNT_WORD}. 1 right pick for you.`)
-    expect(spoken(1)).toBe(`1 tool ${VISIBLE_TOOL_COUNT_WORD}. 1 right pick for you.`)
-    expect(spoken(363)).toBe(`363 tools ${VISIBLE_TOOL_COUNT_WORD}. 1 right pick for you.`)
+    expect(spoken(1260)).toBe(`1,260 AI tools ${VISIBLE_TOOL_COUNT_WORD}. 1 right pick for you.`)
+    expect(spoken(2)).toBe(`2 AI tools ${VISIBLE_TOOL_COUNT_WORD}. 1 right pick for you.`)
+    expect(spoken(1)).toBe(`1 AI tool ${VISIBLE_TOOL_COUNT_WORD}. 1 right pick for you.`)
+    expect(spoken(363)).toBe(`363 AI tools ${VISIBLE_TOOL_COUNT_WORD}. 1 right pick for you.`)
+    expect(formatVisibleToolCount(0)).toBeNull()
     expect(spoken(1260).match(/1,260/g)).toHaveLength(1)
     expect(spoken(2)).not.toContain('1,260')
     expect(spoken(363)).not.toContain('AI tools listed')

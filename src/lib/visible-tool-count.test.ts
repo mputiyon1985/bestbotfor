@@ -35,11 +35,11 @@ function expectedCount(count: number) {
 
 describe('formatVisibleToolCount', () => {
   it('groups thousands and follows the count', () => {
-    expect(VISIBLE_TOOL_COUNT_WORD).toBe('ranked')
+    expect(VISIBLE_TOOL_COUNT_WORD).toBe('tracked')
     expect(formatVisibleToolCount(260)).toEqual(expectedCount(260))
     expect(formatVisibleToolCount(1260)).toEqual(expectedCount(1260))
     expect(formatVisibleToolCount(1)).toEqual(expectedCount(1))
-    expect(formatVisibleToolCount(0)).toEqual(expectedCount(0))
+    expect(formatVisibleToolCount(0)).toBeNull()
     expect(formatVisibleToolCount(363)).toEqual({ formatted: '363', noun: 'tools' })
     expect(formatVisibleToolCount(363)).not.toEqual(formatVisibleToolCount(349))
   })
@@ -59,6 +59,7 @@ describe('visibleToolCountLabel', () => {
       throw new Error('db down')
     })).resolves.toBeNull()
     await expect(visibleToolCountLabel(async () => 1260)).resolves.toEqual(expectedCount(1260))
+    await expect(visibleToolCountLabel(async () => 0)).resolves.toBeNull()
   })
 })
 

@@ -81,17 +81,17 @@ function expectedCount(count: number) {
 }
 
 describe('cached visible tool count', () => {
-  it('reads the database once for repeated calls and revalidates hourly', async () => {
-    const { getVisibleToolCount, CATALOG_PAGE_REVALIDATE_SECONDS } = await import('./catalog')
+  it('reads the database once for repeated calls, refreshes within a minute, and busts on deploy', async () => {
+    const { getVisibleToolCount, VISIBLE_TOOL_COUNT_REVALIDATE_SECONDS } = await import('./catalog')
     const { visibleToolCountLabel } = await import('./visible-tool-count')
     expect(await getVisibleToolCount()).toBe(1260)
     expect(await getVisibleToolCount()).toBe(1260)
     expect(await visibleToolCountLabel()).toEqual(expectedCount(1260))
     expect(await visibleToolCountLabel()).toEqual(expectedCount(1260))
     expect(state.queries).toBe(1)
-    const registered = state.registrations.find((entry) => entry.keys[0] === 'visible-tool-count-v1')
-    expect(registered?.revalidate).toBe(60 * 60)
-    expect(registered?.revalidate).toBe(CATALOG_PAGE_REVALIDATE_SECONDS)
+    const registered = state.registrations.find((entry) => entry.keys[0] === 'visible-tool-count-v2')
+    expect(registered?.revalidate).toBe(60)
+    expect(registered?.revalidate).toBe(VISIBLE_TOOL_COUNT_REVALIDATE_SECONDS)
     expect(registered?.keys[1]).toMatch(/^catalog-version:/)
   })
 
