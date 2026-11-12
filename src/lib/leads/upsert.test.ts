@@ -5,6 +5,7 @@ import path from 'node:path'
 import { promisify } from 'node:util'
 import { afterEach, describe, expect, it } from 'vitest'
 import { POST } from '@/app/admin/leads/import/route'
+import { LEADS_LOGIN_LIMIT } from '@/lib/leads/auth/rate-limit'
 import { readLimitedBody } from '@/lib/leads/body'
 import { createClient } from '@libsql/client'
 import guardConfig from '../../../config/db-guard.json'
@@ -45,11 +46,12 @@ const paid = {
   amount_closed_usd: 1500,
 }
 
-function importRequest(body: string, contentType: string, cookie?: string, bearer?: string) {
+function importRequest(body: string, contentType: string, cookie?: string, bearer?: string, ip = '203.0.113.50') {
   const headers = new Headers({
     origin: 'https://dash.example',
     host: 'dash.example',
     'content-type': contentType,
+    'x-forwarded-for': ip,
   })
   if (cookie) headers.set('cookie', `${LEADS_SESSION_COOKIE}=${cookie}`)
   if (bearer) headers.set('authorization', `Bearer ${bearer}`)
@@ -182,6 +184,29 @@ describe('lead upsert storage', () => {
     )
     expect(oversized.ok).toBe(false)
   })
+
+  it('keeps successful bearer imports off the import failure limit', async () => {
+    closeDb = await withSignupsAuthDb()
+    process.env.BBF_LEADS_PASSWORD = PASSWORD
+    process.env.BBF_LEADS_SESSION_SECRET = SECRET
+    process.env.BBF_LEADS_IMPORT_TOKEN = IMPORT_TOKEN
+    const body = JSON.stringify([{ company: 'Example Co', contact_email: 'ada@example.com', type: 'affiliate', status: 'contacted' }])
+    const ip = '203.0.113.77'
+    for (let attempt = 0; attempt < LEADS_LOGIN_LIMIT + 1; attempt += 1) {
+      const response = await POST(importRequest(body, 'application/json', undefined, IMPORT_TOKEN, ip))
+      expect(response.status, String(attempt)).toBe(200)
+    }
+    const counted = await getDb().$client.execute('SELECT count FROM rate_limits')
+    expect(Number(counted.rows[0]?.count ?? 0)).toBe(0)
+    for (let attempt = 0; attempt < LEADS_LOGIN_LIMIT; attempt += 1) {
+      const response = await POST(importRequest(body, 'application/json', undefined, 'wrong-leads-import-token-value-32', ip))
+      expect(response.status, `fail ${attempt}`).toBe(401)
+    }
+    const blocked = await POST(importRequest(body, 'application/json', undefined, IMPORT_TOKEN, ip))
+    expect(blocked.status).toBe(429)
+    const other = await POST(importRequest(body, 'application/json', undefined, IMPORT_TOKEN, '203.0.113.78'))
+    expect(other.status).toBe(200)
+  }, 30_000)
 })
 
 describe('leads upsert script', () => {

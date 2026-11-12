@@ -6,7 +6,15 @@ The password is the server env var `BBF_LEADS_PASSWORD`. It is already set on Ve
 
 The session cookie is HMAC-SHA256 under `BBF_LEADS_SESSION_SECRET`, a separate random secret of at least 32 characters. That secret is not derived from the password. Unset or shorter than 32 characters fails closed with the same 404. Changing the session secret invalidates existing cookies. The cookie is httpOnly, Secure, SameSite=Strict, path `/admin/leads`, and expires after 12 hours, so a copied cookie does not last longer than that.
 
-Each sign-in attempt increments the existing `rate_limits` row before the password is compared: 8 per 15 minutes per IP. The stored key is an HMAC, not the address. On Vercel a missing trusted client IP is refused. A database error fails closed.
+Each sign-in attempt increments the login `rate_limits` row before the password is compared: 8 per 15 minutes per IP. Import bearer attempts use a separate bucket. The count is taken before the token is compared, and a successful import gives that count back, so only failed bearer attempts stay counted. The stored key is an HMAC, not the address. On Vercel a missing trusted client IP is refused. A database error fails closed.
+
+## Before deploy
+
+Set these on Vercel for production and preview before this deploys. The page 404s without the first two. Bearer import is refused without the third.
+
+- `BBF_LEADS_PASSWORD` is already set. Do not print it.
+- `BBF_LEADS_SESSION_SECRET` is required. At least 32 characters. The session HMAC key. Unset or shorter fails closed.
+- `BBF_LEADS_IMPORT_TOKEN` is required for bearer import. 32 to 256 characters. Not the page password. Unset refuses `Authorization: Bearer`.
 
 `/admin/sponsors` is unchanged. It still depends on `ADMIN_SPONSORS` and the Clerk admin allowlist. A request is treated as this password gate only when the proxy sets `x-bbf-leads` to the HMAC of the path under the session secret. A client header of `1` does not skip the Clerk admin check.
 
@@ -113,7 +121,7 @@ Validation problems go to stderr as `row N: ...` without the cell value. `row 1`
 Either of these authorizes the request:
 
 - The `bbf_leads_session` cookie, from a same-origin request.
-- `Authorization: Bearer` set to `BBF_LEADS_IMPORT_TOKEN` (32 to 256 characters). This is not the page password. Unset refuses bearer import. The attempt counter increments before the token is compared. A wrong bearer counts toward the same 8-per-15-minutes limit. Do not log the header. The body is capped at 1,000,000 bytes actually read. `Content-Length` is not the cap.
+- `Authorization: Bearer` set to `BBF_LEADS_IMPORT_TOKEN` (32 to 256 characters). This is not the page password. Unset refuses bearer import. Import uses its own rate-limit bucket, not the sign-in bucket. The count is taken before the token is compared and given back when the token matches, so only a wrong bearer stays counted, 8 per 15 minutes per IP. Do not log the header. The body is capped at 1,000,000 bytes actually read. `Content-Length` is not the cap.
 
 The response is `{ "upserted": N }` or `{ "errors": ["row 1: status must be ..."] }`. It does not echo addresses.
 

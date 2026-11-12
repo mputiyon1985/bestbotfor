@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import { getDb } from '@/lib/db'
 import { requireLeadsSession } from '@/lib/leads/access'
 import { leadsImportToken, leadsImportTokenMatches } from '@/lib/leads/auth/password'
-import { consumeLeadsAttempt, leadsAttemptKey } from '@/lib/leads/auth/rate-limit'
+import { consumeLeadsAttempt, leadsAttemptKey, LEADS_IMPORT_ACTION, releaseLeadsAttempt } from '@/lib/leads/auth/rate-limit'
 import { readLimitedBody } from '@/lib/leads/body'
 import { parseLeadBody } from '@/lib/leads/parse'
 import { upsertLeads } from '@/lib/leads/store'
@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     const token = bearerToken(request)
     if (!token) return json({ error: 'unauthorized' }, 401)
 
-    const bucket = leadsAttemptKey(request)
+    const bucket = leadsAttemptKey(request, LEADS_IMPORT_ACTION)
     if (bucket.action === 'refuse') return json({ error: 'unauthorized' }, 401)
     let db
     try {
@@ -55,6 +55,11 @@ export async function POST(request: Request) {
     if (gate === 'limited') return json({ error: 'limited' }, 429)
     const expected = leadsImportToken()
     if (!expected || !leadsImportTokenMatches(token, expected)) return json({ error: 'unauthorized' }, 401)
+    try {
+      await releaseLeadsAttempt(db, bucket.key)
+    } catch {
+      return json({ error: 'unavailable' }, 503)
+    }
   }
 
   const body = await readLimitedBody(request, IMPORT_MAX_BYTES)

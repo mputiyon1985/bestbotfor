@@ -8,18 +8,20 @@ import { consumeRateLimit } from '@/lib/rate-limit'
 export const LEADS_LOGIN_LIMIT = 8
 export const LEADS_LOGIN_WINDOW_MS = 15 * 60 * 1000
 
-const LEADS_LOGIN_ACTION = 'leads-login'
+export const LEADS_LOGIN_ACTION = 'leads-login'
+export const LEADS_IMPORT_ACTION = 'leads-import'
 
 /**
- * Bucket for an attempt. On Vercel a missing trusted IP is refused
- * and does not share one bucket. Off Vercel the first forwarded address is used.
+ * Bucket for an attempt. Login and import do not share a bucket.
+ * On Vercel a missing trusted IP is refused and does not share one bucket.
+ * Off Vercel the first forwarded address is used.
  * The stored key is an HMAC from rateLimitKey, not the address.
  */
-export function leadsAttemptKey(request: Request): { action: 'ok'; key: string } | { action: 'refuse' } {
+export function leadsAttemptKey(request: Request, action = LEADS_LOGIN_ACTION): { action: 'ok'; key: string } | { action: 'refuse' } {
   const onVercel = platformSetsClientIp({ vercel: process.env.VERCEL, vercelEnv: process.env.VERCEL_ENV })
   const ip = clientIp(request.headers)
   if (onVercel && !ip) return { action: 'refuse' }
-  return { action: 'ok', key: rateLimitKey(ip, LEADS_LOGIN_ACTION) }
+  return { action: 'ok', key: rateLimitKey(ip, action) }
 }
 
 /**
@@ -33,4 +35,12 @@ export async function consumeLeadsAttempt(db: Database, key: string, now = Date.
   } catch {
     return 'unavailable'
   }
+}
+
+/** Give back one count after a successful import so only failed bearer attempts stay counted. */
+export async function releaseLeadsAttempt(db: Database, key: string, now = Date.now()): Promise<void> {
+  await db.$client.execute({
+    sql: 'UPDATE rate_limits SET count = count - 1 WHERE "key" = ? AND count > 0 AND reset_at > ?',
+    args: [key, now],
+  })
 }
