@@ -152,7 +152,7 @@ export function suggestionPrivacyParagraph(input: RetentionCopyInput = {}): stri
 export const SUGGESTION_PRIVACY_PARAGRAPH = suggestionPrivacyParagraph()
 
 const ABANDONED_CHECKOUT_BASE =
-  'If you start a sponsor checkout and leave before paying, we store your email, the offer, the time it expired, and that you opted in, only if you agreed to promotional emails at checkout. If you agreed, we may send one follow-up email about that unfinished checkout. If you did not agree, we store nothing from that expired checkout and there is no follow-up email.'
+  'If you start a sponsor or membership checkout and leave before paying, we store your email, the offer, the time it expired, and that you opted in, only if you agreed to promotional emails at checkout. If you agreed, we send one follow-up email about that unfinished checkout. That email includes our postal address and a link to unsubscribe, and you can also email privacy@bestbotfor.com. If you unsubscribe, we keep that choice and do not send another recovery email. If you did not agree, we store nothing from that expired checkout and there is no follow-up email.'
 
 /** Abandoned sponsor checkouts are deleted about 90 days after they expire, by the same retention job. */
 export function abandonedCheckoutPrivacyParagraph(input: RetentionCopyInput = {}): string {

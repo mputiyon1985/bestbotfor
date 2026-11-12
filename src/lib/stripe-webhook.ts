@@ -97,7 +97,9 @@ export async function handleStripeWebhook(input: {
   }
 
   const db = input.db ?? getDb()
-  const deadlineMs = input.deadlineMs ?? WEBHOOK_DB_BUDGET_MS
+  // An expired checkout may send one recovery email. That call needs more than
+  // the budget used for a couple of Stripe reads.
+  const deadlineMs = input.deadlineMs ?? (event.type === 'checkout.session.expired' ? 8_000 : WEBHOOK_DB_BUDGET_MS)
 
   try {
     const outcome = await withDeadline(applyWebhook(db, stripe, event, input.now), deadlineMs)
