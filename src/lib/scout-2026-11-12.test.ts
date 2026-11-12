@@ -87,8 +87,9 @@ describe('bot scout 2026-11-12', () => {
     expect(priceLabel(seed('call-e'))).toBe('Paid')
     expect(seed('scroogefrog')).toMatchObject({ pricingModel: 'paid', priceFromUsd: 10, hasFreeTier: false })
     expect(priceLabel(seed('scroogefrog'))).toBe('$10 and up')
-    expect(seed('sendr')).toMatchObject({ pricingModel: 'paid', priceFromUsd: 99, hasFreeTier: false })
-    expect(priceLabel(seed('sendr'))).toBe('$99 and up')
+    expect(seed('sendr')).toMatchObject({ pricingModel: 'paid', priceFromUsd: 119, hasFreeTier: false })
+    expect(priceLabel(seed('sendr'))).toBe('$119 and up')
+    expect(`${seed('sendr').shortDesc} ${seed('sendr').longDesc}`).not.toMatch(/\$99|\$79/)
     expect(priceLabel(seed('sendr'))).not.toContain('billed annually')
     expect(seed('shot-video')).toMatchObject({ pricingModel: 'freemium', priceFromUsd: 19, hasFreeTier: true })
     expect(priceLabel(seed('shot-video'))).toBe('Free tier, then $19 and up')
@@ -185,7 +186,7 @@ describe('bot scout 2026-11-12', () => {
       sourceUrl: 'https://www.sendr.ai/affiliates#apply-form',
       status: 'inactive',
       commissionNote:
-        '20% of net revenue, recurring for the customer lifetime (30% for the first 100 founding affiliates while they refer 2 paying customers every 6 months). Capped at $5,000 per referred customer. 30-day hold. PayPal payouts. Not applied or accepted. No tracking link stored.',
+        '20% of every payment. 30% of every payment for the first 100 founding affiliates, for life, while they stay active by referring 2 paying customers every 6 months. Up to $5,000 per customer. Claimed after a 30-day hold and paid by PayPal. Not applied or accepted. No tracking link stored.',
     })
     expect(seed('sendr').allowedHosts).toEqual(['www.sendr.ai'])
     expect(new URL(seed('sendr').affiliate.sourceUrl!).hostname).toBe('www.sendr.ai')

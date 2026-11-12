@@ -7656,9 +7656,9 @@ export const toolSeeds: ToolSeed[] = [
     fits: [],
     affiliate: none,
   }),
-  // scout 2026-11-12 | category: Sales (FLAG: scout category "Sales" mapped to Automation; Needle and Alsona, the catalog's outbound tools, are Automation) | scout rating 4.0 (not shown) | launch: 2026-11-12 (Product Hunt, Sendr V4) | pricing: Monthly $99/mo; Annual $79/mo billed annually. 14-day free trial with 1,500 credits and 2 sending channels, no card. Included: 3,000 credits/month and 2 sending channels. Add-ons: +1,000 credits $10/mo, +1 channel $10/mo.
-  // note: priceFromUsd is the monthly plan, $99. The annual price is not the stored from-price. The trial is not a free plan. No free plan was found. Sponsorship unknown.
-  // affiliate: Cello. 20% of net revenue, recurring for the customer lifetime; 30% for the first 100 founding affiliates while they refer 2 paying customers every 6 months; capped at $5,000 per referred customer; 30-day hold; PayPal payouts. Apply page https://www.sendr.ai/affiliates#apply-form. Not applied or accepted. Seeded inactive. No tracking link. The apply page is on the official host, so no extra allowlist host is added.
+  // scout 2026-11-12 | category: Sales (FLAG: scout category "Sales" mapped to Automation; Needle and Alsona, the catalog's outbound tools, are Automation) | scout rating 4.0 (not shown) | launch: 2026-11-12 (Product Hunt, Sendr V4) | pricing: checked 2026-11-12 at https://www.sendr.ai/pricing. Public offers in the page schema: Monthly $119; Annual Bundle $1,199. 14-day free trial with 1,500 credits and 2 sending channels, no card. Included: 3,000 credits/month and 2 sending channels. Add-ons: +1,000 credits $10/mo, +1 channel $10/mo.
+  // note: priceFromUsd is Monthly, $119. The Annual Bundle is $1,199, not a monthly rate, and is not the stored from-price. The trial is not a free plan. No free plan was found. Sponsorship unknown.
+  // affiliate: Cello. 20% of every payment (30% of every payment for the first 100 founding affiliates, for life, while they stay active by referring 2 paying customers every 6 months). Up to $5,000 per customer. 30-day hold. PayPal. Apply page https://www.sendr.ai/affiliates#apply-form. Not applied or accepted. Seeded inactive. No tracking link. The apply page is on the official host, so no extra allowlist host is added.
   tool({
     slug: 'sendr',
     addedAt: SCOUTED_2026_11_12,
@@ -7669,9 +7669,9 @@ export const toolSeeds: ToolSeed[] = [
     category: 'Automation',
     shortDesc: 'Builds outreach sequences from buying signals across email, LinkedIn and WhatsApp.',
     longDesc:
-      'Sendr turns buying signals into outreach sequences across email, LinkedIn and WhatsApp, including personalized video. A campaign copilot drafts a campaign, and the vendor describes a contact database of verified emails and mobiles. The monthly plan is $99 a month. Billed annually it is $79 a month. The plan includes 3,000 credits a month and 2 sending channels. Another 1,000 credits are $10 a month, and another channel is $10 a month. A 14-day trial includes 1,500 credits and 2 channels and does not need a card. The trial is not a free plan. No free plan was found. The lower annual price is the vendor\'s public billing. It is not the stored from-price. The trial is the vendor\'s public offer.',
+      'Sendr turns buying signals into outreach sequences across email, LinkedIn and WhatsApp, including personalized video. A campaign copilot drafts a campaign, and the vendor describes a contact database of verified emails and mobiles. Monthly is $119. The Annual Bundle is $1,199. The plan includes 3,000 credits a month and 2 sending channels. Another 1,000 credits are $10 a month, and another channel is $10 a month. A 14-day trial includes 1,500 credits and 2 channels and does not need a card. The trial is not a free plan. No free plan was found. The Annual Bundle is the vendor\'s public billing. It is not the stored from-price. The trial is the vendor\'s public offer.',
     pricingModel: 'paid',
-    priceFromUsd: 99,
+    priceFromUsd: 119,
     hasFreeTier: false,
     skillLevel: 'intermediate',
     platforms: ['Web'],
@@ -7683,7 +7683,7 @@ export const toolSeeds: ToolSeed[] = [
       sourceUrl: 'https://www.sendr.ai/affiliates#apply-form',
       status: 'inactive',
       commissionNote:
-        '20% of net revenue, recurring for the customer lifetime (30% for the first 100 founding affiliates while they refer 2 paying customers every 6 months). Capped at $5,000 per referred customer. 30-day hold. PayPal payouts. Not applied or accepted. No tracking link stored.',
+        '20% of every payment. 30% of every payment for the first 100 founding affiliates, for life, while they stay active by referring 2 paying customers every 6 months. Up to $5,000 per customer. Claimed after a 30-day hold and paid by PayPal. Not applied or accepted. No tracking link stored.',
     },
   }),
   // scout 2026-11-12 | category: Video editing | scout rating 4.0 (not shown) | launch: 2026-11-11 (Product Hunt #8) | pricing: Free $0 (2 video credits and 5 B-roll credits, once). Creator $19/mo (20 video / 25 B-roll). Pro $39/mo (60 / 100). Studio $79/mo (150 / 250). Annual billing is 2 months free. Credit packs, for example 5 video credits $9 and 100 B-roll credits $9. A Black Friday offer (a year for about the price of two months) opens Nov 20 for the first 100.
