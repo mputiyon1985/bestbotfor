@@ -895,6 +895,14 @@ async function applyEvent(db: Database, stripe: Stripe, event: Stripe.Event, now
 
   if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
     const parsed = checkoutSchema.safeParse(event.data.object)
+    // One-time Payment Links (featured week, newsletter mention) are mode
+    // `payment`, with source=payment_link and no kind=sponsorship. They are
+    // not sponsorships and not memberships. Returning here writes no
+    // subscriptions row and no sponsorships row. Fulfillment is manual by
+    // email. A Monthly link is mode `subscription` and still upserts a row
+    // with no Clerk user, which grants nothing.
+    // payment_intent.* for those one-time sales is not a known event type, so
+    // it is logged below and answered 200 with no row either.
     if (!parsed.success || parsed.data.mode !== 'subscription' || !parsed.data.subscription) return
     const asyncPaid = event.type === 'checkout.session.async_payment_succeeded'
     await upsertSubscription(db, {

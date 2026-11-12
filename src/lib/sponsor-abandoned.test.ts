@@ -10,6 +10,7 @@ import { applyMigrations } from './db/migrate'
 import { sponsorAbandonedCheckouts, sponsorships } from './db/schema'
 import { handleStripeWebhook } from './stripe-webhook'
 import { parseExpiredSponsorCheckout, sponsorRecoveryUrl } from './sponsor-abandoned'
+import { SPONSOR_PAYMENT_LINKS } from './sponsor-payment-links'
 
 const SECRET = 'whsec_test_secret'
 const directories: string[] = []
@@ -178,6 +179,32 @@ describe('parseExpiredSponsorCheckout', () => {
         50,
       ),
     ).toBeNull()
+  })
+
+  it('does not store an expired featured week or newsletter mention, even with a promotions opt-in', () => {
+    const oneTime = SPONSOR_PAYMENT_LINKS.filter((link) => link.billing === 'one_time')
+    expect(oneTime.map((link) => link.id)).toEqual(['featured_week', 'newsletter_mention'])
+    for (const link of oneTime) {
+      expect(
+        parseExpiredSponsorCheckout(
+          expired(`evt_${link.id}`, {
+            id: `cs_test_${link.id}`,
+            payment_status: 'unpaid',
+            payment_link: link.paymentLinkId,
+            customer_details: { email: 'buyer@example.com' },
+            consent: { promotions: 'opt_in' },
+            metadata: { offer: link.id, source: 'payment_link' },
+            custom_fields: [
+              {
+                key: link.id === 'newsletter_mention' ? 'tool_name' : 'best_page',
+                text: { value: 'coding' },
+              },
+            ],
+          }),
+          50,
+        ),
+      ).toBeNull()
+    }
   })
 })
 

@@ -18,7 +18,14 @@ export const RETIRED_FOUNDING_PAYMENT_LINK_ID = 'plink_1URylTIJUbygfAuc07cebXfn'
 const MONTHLY_PAYMENT_LINK_ID = SPONSOR_PAYMENT_LINKS.find((link) => link.id === 'sponsor_monthly')?.paymentLinkId
 if (!MONTHLY_PAYMENT_LINK_ID) throw new Error('monthly sponsor payment link is missing')
 
-/** Payment Link id to the offer stored on an expired session. Monthly is the live link. */
+/**
+ * Payment Link id to the offer stored on an expired session.
+ * Monthly is the live subscription link. Featured week and newsletter mention
+ * are on /sponsor and are left out on purpose: neither claims a slot, a
+ * featured week can land on a page that is already booked, and a stored email
+ * is only for a follow-up we should not send. See
+ * docs/runbooks/sponsor-payment-links.md.
+ */
 const PAYMENT_LINK_OFFER: Readonly<Record<string, string>> = {
   [RETIRED_FOUNDING_PAYMENT_LINK_ID]: 'founding_sponsor',
   [MONTHLY_PAYMENT_LINK_ID]: 'sponsor_monthly',
@@ -127,7 +134,9 @@ function metadataRecord(session: Record<string, unknown>): Record<string, unknow
  * Lead from checkout.session.expired, or null when we will not store it.
  * No Stripe read. No email is sent. A row is stored only when the buyer
  * opted in (`consent.promotions` is `opt_in`) and the session is an unpaid
- * sponsor checkout. A Payment Link counts only when its id is one we know.
+ * sponsor checkout. A Payment Link counts only when its id is the Monthly
+ * link or the retired founding link. Featured week and newsletter mention
+ * are not stored.
  */
 export function parseExpiredSponsorCheckout(event: { type?: string; created?: number; data?: { object?: unknown } }, now: number): AbandonedSponsorLead | null {
   if (event.type !== 'checkout.session.expired') return null
