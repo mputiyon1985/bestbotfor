@@ -25,6 +25,8 @@ describe('outbound UTMs', () => {
     expect(withOutboundUtm(affiliate, 'tool')).toBe(affiliate)
     const upper = 'https://partner.example/?UTM_Campaign=x'
     expect(withOutboundUtm(upper, 'tool')).toBe(upper)
+    const hyphen = 'https://docsalot.dev/?utm-source=bestbotfor'
+    expect(withOutboundUtm(hyphen, 'direct')).toBe(hyphen)
   })
 
   it('keeps the host', () => {
