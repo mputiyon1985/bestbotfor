@@ -4,7 +4,7 @@
  * it as "$X/mo and up, billed annually" for every slug in this list, on every
  * surface, so the amount does not read as a yearly total.
  */
-export const ANNUAL_BILLED_SLUGS = ['perplexity', 'lalal-ai', 'agentspot', 'viggle-jst-2'] as const
+export const ANNUAL_BILLED_SLUGS = ['perplexity', 'lalal-ai', 'agentspot', 'viggle-jst-2', 'lottiefiles'] as const
 
 const ANNUAL_BILLED = new Set<string>(ANNUAL_BILLED_SLUGS)
 
