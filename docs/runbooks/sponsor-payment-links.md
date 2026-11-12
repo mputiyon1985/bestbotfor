@@ -1,6 +1,27 @@
 # Sponsor Payment Links
 
-The live `/sponsor` page links two Stripe Payment Links (`src/lib/sponsor-payment-links.ts`). They show only when live billing is on (`VERCEL_ENV` exactly `production`, `STRIPE_ALLOW_LIVE` exactly `true`, and a live key). Fulfillment, refunds, the price lock, and disputes for these sales are in `docs/runbooks/sponsor-reject-refund.md`, "Payment Link sales".
+The live `/sponsor` page links the Stripe Payment Links in `src/lib/sponsor-payment-links.ts`: Monthly (`plink_1URyeXIJUbygfAucnLlkSP5u`), Featured week (`plink_1Uaz53IJUbygfAucHbIqUfzb`), and Newsletter mention (`plink_1Uaz54IJUbygfAuckBQccflM`). They show only when live billing is on (`VERCEL_ENV` exactly `production`, `STRIPE_ALLOW_LIVE` exactly `true`, and a live key). Fulfillment, refunds, the price lock, and disputes for these sales are in `docs/runbooks/sponsor-reject-refund.md`, "Payment Link sales".
+
+## One-time Payment Links (Mark approved 2026-11-12)
+
+Mark approved adding these two links to `/sponsor` on 2026-11-12. They already existed in live Stripe. This record does not create, change, or deactivate any Stripe object, and it did not call the Stripe API with a live key. The public buy.stripe.com URLs below are the ones in `SPONSOR_PAYMENT_LINKS`.
+
+| Check | Featured week `plink_1Uaz53IJUbygfAucHbIqUfzb` | Newsletter mention `plink_1Uaz54IJUbygfAuckBQccflM` |
+|---|---|---|
+| `url` | `https://buy.stripe.com/28E28s2bCaOeaVI4AYfrW06` | `https://buy.stripe.com/dRmaEYbMc6xY8NA2sQfrW07` |
+| Product | `prod_VcDVeZxc0Dgqsn`, "BestBotFor Featured Spot — 1 week" | `prod_VcDVrliRJ6Ja6m`, "The Daily Bot newsletter mention" |
+| Price | `price_1Uaz4dIJUbygfAucONLfN2DH`, 9900 usd, one-time ($99) | `price_1Uaz4eIJUbygfAuc5LDYSbyK`, 4900 usd, one-time ($49) |
+| Custom field | `best_page`, required | `tool_name`, required |
+| `metadata` | `offer=featured_week`, `source=payment_link` | `offer=newsletter_mention`, `source=payment_link` |
+| No `kind=sponsorship`, no `clerkUserId` | Yes | Yes |
+| `managed_payments` | disabled | disabled |
+| Renewal | none. Terms on `/sponsor`: "$99 one-time. No auto-renewal." | none. Terms on `/sponsor`: "$49 one-time. No auto-renewal." |
+
+A featured-week link sale does not claim a `/best` page slot in the app. Before scheduling, check the chosen `/best` page is not already booked for that week (a paid unrefunded placement whose window overlaps, a renewing subscription holding the page, or an unexpired `sponsorship_slot_claims` row). If it cannot be scheduled, refund the payment in the Stripe dashboard. The newsletter mention is manual too: the webhook does not create a `sponsorships` row.
+
+`checkout.session.completed` and `payment_intent` events for these links have `source=payment_link` and no `kind=sponsorship`. The handler returns 200. It does not grant membership (no `subscriptions` row, because the session is mode `payment` and has no subscription) and it does not create a `sponsorships` row. Fulfillment is manual by email, the same as the Monthly link. A Monthly completion can still upsert a `subscriptions` row with no `clerk_user_id`, which grants nothing. These one-time sessions do not.
+
+Their payment link ids are not in the abandoned-checkout allowlist (`src/lib/sponsor-abandoned.ts`). An expired session from either link is not stored, even when `consent.promotions` is `opt_in`. A featured week does not reserve the page, so a follow-up email could sell a week on a page that is already booked and then has to be refunded. The newsletter mention does not create an in-app slot either, and neither link has the promotional-email checkbox turned on (the Dashboard step below is still the Monthly link only, and it still needs Mark's OK). Storing the email would be for a follow-up this app does not send.
 
 ## Live configuration read-back (2026-10-18, 3:59:23 PM EDT)
 
@@ -38,7 +59,7 @@ There is ONE founding cap of 5, shared by the Founding Payment Link and the in-a
 
 **Sold-out auto-hide (Sentinel P3-1 on #84, shipped; Mark approved building it on 2026-10-19).** Once the shared count reaches 5, live `/sponsor` renders the in-app founding option disabled and labeled "Founding sponsor · Sold out" with "All founding sponsor spots are taken.", and the price list line reads "Founding sponsor: Sold out. All 5 founding sponsor spots are taken." No founding price or terms are shown while sold out, and there is no Founding Payment Link card (retired from the code, below). The checkout server action refuses a new founding session with "All 5 founding sponsor spots are taken. Choose another option." before any Stripe call. Details, the race guard, and the refund rule are in `sponsor-subscriptions.md`, "Founding sold out". The Founding Payment Link has been inactive since the 2026-10-19 go-live, so a link session can no longer add a sixth founder; keep the live payment watch on for the webhook-completion edge case described there.
 
-**Founding Payment Link retired from the code (Sentinel P3-6 on #97).** `plink_1URylTIJUbygfAuc07cebXfn` has been inactive in Stripe since the 2026-10-19 go-live, and it is no longer in `SPONSOR_PAYMENT_LINKS` (`src/lib/sponsor-payment-links.ts`); only the Monthly link remains. Before this, #88 showed the founding link card whenever the founding Price variables were not both set, so a rollback (unsetting them in Production) would have put a dead buy.stripe.com button back on live `/sponsor`. Now a rollback shows the in-app founding option as not configured and no founding link. Past link sales still count through their `founding_link:` rows. To sell founding through a link again, add a new active link to that list in a reviewed change; never reactivate the old one without updating the code. The read-back table above is kept as the record of that link.
+**Founding Payment Link retired from the code (Sentinel P3-6 on #97).** `plink_1URylTIJUbygfAuc07cebXfn` has been inactive in Stripe since the 2026-10-19 go-live, and it is no longer in `SPONSOR_PAYMENT_LINKS` (`src/lib/sponsor-payment-links.ts`). At that change the Monthly link was the only one left. The one-time links recorded above (2026-11-12) were added later and do not bring the founding link back. Before this, #88 showed the founding link card whenever the founding Price variables were not both set, so a rollback (unsetting them in Production) would have put a dead buy.stripe.com button back on live `/sponsor`. Now a rollback shows the in-app founding option as not configured and no founding link. Past link sales still count through their `founding_link:` rows. To sell founding through a link again, add a new active link to that list in a reviewed change; never reactivate the old one without updating the code. The read-back table above is kept as the record of that link.
 
 ## Founding go-live record (2026-10-19)
 
@@ -52,11 +73,11 @@ There is ONE founding cap of 5, shared by the Founding Payment Link and the in-a
 
 ## Cancelling
 
-There is no customer portal. Live `/sponsor` says "To cancel, email mark@bestbotfor.com" under the subscriptions. Cancel in the Stripe dashboard with **Cancel at end of period**; see the refund runbook, "Refunds and cancellations".
+There is no customer portal. Live `/sponsor` says "To cancel, email mark@bestbotfor.com" on the Monthly Payment Link only. The one-time links do not renew and do not show that line. Cancel the Monthly subscription in the Stripe dashboard with **Cancel at end of period**; see the refund runbook, "Refunds and cancellations". A one-time payment has nothing to cancel; refund it in the dashboard if it should not be kept.
 
 ## Disclosure
 
-The subscriptions section says "Placements carry a Sponsored label and never change rankings. See Disclosures." and links `/disclosure`. A Payment Link placement is published only through a `sponsorships` row and an approved card, so it carries that label.
+The Payment Links section says "Placements carry a Sponsored label and never change rankings. See Disclosures." and links `/disclosure`. That line covers the Monthly link and both one-time links. A Payment Link placement is published only through a `sponsorships` row and an approved card, so it carries that label.
 
 ## Abandoned checkout recovery
 
@@ -64,9 +85,9 @@ The subscriptions section says "Placements carry a Sponsored label and never cha
 
 Where recovery is on, the session sets `after_expiration.recovery.enabled` to true, `allow_promotion_codes` to false, and `consent_collection.promotions` to `auto`. That last field is the checkbox setting. It is not the buyer's consent. The buyer's answer on the expired session is `consent.promotions`, and the only value we store is `opt_in`.
 
-A Payment Link cannot set `after_expiration` on the Checkout Session it opens. The Payment Links API has no such parameter. The Monthly link is `plink_1URyeXIJUbygfAucnLlkSP5u` ($299/mo). The founding link `plink_1URylTIJUbygfAuc07cebXfn` is retired. Do not reactivate it.
+A Payment Link cannot set `after_expiration` on the Checkout Session it opens. The Payment Links API has no such parameter. The Monthly link is `plink_1URyeXIJUbygfAucnLlkSP5u` ($299/mo). The founding link `plink_1URylTIJUbygfAuc07cebXfn` is retired. Do not reactivate it. The featured-week link is `plink_1Uaz53IJUbygfAucHbIqUfzb` ($99 one-time) and the newsletter mention is `plink_1Uaz54IJUbygfAuckBQccflM` ($49 one-time). Do not edit those two links from this runbook.
 
-`checkout.session.expired` stores a row in `sponsor_abandoned_checkouts` only when `consent.promotions` is `opt_in`. The row is the email, the offer, the expiry time, the Checkout Session id, the task when we have one, `promotions_consent` (`opt_in`), and `consented_at` (the expiry event time; Stripe does not send a separate consent clock). Anyone who did not opt in is not stored. A Payment Link session is stored only when its `payment_link` id is one this app knows (`plink_1URyeXIJUbygfAucnLlkSP5u` or the retired founding link) and the metadata offer does not disagree. A paid session is not stored. A membership session is not stored. A second delivery of the same session does not add a row.
+`checkout.session.expired` stores a row in `sponsor_abandoned_checkouts` only when `consent.promotions` is `opt_in`. The row is the email, the offer, the expiry time, the Checkout Session id, the task when we have one, `promotions_consent` (`opt_in`), and `consented_at` (the expiry event time; Stripe does not send a separate consent clock). Anyone who did not opt in is not stored. A Payment Link session is stored only when its `payment_link` id is the Monthly link (`plink_1URyeXIJUbygfAucnLlkSP5u`) or the retired founding link, and the metadata offer does not disagree. Featured week (`plink_1Uaz53IJUbygfAucHbIqUfzb`) and newsletter mention (`plink_1Uaz54IJUbygfAuckBQccflM`) are on `/sponsor` and are not stored, even when the buyer opted in, and they are not emailed. Any other `source=payment_link` session without `kind=sponsorship` is not stored and is not emailed unless its payment link id is the Monthly link or the retired founding link. A featured week does not claim the page, so a follow-up could sell a week that is already booked. The newsletter mention does not create an in-app slot either. A paid session is not stored. A membership session is not stored. A second delivery of the same session does not add a row.
 
 Follow-up is one email about the unfinished checkout, and only when `consent.promotions` is `opt_in` (the row's `promotions_consent` is `opt_in`). Stripe does not send that email. The app sends it once per Checkout Session when `CHECKOUT_RECOVERY_RESEND_API_KEY` and `CHECKOUT_RECOVERY_FROM` are set. A live event is skipped unless `CHECKOUT_RECOVERY_EMAIL_LIVE` is exactly `true`. Follow-up is one manual email when the app did not send. Without that opt-in there is no follow-up email. The message links to Stripe's recovery URL only for the newsletter slot, the uncapped Monthly Payment Link when Stripe attached one, and a membership checkout that did not use the founding coupon. Founding and every /best placement link back to `/sponsor`. A membership checkout with the founding coupon links back to `/pricing`. Every message has an unsubscribe line. A second delivery of the same session does not send a second email.
 
@@ -102,8 +123,8 @@ Do not approve the tool card until Mark decides to refund or honor the sale. The
 Do this in the Stripe Dashboard, live mode. Do not call the API from this repo.
 
 1. Developers → Webhooks → endpoint `we_1URwkHIJUbygfAucFVXA9X0z` (`https://bestbotfor.com/api/stripe/webhook`). Add `checkout.session.expired`. Keep every event the endpoint already sends. Saving replaces the event list, so copy the current events first and add this one to them.
-2. Payment Links → open `plink_1URyeXIJUbygfAucnLlkSP5u` (Monthly, `https://buy.stripe.com/4gMdRa7vW8G6gg2ebyfrW02`). Edit it and turn on the promotional-email checkbox (`consent_collection.promotions` = `auto`). Leave promotion codes off. There is no control on a Payment Link for `after_expiration.recovery`. A buyer is stored only after they opt in.
-3. Leave `plink_1URylTIJUbygfAuc07cebXfn` inactive.
+2. Payment Links → open `plink_1URyeXIJUbygfAucnLlkSP5u` (Monthly, `https://buy.stripe.com/4gMdRa7vW8G6gg2ebyfrW02`). Edit it and turn on the promotional-email checkbox (`consent_collection.promotions` = `auto`). Leave promotion codes off. There is no control on a Payment Link for `after_expiration.recovery`. A buyer is stored only after they opt in. Do not turn that checkbox on for `plink_1Uaz53IJUbygfAucHbIqUfzb` (featured week) or `plink_1Uaz54IJUbygfAuckBQccflM` (newsletter mention) unless a later decision says a follow-up email is safe. Those two links are not stored.
+3. Leave `plink_1URylTIJUbygfAuc07cebXfn` inactive. Do not deactivate or edit the two one-time links.
 
 The unpaid $299 Sponsor Monthly session that expired on Nov 1, 2026 cannot be recovered by this change. Recovery is chosen when the session is created, and that session has already expired. Payment Links cannot set it per session. Future expired Monthly sessions are recorded once step 1 is live and only when the buyer opted in. One manual follow-up email is allowed for those opted-in buyers when the app did not send, and for no one else. In-app founding and placement checkouts do not turn recovery on. They do ask for promotional consent, and an opted-in expiry can get one email that links to `/sponsor` rather than a 30-day recovery URL.
 

@@ -11,6 +11,7 @@ import { applyMigrations } from './db/migrate'
 import { sponsorAbandonedCheckouts, sponsorships } from './db/schema'
 import { handleStripeWebhook } from './stripe-webhook'
 import { parseExpiredSponsorCheckout, recordExpiredSponsorCheckout, RECOVERY_EMAIL_CLAIM_LEASE_MS, sponsorRecoveryUrl } from './sponsor-abandoned'
+import { SPONSOR_PAYMENT_LINKS } from './sponsor-payment-links'
 import { suppressRecoveryEmail } from './checkout-recovery-unsubscribe'
 import type { CheckoutRecoveryMessage } from './checkout-recovery-mail'
 
@@ -239,6 +240,32 @@ describe('parseExpiredSponsorCheckout', () => {
         50,
       ),
     ).toBeNull()
+  })
+
+  it('does not store an expired featured week or newsletter mention, even with a promotions opt-in', () => {
+    const oneTime = SPONSOR_PAYMENT_LINKS.filter((link) => link.billing === 'one_time')
+    expect(oneTime.map((link) => link.id)).toEqual(['featured_week', 'newsletter_mention'])
+    for (const link of oneTime) {
+      expect(
+        parseExpiredSponsorCheckout(
+          expired(`evt_${link.id}`, {
+            id: `cs_test_${link.id}`,
+            payment_status: 'unpaid',
+            payment_link: link.paymentLinkId,
+            customer_details: { email: 'buyer@example.com' },
+            consent: { promotions: 'opt_in' },
+            metadata: { offer: link.id, source: 'payment_link' },
+            custom_fields: [
+              {
+                key: link.id === 'newsletter_mention' ? 'tool_name' : 'best_page',
+                text: { value: 'coding' },
+              },
+            ],
+          }),
+          50,
+        ),
+      ).toBeNull()
+    }
   })
 })
 
@@ -514,6 +541,58 @@ describe('recovery email', () => {
       50,
     )
     expect(open?.recoveryUrl).toBe('https://buy.stripe.com/r/test_member_open')
+  })
+
+  it('does not store or email a one-time Payment Link, or any other source=payment_link session without kind=sponsorship', async () => {
+    const { db, close } = await createTestDatabase()
+    const sent: CheckoutRecoveryMessage[] = []
+    const mailer = async (message: CheckoutRecoveryMessage) => {
+      sent.push(message)
+      return 'sent' as const
+    }
+    const oneTime = SPONSOR_PAYMENT_LINKS.filter((link) => link.billing === 'one_time')
+    expect(oneTime.map((link) => link.paymentLinkId)).toEqual([
+      'plink_1Uaz53IJUbygfAucHbIqUfzb',
+      'plink_1Uaz54IJUbygfAuckBQccflM',
+    ])
+    const sessions: Record<string, unknown>[] = [
+      ...oneTime.map((link) => ({
+        id: `cs_test_${link.id}`,
+        payment_link: link.paymentLinkId,
+        metadata: { offer: link.id, source: 'payment_link' },
+        custom_fields: [
+          { key: link.id === 'newsletter_mention' ? 'tool_name' : 'best_page', text: { value: 'coding' } },
+        ],
+      })),
+      {
+        id: 'cs_test_unknown_plink',
+        payment_link: 'plink_unknown_not_allowlisted',
+        metadata: { source: 'payment_link', offer: 'something_else' },
+      },
+      {
+        id: 'cs_test_source_only',
+        metadata: { source: 'payment_link', clerkUserId: 'user_1', plan: 'annual' },
+      },
+      {
+        id: 'cs_test_one_time_member_shape',
+        payment_link: { id: 'plink_1Uaz53IJUbygfAucHbIqUfzb' },
+        metadata: { source: 'payment_link', clerkUserId: 'user_1', plan: 'monthly' },
+      },
+    ]
+    for (const [index, session] of sessions.entries()) {
+      const event = expired(`evt_no_recovery_${index}`, {
+        ...session,
+        payment_status: 'unpaid',
+        consent: { promotions: 'opt_in' },
+        customer_details: { email: 'buyer@example.com' },
+        after_expiration: { recovery: { url: 'https://buy.stripe.com/r/test_should_not_send' } },
+      })
+      expect(parseExpiredSponsorCheckout(event, 50)).toBeNull()
+      await recordExpiredSponsorCheckout(db, event, 50, mailer)
+    }
+    expect(sent).toEqual([])
+    expect(await db.select().from(sponsorAbandonedCheckouts)).toEqual([])
+    await close()
   })
 
   it('records an opted-in Payment Link and does not send when mail is off', async () => {
