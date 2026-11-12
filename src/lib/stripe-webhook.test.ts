@@ -2,7 +2,8 @@ import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type Stripe from 'stripe'
 import type { Database } from './db/client'
-import { sponsorshipCreatives, sponsorships, stripeEvents, subscriptions } from './db/schema'
+import { sponsorAbandonedCheckouts, sponsorshipCreatives, sponsorships, stripeEvents, subscriptions } from './db/schema'
+import { SPONSOR_PAYMENT_LINKS } from './sponsor-payment-links'
 import { activeBestPlacementForTask } from './best-placement'
 import { handleStripeWebhook, SPONSOR_REFUND_WEBHOOK_EVENTS } from './stripe-webhook'
 import { createTestDatabase } from '@/test/db'
@@ -972,4 +973,120 @@ describe('handleStripeWebhook', () => {
     expect(result).toEqual({ status: 503, body: { error: 'billing-disabled' } })
     await close()
   })
+})
+
+describe('one-time sponsor Payment Links', () => {
+  const oneTime = SPONSOR_PAYMENT_LINKS.filter((link) => link.billing === 'one_time')
+
+  function quietStripe(events: Stripe.Event[]): Stripe {
+    return {
+      webhooks: {
+        constructEvent(rawBody: string, signature: string, secret: string) {
+          if (signature !== 'valid' || secret !== SECRET) throw new Error('invalid signature')
+          const event = events.find((item) => JSON.stringify(item) === rawBody)
+          if (!event) throw new Error('unknown body')
+          return event
+        },
+      },
+      checkout: {
+        sessions: {
+          async retrieve() {
+            throw new Error('one-time payment link must not be read back')
+          },
+        },
+      },
+      invoicePayments: {
+        async list() {
+          throw new Error('one-time payment link must not look up an invoice')
+        },
+      },
+    } as unknown as Stripe
+  }
+
+  function oneTimeEvent(link: (typeof oneTime)[number], type: 'checkout.session.completed' | 'payment_intent.succeeded'): Stripe.Event {
+    const metadata = { offer: link.id, source: 'payment_link' }
+    const amount = link.id === 'featured_week' ? 9900 : 4900
+    if (type === 'checkout.session.completed') {
+      return {
+        id: `evt_${link.id}_completed`,
+        type,
+        livemode: false,
+        data: {
+          object: {
+            id: `cs_${link.id}`,
+            object: 'checkout.session',
+            mode: 'payment',
+            payment_status: 'paid',
+            payment_link: link.paymentLinkId,
+            payment_intent: `pi_${link.id}`,
+            amount_total: amount,
+            currency: 'usd',
+            customer: `cus_${link.id}`,
+            metadata,
+            custom_fields: [
+              {
+                key: link.id === 'newsletter_mention' ? 'tool_name' : 'best_page',
+                optional: false,
+                text: { value: 'coding' },
+              },
+            ],
+          },
+        },
+      } as unknown as Stripe.Event
+    }
+    return {
+      id: `evt_${link.id}_pi`,
+      type,
+      livemode: false,
+      data: {
+        object: {
+          id: `pi_${link.id}`,
+          object: 'payment_intent',
+          amount,
+          currency: 'usd',
+          metadata,
+        },
+      },
+    } as unknown as Stripe.Event
+  }
+
+  it('covers featured week and the newsletter mention', () => {
+    expect(oneTime.map((link) => link.id)).toEqual(['featured_week', 'newsletter_mention'])
+  })
+
+  for (const link of oneTime) {
+    for (const type of ['checkout.session.completed', 'payment_intent.succeeded'] as const) {
+      it(`returns 200 for ${type} on ${link.id} and writes no sponsorship or membership`, async () => {
+        const { db, close } = await createTestDatabase()
+        const event = oneTimeEvent(link, type)
+        const metadata = (event.data.object as { metadata?: Record<string, string> }).metadata
+        expect(metadata).toEqual({ offer: link.id, source: 'payment_link' })
+        expect(metadata).not.toHaveProperty('kind')
+        expect(metadata).not.toHaveProperty('clerkUserId')
+        const stripe = quietStripe([event])
+        const result = await handleStripeWebhook({
+          rawBody: JSON.stringify(event),
+          signature: 'valid',
+          db,
+          stripe,
+          secret: SECRET,
+          now: 1_700_000_000_000,
+        })
+        expect(result).toEqual({ status: 200, body: { received: true } })
+        const again = await handleStripeWebhook({
+          rawBody: JSON.stringify(event),
+          signature: 'valid',
+          db,
+          stripe,
+          secret: SECRET,
+          now: 1_700_000_000_100,
+        })
+        expect(again).toEqual({ status: 200, body: { received: true, duplicate: true } })
+        expect(await db.select().from(sponsorships)).toEqual([])
+        expect(await db.select().from(subscriptions)).toEqual([])
+        expect(await db.select().from(sponsorAbandonedCheckouts)).toEqual([])
+        await close()
+      })
+    }
+  }
 })
