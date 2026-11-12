@@ -82,7 +82,7 @@ describe('bot scout 2026-11-05', () => {
   })
 
   it('seeds no affiliate program, and leaves the approved pair unchanged', () => {
-    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot'])
+    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr'])
     for (const slug of SLUGS) {
       const tool = seed(slug)
       expect(tool.affiliate, slug).toEqual(NONE)

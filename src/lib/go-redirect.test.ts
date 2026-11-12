@@ -171,6 +171,16 @@ describe('resolveGoRedirect', () => {
     })
   })
 
+  it('still copies inbound utm_* onto a non-Cello destination', async () => {
+    const outcome = await resolveGoRedirect({
+      ...cursor,
+      search: '?utm_source=x',
+      limit: async () => ({ ok: true }),
+      loadTool: async () => tool(),
+    })
+    expect(outcome).toMatchObject({ status: 302, location: 'https://cursor.com/?utm_source=x' })
+  })
+
   it('does not record a click for a prefetch', async () => {
     const outcome = await resolveGoRedirect({
       ...cursor,

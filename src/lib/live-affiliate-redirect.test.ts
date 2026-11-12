@@ -59,7 +59,7 @@ describe('live affiliate redirects match main', () => {
     })
   })
 
-  it('sends Descript, Murf, Papermark, and DocsAlot to their exact tracking links', async () => {
+  it('sends Descript, Murf, Papermark, DocsAlot, and Sendr to their exact tracking links', async () => {
     const activated = {
       descript: {
         stored: 'https://get.descript.com/mr4pi3y6tp4s',
@@ -84,6 +84,12 @@ describe('live affiliate redirects match main', () => {
         location: 'https://docsalot.dev/?utm-source=bestbotfor',
         subIdParam: null,
         official: 'https://docsalot.dev/',
+      },
+      sendr: {
+        stored: 'https://sendr.cello.so/LOp5fYtd9Jc',
+        location: 'https://sendr.cello.so/LOp5fYtd9Jc',
+        subIdParam: null,
+        official: 'https://www.sendr.ai/',
       },
     } as const
 

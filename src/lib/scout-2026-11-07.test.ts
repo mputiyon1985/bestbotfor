@@ -93,7 +93,7 @@ describe('bot scout 2026-11-07', () => {
   })
 
   it('seeds only crystl as an inactive program, and leaves the approved set unchanged', () => {
-    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot'])
+    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr'])
     expect(APPROVED_ACTIVE_AFFILIATES).not.toContain('crystl')
     const crystl = seed('crystl')
     expect(crystl.affiliate).toEqual({
@@ -113,7 +113,7 @@ describe('bot scout 2026-11-07', () => {
       expect(seed(slug).affiliate, slug).toEqual(NONE)
       expect(servesAffiliateLink(slug, null, seed(slug).affiliate.status), slug).toBe(false)
     }
-    for (const slug of ['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot'] as const) {
+    for (const slug of ['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr'] as const) {
       expect(seed(slug).affiliate.status).toBe('active')
       expect(seed(slug).affiliate.affiliateUrl).toMatch(/^https:\/\//)
     }

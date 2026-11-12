@@ -28,11 +28,12 @@ const LIVE_AFFILIATE_URLS = {
   murf: 'https://get.murf.ai/pxci5cc1lpk2',
   papermark: 'https://refer.papermark.com/mark',
   docsalot: 'https://docsalot.dev/?utm-source=bestbotfor',
+  sendr: 'https://sendr.cello.so/LOp5fYtd9Jc',
 } as const
 
 describe('approved affiliate programs', () => {
   it('activates only the approved slugs and stores their exact tracking links', () => {
-    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot'])
+    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr'])
     for (const tool of toolSeeds) {
       const approved = (APPROVED_ACTIVE_AFFILIATES as readonly string[]).includes(tool.slug)
       if (!approved) {
@@ -154,10 +155,11 @@ describe('affiliate disclosure and ops', () => {
     expect(html).toContain('Murf — active')
     expect(html).toContain('Papermark Data Rooms 2.0 (Papermark) — active')
     expect(html).toContain('DocsAlot — active')
+    expect(html).toContain('Sendr (Cello) — active')
     expect(html).toContain('Writesonic — switched off')
     expect(html).toContain('Lovable (Impact) — switched off')
     expect(html).toContain('switched off')
-    for (const name of ['ElevenLabs', 'Synthesia', 'Descript', 'Murf', 'Papermark', 'DocsAlot', 'Writesonic', 'Lovable']) {
+    for (const name of ['ElevenLabs', 'Synthesia', 'Descript', 'Murf', 'Papermark', 'DocsAlot', 'Sendr', 'Writesonic', 'Lovable']) {
       expect(html).toContain(name)
     }
     for (const file of ['src/app/best/[task]/page.tsx', 'src/app/tools/[slug]/page.tsx', 'src/app/result/page.tsx']) {
