@@ -73,20 +73,21 @@ function toolRow(id: number, slug: string, status: string) {
   }
 }
 
-function expectedCount(count: number, word: string): string {
-  const formatted = new Intl.NumberFormat('en-US').format(count)
-  const noun = count === 1 ? 'tool' : 'tools'
-  return `${formatted} AI ${noun} ${word}`
+function expectedCount(count: number) {
+  return {
+    formatted: new Intl.NumberFormat('en-US').format(count),
+    noun: count === 1 ? 'tool' : 'tools',
+  }
 }
 
 describe('cached visible tool count', () => {
   it('reads the database once for repeated calls and revalidates hourly', async () => {
     const { getVisibleToolCount, CATALOG_PAGE_REVALIDATE_SECONDS } = await import('./catalog')
-    const { VISIBLE_TOOL_COUNT_WORD, visibleToolCountLabel } = await import('./visible-tool-count')
+    const { visibleToolCountLabel } = await import('./visible-tool-count')
     expect(await getVisibleToolCount()).toBe(1260)
     expect(await getVisibleToolCount()).toBe(1260)
-    expect(await visibleToolCountLabel()).toBe(expectedCount(1260, VISIBLE_TOOL_COUNT_WORD))
-    expect(await visibleToolCountLabel()).toBe(expectedCount(1260, VISIBLE_TOOL_COUNT_WORD))
+    expect(await visibleToolCountLabel()).toEqual(expectedCount(1260))
+    expect(await visibleToolCountLabel()).toEqual(expectedCount(1260))
     expect(state.queries).toBe(1)
     const registered = state.registrations.find((entry) => entry.keys[0] === 'visible-tool-count-v1')
     expect(registered?.revalidate).toBe(60 * 60)
@@ -106,9 +107,9 @@ describe('cached visible tool count', () => {
       ])
       state.failLive = true
       state.fallbackDb = db
-      const { VISIBLE_TOOL_COUNT_WORD, visibleToolCountLabel } = await import('./visible-tool-count')
-      expect(await visibleToolCountLabel()).toBe(expectedCount(2, VISIBLE_TOOL_COUNT_WORD))
-      expect(await visibleToolCountLabel()).toBe(expectedCount(2, VISIBLE_TOOL_COUNT_WORD))
+      const { visibleToolCountLabel } = await import('./visible-tool-count')
+      expect(await visibleToolCountLabel()).toEqual(expectedCount(2))
+      expect(await visibleToolCountLabel()).toEqual(expectedCount(2))
       expect(state.queries).toBe(0)
     } finally {
       await close()
