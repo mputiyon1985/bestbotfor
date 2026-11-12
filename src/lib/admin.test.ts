@@ -67,6 +67,13 @@ describe('admin access', () => {
       'src/app/admin/signups/page.tsx must call requireSignupsSession().',
     ])
     expect(adminGuardGaps([{ path: 'src/app/admin/signups/export/route.ts', text: 'await requireSignupsSession(request)' }])).toEqual([])
+    expect(adminGuardGaps([{ path: 'src/app/admin/leads/page.tsx', text: 'export default function Page() { return null }' }])).toEqual([
+      'src/app/admin/leads/page.tsx must call requireLeadsSession().',
+    ])
+    expect(adminGuardGaps([{ path: 'src/app/admin/leads/page.tsx', text: 'await requireAdmin()' }])).toEqual([
+      'src/app/admin/leads/page.tsx must call requireLeadsSession().',
+    ])
+    expect(adminGuardGaps([{ path: 'src/app/admin/leads/import/route.ts', text: 'await requireLeadsSession(request)' }])).toEqual([])
     expect(adminGuardGaps([{ path: 'src/app/admin/page.tsx', text: 'await requireSignupsSession()' }])).toEqual([
       'src/app/admin/page.tsx must call requireAdmin(), requireAdminStepUp(), assertAdminArea(), or requireMfaSetupPage().',
     ])
@@ -85,6 +92,7 @@ describe('admin access', () => {
     expect(isAdminPath('/administrator')).toBe(false)
     expect(isAdminPath('/tools/chatgpt')).toBe(false)
     expect(isAdminPath('/admin/sponsors')).toBe(true)
+    expect(isAdminPath('/admin/leads')).toBe(true)
   })
 
   it('sends an admin home to ratings when that flag is on, otherwise to the sponsor queue', () => {

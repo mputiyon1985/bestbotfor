@@ -3,16 +3,23 @@ import path from 'node:path'
 
 const CLERK_ADMIN_GUARDS = ['requireAdmin(', 'requireAdminStepUp(', 'assertAdminArea(', 'requireMfaSetupPage(']
 const SIGNUPS_ADMIN_GUARD = 'requireSignupsSession('
+const LEADS_ADMIN_GUARD = 'requireLeadsSession('
 
 /** Password-and-TOTP signups files are not covered by the Clerk admin guard. */
 export function isSignupsAdminFile(filePath: string): boolean {
   return filePath.split('\\').join('/').includes('/admin/signups/')
 }
 
+/** Password-gated leads files are not covered by the Clerk admin guard. */
+export function isLeadsAdminFile(filePath: string): boolean {
+  return filePath.split('\\').join('/').includes('/admin/leads/')
+}
+
 /**
  * Files under src/app/admin that do not call an admin guard.
  * Clerk admin files must call a Clerk guard. Signups files must call
- * requireSignupsSession(); a Clerk guard alone does not cover them.
+ * requireSignupsSession(). Leads files must call requireLeadsSession().
+ * A Clerk guard alone does not cover those password pages.
  */
 export function adminGuardGaps(files: { path: string; text: string }[]): string[] {
   const gaps: string[] = []
@@ -20,6 +27,10 @@ export function adminGuardGaps(files: { path: string; text: string }[]): string[
     if (!file.path.endsWith('.ts') && !file.path.endsWith('.tsx')) continue
     if (isSignupsAdminFile(file.path)) {
       if (!file.text.includes(SIGNUPS_ADMIN_GUARD)) gaps.push(`${file.path} must call requireSignupsSession().`)
+      continue
+    }
+    if (isLeadsAdminFile(file.path)) {
+      if (!file.text.includes(LEADS_ADMIN_GUARD)) gaps.push(`${file.path} must call requireLeadsSession().`)
       continue
     }
     if (CLERK_ADMIN_GUARDS.some((guard) => file.text.includes(guard))) continue

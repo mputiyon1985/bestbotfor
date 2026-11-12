@@ -28,7 +28,8 @@
     "logos:fetch": "tsx scripts/fetch-tool-logos.ts",
     "stripe:setup-test": "tsx scripts/stripe-setup-test.ts",
     "build:catalog-fallback": "tsx scripts/build-catalog-fallback.ts",
-    "setup-signups-auth": "tsx scripts/setup-signups-auth.ts"
+    "setup-signups-auth": "tsx scripts/setup-signups-auth.ts",
+    "leads:upsert": "tsx scripts/upsert-leads.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.9.16",

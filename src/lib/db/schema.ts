@@ -614,3 +614,43 @@ export const sponsorAbandonedCheckouts = sqliteTable(
   },
   (table) => [index('sponsor_abandoned_checkouts_expired_at_idx').on(table.expiredAt)],
 )
+
+/**
+ * Private outreach list for /admin/leads. contact_email is stored lowercased
+ * and is the unique upsert key. amount_closed_usd is dollars for status closed.
+ * Counts on the page are rows in each status. No public page reads this table.
+ */
+export const bbfLeads = sqliteTable(
+  'bbf_leads',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    company: text('company').notNull(),
+    contactEmail: text('contact_email').notNull(),
+    type: text('type').notNull(),
+    firstContact: text('first_contact'),
+    lastTouch: text('last_touch'),
+    touches: integer('touches').notNull().default(0),
+    status: text('status').notNull(),
+    nextStep: text('next_step'),
+    nextDate: text('next_date'),
+    notes: text('notes'),
+    amountClosedUsd: real('amount_closed_usd'),
+    createdAt: integer('created_at').notNull(),
+    updatedAt: integer('updated_at').notNull(),
+  },
+  (table) => [
+    uniqueIndex('bbf_leads_contact_email_key').on(table.contactEmail),
+    index('bbf_leads_status_idx').on(table.status),
+    check('bbf_leads_company_check', sql`length(${table.company}) between 1 and 200`),
+    check('bbf_leads_email_check', sql`length(${table.contactEmail}) between 3 and 254`),
+    check('bbf_leads_type_check', sql`length(${table.type}) between 1 and 64`),
+    check(
+      'bbf_leads_status_check',
+      sql`${table.status} in ('contacted', 'replied', 'affiliate_approved', 'declined', 'bounced', 'closed')`,
+    ),
+    check('bbf_leads_touches_check', sql`${table.touches} >= 0`),
+    check('bbf_leads_next_step_check', sql`${table.nextStep} is null or length(${table.nextStep}) <= 280`),
+    check('bbf_leads_notes_check', sql`${table.notes} is null or length(${table.notes}) <= 4000`),
+    check('bbf_leads_amount_check', sql`${table.amountClosedUsd} is null or ${table.amountClosedUsd} >= 0`),
+  ],
+)
