@@ -50,6 +50,7 @@ describe('HeroStat', () => {
     expect(html).toContain('text-hero-pick')
     expect(html).toContain('text-[6rem]')
     expect(html).toContain('text-2xl')
+    expect(html).toContain('whitespace-nowrap')
     expect(html).not.toContain('<img')
   })
 
