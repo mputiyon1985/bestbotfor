@@ -20,6 +20,7 @@ const SCOUTED_2026_11_09 = '2026-11-09'
 const SCOUTED_2026_11_10 = '2026-11-10'
 const SCOUTED_2026_11_11 = '2026-11-11'
 const SCOUTED_2026_11_12 = '2026-11-12'
+const SCOUTED_2026_11_13 = '2026-11-13'
 const BACKLOG_BATCH_02 = '2026-10-25'
 const BACKLOG_BATCH_03 = '2026-10-25'
 
@@ -7960,6 +7961,366 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['iOS'],
     lastVerifiedAt: SCOUTED_2026_11_12,
+    fits: [],
+    affiliate: none,
+  }),
+  // Bot scout 2026-11-13. Unrated: no editorial score, pros or cons until Forge rubric review.
+  // Scout ratings stay in the comments and are not shown.
+  // YouArt, Insight7 Voice AI Agents and Willo have affiliate programs. All three are inactive: hasProgram only, not applied or accepted, no tracking URL.
+  // Yogurt, Spacefast, Offstage Cloud, HarnessRouter, Omnigraph, ⌘+L by Letter, AgentTeams, Render Sandboxes, WizardNote, Nameshot, Burnstate and qorqbot have unknown affiliate programs and use the empty affiliate.
+  // No BestBotFor sponsorship is recorded. Sponsorship is unknown and is not stored.
+  // Public vendor offers are not stored as deals. No /go tracking link is stored.
+  // scout 2026-11-13 | category: Meetings | scout rating 4.2 (not shown) | launch: 2026-11-12 (Show HN 290 pts; Product Hunt #16) | pricing: Free (open source, MIT license).
+  // note: no paid plan was found, so priceFromUsd stays null and the model is free. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'yogurt',
+    addedAt: SCOUTED_2026_11_13,
+    name: 'Yogurt',
+    vendor: 'Yogurt',
+    url: 'https://www.yogurt.so',
+    allowedHosts: ['www.yogurt.so'],
+    category: 'Meetings',
+    shortDesc: 'Free, open-source meeting notes that run on your computer, with no meeting bot in the call.',
+    longDesc:
+      'Yogurt records Zoom, Google Meet and Teams audio on your computer, without a meeting bot. It writes a live transcript and a summary with next steps, and you can ask questions across meetings. It runs locally and works offline after a one-time model download. It is free and open source under the MIT license. It needs a desktop with 8 GB of RAM: an Apple silicon Mac, Windows 10 or later, or Ubuntu 22.04 or later. Calendar and speaker names are Mac-only for now. The Windows build is not code-signed yet, so SmartScreen may warn. No paid plan was found.',
+    pricingModel: 'free',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['macOS', 'Windows', 'Linux'],
+    lastVerifiedAt: SCOUTED_2026_11_13,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-13 | category: Development | scout rating 4.1 (not shown) | launch: 2026-11-12 (Product Hunt #5) | pricing: Personal $0/month (no card, $1 usage, 20 spaces, 20 custom domains); Go $5/month; Pro $15/month; Enterprise custom; Boost $9 per Space/month on Go and up.
+  // note: priceFromUsd is Go monthly, $5. The $0 Personal plan is a free tier. Boost is an add-on and is not the stored from-price. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'spacefast',
+    addedAt: SCOUTED_2026_11_13,
+    name: 'Spacefast by Automattic',
+    vendor: 'Automattic',
+    url: 'https://spacefast.com',
+    allowedHosts: ['spacefast.com'],
+    category: 'Development',
+    shortDesc: 'Hosting for what an AI agent makes, with a database, domains, version history and a free Personal plan.',
+    longDesc:
+      'Spacefast, from Automattic, hosts what an AI agent makes. You connect ChatGPT, Claude, Codex, Cursor or any MCP agent, and it publishes a site or app with a database, file uploads, domains, version history, comments and stats. Spaces are private by default, with share links and passwords. Personal is $0 a month, with no card, $1 of usage included, 20 spaces and 20 custom domains. Go is $5 a month, with $5 of usage, 100 spaces, 100 custom domains, hourly backups, a datacenter choice and email support. Pro is $15 a month, with $15 of usage, 500 spaces, 500 custom domains, team roles, wildcard domains and priority email support. Pro is free for up to 5 members, then $15 a month each. Enterprise is custom. Boost is $9 per Space a month on Go and up. The $0 Personal plan is the free tier. Boost is an add-on and is not the stored from-price. It supports Next.js, TanStack Start, Astro and PHP. Personal and Go include 2 compute workers per Space.',
+    pricingModel: 'freemium',
+    priceFromUsd: 5,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_13,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-13 | category: AI video | scout rating 4.0 (not shown) | launch: 2026-11-12 (Product Hunt #2, YouArt Desktop App) | pricing: Free to start (may include a small watermark). Yearly billing: Basic $7.99/mo (list $11; 1,000 credits), Pro $23.99/mo (list $36; 3,300 credits), Max $119.99/mo (list $198; 18,000 credits), Team $263.99/mo (list $435; 36,300 credits, up to 10 members); Enterprise custom. Credit top-up $5 per 500 credits (subscription required). Monthly billing costs about 20% more.
+  // note: priceFromUsd is the current yearly Basic rate, $7.99 a month, billed annually. The slug is on ANNUAL_BILLED_SLUGS. List prices are not the stored from-price. Monthly billing is about 20% more and is not an exact dollar, so it is not stored. The free start is a free tier. Sponsorship unknown.
+  // affiliate: in-house (YouArt affiliate dashboard). 30% of referred payments on monthly or annual plans, 90-day cookie. Recurring unknown. Apply page https://youart.ai/affiliate, on the official host, so no extra allowlist host is added. Not applied or accepted. Seeded inactive, hasProgram only. No tracking link.
+  tool({
+    slug: 'youart',
+    addedAt: SCOUTED_2026_11_13,
+    name: 'YouArt (Desktop App)',
+    vendor: 'YouArt',
+    url: 'https://youart.ai',
+    allowedHosts: ['youart.ai'],
+    category: 'AI video',
+    shortDesc: 'A creative agent and studio that turns image and video models into reusable workflows, with Mac and Windows apps.',
+    longDesc:
+      'YouArt is a creative agent and studio for image and video. It runs models, tools and prompts as reusable workflows on a canvas, and it has desktop apps for macOS and Windows plus an MCP server. You can start for free, and the free start may include a small watermark. That free start is the free tier. On yearly billing, Basic is $7.99 a month (list $11, 1,000 credits), Pro is $23.99 a month (list $36, 3,300 credits), Max is $119.99 a month (list $198, 18,000 credits) and Team is $263.99 a month (list $435, 36,300 credits, up to 10 members). Enterprise is custom. A credit top-up is $5 per 500 credits and needs a subscription. Monthly billing costs about 20% more. The stored from-price is the current yearly Basic rate, $7.99 a month, billed annually. The list prices are not the stored from-price. The monthly rate is not an exact dollar, so it is not stored. Unused monthly credits do not roll over. Prices shown below list price are the vendor\'s public pricing.',
+    pricingModel: 'freemium',
+    priceFromUsd: 7.99,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Web', 'macOS', 'Windows'],
+    lastVerifiedAt: SCOUTED_2026_11_13,
+    fits: [],
+    affiliate: {
+      hasProgram: true,
+      network: 'in-house (YouArt affiliate dashboard)',
+      sourceUrl: 'https://youart.ai/affiliate',
+      status: 'inactive',
+      commissionNote:
+        '30% of referred payments on monthly or annual plans, with a 90-day cookie. Recurring is unknown. Not applied or accepted. No tracking link stored.',
+    },
+  }),
+  // scout 2026-11-13 | category: Development | scout rating 4.0 (not shown) | launch: 2026-11-12 (Product Hunt #27) | pricing: Pay-as-you-go at $1.10/hour per sandbox on Mac Studio M5 Max, billed by the second with no minimum. Free tier includes $5 credit (no credit card required). Per team: 4 open sandboxes and 4 running CI jobs.
+  // note: $1.10/hour is not a monthly plan, so priceFromUsd stays null. The $5 credit is the vendor's public offer and is not a free plan. No free plan was found. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'offstage-cloud',
+    addedAt: SCOUTED_2026_11_13,
+    name: 'Offstage Cloud',
+    vendor: 'Offstage Cloud',
+    url: 'https://offstage.cloud',
+    allowedHosts: ['offstage.cloud'],
+    category: 'Development',
+    shortDesc: 'On-demand macOS sandboxes for AI agents and CI, billed by the second.',
+    longDesc:
+      'Offstage Cloud runs macOS sandboxes on Apple silicon for AI agents and CI. A sandbox on a Mac Studio M5 Max is $1.10 an hour, billed by the second, with no minimum. That rate is not a monthly plan, so no monthly from-price is stored. A new team gets $5 of credit and does not need a card. That credit is the vendor\'s public offer and is not a free plan. No free plan was found. Up to 8 sandboxes share one Mac Studio, with no reserved CPU or memory. A team can have 4 open sandboxes and 4 running CI jobs. Extra CI jobs queue. Sandbox snapshots are not available yet.',
+    pricingModel: 'paid',
+    priceFromUsd: null,
+    hasFreeTier: false,
+    skillLevel: 'pro',
+    platforms: ['Web', 'API'],
+    lastVerifiedAt: SCOUTED_2026_11_13,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-13 | category: Agent builder | scout rating 3.9 (not shown) | launch: 2026-11-12 (Product Hunt #7, Harness Memory) | pricing: Free $0 (30 agent-work minutes); Developer $20/mo; Production $200/mo; Scale $1,000/mo; Enterprise custom. Agent work from $0.020 to $0.006 per active minute. Long-term memory $0.0019/operation (beta). Minimum top-up $10 + 5.5% fee. Tracing add-on $50/mo (beta).
+  // note: priceFromUsd is Developer monthly, $20. The $0 plan is a free tier. The first three demo setups are the vendor's public offer and are not a free plan. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'harnessrouter',
+    addedAt: SCOUTED_2026_11_13,
+    name: 'HarnessRouter (Harness Memory)',
+    vendor: 'Epsilla',
+    url: 'https://harnessrouter.ai',
+    allowedHosts: ['harnessrouter.ai'],
+    category: 'Agent builder',
+    shortDesc: 'An open-source API for running agent harnesses, now with long-term memory across sessions.',
+    longDesc:
+      'HarnessRouter, from Epsilla, is an open-source API for running agent harnesses, including Codex, Claude Code and Hermes, as a product backend. Harness Memory adds long-term memory across sessions and harnesses. One API key covers the harnesses it lists, and waiting time is free. Model usage is billed at the provider price, with no markup. Free is $0 and includes 30 agent-work minutes, and you can top up. Developer is $20 a month, with $20 of usage and 30% off top-up rates. Production is $200 a month, with $200 of usage and 50% off. Scale is $1,000 a month, with $1,000 of usage and 70% off. Enterprise is custom. Agent work is $0.020 an active minute on Free and $0.006 on Scale. Long-term memory is $0.0019 an operation and is in beta. The minimum top-up is $10 plus a 5.5% fee. A tracing add-on is $50 a month and is in beta. The $0 plan is the free tier. The first three demo setups are free. That offer is the vendor\'s public offer and is not a free plan.',
+    pricingModel: 'freemium',
+    priceFromUsd: 20,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['Web', 'API'],
+    lastVerifiedAt: SCOUTED_2026_11_13,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-13 | category: Development | scout rating 3.9 (not shown) | launch: 2026-11-12 (Product Hunt #3) | pricing: Free open-source engine (MIT); embedded, BYOC or on-prem. Omnigraph Cloud is in private preview, pricing not published.
+  // note: the engine is free, so the model is free and priceFromUsd stays null. The managed cloud price is not published, so no paid price is stored. The Studio OS was not stated. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'omnigraph',
+    addedAt: SCOUTED_2026_11_13,
+    name: 'Omnigraph',
+    vendor: 'Modern Relay',
+    url: 'https://www.omnigraph.dev',
+    allowedHosts: ['www.omnigraph.dev'],
+    category: 'Development',
+    shortDesc: 'An open-source graph database for AI agents, with typed schema and Git-style branching.',
+    longDesc:
+      'Omnigraph, from Modern Relay, is an open-source graph database for AI agents. It stores the graph on object storage you already have, with a typed schema and Git-style branching, review and merge, plus semantic, keyword and hybrid search. The engine is free under the MIT license and runs embedded, in your own cloud on AWS, Azure or GCP, or on-prem. Agents write on branches, and changes are reviewed and merged. A Studio desktop app reviews diffs. Omnigraph Cloud, the managed service, is in private preview and has no published price.',
+    pricingModel: 'free',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['Self-hosted'],
+    lastVerifiedAt: SCOUTED_2026_11_13,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-13 | category: Coding assistant | scout rating 3.8 (not shown) | launch: 2026-11-12 (Product Hunt #4) | pricing: Hobbyist $25/month (2,500 tokens); Basic $100/month; Starter $500/month; Growth $1,000/month; Scale $2,500/month; Enterprise $10,000/month. Overage per 1,000 tokens from $50 down to $25. Every account starts with 1,000 free tokens (1,200 on a work email, up to 2,000 with connected tools), no card.
+  // note: priceFromUsd is Hobbyist monthly, $25. The starter tokens are the vendor's public offer and are not a free plan. No free plan was found. Overage rates are not the stored from-price. Display name kept. Slug is letter-command-l. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'letter-command-l',
+    addedAt: SCOUTED_2026_11_13,
+    name: '⌘+L by Letter',
+    vendor: 'Letter',
+    url: 'https://letter.dev/commandl',
+    allowedHosts: ['letter.dev'],
+    category: 'Coding assistant',
+    shortDesc: 'Press ⌘L on your own site, edit the page visually, and ship the changes as one pull request.',
+    longDesc:
+      '⌘+L, from Letter, is a script you add to your own website. Press ⌘L, edit the page like a design file by typing, moving, circling or talking, and Letterpress-1, Claude or GPT turns the changes into one pull request. Hobbyist is $25 a month for 2,500 tokens. Basic is $100 a month for 10,000 tokens. Starter is $500 a month for 50,000 tokens. Growth is $1,000 a month for 130,000 tokens. Scale is $2,500 a month for 400,000 tokens. Enterprise is $10,000 a month. Overage per 1,000 tokens is $50 on Hobbyist, Basic and Starter, $38.46 on Growth, $31.25 on Scale and $25 on Enterprise. Every account starts with 1,000 free tokens, 1,200 on a work email, and up to 2,000 with connected tools, with no card. Those tokens are the vendor\'s public offer and are not a free plan. No free plan was found. The overage rates are not the stored from-price. The script has to be on your site.',
+    pricingModel: 'paid',
+    priceFromUsd: 25,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_13,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-13 | category: Voice | scout rating 3.8 (not shown) | launch: 2026-11-12 (Product Hunt #19) | pricing: Voice AI Agents pricing not published (demo/contact). Published call-analytics plans: Pro $99/mo (billed $990/yr), Business $299/mo, Plus $1,499/mo, Enterprise custom. 50% off Pro/Business for education and non-profits.
+  // note: voice-agent pricing is not published, so priceFromUsd stays null and the label says pricing is not published. Call-analytics prices are a different product and are not the stored from-price. No free plan was found for the voice agents. Sponsorship unknown.
+  // affiliate: in-house partner program. Referral Partner 25% of every sourced deal. Managed Partner lifetime commissions, rate not stated. Recurring unknown except lifetime is stated for Managed Partners. Apply page https://insight7.io/partners-registration/, on the official host. Not applied or accepted. Seeded inactive, hasProgram only. No tracking link.
+  tool({
+    slug: 'insight7-voice-agents',
+    addedAt: SCOUTED_2026_11_13,
+    name: 'Insight7 Voice AI Agents',
+    vendor: 'Insight7',
+    url: 'https://insight7.io',
+    allowedHosts: ['insight7.io'],
+    category: 'Voice',
+    shortDesc: 'Voice agents that draft a call script from one sentence, let you test the call, then place it.',
+    longDesc:
+      'Insight7 Voice AI Agents place calls to your customers. You describe a campaign in one sentence, and it drafts the script, the questions and the schedule. You can test the call before customers are called. It runs on a schedule or from a trigger, and it reports outcomes. It is part of Insight7\'s call-analytics platform. Voice-agent pricing is not published. The vendor sells it by demo or contact, so no price is stored. The published call-analytics plans are a different product. Pro is $99 a month, billed $990 a year. Business is $299 a month, billed $2,990 a year. Plus is $1,499 a month, billed $14,990 a year. Enterprise is custom. Education and non-profits get 50% off Pro and Business. Those analytics prices are not the voice-agent from-price. The education discount is the vendor\'s public offer. No free plan was found for the voice agents.',
+    pricingModel: 'paid',
+    priceFromUsd: null,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_13,
+    fits: [],
+    affiliate: {
+      hasProgram: true,
+      network: 'in-house partner program',
+      sourceUrl: 'https://insight7.io/partners-registration/',
+      status: 'inactive',
+      commissionNote:
+        'Referral Partner: 25% of every sourced deal. Managed Partner: lifetime commissions, rate not stated. Recurring is unknown, except that lifetime commissions are stated only for Managed Partners. Not applied or accepted. No tracking link stored.',
+    },
+  }),
+  // scout 2026-11-13 | category: Agent builder | scout rating 3.8 (not shown) | launch: 2026-11-12 (Product Hunt, not featured) | pricing: Free $0/month for 1,000 credits; Starter $29/month for 3,000 credits (scales up); Business $199/month for 25,000 credits (scales up); Enterprise custom. Yearly billing saves 20%.
+  // note: priceFromUsd is Starter monthly, $29. The $0 plan is a free tier. Yearly billing is the vendor's public billing and is not the stored from-price. The Product Hunt 3 months free is the vendor's public offer and is not a free plan. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'agentteams',
+    addedAt: SCOUTED_2026_11_13,
+    name: 'AgentTeams',
+    vendor: 'AgentTeams',
+    url: 'https://agentteams.com',
+    allowedHosts: ['agentteams.com'],
+    category: 'Agent builder',
+    shortDesc: 'Hire role-based AI agents that work in Slack, Help Scout, GitHub, Notion and other tools you already use.',
+    longDesc:
+      'AgentTeams lets you add AI agents that work like employees. They use tools you already have, including Slack, Help Scout, GitHub and Notion. A coordinator helps you pick agents, and agents can keep a knowledge base current. Free is $0 a month for 1,000 credits, runs one task at a time, and needs no card. Starter is $29 a month for 3,000 credits, and that plan scales to 5,000 credits for $49, 10,000 for $89 and 20,000 for $169. Business is $199 a month for 25,000 credits, and it scales to 35,000 for $269, 50,000 for $379, 75,000 for $559 and 100,000 for $729. Enterprise is custom. Yearly billing saves 20%. Those yearly prices are the vendor\'s public billing and are not the stored from-price. The $0 plan is the free tier. The Product Hunt listing shows 3 months free for that community. That offer is the vendor\'s public offer and is not a free plan.',
+    pricingModel: 'freemium',
+    priceFromUsd: 29,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_13,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-13 | category: Development | scout rating 3.8 (not shown) | launch: 2026-11-13 (Product Hunt) | pricing: unknown for Sandboxes specifically (public beta; billed only for CPU used while running, no charge while suspended). Render workspace plans: Hobby $0/mo + compute, Pro $25/mo + compute, higher tiers and Enterprise.
+  // note: sandbox-specific prices are not published, so priceFromUsd stays null and the label says pricing is not published. Workspace plan prices are not sandbox prices and are not stored as the from-price. The startup and migration credits are the vendor's public offer and are not a free plan. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'render-sandboxes',
+    addedAt: SCOUTED_2026_11_13,
+    name: 'Render Sandboxes',
+    vendor: 'Render',
+    url: 'https://render.com/sandboxes',
+    allowedHosts: ['render.com'],
+    category: 'Development',
+    shortDesc: 'Isolated microVMs for AI agents, with snapshots and no compute charge while a sandbox is suspended.',
+    longDesc:
+      'Render Sandboxes are isolated computers for AI agents, with persistent state, a filesystem and snapshots. The vendor describes the start as under a second. An idle sandbox suspends, and compute is not charged while it is suspended. The product is in public beta. Sandbox-specific prices are not published, so no price is stored. The vendor says sandboxes are billed only for CPU used while running. Render workspace plans are not sandbox prices. Hobby is $0 a month plus compute, and Pro is $25 a month plus compute. Those workspace prices are not the stored from-price. Private networking and public URLs are not available in the beta. Render for Startups offers up to $100,000 in credits, and migration credits go up to $10,000. Those credits are the vendor\'s public offer and are not a free plan.',
+    pricingModel: 'paid',
+    priceFromUsd: null,
+    hasFreeTier: false,
+    skillLevel: 'pro',
+    platforms: ['Web', 'API'],
+    lastVerifiedAt: SCOUTED_2026_11_13,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-13 | category: Productivity | scout rating 3.8 (not shown) | launch: 2026-11-12 (Product Hunt #23) | pricing: Free €0. Pro is a one-time purchase, price not stated. Cloud is a monthly or yearly subscription for keyless AI summaries (30 hours/month), price not stated.
+  // note: prices are in euros, and Pro and Cloud prices are not published, so priceFromUsd stays null. Do not convert euros to dollars. The €0 plan is a free tier. The scout says a phone app and does not name iOS or Android, so platforms stays empty. Affiliate unknown, not seeded. Sponsorship unknown. https://wizardnote.app/en/ returned a Cloudflare challenge (403) from this environment on 2026-11-13. The catalog keeps the scout URL.
+  tool({
+    slug: 'wizardnote',
+    addedAt: SCOUTED_2026_11_13,
+    name: 'WizardNote',
+    vendor: 'WizardNote',
+    url: 'https://wizardnote.app/en/',
+    allowedHosts: ['wizardnote.app'],
+    category: 'Productivity',
+    shortDesc: 'On-device voice notes that become markdown, with a summary and tasks, and no account required.',
+    longDesc:
+      'WizardNote transcribes voice notes on your phone, on device, with Whisper, including while offline. It turns them into markdown notes with a summary and tasks, and it strips personal data before any AI sees the text. Pro can save notes to Obsidian. Free is €0 and includes recording, on-device transcription, and summaries you copy into ChatGPT, Claude or Gemini. Pro is a one-time purchase. Cloud is a monthly or yearly subscription for keyless AI summaries, 30 hours a month. Pro and Cloud prices are not shown on the site. It transcribes Czech, English, German, French and Spanish. The model download is 190 MB to 1.6 GB.',
+    pricingModel: 'freemium',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: [],
+    lastVerifiedAt: SCOUTED_2026_11_13,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-13 | category: Productivity | scout rating 3.7 (not shown) | launch: 2026-11-12 (Product Hunt #9) | pricing: Free download with a 7-day trial of Pro. Nameshot Pro $4.99 at launch (regular $9.99), one-time, no subscription, Family Sharing included.
+  // note: priceFromUsd is the current one-time launch price, $4.99, same one-time convention as Pauta. The later $9.99 price is not the stored from-price. The 7-day trial is the vendor's public offer and is not a free plan. No free plan was found. A press address is not a sponsorship. Affiliate unknown, not seeded.
+  tool({
+    slug: 'nameshot',
+    addedAt: SCOUTED_2026_11_13,
+    name: 'Nameshot',
+    vendor: 'Nameshot',
+    url: 'https://nameshot.app',
+    allowedHosts: ['nameshot.app'],
+    category: 'Productivity',
+    shortDesc: 'A Mac menu bar app that names each new screenshot in plain words, on device.',
+    longDesc:
+      'Nameshot is a Mac menu bar app that names a new screenshot in plain words as you take it, on device with Apple Intelligence. It can also tidy a folder. It needs a Mac with Apple silicon and macOS 27, and it works offline. The download includes a 7-day trial of Pro. Nameshot Pro is $4.99 once at launch, then $9.99 once. There is no subscription, and Family Sharing is included. Automatic naming stops after the trial unless you buy Pro.',
+    pricingModel: 'paid',
+    priceFromUsd: 4.99,
+    hasFreeTier: false,
+    skillLevel: 'beginner',
+    platforms: ['macOS'],
+    lastVerifiedAt: SCOUTED_2026_11_13,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-13 | category: Development | scout rating 3.6 (not shown) | launch: 2026-11-13 (Product Hunt) | pricing: From $3.99 a month or $49.99 once. Mac App Store soon. macOS 15 Sequoia or later. No free tier or trial stated.
+  // note: priceFromUsd is the monthly price, $3.99. The $49.99 one-time price is not the stored from-price. No free plan was found. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'burnstate',
+    addedAt: SCOUTED_2026_11_13,
+    name: 'Burnstate',
+    vendor: 'Burnstate',
+    url: 'https://burnstate.dev',
+    allowedHosts: ['burnstate.dev'],
+    category: 'Development',
+    shortDesc: 'A Mac menu bar app that paces Claude Code, Codex, Cursor and Vercel AI Gateway limits against the clock.',
+    longDesc:
+      'Burnstate is a Mac menu bar app that shows Claude Code, Codex, Cursor and Vercel AI Gateway limits against the clock and warns before you run out. It reads the logins those tools already have. It is $3.99 a month, or $49.99 once. The Mac App Store version is described as coming soon. It needs macOS 15 Sequoia or later. The stored from-price is the monthly price, $3.99. The one-time price is not the stored from-price. No free plan was found.',
+    pricingModel: 'paid',
+    priceFromUsd: 3.99,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['macOS'],
+    lastVerifiedAt: SCOUTED_2026_11_13,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-13 | category: Games (FLAG: scout category "Games" is not a tool category. Game development is for building games, which Willo is not. Willo is a consumer companion you talk to, so it uses Chat assistant, the category for Kippy and Quest.) | scout rating 3.6 (not shown) | launch: 2026-11-13 (Product Hunt) | pricing: Free to start (50 answers a day). Paid monthly plans (Adventurer, Hero, Champion, Legend) are listed but not open yet, prices not published.
+  // note: paid prices are not published and the plans are not open, so priceFromUsd stays null. The 50 answers a day are a free tier. The 15% first-month audience discount is the vendor's public offer and is not a free plan. Sponsorship unknown.
+  // affiliate: in-house (Creator ambassador program). 60% of the first month only, not recurring. Payout 30 days after payment, $10 minimum. Creators who post 4 pieces per 30 days get the Legend plan free while they do. Apply page https://willocompanion.com/ambassador, on the official host. Not applied or accepted. Seeded inactive, hasProgram only. No tracking link.
+  tool({
+    slug: 'willo',
+    addedAt: SCOUTED_2026_11_13,
+    name: 'Willo',
+    vendor: 'Willo',
+    url: 'https://willocompanion.com',
+    allowedHosts: ['willocompanion.com'],
+    category: 'Chat assistant',
+    shortDesc: 'A voice companion for World of Warcraft that answers aloud about quests, lore and settings.',
+    longDesc:
+      'Willo is a voice companion for World of Warcraft. You hold a talk key and ask about quests, lore or settings, and she answers aloud. NPCs can reply in character, and she remembers your goals. It runs on Windows, Mac and iPhone. The iPhone app is only in the US and Canada. There is no Android app. It works with the free Lore Forever add-on. You can start free with 50 answers a day. That free start is the free tier. Paid monthly plans, Adventurer, Hero, Champion and Legend, are listed and are not open yet. Their prices are not published, so no paid price is stored. Creator-ambassador audiences get 15% off their first month. That discount is the vendor\'s public offer and is not a free plan.',
+    pricingModel: 'freemium',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['Windows', 'macOS', 'iOS'],
+    lastVerifiedAt: SCOUTED_2026_11_13,
+    fits: [],
+    affiliate: {
+      hasProgram: true,
+      network: 'in-house (Creator ambassador program)',
+      sourceUrl: 'https://willocompanion.com/ambassador',
+      status: 'inactive',
+      commissionNote:
+        '60% of each subscriber\'s first month only, not recurring. Payout is 30 days after payment, with a $10 minimum. Creators who post 4 pieces per 30 days get the Legend plan free while they do. Not applied or accepted. No tracking link stored.',
+    },
+  }),
+  // scout 2026-11-13 | category: Automation | scout rating 3.5 (not shown) | launch: 2026-11-13 (Product Hunt) | pricing: Personal $0 forever. Commercial license free until Jan 1, 2027, then $10/month billed $120 annually. Team license and hosted servers coming soon. Enterprise contact.
+  // note: the commercial price is not charged yet, so priceFromUsd stays null. Personal use is a free tier. The free commercial window until Jan 1, 2027 is the vendor's public offer. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'qorqbot',
+    addedAt: SCOUTED_2026_11_13,
+    name: 'qorqbot',
+    vendor: '49 Agents',
+    url: 'https://49agents.com/qorqbot/',
+    allowedHosts: ['49agents.com'],
+    category: 'Automation',
+    shortDesc: 'An open proactive agent that runs on the Claude or Codex subscription you already pay for.',
+    longDesc:
+      'qorqbot, from 49 Agents, is an open proactive agent for business workflows and long-running tasks. It runs on Claude or Codex subscriptions you already have, learns preferences, and works in the background. It runs locally on Mac, Windows with WSL2, and Linux. Personal use is $0, with every feature, on your computer and your own model subscriptions. That personal plan is the free tier. A commercial license is free until January 1, 2027, then $10 a month billed $120 annually, for one person, unlimited agents and all of your computers. Team licenses and hosted servers are not available yet. Enterprise is by contact. The $10 commercial price is not charged yet, so it is not the stored from-price. The free commercial window is the vendor\'s public offer.',
+    pricingModel: 'freemium',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['macOS', 'Windows', 'Linux'],
+    lastVerifiedAt: SCOUTED_2026_11_13,
     fits: [],
     affiliate: none,
   }),
