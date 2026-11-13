@@ -66,6 +66,7 @@ export function SiteFooter() {
             <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center leading-tight underline-offset-4 md:min-h-8 hover:underline" href="/newsletter">Newsletter</Link></li>
             <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center leading-tight underline-offset-4 md:min-h-8 hover:underline" href="/pricing">Pricing</Link></li>
             <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center leading-tight underline-offset-4 md:min-h-8 hover:underline" href="/sponsor">Sponsor</Link></li>
+            <li><Link className="inline-flex min-h-11 scroll-mb-24 items-center leading-tight underline-offset-4 md:min-h-8 hover:underline" href="/build">AI setup</Link></li>
             <li>
               <SuggestSomethingLink className="inline-flex min-h-11 scroll-mb-24 items-center gap-2 leading-tight underline-offset-4 md:min-h-8 hover:underline" />
             </li>

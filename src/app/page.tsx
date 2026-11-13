@@ -64,6 +64,17 @@ export default async function HomePage() {
 
       <PickerForm tasks={tasks} />
 
+      {/* After the quiz. The form's negative margin keeps the button above the fold; this block stays below it. */}
+      <section aria-labelledby="build-offer" className="max-w-xl">
+        <h2 id="build-offer" className="font-semibold text-2xl">Want someone to set it up?</h2>
+        <p className="mt-2 text-muted">
+          The quiz names one tool. For a working session that maps your current tools and sets the first workflow up, see the done-for-you offer.
+        </p>
+        <Link href="/build" prefetch={false} className="inline-flex min-h-11 items-center font-semibold underline underline-offset-4">
+          AI Tool Audit + Setup
+        </Link>
+      </section>
+
       <section aria-labelledby="how-it-works">
         <h2 id="how-it-works" className="font-semibold text-3xl">How it works: three questions, about 30 seconds</h2>
         <ol className="mt-4 grid gap-3 md:grid-cols-3">

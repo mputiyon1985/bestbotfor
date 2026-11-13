@@ -7,6 +7,7 @@ const category = toolCategories(listedCatalogFromSeeds().tools)[0]
 const pages = [
   '/',
   '/sponsor',
+  '/build',
   '/newsletter',
   '/best/coding',
   '/tools/chatgpt',

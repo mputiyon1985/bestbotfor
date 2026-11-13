@@ -146,6 +146,19 @@ describe('network tracking hosts', () => {
     expect(officialHttpsUrl('https://docsalot.dev/', hosts('docsalot'))).toBe('https://docsalot.dev/')
     expect(servesAffiliateLink('docsalot', docsalot, 'active')).toBe(true)
     expect(servesAffiliateLink('docsalot', docsalot, 'inactive')).toBe(false)
+
+    const sendr = 'https://sendr.cello.so/LOp5fYtd9Jc'
+    expect(hosts('sendr')).toEqual(['www.sendr.ai', 'sendr.cello.so/LOp5fYtd9Jc'])
+    expect(affiliateRedirectUrl(sendr, hosts('sendr'))).toBe(sendr)
+    expect(affiliateRedirectUrl('https://sendr.cello.so/other', hosts('sendr'))).toBeNull()
+    expect(affiliateRedirectUrl('https://sendr.cello.so/LOp5fYtd9Jc/extra', hosts('sendr'))).toBeNull()
+    expect(affiliateRedirectUrl('https://sendr.cello.so/LOp5fYtd9Jcevil', hosts('sendr'))).toBeNull()
+    expect(affiliateRedirectUrl('https://cello.so/LOp5fYtd9Jc', hosts('sendr'))).toBeNull()
+    expect(affiliateRedirectUrl('https://evil.sendr.cello.so/LOp5fYtd9Jc', hosts('sendr'))).toBeNull()
+    expect(officialHttpsUrl('https://www.sendr.ai/', hosts('sendr'))).toBe('https://www.sendr.ai/')
+    expect(officialHttpsUrl('https://sendr.cello.so/', hosts('sendr'))).toBeNull()
+    expect(servesAffiliateLink('sendr', sendr, 'active')).toBe(true)
+    expect(servesAffiliateLink('sendr', sendr, 'inactive')).toBe(false)
     const synthesia = 'https://www.synthesia.io/?via=mark-putiyon'
     expect(affiliateRedirectUrl(synthesia, hosts('synthesia'))).toBe(synthesia)
     expect(affiliateRedirectUrl('https://www.synthesia.io/?via=other', hosts('synthesia'))).toBeNull()

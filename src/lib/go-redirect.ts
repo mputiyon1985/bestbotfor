@@ -6,7 +6,7 @@ import { isDeadline, withDeadline } from './deadline'
 import { countryCode, hashIp, sameOriginPath } from './ip'
 import { affiliateRedirectUrl, decideRedirect } from './redirect'
 import { slugSchema } from './validation'
-import { outboundPageType, withOutboundUtm } from './outbound-utm'
+import { exactCelloTrackingUrl, outboundPageType, withOutboundUtm } from './outbound-utm'
 
 export const GO_DB_BUDGET_MS = 800
 
@@ -127,7 +127,12 @@ export async function resolveGoRedirect(input: {
         }
       : null
 
-  return { status: 302, location: withOutboundUtm(withUtmParams(decision.url, input.search ?? ''), outboundPageType(page)), click }
+  // Cello's code is the path. Decide that on the allowlisted URL before inbound
+  // utm_* are copied, then return it with no query. Every other program still
+  // copies inbound utm_* first and adds ours only when the destination has none.
+  const cello = exactCelloTrackingUrl(decision.url)
+  const location = cello ?? withOutboundUtm(withUtmParams(decision.url, input.search ?? ''), outboundPageType(page))
+  return { status: 302, location, click }
 }
 
 async function rateLimitAllows(limit: () => Promise<{ ok: boolean }>, deadlineMs: number): Promise<boolean> {

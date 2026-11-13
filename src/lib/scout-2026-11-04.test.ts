@@ -28,7 +28,7 @@ describe('bot scout 2026-11-04', () => {
     expect(new Set(SLUGS).size).toBe(8)
     expect(toolSeeds.filter((tool) => SLUGS.includes(tool.slug as (typeof SLUGS)[number]))).toHaveLength(8)
     expect(new Set(toolSeeds.map((tool) => tool.slug)).size).toBe(toolSeeds.length)
-    expect(toolSeeds).toHaveLength(367)
+    expect(toolSeeds).toHaveLength(382)
     for (const slug of SLUGS) {
       const tool = seed(slug)
       expect(tool.addedAt, slug).toBe(SCOUT)
@@ -84,7 +84,7 @@ describe('bot scout 2026-11-04', () => {
   })
 
   it('seeds only Videco as an inactive program, and leaves the approved pair unchanged', () => {
-    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot'])
+    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr'])
     const videco = seed('videco')
     expect(videco.affiliate).toEqual({
       hasProgram: true,
