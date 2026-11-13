@@ -159,6 +159,18 @@ describe('network tracking hosts', () => {
     expect(officialHttpsUrl('https://sendr.cello.so/', hosts('sendr'))).toBeNull()
     expect(servesAffiliateLink('sendr', sendr, 'active')).toBe(true)
     expect(servesAffiliateLink('sendr', sendr, 'inactive')).toBe(false)
+    const julius = 'https://julius.dub.link/mark-putiyon'
+    expect(hosts('julius-ai')).toEqual(['julius.ai', 'julius.dub.link/mark-putiyon'])
+    expect(affiliateRedirectUrl(julius, hosts('julius-ai'))).toBe(julius)
+    expect(affiliateRedirectUrl('https://julius.dub.link/other', hosts('julius-ai'))).toBeNull()
+    expect(affiliateRedirectUrl('https://julius.dub.link/mark-putiyon/extra', hosts('julius-ai'))).toBeNull()
+    expect(affiliateRedirectUrl('https://julius.dub.link/mark-putiyonevil', hosts('julius-ai'))).toBeNull()
+    expect(affiliateRedirectUrl('https://dub.link/mark-putiyon', hosts('julius-ai'))).toBeNull()
+    expect(officialHttpsUrl('https://julius.ai/', hosts('julius-ai'))).toBe('https://julius.ai/')
+    expect(officialHttpsUrl('https://julius.dub.link/', hosts('julius-ai'))).toBeNull()
+    expect(servesAffiliateLink('julius-ai', julius, 'active')).toBe(true)
+    expect(servesAffiliateLink('julius', julius, 'active')).toBe(true)
+    expect(servesAffiliateLink('julius-ai', julius, 'inactive')).toBe(false)
     const synthesia = 'https://www.synthesia.io/?via=mark-putiyon'
     expect(affiliateRedirectUrl(synthesia, hosts('synthesia'))).toBe(synthesia)
     expect(affiliateRedirectUrl('https://www.synthesia.io/?via=other', hosts('synthesia'))).toBeNull()

@@ -5,4 +5,4 @@ export const AFFILIATE_PAGE_NOTICE =
 /** Shown only next to a Visit control whose redirect is an active affiliate link. */
 export const AFFILIATE_BUTTON_NOTE = 'Affiliate link: we may earn a commission.'
 
-export const DISCLOSURE_UPDATED = 'November 12, 2026'
+export const DISCLOSURE_UPDATED = 'November 13, 2026'
