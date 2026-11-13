@@ -6,7 +6,7 @@ import { isDeadline, withDeadline } from './deadline'
 import { countryCode, hashIp, sameOriginPath } from './ip'
 import { affiliateRedirectUrl, decideRedirect } from './redirect'
 import { slugSchema } from './validation'
-import { exactCelloTrackingUrl, outboundPageType, withOutboundUtm } from './outbound-utm'
+import { exactPinnedTrackingUrl, outboundPageType, withOutboundUtm } from './outbound-utm'
 
 export const GO_DB_BUDGET_MS = 800
 
@@ -40,6 +40,18 @@ const NOT_A_TOOL = 'That address is not a tool in the catalog.'
 const NOT_IN_CATALOG = 'That tool is not in the catalog.'
 
 /**
+ * /go paths that share a catalog tool. Julius AI's catalog slug is julius-ai.
+ * /go/julius is that same tool.
+ */
+const GO_SLUG_ALIASES: Readonly<Record<string, string>> = {
+  julius: 'julius-ai',
+}
+
+export function goCatalogSlug(slug: string): string {
+  return GO_SLUG_ALIASES[slug] ?? slug
+}
+
+/**
  * HEAD probes use the reviewed seed URL and do not call the rate limiter or
  * the catalog. A timeout on either of those logs an error from the GET path,
  * and a probe does not need a click row. The destination is the same official
@@ -50,7 +62,7 @@ export function resolveHeadGoRedirect(slug: string): GoOutcome {
   if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) {
     return { status: 404, body: NOT_A_TOOL }
   }
-  const reviewed = toolSeeds.find((item) => item.slug === slug && !item.unlisted)
+  const reviewed = toolSeeds.find((item) => item.slug === goCatalogSlug(slug) && !item.unlisted)
   if (!reviewed) return { status: 404, body: NOT_IN_CATALOG }
   const decision = decideRedirect({
     tool: { url: reviewed.url, affiliateUrl: null, allowedHosts: reviewed.allowedHosts },
@@ -127,11 +139,12 @@ export async function resolveGoRedirect(input: {
         }
       : null
 
-  // Cello's code is the path. Decide that on the allowlisted URL before inbound
-  // utm_* are copied, then return it with no query. Every other program still
-  // copies inbound utm_* first and adds ours only when the destination has none.
-  const cello = exactCelloTrackingUrl(decision.url)
-  const location = cello ?? withOutboundUtm(withUtmParams(decision.url, input.search ?? ''), outboundPageType(page))
+  // Sendr and Julius codes are the path. Decide that on the allowlisted URL
+  // before inbound utm_* are copied, then return it with no query. Every other
+  // program still copies inbound utm_* first and adds ours only when the
+  // destination has none.
+  const pinned = exactPinnedTrackingUrl(decision.url)
+  const location = pinned ?? withOutboundUtm(withUtmParams(decision.url, input.search ?? ''), outboundPageType(page))
   return { status: 302, location, click }
 }
 
@@ -188,7 +201,7 @@ export function servesAffiliateLink(
   status: string | null | undefined,
 ): boolean {
   if (status !== ACTIVE_AFFILIATE_STATUS) return false
-  const reviewed = toolSeeds.find((item) => item.slug === slug)
+  const reviewed = toolSeeds.find((item) => item.slug === goCatalogSlug(slug))
   if (!reviewed) return false
   return affiliateRedirectUrl(affiliateUrl, reviewed.allowedHosts) !== null
 }

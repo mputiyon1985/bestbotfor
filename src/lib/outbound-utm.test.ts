@@ -31,6 +31,10 @@ describe('outbound UTMs', () => {
     expect(withOutboundUtm(cello, 'direct')).toBe(cello)
     expect(withOutboundUtm(cello, 'tool')).toBe(cello)
     expect(withOutboundUtm(`${cello}?utm_source=x&foo=1`, 'direct')).toBe(cello)
+    const julius = 'https://julius.dub.link/mark-putiyon'
+    expect(withOutboundUtm(julius, 'direct')).toBe(julius)
+    expect(withOutboundUtm(julius, 'tool')).toBe(julius)
+    expect(withOutboundUtm(`${julius}?utm_source=x&foo=1`, 'direct')).toBe(julius)
   })
 
   it('keeps the host', () => {

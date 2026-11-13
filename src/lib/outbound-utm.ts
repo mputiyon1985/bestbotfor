@@ -6,13 +6,22 @@
  * inbound passthrough), so an affiliate URL's own UTMs, or UTMs passed in on
  * the /go link, are never overwritten or mixed with ours. A key counts when
  * it starts with utm_ or utm-. DocsAlot's tracking link uses the hyphen.
- * Sendr's Cello code is the path. That link is returned with no query.
+ * Sendr's Cello code and Julius AI's Dub code are the path. Those links are
+ * returned with no query.
  */
 const EXISTING_UTM_KEY = /^utm[_-]/i
-const SENDR_CELLO_TRACKING_URL = 'https://sendr.cello.so/LOp5fYtd9Jc'
 
-/** The approved Sendr link, with any query or hash removed. Null for every other URL. */
-export function exactCelloTrackingUrl(destination: string): string | null {
+/** Path-coded tracking links. /go returns the url and drops any query. */
+const EXACT_TRACKING_URLS = [
+  { host: 'sendr.cello.so', pathname: '/LOp5fYtd9Jc', url: 'https://sendr.cello.so/LOp5fYtd9Jc' },
+  { host: 'julius.dub.link', pathname: '/mark-putiyon', url: 'https://julius.dub.link/mark-putiyon' },
+] as const
+
+/**
+ * An approved path-coded tracking link, with any query or hash removed.
+ * Null for every other URL.
+ */
+export function exactPinnedTrackingUrl(destination: string): string | null {
   let url: URL
   try {
     url = new URL(destination)
@@ -20,8 +29,8 @@ export function exactCelloTrackingUrl(destination: string): string | null {
     return null
   }
   if (url.protocol !== 'https:' || url.username || url.password || url.port !== '') return null
-  if (url.hostname !== 'sendr.cello.so' || url.pathname !== '/LOp5fYtd9Jc') return null
-  return SENDR_CELLO_TRACKING_URL
+  const match = EXACT_TRACKING_URLS.find((item) => item.host === url.hostname && item.pathname === url.pathname)
+  return match?.url ?? null
 }
 
 export const OUTBOUND_UTM_SOURCE = 'bestbotfor'
@@ -55,9 +64,9 @@ export function withOutboundUtm(destination: string, pageType: string): string {
   } catch {
     return destination
   }
-  // Approved Sendr link. A query already on it is removed. /go applies this before inbound params.
-  const cello = exactCelloTrackingUrl(destination)
-  if (cello) return cello
+  // Approved Sendr and Julius links. A query already on one is removed. /go applies this before inbound params.
+  const pinned = exactPinnedTrackingUrl(destination)
+  if (pinned) return pinned
   for (const key of url.searchParams.keys()) {
     if (EXISTING_UTM_KEY.test(key)) return destination
   }

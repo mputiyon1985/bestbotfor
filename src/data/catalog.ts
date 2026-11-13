@@ -2685,12 +2685,13 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // pricing verified 2026-10-15 at https://julius.ai/pricing | budget fit: free | best for: data-analysis, charts
+  // affiliate: approved and seeded active. Tracking URL https://julius.dub.link/mark-putiyon. The allowlist pins that path. /go/julius is this tool (catalog slug julius-ai). /go/julius and /go/julius-ai send that URL and do not add other parameters. No commission rate was supplied, so none is stored. Network is unset, so no SubID is added.
   tool({
     slug: 'julius-ai',
     name: 'Julius AI',
     vendor: 'Julius AI',
     url: 'https://julius.ai',
-    allowedHosts: ['julius.ai'],
+    allowedHosts: ['julius.ai', 'julius.dub.link/mark-putiyon'],
     category: 'Research',
     shortDesc: 'An AI data analyst that analyzes files and builds charts.',
     longDesc: 'Ask questions of a spreadsheet and get charts back. Free plan is limited.',
@@ -2703,7 +2704,14 @@ export const toolSeeds: ToolSeed[] = [
     fits: [
       { task: 'research', score: 72, notes: 'Ask questions of a spreadsheet and get charts back.' },
     ],
-    affiliate: { ...none, status: 'verify' },
+    affiliate: {
+      hasProgram: true,
+      network: null,
+      sourceUrl: null,
+      status: 'active',
+      commissionNote: null,
+      affiliateUrl: 'https://julius.dub.link/mark-putiyon',
+    },
   }),
   // pricing verified 2026-10-15 at https://exa.ai/pricing | budget fit: free | best for: search-api, agents
   tool({

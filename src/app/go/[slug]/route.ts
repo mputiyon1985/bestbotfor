@@ -6,7 +6,7 @@ import { withDeadline } from '@/lib/deadline'
 import { getDb } from '@/lib/db'
 import { clicks } from '@/lib/db/schema'
 import { withAffiliateSubId } from '@/lib/affiliate-subid'
-import { GO_DB_BUDGET_MS, resolveGoRedirect, resolveHeadGoRedirect, type GoClick } from '@/lib/go-redirect'
+import { GO_DB_BUDGET_MS, goCatalogSlug, resolveGoRedirect, resolveHeadGoRedirect, type GoClick } from '@/lib/go-redirect'
 import { clientIp, rateLimitKey } from '@/lib/ip'
 import { ACTION_LIMITS } from '@/lib/action-limit'
 import { consumeRateLimit } from '@/lib/rate-limit'
@@ -30,10 +30,11 @@ export const dynamic = 'force-dynamic'
  */
 export async function GET(request: Request, context: { params: Promise<{ slug: string }> }) {
   if (request.method === 'HEAD') return headRedirect(context)
-  const { slug } = await context.params
-  if (isUnsafeCatalogSlug(slug) || !slugSchema.safeParse(slug).success) {
+  const { slug: requested } = await context.params
+  if (isUnsafeCatalogSlug(requested) || !slugSchema.safeParse(requested).success) {
     return text('That address is not a tool in the catalog.', 404)
   }
+  const slug = goCatalogSlug(requested)
 
   const reviewed = toolSeeds.find((item) => item.slug === slug && !item.unlisted)
   if (!reviewed) return text('That tool is not in the catalog.', 404)
