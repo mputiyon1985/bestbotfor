@@ -49,6 +49,7 @@ export const SITEMAP_STATIC_PATHS = [
   '/terms',
   '/pricing',
   '/sponsor',
+  '/build',
   '/tools',
   '/best',
   '/compare',

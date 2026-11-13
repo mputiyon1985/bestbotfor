@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { taskSeeds } from '@/data/catalog'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { SponsorCheckoutNotice } from '@/components/sponsor-checkout-notice'
@@ -96,6 +97,12 @@ export default async function SponsorPage() {
           ? 'Buy a featured tool slot on one /best/[task] page, or a sponsor mention in one newsletter issue.'
           : 'Buy a featured tool slot on one /best/[task] page.'}
         {surface === 'closed' ? null : ' Payment happens on Stripe’s hosted checkout page. This site does not collect card numbers.'}
+      </p>
+      <p>
+        Want your own tools chosen and the first one set up?{' '}
+        <Link href="/build" className="inline-flex min-h-11 items-center font-semibold underline">
+          AI Tool Audit + Setup
+        </Link>
       </p>
       <ul className="list-disc space-y-2 pl-5">
         <li>
