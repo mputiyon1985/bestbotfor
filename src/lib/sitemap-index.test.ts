@@ -54,6 +54,7 @@ async function staticRobots(route: string): Promise<Metadata['robots']> {
     '/privacy': () => import('@/app/privacy/page'),
     '/terms': () => import('@/app/terms/page'),
     '/pricing': () => import('@/app/pricing/page'),
+    '/build': () => import('@/app/build/page'),
     '/best': () => import('@/app/best/page'),
     '/compare': () => import('@/app/compare/page'),
     '/alternatives': () => import('@/app/alternatives/page'),
