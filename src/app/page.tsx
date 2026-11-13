@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { headers } from 'next/headers'
 import { DailyBotCapture } from '@/components/daily-bot-capture'
+import { HeroStat } from '@/components/hero-stat'
 import { JsonLd } from '@/components/json-ld'
 import { PICKER_QUESTIONS, PickerForm } from '@/components/picker-form'
 import { comparePairSeeds, taskSeeds, toolSeeds } from '@/data/catalog'
@@ -36,28 +37,23 @@ const faqs = [
 ]
 
 export default async function HomePage() {
-  const [catalogTasks, headerStore, toolCountLabel] = await Promise.all([listTasks(), headers(), visibleToolCountLabel()])
+  const [catalogTasks, headerStore, toolCount] = await Promise.all([listTasks(), headers(), visibleToolCountLabel()])
   const nonce = headerStore.get('x-nonce')
   const tasks = catalogTasks.length > 0 ? catalogTasks : taskSeeds
 
   return (
-    <div className="space-y-8 md:space-y-16">
+    <div className="space-y-8 md:-mt-8 md:space-y-16">
       <JsonLd data={faqJsonLd(faqs)} nonce={nonce} />
       <section className="grid gap-3 md:grid-cols-[1.1fr_0.9fr] md:items-end md:gap-8">
         <div>
-          {/* One line from md up, so the quiz button stays above 800px. The break below md is in the first HTML, so the font swap cannot change the line count. */}
-          <p className="text-sm font-medium leading-5 text-accent">
-            <span className="uppercase tracking-wide">Answer 3 quick questions</span>
-            {toolCountLabel ? (
-              <>
-                {' '}
-                <br className="md:hidden" />
-                <span className="tabular-nums md:ml-3">{toolCountLabel}</span>
-              </>
-            ) : null}
+          {/* The count is in the first HTML. A failed read omits the stat instead of leaving a hole. */}
+          {toolCount ? <HeroStat count={toolCount} /> : null}
+          {/* One short line, so the delayed Poppins swap cannot change its line count. */}
+          <p className={`text-sm font-medium uppercase leading-5 tracking-wide text-accent${toolCount ? ' mt-2' : ''}`}>
+            Answer 3 quick questions
           </p>
-          <h1 className="mt-3 font-headline text-4xl leading-tight md:text-6xl">{TAGLINE}</h1>
-          <p className="mt-2 max-w-xl text-base text-muted md:mt-4 md:text-lg">
+          <h1 className="mt-2 font-headline text-4xl leading-tight lg:mt-2.5 lg:text-5xl lg:leading-[1.08]">{TAGLINE}</h1>
+          <p className="font-lcp mt-2 max-w-xl text-base leading-normal text-muted lg:text-[17px]">
             Answer three quick questions: what you want to do, what you can spend, and how experienced you are. You’ll get one AI tool for the job and up to six alternatives, with a plain-English reason for each.
           </p>
         </div>

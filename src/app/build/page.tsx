@@ -24,9 +24,9 @@ export const metadata: Metadata = pageMetadata({
 })
 
 export default async function BuildPage() {
-  const toolCountLabel = await visibleToolCountLabel()
-  const guide = toolCountLabel
-    ? `BestBotFor is the guide for picking one AI tool for a job, with ${toolCountLabel}.`
+  const toolCount = await visibleToolCountLabel()
+  const guide = toolCount
+    ? `BestBotFor is the guide for picking one AI tool for a job, with ${toolCount.formatted} AI ${toolCount.noun} listed.`
     : 'BestBotFor is the guide for picking one AI tool for a job.'
 
   return (

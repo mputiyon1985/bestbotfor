@@ -61,7 +61,7 @@ describe('/build page', () => {
 
   it('renders both Payment Links exactly, with the booking note beside them', async () => {
     const { visibleToolCountLabel } = await import('@/lib/visible-tool-count')
-    vi.mocked(visibleToolCountLabel).mockResolvedValue('1,260 AI tools listed')
+    vi.mocked(visibleToolCountLabel).mockResolvedValue({ formatted: '1,260', noun: 'tools' })
     const page = await html()
     expect(page).toContain('>AI Tool Audit + Setup</h1>')
     expect(page).toContain('1,260 AI tools listed')

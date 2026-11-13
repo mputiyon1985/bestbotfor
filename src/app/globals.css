@@ -21,6 +21,8 @@
   --mist: color-mix(in srgb, var(--indigo) 8%, var(--white));
   --accent: var(--indigo);
   --focus: var(--indigo);
+  /* “1” in the homepage stat. The mockup green. 3.55:1 on white, above the large-text bar. Mint is 1.62:1 on white, so it is not used for this digit. */
+  --hero-pick: #0b9b6c;
   --danger: #9f1239;
   --danger-bg: #fff1f2;
 }
@@ -36,6 +38,7 @@
     --mist: color-mix(in srgb, var(--indigo) 28%, var(--ink-brand));
     --accent: var(--mint);
     --focus: var(--mint);
+    --hero-pick: var(--mint);
     --danger: #ffb4c0;
     --danger-bg: color-mix(in srgb, #9f1239 40%, var(--ink-brand));
   }
@@ -57,6 +60,7 @@
   --color-danger: var(--danger);
   --color-danger-bg: var(--danger-bg);
   --color-focus: var(--focus);
+  --color-hero-pick: var(--hero-pick);
 }
 
 /*
@@ -124,6 +128,19 @@ html {
 .font-headline {
   font-family: ui-sans-serif, system-ui, sans-serif;
   font-weight: 700;
+}
+
+/* Same face as the headline, at the inherited weight. The home lede is the largest paint; a Poppins swap must not move it. */
+.font-lcp {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Vertical rule in the homepage stat. Indigo at the top, mint at the bottom. */
+.hero-stat-rule {
+  width: 4px;
+  flex: 0 0 4px;
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--indigo), var(--mint));
 }
 
 body {

@@ -27,18 +27,21 @@ function toolRow(id: number, slug: string, status: string) {
   }
 }
 
-function expectedCount(count: number): string {
+function expectedCount(count: number) {
   const formatted = new Intl.NumberFormat('en-US').format(count)
   const noun = count === 1 ? 'tool' : 'tools'
-  return `${formatted} AI ${noun} ${VISIBLE_TOOL_COUNT_WORD}`
+  return { formatted, noun }
 }
 
 describe('formatVisibleToolCount', () => {
-  it('groups thousands and stays a short line', () => {
-    expect(formatVisibleToolCount(260)).toBe(expectedCount(260))
-    expect(formatVisibleToolCount(1260)).toBe(expectedCount(1260))
-    expect(formatVisibleToolCount(1)).toBe(expectedCount(1))
-    expect(formatVisibleToolCount(0)).toBe(expectedCount(0))
+  it('groups thousands and follows the count', () => {
+    expect(VISIBLE_TOOL_COUNT_WORD).toBe('tracked')
+    expect(formatVisibleToolCount(260)).toEqual(expectedCount(260))
+    expect(formatVisibleToolCount(1260)).toEqual(expectedCount(1260))
+    expect(formatVisibleToolCount(1)).toEqual(expectedCount(1))
+    expect(formatVisibleToolCount(0)).toBeNull()
+    expect(formatVisibleToolCount(363)).toEqual({ formatted: '363', noun: 'tools' })
+    expect(formatVisibleToolCount(363)).not.toEqual(formatVisibleToolCount(349))
   })
 
   it('rejects a count that is not a whole number', () => {
@@ -55,7 +58,8 @@ describe('visibleToolCountLabel', () => {
     await expect(visibleToolCountLabel(async () => {
       throw new Error('db down')
     })).resolves.toBeNull()
-    await expect(visibleToolCountLabel(async () => 1260)).resolves.toBe(expectedCount(1260))
+    await expect(visibleToolCountLabel(async () => 1260)).resolves.toEqual(expectedCount(1260))
+    await expect(visibleToolCountLabel(async () => 0)).resolves.toBeNull()
   })
 })
 
@@ -85,22 +89,21 @@ describe('readVisibleToolCount', () => {
 })
 
 describe('homepage hero', () => {
-  it('places the count on the eyebrow line so it does not add a block under the heading', () => {
+  it('leads with the live count and does not hardcode the old listed line', () => {
     const page = readFileSync(new URL('../app/page.tsx', import.meta.url), 'utf8')
+    const stat = page.indexOf('<HeroStat')
     const eyebrow = page.indexOf('Answer 3 quick questions')
-    const count = page.indexOf('{toolCountLabel}')
     const heading = page.indexOf('<h1')
     const lede = page.indexOf('Answer three quick questions')
     expect(page).toContain('visibleToolCountLabel()')
-    expect(eyebrow).toBeGreaterThan(-1)
-    expect(count).toBeGreaterThan(eyebrow)
-    expect(heading).toBeGreaterThan(count)
+    expect(page).toContain('{toolCount ? <HeroStat count={toolCount} /> : null}')
+    expect(stat).toBeGreaterThan(-1)
+    expect(eyebrow).toBeGreaterThan(stat)
+    expect(heading).toBeGreaterThan(eyebrow)
     expect(lede).toBeGreaterThan(heading)
-    const space = page.indexOf("{' '}")
-    expect(space).toBeGreaterThan(eyebrow)
-    expect(count).toBeGreaterThan(space)
-    expect(page).toContain('<br className="md:hidden" />')
-    expect(page).toContain('tabular-nums')
-    expect(page).not.toMatch(/<h1[\s\S]*toolCountLabel/)
+    expect(page).not.toContain('AI tools listed')
+    expect(page).not.toContain('toolCountLabel')
+    expect(page).not.toMatch(/\b363\b/)
+    expect(page).not.toMatch(/<h1[\s\S]*toolCount/)
   })
 })
