@@ -7997,7 +7997,7 @@ export const toolSeeds: ToolSeed[] = [
   tool({
     slug: 'spacefast',
     addedAt: SCOUTED_2026_11_13,
-    name: 'Spacefast',
+    name: 'Spacefast by Automattic',
     vendor: 'Automattic',
     url: 'https://spacefast.com',
     allowedHosts: ['spacefast.com'],
@@ -8100,7 +8100,7 @@ export const toolSeeds: ToolSeed[] = [
     category: 'Development',
     shortDesc: 'An open-source graph database for AI agents, with typed schema and Git-style branching.',
     longDesc:
-      'Omnigraph, from Modern Relay, is an open-source graph database for AI agents. It stores the graph on object storage you already have, with a typed schema and Git-style branching, review and merge, plus semantic, keyword and hybrid search. The engine is free under the MIT license and runs embedded, in your own cloud on AWS, Azure or GCP, or on-prem. Agents write on branches, and changes are reviewed and merged. A Studio desktop app reviews diffs. The scout does not name the Studio operating system, so no desktop OS is stored. Omnigraph Cloud, the managed service, is in private preview. Its price is not published, so no paid price is stored.',
+      'Omnigraph, from Modern Relay, is an open-source graph database for AI agents. It stores the graph on object storage you already have, with a typed schema and Git-style branching, review and merge, plus semantic, keyword and hybrid search. The engine is free under the MIT license and runs embedded, in your own cloud on AWS, Azure or GCP, or on-prem. Agents write on branches, and changes are reviewed and merged. A Studio desktop app reviews diffs. Omnigraph Cloud, the managed service, is in private preview and has no published price.',
     pricingModel: 'free',
     priceFromUsd: null,
     hasFreeTier: true,
@@ -8207,7 +8207,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: none,
   }),
   // scout 2026-11-13 | category: Productivity | scout rating 3.8 (not shown) | launch: 2026-11-12 (Product Hunt #23) | pricing: Free €0. Pro is a one-time purchase, price not stated. Cloud is a monthly or yearly subscription for keyless AI summaries (30 hours/month), price not stated.
-  // note: prices are in euros, and Pro and Cloud prices are not published, so priceFromUsd stays null. Do not convert euros to dollars. The €0 plan is a free tier. The scout says a phone app and does not name iOS or Android, so the platform is Phone. Affiliate unknown, not seeded. Sponsorship unknown. https://wizardnote.app/en/ returned a Cloudflare challenge (403) from this environment on 2026-11-13. The catalog keeps the scout URL.
+  // note: prices are in euros, and Pro and Cloud prices are not published, so priceFromUsd stays null. Do not convert euros to dollars. The €0 plan is a free tier. The scout says a phone app and does not name iOS or Android, so platforms stays empty. Affiliate unknown, not seeded. Sponsorship unknown. https://wizardnote.app/en/ returned a Cloudflare challenge (403) from this environment on 2026-11-13. The catalog keeps the scout URL.
   tool({
     slug: 'wizardnote',
     addedAt: SCOUTED_2026_11_13,
@@ -8218,12 +8218,12 @@ export const toolSeeds: ToolSeed[] = [
     category: 'Productivity',
     shortDesc: 'On-device voice notes that become markdown, with a summary and tasks, and no account required.',
     longDesc:
-      'WizardNote transcribes voice notes on your phone, on device, with Whisper, including while offline. It turns them into markdown notes with a summary and tasks, and it strips personal data before any AI sees the text. Pro can save notes to Obsidian. Free is €0 and includes recording, on-device transcription, and summaries you copy into ChatGPT, Claude or Gemini. Pro is a one-time purchase. Cloud is a monthly or yearly subscription for keyless AI summaries, 30 hours a month. Neither Pro nor Cloud has a price on the site. The prices that are named are in euros, so no dollar from-price is stored. The €0 plan is the free tier. It transcribes Czech, English, German, French and Spanish. The model download is 190 MB to 1.6 GB. The scout describes a phone app and does not name iOS or Android, so the platform is stored as Phone.',
+      'WizardNote transcribes voice notes on your phone, on device, with Whisper, including while offline. It turns them into markdown notes with a summary and tasks, and it strips personal data before any AI sees the text. Pro can save notes to Obsidian. Free is €0 and includes recording, on-device transcription, and summaries you copy into ChatGPT, Claude or Gemini. Pro is a one-time purchase. Cloud is a monthly or yearly subscription for keyless AI summaries, 30 hours a month. Pro and Cloud prices are not shown on the site. It transcribes Czech, English, German, French and Spanish. The model download is 190 MB to 1.6 GB.',
     pricingModel: 'freemium',
     priceFromUsd: null,
     hasFreeTier: true,
     skillLevel: 'beginner',
-    platforms: ['Phone'],
+    platforms: [],
     lastVerifiedAt: SCOUTED_2026_11_13,
     fits: [],
     affiliate: none,
@@ -8240,7 +8240,7 @@ export const toolSeeds: ToolSeed[] = [
     category: 'Productivity',
     shortDesc: 'A Mac menu bar app that names each new screenshot in plain words, on device.',
     longDesc:
-      'Nameshot is a Mac menu bar app that names a new screenshot in plain words as you take it, on device with Apple Intelligence. It can also tidy a folder. It needs a Mac with Apple silicon and macOS 27, and it works offline. The download includes a 7-day trial of Pro. Nameshot Pro is $4.99 once at launch, then $9.99 once. There is no subscription, and Family Sharing is included. The stored from-price is the current launch price, $4.99, paid once. The later $9.99 price is not the stored from-price. The trial is the vendor\'s public offer and is not a free plan. No free plan was found. Automatic naming stops after the trial unless you buy Pro. A press address on the site is not a sponsorship.',
+      'Nameshot is a Mac menu bar app that names a new screenshot in plain words as you take it, on device with Apple Intelligence. It can also tidy a folder. It needs a Mac with Apple silicon and macOS 27, and it works offline. The download includes a 7-day trial of Pro. Nameshot Pro is $4.99 once at launch, then $9.99 once. There is no subscription, and Family Sharing is included. Automatic naming stops after the trial unless you buy Pro.',
     pricingModel: 'paid',
     priceFromUsd: 4.99,
     hasFreeTier: false,
@@ -8272,7 +8272,7 @@ export const toolSeeds: ToolSeed[] = [
     fits: [],
     affiliate: none,
   }),
-  // scout 2026-11-13 | category: Games (FLAG: scout category "Games" is a task category in catalog.ts. The tool category already used for Inworld and Scenario is Game development, so Willo uses that.) | scout rating 3.6 (not shown) | launch: 2026-11-13 (Product Hunt) | pricing: Free to start (50 answers a day). Paid monthly plans (Adventurer, Hero, Champion, Legend) are listed but not open yet, prices not published.
+  // scout 2026-11-13 | category: Games (FLAG: scout category "Games" is not a tool category. Game development is for building games, which Willo is not. Willo is a consumer companion you talk to, so it uses Chat assistant, the category for Kippy and Quest.) | scout rating 3.6 (not shown) | launch: 2026-11-13 (Product Hunt) | pricing: Free to start (50 answers a day). Paid monthly plans (Adventurer, Hero, Champion, Legend) are listed but not open yet, prices not published.
   // note: paid prices are not published and the plans are not open, so priceFromUsd stays null. The 50 answers a day are a free tier. The 15% first-month audience discount is the vendor's public offer and is not a free plan. Sponsorship unknown.
   // affiliate: in-house (Creator ambassador program). 60% of the first month only, not recurring. Payout 30 days after payment, $10 minimum. Creators who post 4 pieces per 30 days get the Legend plan free while they do. Apply page https://willocompanion.com/ambassador, on the official host. Not applied or accepted. Seeded inactive, hasProgram only. No tracking link.
   tool({
@@ -8282,7 +8282,7 @@ export const toolSeeds: ToolSeed[] = [
     vendor: 'Willo',
     url: 'https://willocompanion.com',
     allowedHosts: ['willocompanion.com'],
-    category: 'Game development',
+    category: 'Chat assistant',
     shortDesc: 'A voice companion for World of Warcraft that answers aloud about quests, lore and settings.',
     longDesc:
       'Willo is a voice companion for World of Warcraft. You hold a talk key and ask about quests, lore or settings, and she answers aloud. NPCs can reply in character, and she remembers your goals. It runs on Windows, Mac and iPhone. The iPhone app is only in the US and Canada. There is no Android app. It works with the free Lore Forever add-on. You can start free with 50 answers a day. That free start is the free tier. Paid monthly plans, Adventurer, Hero, Champion and Legend, are listed and are not open yet. Their prices are not published, so no paid price is stored. Creator-ambassador audiences get 15% off their first month. That discount is the vendor\'s public offer and is not a free plan.',
