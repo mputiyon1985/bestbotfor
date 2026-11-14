@@ -9,6 +9,7 @@ import { isAdminPath } from '@/lib/admin-path'
 import { LOGIN_CSRF_COOKIE, LOGIN_CSRF_HEADER, loginCsrfCookie } from '@/lib/signups/auth/login-csrf'
 import { signupsAuthConfigured } from '@/lib/signups/auth/config'
 import { decideSignupsGate } from '@/lib/signups/gate'
+import { decideLeadsGate, isLeadsAdminPath, LEADS_PATH_HEADER, LEADS_REQUEST_HEADER, leadsAuthConfigured, leadsRequestProof, leadsSessionSecret, normalizeLeadsPath } from '@/lib/leads/paths'
 import { isSignupsAdminPath, SIGNUPS_LOGIN, SIGNUPS_REQUEST_HEADER } from '@/lib/signups/paths'
 import { applyPrivacyHeaders } from '@/lib/signups/privacy'
 import { isJunkPath } from '@/lib/junk-path'
@@ -39,13 +40,23 @@ function nextWithNonce(request: NextRequest, csrf?: string): NextResponse {
   const requestHeaders = new Headers(request.headers)
   // Drop a client-supplied copy. Only this proxy sets the signups marker.
   requestHeaders.delete(SIGNUPS_REQUEST_HEADER)
+  requestHeaders.delete(LEADS_REQUEST_HEADER)
+  requestHeaders.delete(LEADS_PATH_HEADER)
   requestHeaders.set('x-nonce', nonce)
   requestHeaders.set('x-bbf-method', request.method)
   requestHeaders.set('Content-Security-Policy', csp)
   if (isSignupsAdminPath(request.nextUrl.pathname)) requestHeaders.set(SIGNUPS_REQUEST_HEADER, '1')
+  const leadsPath = normalizeLeadsPath(request.nextUrl.pathname)
+  if (isLeadsAdminPath(leadsPath)) {
+    requestHeaders.set(LEADS_PATH_HEADER, leadsPath)
+    const secret = leadsSessionSecret()
+    if (secret) requestHeaders.set(LEADS_REQUEST_HEADER, leadsRequestProof(leadsPath, secret))
+  }
   if (csrf) requestHeaders.set(LOGIN_CSRF_HEADER, csrf)
   const response = NextResponse.next({ request: { headers: requestHeaders } })
   response.headers.delete(SIGNUPS_REQUEST_HEADER)
+  response.headers.delete(LEADS_REQUEST_HEADER)
+  response.headers.delete(LEADS_PATH_HEADER)
   if (csrf) response.cookies.set(LOGIN_CSRF_COOKIE, csrf, loginCsrfCookie)
   return adminHeaders(applySecurity(response, nonce), request.nextUrl.pathname)
 }
@@ -172,7 +183,7 @@ const withClerk = clerkMiddleware(async (auth, request) => {
   const pathname = request.nextUrl.pathname
   // Signups has its own password session. protect() would send that visitor to Clerk sign-in.
   // The wrapper still has to run: the root header calls auth() on every page.
-  if (!isSignupsAdminPath(pathname)) {
+  if (!isSignupsAdminPath(pathname) && !isLeadsAdminPath(pathname)) {
     if (isMembersPath(pathname)) {
       await auth.protect()
     }
@@ -266,7 +277,7 @@ function staticAssetResponse(request: NextRequest): NextResponse | null {
 /**
  * One 308 that removes every trailing slash. Admin paths, including /admin/
  * and /admin/signups/, keep noindex and no-store. Other paths stay a plain 308.
- * Signups with no admin secrets 404 instead of redirecting.
+ * Signups and leads stay 404 instead of redirecting when their password is unset.
  */
 function redirectTrailingSlash(request: NextRequest): NextResponse | null {
   const { pathname } = request.nextUrl
@@ -274,6 +285,8 @@ function redirectTrailingSlash(request: NextRequest): NextResponse | null {
   const stripped = pathname.replace(/\/+$/, '') || '/'
   const signups = isSignupsAdminPath(pathname) || isSignupsAdminPath(stripped)
   if (signups && !signupsAuthConfigured()) return hiddenNotFound()
+  const leads = isLeadsAdminPath(pathname) || isLeadsAdminPath(stripped)
+  if (leads && !leadsAuthConfigured()) return hiddenNotFound()
   const target = new URL(request.url)
   target.pathname = stripped
   const admin = isAdminPath(pathname) || isAdminPath(stripped)
@@ -326,6 +339,12 @@ export async function proxy(request: NextRequest, event: NextFetchEvent) {
     // Clerk auth() in the shared header throws unless clerkMiddleware handled this request.
     if (isClerkConfigured()) return withClerk(request, event)
     return nextWithNonce(request, signups.csrf ?? undefined)
+  }
+  const leadsGate = decideLeadsGate(request.nextUrl.pathname)
+  if (leadsGate === 'not-found') return hiddenNotFound()
+  if (leadsGate === 'next') {
+    if (isClerkConfigured()) return withClerk(request, event)
+    return nextWithNonce(request)
   }
   const gated = await gateResult(request, event)
   if (gated) return gated

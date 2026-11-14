@@ -105,6 +105,20 @@ const nextConfig: NextConfig = {
         source: '/logos/:path*',
         headers: [{ key: 'Cache-Control', value: HASHED_ASSET_CACHE_CONTROL }],
       },
+      {
+        source: '/admin/leads',
+        headers: [
+          { key: 'Cache-Control', value: 'private, no-store' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+        ],
+      },
+      {
+        source: '/admin/leads/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'private, no-store' },
+          { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
+        ],
+      },
     ]
   },
 }

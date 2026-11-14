@@ -36,6 +36,11 @@ describe('client bundle scan', () => {
     expect(clientBundleHits(`${prefixCheck}\n${key}`, CLIENT_BUNDLE_FORBIDDEN)).toContain(LIVE_PUBLISHABLE)
   })
 
+  it('flags the leads password env name', () => {
+    expect(CLIENT_BUNDLE_FORBIDDEN).toContain('BBF_LEADS_PASSWORD')
+    expect(clientBundleHits('process.env.BBF_LEADS_PASSWORD', CLIENT_BUNDLE_FORBIDDEN)).toContain('BBF_LEADS_PASSWORD')
+  })
+
   it('flags the Beehiiv API key name', () => {
     expect(CLIENT_BUNDLE_FORBIDDEN).toContain('BEEHIIV_API_KEY')
     expect(clientBundleHits('process.env.BEEHIIV_API_KEY', CLIENT_BUNDLE_FORBIDDEN)).toContain('BEEHIIV_API_KEY')
