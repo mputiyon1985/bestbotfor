@@ -39,6 +39,17 @@ describe('outbound UTMs', () => {
     expect(withOutboundUtm(context, 'direct')).toBe(context)
     expect(withOutboundUtm(context, 'tool')).toBe(context)
     expect(withOutboundUtm(`${context}?utm_source=x&foo=1`, 'direct')).toBe(context)
+    const startup = 'https://buy.stripe.com/dRmbJ197SdjH3jRa8f2Ji08'
+    const team = 'https://buy.stripe.com/eVqbJ1bg02F3f2z4NV2Ji07'
+    expect(withOutboundUtm(startup, 'direct')).toBe(startup)
+    expect(withOutboundUtm(`${startup}?utm_source=x&foo=1`, 'tool')).toBe(startup)
+    expect(withOutboundUtm(team, 'direct')).toBe(team)
+    expect(withOutboundUtm(`${team}?utm_source=x`, 'direct')).toBe(team)
+    const videco = 'https://videco.io?via=mark276'
+    expect(withOutboundUtm(videco, 'direct')).toBe(videco)
+    expect(withOutboundUtm(videco, 'tool')).toBe(videco)
+    expect(withOutboundUtm('https://videco.io/?via=mark276', 'direct')).toBe(videco)
+    expect(withOutboundUtm('https://videco.io/', 'direct')).toContain('utm_source=bestbotfor')
   })
 
   it('keeps the host', () => {

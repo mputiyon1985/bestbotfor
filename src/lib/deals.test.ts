@@ -131,4 +131,38 @@ describe('server output never carries the code for non-members', () => {
     expect(locked).not.toContain('/go/context-dev')
     expect(liveDealViews([row], true, seed.startsAt, 'other-tool')).toEqual([])
   })
+
+  it('shows the DocsAlot deal on the tool list and the all-deals list, and hides the code from non-members', async () => {
+    const { DealList } = await import('@/components/deal-card')
+    const seed = dealSeeds.find((item) => item.code === 'BESTBOTFOR30')
+    expect(seed).toBeDefined()
+    if (!seed) return
+    const row = deal({
+      id: 8,
+      toolSlug: seed.toolSlug,
+      vendor: seed.vendor,
+      title: seed.title,
+      discountText: seed.discountText,
+      code: seed.code,
+      dealUrl: seed.dealUrl,
+      terms: seed.terms,
+      startsAt: seed.startsAt,
+      expiresAt: seed.expiresAt,
+      active: seed.active,
+      createdAt: seed.createdAt,
+    })
+    const memberTool = renderToStaticMarkup(createElement(DealList, { deals: liveDealViews([row], true, seed.startsAt, 'docsalot') }))
+    expect(memberTool).toContain('30% off your first 6 months')
+    expect(memberTool).toContain('BESTBOTFOR30')
+    expect(memberTool).toContain('href="/go/docsalot"')
+    expect(memberTool).toContain('30% off the first 6 months of a new monthly Startup or Team plan, plus a 1-week free trial.')
+    const memberList = renderToStaticMarkup(createElement(DealList, { deals: liveDealViews([row], true, seed.startsAt) }))
+    expect(memberList).toContain('BESTBOTFOR30')
+    expect(memberList).toContain('href="/go/docsalot"')
+    const locked = renderToStaticMarkup(createElement(DealList, { deals: liveDealViews([row], false, seed.startsAt, 'docsalot') }))
+    expect(locked).toContain('Members get 30% off your first 6 months.')
+    expect(locked).not.toContain('BESTBOTFOR30')
+    expect(locked).not.toContain('/go/docsalot')
+    expect(liveDealViews([row], true, seed.startsAt, 'other-tool')).toEqual([])
+  })
 })

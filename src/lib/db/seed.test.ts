@@ -140,22 +140,24 @@ describe('catalog seed', () => {
       deals: dealSeeds.length,
     })
     const dealRows = await getDb().select().from(deals)
-    expect(dealRows).toHaveLength(1)
-    const contextDeal = dealSeeds[0]
-    expect(dealRows[0]).toMatchObject({
-      toolSlug: contextDeal.toolSlug,
-      vendor: contextDeal.vendor,
-      title: contextDeal.title,
-      discountText: contextDeal.discountText,
-      code: contextDeal.code,
-      dealUrl: contextDeal.dealUrl,
-      terms: contextDeal.terms,
-      startsAt: contextDeal.startsAt,
-      expiresAt: contextDeal.expiresAt,
-      active: contextDeal.active,
-      createdAt: contextDeal.createdAt,
-    })
-    expect(toolSeeds.find((tool) => tool.slug === 'context-dev')?.vendor).toBe(contextDeal.vendor)
+    expect(dealRows).toHaveLength(dealSeeds.length)
+    for (const seed of dealSeeds) {
+      const row = dealRows.find((item) => item.toolSlug === seed.toolSlug && item.code === seed.code)
+      expect(row, seed.code).toMatchObject({
+        toolSlug: seed.toolSlug,
+        vendor: seed.vendor,
+        title: seed.title,
+        discountText: seed.discountText,
+        code: seed.code,
+        dealUrl: seed.dealUrl,
+        terms: seed.terms,
+        startsAt: seed.startsAt,
+        expiresAt: seed.expiresAt,
+        active: seed.active,
+        createdAt: seed.createdAt,
+      })
+      expect(toolSeeds.find((tool) => tool.slug === seed.toolSlug)?.vendor, seed.code).toBe(seed.vendor)
+    }
   })
 
   it('leaves rows that are not in the catalog in place on a second seed', async () => {

@@ -41,14 +41,31 @@ const NOT_IN_CATALOG = 'That tool is not in the catalog.'
 
 /**
  * /go paths that share a catalog tool. Julius AI's catalog slug is julius-ai.
- * /go/julius is that same tool.
+ * /go/julius is that same tool. DocsAlot's catalog slug is docsalot.
+ * /go/docsalot-startup and /go/docsalot-team are that same tool.
  */
 const GO_SLUG_ALIASES: Readonly<Record<string, string>> = {
   julius: 'julius-ai',
+  'docsalot-startup': 'docsalot',
+  'docsalot-team': 'docsalot',
+}
+
+/**
+ * Alias destinations that are not the catalog row's affiliate_url.
+ * Both still have to pass that tool's allowlist, and only while the program is active.
+ */
+const GO_ALIAS_TRACKING_URLS: Readonly<Record<string, string>> = {
+  'docsalot-startup': 'https://buy.stripe.com/dRmbJ197SdjH3jRa8f2Ji08',
+  'docsalot-team': 'https://buy.stripe.com/eVqbJ1bg02F3f2z4NV2Ji07',
 }
 
 export function goCatalogSlug(slug: string): string {
   return GO_SLUG_ALIASES[slug] ?? slug
+}
+
+/** The tracking URL /go will consider for this path. An alias override wins over the stored URL. */
+export function goAffiliateUrl(requestedSlug: string, stored: string | null | undefined): string | null {
+  return GO_ALIAS_TRACKING_URLS[requestedSlug] ?? stored ?? null
 }
 
 /**
@@ -139,8 +156,9 @@ export async function resolveGoRedirect(input: {
         }
       : null
 
-  // Sendr, Julius, and Context.dev codes are the path. Decide that on the allowlisted URL
-  // before inbound utm_* are copied, then return it with no query. Every other
+  // Sendr, Julius, Context.dev, DocsAlot checkout, and Videco codes are the path or a
+  // pinned query. Decide that on the allowlisted URL before inbound utm_* are
+  // copied, then return the approved URL with no extra query. Every other
   // program still copies inbound utm_* first and adds ours only when the
   // destination has none.
   const pinned = exactPinnedTrackingUrl(decision.url)
