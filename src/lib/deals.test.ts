@@ -2,6 +2,7 @@ import { createElement } from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it, vi } from 'vitest'
 import { dealMemberPriceIds, isDealMember, isLiveDeal, liveDealViews, parseMemberPriceIds, safeDealUrl, type DealRow } from './deals-view'
+import { dealSeeds } from '@/data/deals.seed'
 
 vi.mock('next/link', () => ({
   default: ({ href, children, ...rest }: { href: string; children: unknown }) => createElement('a', { href, ...rest }, children as never),
@@ -66,10 +67,15 @@ describe('live deals', () => {
     expect(isLiveDeal(deal({ expiresAt: NOW + 1 }), NOW)).toBe(true)
   })
 
-  it('only https deal links are rendered', () => {
+  it('only https deal links and a same-site /go path are rendered', () => {
     expect(safeDealUrl('javascript:alert(1)')).toBeNull()
     expect(safeDealUrl('http://vendor.example')).toBeNull()
     expect(safeDealUrl(SECRET_URL)).toBe(SECRET_URL)
+    expect(safeDealUrl('/go/context-dev')).toBe('/go/context-dev')
+    expect(safeDealUrl('/go/context-dev/extra')).toBeNull()
+    expect(safeDealUrl('/go/context-dev?x=1')).toBeNull()
+    expect(safeDealUrl('//go/context-dev')).toBeNull()
+    expect(safeDealUrl('/go/../context-dev')).toBeNull()
   })
 })
 
@@ -92,5 +98,37 @@ describe('server output never carries the code for non-members', () => {
     const open = renderToStaticMarkup(createElement(DealList, { deals: liveDealViews([deal()], true, NOW) }))
     expect(open).toContain(SECRET_CODE)
     expect(open).toContain('href="https://vendor.example/deal?ref=secret-ref-123"')
+  })
+
+  it('shows the Context.dev deal on the tool list and the all-deals list, and hides the code from non-members', async () => {
+    const { DealList } = await import('@/components/deal-card')
+    const seed = dealSeeds[0]
+    const row = deal({
+      id: 7,
+      toolSlug: seed.toolSlug,
+      vendor: seed.vendor,
+      title: seed.title,
+      discountText: seed.discountText,
+      code: seed.code,
+      dealUrl: seed.dealUrl,
+      terms: seed.terms,
+      startsAt: seed.startsAt,
+      expiresAt: seed.expiresAt,
+      active: seed.active,
+      createdAt: seed.createdAt,
+    })
+    const memberTool = renderToStaticMarkup(createElement(DealList, { deals: liveDealViews([row], true, seed.startsAt, 'context-dev') }))
+    expect(memberTool).toContain('25% off for 6 months')
+    expect(memberTool).toContain('MARK25OFF')
+    expect(memberTool).toContain('href="/go/context-dev"')
+    expect(memberTool).toContain('New Context.dev users get 25% off for their first 6 months with code MARK25OFF.')
+    const memberList = renderToStaticMarkup(createElement(DealList, { deals: liveDealViews([row], true, seed.startsAt) }))
+    expect(memberList).toContain('MARK25OFF')
+    expect(memberList).toContain('href="/go/context-dev"')
+    const locked = renderToStaticMarkup(createElement(DealList, { deals: liveDealViews([row], false, seed.startsAt, 'context-dev') }))
+    expect(locked).toContain('Members get 25% off for 6 months.')
+    expect(locked).not.toContain('MARK25OFF')
+    expect(locked).not.toContain('/go/context-dev')
+    expect(liveDealViews([row], true, seed.startsAt, 'other-tool')).toEqual([])
   })
 })

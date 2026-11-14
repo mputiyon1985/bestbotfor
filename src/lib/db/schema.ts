@@ -569,7 +569,10 @@ export const deals = sqliteTable(
     active: integer('active', { mode: 'boolean' }).notNull().default(false),
     createdAt: integer('created_at').notNull(),
   },
-  (table) => [index('deals_tool_slug_idx').on(table.toolSlug)],
+  (table) => [
+    index('deals_tool_slug_idx').on(table.toolSlug),
+    uniqueIndex('deals_tool_slug_code_unique').on(table.toolSlug, table.code),
+  ],
 )
 
 /** Live signups-admin sessions. Logout deletes the row. A rotated session secret no longer matches secret_tag. */

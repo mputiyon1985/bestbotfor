@@ -9,11 +9,12 @@ export type RatingWriteCounts = {
   prosRemoved: number
 }
 import { comparePairSeeds, retiredFitSeeds, taskSeeds, toolSeeds } from '../src/data/catalog'
+import { dealSeeds } from '../src/data/deals.seed'
 import { editorialSeeds } from '../src/data/scores-pros-cons.seed'
 import { ratingSeeds, supplementalProsConsSeeds } from '../src/data/scores-v23.seed'
 import { getDb } from '../src/lib/db/client'
 import { assertSafeDbTarget } from '../src/lib/db/guard'
-import { affiliatePrograms, tasks, toolProsCons, toolScores, toolTasks, toolVendorDomains, tools } from '../src/lib/db/schema'
+import { affiliatePrograms, deals, tasks, toolProsCons, toolScores, toolTasks, toolVendorDomains, tools } from '../src/lib/db/schema'
 import { registrableDomain } from '../src/lib/reviews/domain'
 import { validateProsConsSeeds, validateRatingSeeds } from '../src/lib/editorial'
 import { affiliateSeedValues, isApprovedActiveAffiliate } from '../src/lib/affiliate-admin'
@@ -259,6 +260,26 @@ for (const tool of toolSeeds) {
   if (!domain) throw new Error(`Tool ${tool.slug} has no registrable domain`)
   // Insert only. A manual row for the same domain stays manual, and old tool_url rows are not deleted.
   await tx.insert(toolVendorDomains).values({ toolId: id, domain, source: 'tool_url', createdAt: now }).onConflictDoNothing()
+}
+
+for (const deal of dealSeeds) {
+  if (!knownSlugs.has(deal.toolSlug)) throw new Error(`Deal ${deal.code} is for unknown tool ${deal.toolSlug}`)
+  await tx
+    .insert(deals)
+    .values({ ...deal })
+    .onConflictDoUpdate({
+      target: [deals.toolSlug, deals.code],
+      set: {
+        vendor: deal.vendor,
+        title: deal.title,
+        discountText: deal.discountText,
+        dealUrl: deal.dealUrl,
+        terms: deal.terms,
+        startsAt: deal.startsAt,
+        expiresAt: deal.expiresAt,
+        active: deal.active,
+      },
+    })
 }
 
 const storedPrograms = await tx.select().from(affiliatePrograms)

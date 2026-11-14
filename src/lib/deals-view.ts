@@ -73,9 +73,17 @@ export function isLiveDeal(deal: Pick<DealRow, 'active' | 'startsAt' | 'expiresA
   return true
 }
 
-/** Only https links are ever rendered. */
+/** A same-site /go path. The slug rules match slugSchema, and nothing else is allowed. */
+const GO_DEAL_PATH = /^\/go\/[a-z0-9]+(?:-[a-z0-9]+)*$/
+
+/**
+ * A link the deal card may render. An absolute URL must be https with no
+ * credentials. A same-site /go path is the other allowed form, so a member
+ * deal can open the catalog redirect without a stored host.
+ */
 export function safeDealUrl(value: string | null): string | null {
   if (!value) return null
+  if (GO_DEAL_PATH.test(value) && value.length <= '/go/'.length + 80) return value
   try {
     const url = new URL(value)
     if (url.protocol !== 'https:' || url.username || url.password) return null
