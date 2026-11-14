@@ -106,15 +106,20 @@ const loadToolPage = catalogPageCache(
 const loadToolCategoryCounts = catalogPageCache(async () => readToolCategoryCounts(getDb()), catalogCacheKey('tool-category-counts-v1'))
 
 /**
- * One COUNT of publicly listed tools, reused for an hour. The homepage is
- * dynamic because of the CSP nonce, so this is what keeps that render off Turso.
- * Catalog rows change on deploy or seed; the cache key already includes the
- * deploy version. No catalog write path calls revalidateTag.
+ * Homepage count. The key includes the deploy version, so a new deploy does not
+ * keep the previous count. A seed on the same deploy shows up within a minute:
+ * one COUNT per region per minute, not on every page view.
  */
-const loadVisibleToolCount = catalogPageCache(
-  async () => readVisibleToolCount(getDb()),
-  catalogCacheKey('visible-tool-count-v1'),
-)
+export const VISIBLE_TOOL_COUNT_REVALIDATE_SECONDS = 60
+
+const readVisibleCount = () => readVisibleToolCount(getDb())
+
+const loadVisibleToolCount =
+  process.env.VITEST === 'true'
+    ? readVisibleCount
+    : unstable_cache(readVisibleCount, catalogCacheKey('visible-tool-count-v2'), {
+        revalidate: VISIBLE_TOOL_COUNT_REVALIDATE_SECONDS,
+      })
 
 export const getVisibleToolCount = cache(() =>
   withReadFallback('visible-tool-count', [], loadVisibleToolCount, fromFallbackDb(readVisibleToolCount)),

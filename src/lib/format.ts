@@ -16,6 +16,18 @@ const PRICE_LABEL_OVERRIDES: Readonly<Record<string, string>> = {
   'seldon-wren': '10 free runs, then $3 per completed test run',
   // valin.ai, Nov 12, 2026: free TestFlight beta. No price is published, so none is stored.
   valin: 'Pricing not published',
+  // offstage.cloud, Nov 13, 2026: $1.10/hour billed by the second. Not a monthly plan. The $5 credit is a one-time trial.
+  'offstage-cloud': '$1.10 per hour',
+  // insight7.io, Nov 13, 2026: voice-agent pricing is not published. Call-analytics tiers are a different product.
+  'insight7-voice-agents': 'Pricing not published',
+  // render.com/sandboxes, Nov 13, 2026: public beta. No sandbox-specific price is published.
+  'render-sandboxes': 'Pricing not published',
+  // willocompanion.com, Nov 13, 2026: 50 answers a day are free. Paid plans are listed and are not open yet.
+  willo: 'Free to start; paid plans not open yet',
+  // 49agents.com/qorqbot, Nov 13, 2026: personal use is free. The commercial license is free until 2027, then $10/mo billed annually.
+  qorqbot: 'Free; commercial license $10/mo billed annually from 2027',
+  // talkify.cc, Nov 14, 2026: one plan at $32 a year. That is a yearly total, not a monthly rate, so it is not stored as priceFromUsd.
+  talkify: '$32 a year',
 }
 
 export const budgetLabel: Record<Budget, string> = {

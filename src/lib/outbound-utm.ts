@@ -6,8 +6,34 @@
  * inbound passthrough), so an affiliate URL's own UTMs, or UTMs passed in on
  * the /go link, are never overwritten or mixed with ours. A key counts when
  * it starts with utm_ or utm-. DocsAlot's tracking link uses the hyphen.
+ * Sendr's Cello code, Julius AI's Dub code, and Context.dev's link code are
+ * the path. Those links are returned with no query.
  */
 const EXISTING_UTM_KEY = /^utm[_-]/i
+
+/** Path-coded tracking links. /go returns the url and drops any query. */
+const EXACT_TRACKING_URLS = [
+  { host: 'sendr.cello.so', pathname: '/LOp5fYtd9Jc', url: 'https://sendr.cello.so/LOp5fYtd9Jc' },
+  { host: 'julius.dub.link', pathname: '/mark-putiyon', url: 'https://julius.dub.link/mark-putiyon' },
+  { host: 'link.context.dev', pathname: '/mark-putiyon', url: 'https://link.context.dev/mark-putiyon' },
+] as const
+
+/**
+ * An approved path-coded tracking link, with any query or hash removed.
+ * Null for every other URL.
+ */
+export function exactPinnedTrackingUrl(destination: string): string | null {
+  let url: URL
+  try {
+    url = new URL(destination)
+  } catch {
+    return null
+  }
+  if (url.protocol !== 'https:' || url.username || url.password || url.port !== '') return null
+  const match = EXACT_TRACKING_URLS.find((item) => item.host === url.hostname && item.pathname === url.pathname)
+  return match?.url ?? null
+}
+
 export const OUTBOUND_UTM_SOURCE = 'bestbotfor'
 export const OUTBOUND_UTM_MEDIUM = 'referral'
 
@@ -39,6 +65,9 @@ export function withOutboundUtm(destination: string, pageType: string): string {
   } catch {
     return destination
   }
+  // Approved Sendr, Julius, and Context.dev links. A query already on one is removed. /go applies this before inbound params.
+  const pinned = exactPinnedTrackingUrl(destination)
+  if (pinned) return pinned
   for (const key of url.searchParams.keys()) {
     if (EXISTING_UTM_KEY.test(key)) return destination
   }

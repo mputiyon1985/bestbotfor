@@ -37,7 +37,7 @@ The page is server-rendered. `Cache-Control` is `private, no-store`. The respons
 
 ## Schema
 
-Migration `drizzle/0032_bbf_leads.sql` (journal idx 30). Main `26a6d4f` (#191) owns `0029` through `0031`, so this is the next file.
+Migration `drizzle/0033_bbf_leads.sql` (journal idx 31). Main `2ef4efb` (#200) owns `0032_deals_tool_code_unique` at idx 30, so this is the next file.
 
 Merging applies the migration on deploy, because production and preview builds run `scripts/prepare-db.ts`. Mark's OK is needed before merge. Do not apply it by hand against the production database.
 

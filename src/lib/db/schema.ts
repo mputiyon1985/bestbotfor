@@ -85,8 +85,9 @@ export const toolProsCons = sqliteTable(
  * Affiliate URL is stored so a future enrollment can be recorded.
  * /go reads affiliate_url only when status is exactly "active" and the host
  * is on that tool's allowlist. Every other status redirects to tools.url.
- * ElevenLabs, Synthesia, Descript, Murf, Papermark, and DocsAlot are seeded
- * active with their tracking links. Every other program is not.
+ * ElevenLabs, Synthesia, Descript, Murf, Papermark, DocsAlot, Sendr,
+ * Julius AI, and Context.dev are seeded active with their tracking links.
+ * Every other program is not.
  */
 export const affiliatePrograms = sqliteTable('affiliate_programs', {
   toolId: integer('tool_id').primaryKey(),
@@ -568,7 +569,10 @@ export const deals = sqliteTable(
     active: integer('active', { mode: 'boolean' }).notNull().default(false),
     createdAt: integer('created_at').notNull(),
   },
-  (table) => [index('deals_tool_slug_idx').on(table.toolSlug)],
+  (table) => [
+    index('deals_tool_slug_idx').on(table.toolSlug),
+    uniqueIndex('deals_tool_slug_code_unique').on(table.toolSlug, table.code),
+  ],
 )
 
 /** Live signups-admin sessions. Logout deletes the row. A rotated session secret no longer matches secret_tag. */

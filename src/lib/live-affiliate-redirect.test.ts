@@ -12,13 +12,14 @@ const MAIN_GO = {
   synthesia: 'https://www.synthesia.io/?via=mark-putiyon&utm_source=bestbotfor&utm_medium=referral&utm_campaign=direct',
 } as const
 
-async function go(slug: string) {
+async function go(slug: string, search = '') {
   const tool = toolSeeds.find((item) => item.slug === slug)
   if (!tool) throw new Error(slug)
   return resolveGoRedirect({
     headers: new Headers(),
     ip: null,
     siteUrl: 'https://bestbotfor.com',
+    search,
     seedUrl: tool.url,
     seedAffiliateUrl: tool.affiliate.affiliateUrl ?? null,
     seedAffiliateStatus: tool.affiliate.status,
@@ -59,7 +60,7 @@ describe('live affiliate redirects match main', () => {
     })
   })
 
-  it('sends Descript, Murf, Papermark, and DocsAlot to their exact tracking links', async () => {
+  it('sends Descript, Murf, Papermark, DocsAlot, and Sendr to their exact tracking links', async () => {
     const activated = {
       descript: {
         stored: 'https://get.descript.com/mr4pi3y6tp4s',
@@ -85,6 +86,24 @@ describe('live affiliate redirects match main', () => {
         subIdParam: null,
         official: 'https://docsalot.dev/',
       },
+      sendr: {
+        stored: 'https://sendr.cello.so/LOp5fYtd9Jc',
+        location: 'https://sendr.cello.so/LOp5fYtd9Jc',
+        subIdParam: null,
+        official: 'https://www.sendr.ai/',
+      },
+      'julius-ai': {
+        stored: 'https://julius.dub.link/mark-putiyon',
+        location: 'https://julius.dub.link/mark-putiyon',
+        subIdParam: null,
+        official: 'https://julius.ai/',
+      },
+      'context-dev': {
+        stored: 'https://link.context.dev/mark-putiyon',
+        location: 'https://link.context.dev/mark-putiyon',
+        subIdParam: null,
+        official: 'https://context.dev/',
+      },
     } as const
 
     for (const [slug, expected] of Object.entries(activated)) {
@@ -96,6 +115,20 @@ describe('live affiliate redirects match main', () => {
         click: { affiliate: true, programId: 1, subIdParam: expected.subIdParam },
       })
       expect(resolveHeadGoRedirect(slug), slug).toMatchObject({ status: 302, location: expected.official })
+    }
+  })
+
+  it('sends /go/julius to the exact Dub link and drops any inbound query', async () => {
+    const tracking = 'https://julius.dub.link/mark-putiyon'
+    expect(resolveHeadGoRedirect('julius')).toMatchObject({ status: 302, location: 'https://julius.ai/' })
+    expect(resolveHeadGoRedirect('julius-ai')).toMatchObject({ status: 302, location: 'https://julius.ai/' })
+    for (const search of ['', '?utm_source=x', '?utm_source=x&utm_medium=email&foo=1', '?ref=other']) {
+      const outcome = await go('julius-ai', search)
+      expect(outcome, search).toMatchObject({
+        status: 302,
+        location: tracking,
+        click: { affiliate: true, programId: 1, subIdParam: null },
+      })
     }
   })
 })

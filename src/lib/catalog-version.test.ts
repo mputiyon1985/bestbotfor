@@ -38,7 +38,7 @@ describe('every catalog unstable_cache key carries the deploy version', () => {
     await import('./catalog')
     expect(captured.length).toBeGreaterThanOrEqual(12)
     for (const parts of captured) expect(parts).toContain('catalog-version:sha-deadbeefcafe')
-    expect(captured.some((parts) => parts[0] === 'visible-tool-count-v1')).toBe(true)
+    expect(captured.some((parts) => parts[0] === 'visible-tool-count-v2')).toBe(true)
   })
 })
 

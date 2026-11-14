@@ -27,6 +27,18 @@ describe('outbound UTMs', () => {
     expect(withOutboundUtm(upper, 'tool')).toBe(upper)
     const hyphen = 'https://docsalot.dev/?utm-source=bestbotfor'
     expect(withOutboundUtm(hyphen, 'direct')).toBe(hyphen)
+    const cello = 'https://sendr.cello.so/LOp5fYtd9Jc'
+    expect(withOutboundUtm(cello, 'direct')).toBe(cello)
+    expect(withOutboundUtm(cello, 'tool')).toBe(cello)
+    expect(withOutboundUtm(`${cello}?utm_source=x&foo=1`, 'direct')).toBe(cello)
+    const julius = 'https://julius.dub.link/mark-putiyon'
+    expect(withOutboundUtm(julius, 'direct')).toBe(julius)
+    expect(withOutboundUtm(julius, 'tool')).toBe(julius)
+    expect(withOutboundUtm(`${julius}?utm_source=x&foo=1`, 'direct')).toBe(julius)
+    const context = 'https://link.context.dev/mark-putiyon'
+    expect(withOutboundUtm(context, 'direct')).toBe(context)
+    expect(withOutboundUtm(context, 'tool')).toBe(context)
+    expect(withOutboundUtm(`${context}?utm_source=x&foo=1`, 'direct')).toBe(context)
   })
 
   it('keeps the host', () => {
