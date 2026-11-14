@@ -86,7 +86,7 @@ export const toolProsCons = sqliteTable(
  * /go reads affiliate_url only when status is exactly "active" and the host
  * is on that tool's allowlist. Every other status redirects to tools.url.
  * ElevenLabs, Synthesia, Descript, Murf, Papermark, DocsAlot, Sendr,
- * Julius AI, and Context.dev are seeded active with their tracking links.
+ * Julius AI, Context.dev, and Videco are seeded active with their tracking links.
  * Every other program is not.
  */
 export const affiliatePrograms = sqliteTable('affiliate_programs', {

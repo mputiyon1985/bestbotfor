@@ -184,9 +184,9 @@ describe('bot scout 2026-11-12', () => {
   })
 
   it('activates Sendr’s exact tracking link and leaves the other thirteen off', () => {
-    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev'])
-    expect(APPROVED_ACTIVE_AFFILIATES).toHaveLength(9)
-    expect(PREPARED_AFFILIATE_SLUGS).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'writesonic', 'lovable'])
+    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco'])
+    expect(APPROVED_ACTIVE_AFFILIATES).toHaveLength(10)
+    expect(PREPARED_AFFILIATE_SLUGS).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'writesonic', 'lovable'])
     for (const slug of SLUGS) {
       if (slug === 'sendr') continue
       expect(APPROVED_ACTIVE_AFFILIATES, slug).not.toContain(slug)
@@ -218,7 +218,7 @@ describe('bot scout 2026-11-12', () => {
       expect(seed(slug).affiliate, slug).toEqual(NONE)
       expect(servesAffiliateLink(slug, null, seed(slug).affiliate.status), slug).toBe(false)
     }
-    for (const slug of ['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev'] as const) {
+    for (const slug of ['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco'] as const) {
       expect(seed(slug).affiliate.status).toBe('active')
       expect(seed(slug).affiliate.affiliateUrl).toMatch(/^https:\/\//)
     }

@@ -6,7 +6,7 @@ import { withDeadline } from '@/lib/deadline'
 import { getDb } from '@/lib/db'
 import { clicks } from '@/lib/db/schema'
 import { withAffiliateSubId } from '@/lib/affiliate-subid'
-import { GO_DB_BUDGET_MS, goCatalogSlug, resolveGoRedirect, resolveHeadGoRedirect, type GoClick } from '@/lib/go-redirect'
+import { GO_DB_BUDGET_MS, goAffiliateUrl, goCatalogSlug, resolveGoRedirect, resolveHeadGoRedirect, type GoClick } from '@/lib/go-redirect'
 import { clientIp, rateLimitKey } from '@/lib/ip'
 import { ACTION_LIMITS } from '@/lib/action-limit'
 import { consumeRateLimit } from '@/lib/rate-limit'
@@ -20,8 +20,10 @@ export const dynamic = 'force-dynamic'
 
 /**
  * Allowlist redirect. The destination is the tool's official URL unless that
- * program's status is exactly "active" and affiliate_programs.affiliate_url
- * passes the same host allowlist. Only utm_* query keys are passed on. An
+ * program's status is exactly "active" and the tracking URL passes the same
+ * host allowlist. The stored affiliate_url is that URL, except a DocsAlot plan
+ * alias, which uses its pinned checkout link on the same catalog row. Only
+ * utm_* query keys are passed on, and a pinned tracking URL drops them. An
  * active PartnerStack, Impact, or Dub click gets a random SubID, not the
  * sequential click row id. The click row is written after the response.
  *
@@ -47,7 +49,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
     siteUrl: getSiteUrl(),
     search: new URL(request.url).search,
     seedUrl: reviewed.url,
-    seedAffiliateUrl: reviewed.affiliate.affiliateUrl ?? null,
+    seedAffiliateUrl: goAffiliateUrl(requested, reviewed.affiliate.affiliateUrl ?? null),
     seedAffiliateStatus: reviewed.affiliate.status,
     seedNetwork: reviewed.affiliate.network,
     allowedHosts: reviewed.allowedHosts,
@@ -58,7 +60,7 @@ export async function GET(request: Request, context: { params: Promise<{ slug: s
       return {
         id: tool.id,
         url: tool.url,
-        affiliateUrl: tool.affiliate.affiliateUrl,
+        affiliateUrl: goAffiliateUrl(requested, tool.affiliate.affiliateUrl),
         affiliateStatus: tool.affiliate.status,
         network: tool.affiliate.network,
       }
@@ -113,9 +115,16 @@ async function headRedirect(context: { params: Promise<{ slug: string }> }): Pro
 }
 
 function redirect(location: string) {
-  const response = NextResponse.redirect(location, 302)
-  response.headers.set('Cache-Control', 'no-store')
-  response.headers.set('X-Robots-Tag', GO_ROBOTS_TAG)
+  // Set Location directly. NextResponse.redirect parses the URL and inserts a
+  // slash before a query on an empty path, which would change Videco's link.
+  const response = new NextResponse(null, {
+    status: 302,
+    headers: {
+      Location: location,
+      'Cache-Control': 'no-store',
+      'X-Robots-Tag': GO_ROBOTS_TAG,
+    },
+  })
   return response
 }
 

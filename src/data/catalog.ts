@@ -6339,14 +6339,14 @@ export const toolSeeds: ToolSeed[] = [
   // scout 2026-11-04 | category: AI video | scout rating 4.1 (not shown) | launch: 2026-11-03 (Product Hunt #5 Product of the Day) | pricing: 7-day free trial; Pro $9.99/mo; Business $49/mo (custom domain, 100 AI credits/month).
   // note: priceFromUsd is Pro $9.99/mo. The 7-day trial is not a free tier.
   // A public promo in the scout is not a BestBotFor reader deal, so it is not stored.
-  // affiliate: Endorsely, 50% of subscription revenue on paid plans, recurring while the referral stays subscribed. Apply page is the vendor URL. Seeded inactive. No tracking link.
+  // affiliate: approved and seeded active. Endorsely. Commission note is 50% recurring. Tracking URL https://videco.io?via=mark276. The allowlist pins that query. /go/videco sends that URL and does not add other parameters. Network is Endorsely, which has no SubID key, so none is added.
   tool({
     slug: 'videco',
     addedAt: SCOUTED_2026_11_04,
     name: 'Videco',
     vendor: 'Videco',
     url: 'https://videco.io',
-    allowedHosts: ['videco.io'],
+    allowedHosts: ['videco.io', 'videco.io/?via=mark276'],
     category: 'AI video',
     shortDesc: 'Turns demos and webinars into short clips, posts and blog drafts, and hosts the video.',
     longDesc: 'Videco is a content studio and video host. It finds moments in demos and webinars, turns them into branded short clips, blog drafts and social posts, and hosts and embeds the videos with analytics and lead capture. A 7-day trial is available. Pro is $9.99 a month. Business is $49 a month and includes 100 AI credits a month. The trial is not a free plan.',
@@ -6361,8 +6361,9 @@ export const toolSeeds: ToolSeed[] = [
       hasProgram: true,
       network: 'Endorsely',
       sourceUrl: 'https://videco.io/affiliate',
-      status: 'inactive',
-      commissionNote: '50% of subscription revenue from referrals on paid plans, recurring while the referral stays subscribed. Switched off, with no tracking link stored.',
+      status: 'active',
+      commissionNote: '50% recurring',
+      affiliateUrl: 'https://videco.io?via=mark276',
     },
   }),
   // scout 2026-11-04 | category: Automation | scout rating 4.1 (not shown) | launch: 2026-11-03 (Product Hunt #8 Product of the Day) | pricing: Free $0 (3,000 messages/mo, 1 GB, 1 domain); Pro $9/mo; Team $49/mo; Scale $199/mo.
@@ -7220,14 +7221,19 @@ export const toolSeeds: ToolSeed[] = [
   // Public vendor offers are not stored as deals. The Product Hunt code PH50 is not a BestBotFor reader deal and is not stored.
   // scout 2026-11-09 | category: Development (FLAG: scout category "Development" mapped to Writing; Mintlify, the catalog's docs platform, is Writing) | scout rating 3.8 (not shown) | launch: 2026-11-08 (Product Hunt #6 on the daily leaderboard; the site cites #2 Product of the Day) | pricing: Startup $79/mo (1 public docs site, hosted MCP, AI help widget); Team $149/mo (custom domain, private docs, 250 AI messages/mo); Enterprise custom. No per-seat charge. pricing.md dated 2026-07-04 still shows $39/$99; the live pricing page was used.
   // note: priceFromUsd is Startup $79/mo. No free plan was found. The stale $39 and $99 figures are not the stored from-price. Sponsorship unknown. Vendor is the product name. Affiliate network is unknown (the scout described an in-house email intake and did not name a network), so no network is stored.
-  // affiliate: yes. 50% for the life of the customer, across all plans, recurring. Apply page https://docs.docsalot.dev/partners/affiliates. Approved and seeded active. Tracking URL https://docsalot.dev/?utm-source=bestbotfor (hyphen in utm-source). The apply host is not an allowlist host. The allowlist pins that exact query. Dageno, Databox and crystl stay inactive.
+  // affiliate: yes. 50% for the life of the customer, across all plans, recurring. Apply page https://docs.docsalot.dev/partners/affiliates. Approved and seeded active. Tracking URL https://docsalot.dev/?utm-source=bestbotfor (hyphen in utm-source). The apply host is not an allowlist host. The allowlist pins that exact query. /go/docsalot-startup and /go/docsalot-team are aliases of this tool and send the pinned buy.stripe.com checkout paths. A bare buy.stripe.com host is not listed. The BESTBOTFOR30 reader deal is in the deals seed, not in this description. Dageno, Databox and crystl stay inactive.
   tool({
     slug: 'docsalot',
     addedAt: SCOUTED_2026_11_09,
     name: 'DocsAlot',
     vendor: 'DocsAlot',
     url: 'https://docsalot.dev',
-    allowedHosts: ['docsalot.dev', 'docsalot.dev/?utm-source=bestbotfor'],
+    allowedHosts: [
+      'docsalot.dev',
+      'docsalot.dev/?utm-source=bestbotfor',
+      'buy.stripe.com/dRmbJ197SdjH3jRa8f2Ji08',
+      'buy.stripe.com/eVqbJ1bg02F3f2z4NV2Ji07',
+    ],
     category: 'Writing',
     shortDesc: 'A hosted docs platform that publishes public docs, an AI help widget, and agent-readable files from the same source.',
     longDesc:

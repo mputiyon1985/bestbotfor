@@ -31,11 +31,12 @@ const LIVE_AFFILIATE_URLS = {
   sendr: 'https://sendr.cello.so/LOp5fYtd9Jc',
   'julius-ai': 'https://julius.dub.link/mark-putiyon',
   'context-dev': 'https://link.context.dev/mark-putiyon',
+  videco: 'https://videco.io?via=mark276',
 } as const
 
 describe('approved affiliate programs', () => {
   it('activates only the approved slugs and stores their exact tracking links', () => {
-    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev'])
+    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco'])
     for (const tool of toolSeeds) {
       const approved = (APPROVED_ACTIVE_AFFILIATES as readonly string[]).includes(tool.slug)
       if (!approved) {
@@ -160,10 +161,11 @@ describe('affiliate disclosure and ops', () => {
     expect(html).toContain('Sendr (Cello) — active')
     expect(html).toContain('Julius AI — active')
     expect(html).toContain('Context.dev — active')
+    expect(html).toContain('Videco (Endorsely) — active')
     expect(html).toContain('Writesonic — switched off')
     expect(html).toContain('Lovable (Impact) — switched off')
     expect(html).toContain('switched off')
-    for (const name of ['ElevenLabs', 'Synthesia', 'Descript', 'Murf', 'Papermark', 'DocsAlot', 'Sendr', 'Julius AI', 'Context.dev', 'Writesonic', 'Lovable']) {
+    for (const name of ['ElevenLabs', 'Synthesia', 'Descript', 'Murf', 'Papermark', 'DocsAlot', 'Sendr', 'Julius AI', 'Context.dev', 'Videco', 'Writesonic', 'Lovable']) {
       expect(html).toContain(name)
     }
     for (const file of ['src/app/best/[task]/page.tsx', 'src/app/tools/[slug]/page.tsx', 'src/app/result/page.tsx']) {
