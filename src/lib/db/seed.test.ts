@@ -4,6 +4,7 @@ import path from 'node:path'
 import { and, count, eq } from 'drizzle-orm'
 import { afterEach, describe, expect, it } from 'vitest'
 import { taskSeeds, toolSeeds } from '@/data/catalog'
+import { dealSeeds } from '@/data/deals.seed'
 import { seed } from '../../../scripts/seed'
 import { getDb, resetDbCache } from './client'
 import { applyMigrations } from './migrate'
@@ -13,6 +14,7 @@ import { keptProsConsSeeds, ratingSeeds, supplementalProsConsSeeds, unratedSlugs
 import {
   affiliatePrograms,
   clicks,
+  deals,
   moderationEvents,
   reviewAggregates,
   reviewReports,
@@ -70,11 +72,13 @@ async function rowCounts() {
   const [taskCount] = await db.select({ n: count() }).from(tasks)
   const [fitCount] = await db.select({ n: count() }).from(toolTasks)
   const [programCount] = await db.select({ n: count() }).from(affiliatePrograms)
+  const [dealCount] = await db.select({ n: count() }).from(deals)
   return {
     tools: Number(toolCount?.n ?? 0),
     tasks: Number(taskCount?.n ?? 0),
     toolTasks: Number(fitCount?.n ?? 0),
     affiliatePrograms: Number(programCount?.n ?? 0),
+    deals: Number(dealCount?.n ?? 0),
   }
 }
 
@@ -133,7 +137,25 @@ describe('catalog seed', () => {
       tasks: taskSeeds.length,
       toolTasks: toolSeeds.reduce((total, tool) => total + tool.fits.length, 0),
       affiliatePrograms: toolSeeds.length,
+      deals: dealSeeds.length,
     })
+    const dealRows = await getDb().select().from(deals)
+    expect(dealRows).toHaveLength(1)
+    const contextDeal = dealSeeds[0]
+    expect(dealRows[0]).toMatchObject({
+      toolSlug: contextDeal.toolSlug,
+      vendor: contextDeal.vendor,
+      title: contextDeal.title,
+      discountText: contextDeal.discountText,
+      code: contextDeal.code,
+      dealUrl: contextDeal.dealUrl,
+      terms: contextDeal.terms,
+      startsAt: contextDeal.startsAt,
+      expiresAt: contextDeal.expiresAt,
+      active: contextDeal.active,
+      createdAt: contextDeal.createdAt,
+    })
+    expect(toolSeeds.find((tool) => tool.slug === 'context-dev')?.vendor).toBe(contextDeal.vendor)
   })
 
   it('leaves rows that are not in the catalog in place on a second seed', async () => {

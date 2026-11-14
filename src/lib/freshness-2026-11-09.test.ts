@@ -114,7 +114,7 @@ describe('catalog freshness 2026-11-09', () => {
   })
 
   it('does not store a program, a tracking link, or a reader deal', () => {
-    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai'])
+    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev'])
     for (const slug of SLUGS) {
       const tool = seed(slug)
       expect(APPROVED_ACTIVE_AFFILIATES).not.toContain(slug)

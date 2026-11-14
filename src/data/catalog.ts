@@ -6250,8 +6250,8 @@ export const toolSeeds: ToolSeed[] = [
   }),
   // Bot scout 2026-11-04. Unrated: no editorial score, pros or cons until Forge rubric review.
   // Scout ratings stay in the comments and are not shown. Unknown prices stay null.
-  // Videco is the only affiliate row: inactive, no affiliate URL, no extra allowlist host.
-  // The other seven tools are `none`. Public promos are not reader deals and are not stored.
+  // Videco is an inactive affiliate row: no affiliate URL, no extra allowlist host.
+  // Context.dev is approved and seeded active. The other six tools are `none`. Public promos are not reader deals and are not stored.
   // scout 2026-11-04 | category: Developer tools (FLAG: scout category "Developer tools" mapped to Development) | scout rating 4.3 (not shown) | launch: 2026-11-03 (Product Hunt #1 Product of the Day) | pricing: Free $0 (10,000 tool calls and 10,000 trigger events per month, unlimited connected accounts); Growth $99/mo (100,000 tool calls, $0.50 per extra 1K); Enterprise custom.
   // note: priceFromUsd is Growth $99/mo.
   tool({
@@ -6388,13 +6388,14 @@ export const toolSeeds: ToolSeed[] = [
   }),
   // scout 2026-11-04 | category: Developer tools (FLAG: scout category "Developer tools" mapped to Development) | scout rating 4.1 (not shown) | launch: 2026-11-03 (Product Hunt #10 Product of the Day) | pricing: Free $0 (1,000 credits/mo); Developer $20/mo (10,000 credits); Pro from $90/mo (100K credits and up); Enterprise custom. Eligible startups and nonprofits get 30% off an annual paid plan for 12 months.
   // note: priceFromUsd is Developer $20/mo. The startup and nonprofit discount is the vendor's public pricing. It is not stored as a reader deal.
+  // affiliate: approved and seeded active. Tracking URL https://link.context.dev/mark-putiyon. The allowlist pins that path. /go/context-dev sends that URL and does not add other parameters. No commission rate was supplied, so none is stored. Network is unset, so no SubID is added.
   tool({
     slug: 'context-dev',
     addedAt: SCOUTED_2026_11_04,
     name: 'Context.dev',
     vendor: 'Context.dev',
     url: 'https://context.dev',
-    allowedHosts: ['context.dev'],
+    allowedHosts: ['context.dev', 'link.context.dev/mark-putiyon'],
     category: 'Development',
     shortDesc: 'A web data API that scrapes pages to Markdown, searches, crawls and monitors changes for agents.',
     longDesc: 'Context.dev is a web data API for agents and apps. It scrapes a URL to Markdown, searches the web, crawls sites, searches people and companies, watches pages for changes, and pulls brand data such as logos, colors and fonts. SDKs, a CLI and MCP are included. The free plan includes 1,000 credits a month. Developer is $20 a month. Eligible startups and nonprofits can get 30% off an annual paid plan for 12 months on the vendor\'s public pricing.',
@@ -6405,7 +6406,14 @@ export const toolSeeds: ToolSeed[] = [
     platforms: ['API'],
     lastVerifiedAt: SCOUTED_2026_11_04,
     fits: [],
-    affiliate: none,
+    affiliate: {
+      hasProgram: true,
+      network: null,
+      sourceUrl: null,
+      status: 'active',
+      commissionNote: null,
+      affiliateUrl: 'https://link.context.dev/mark-putiyon',
+    },
   }),
   // scout 2026-11-04 | category: Productivity | scout rating 3.8 (not shown) | launch: 2026-11-03 (Show HN) | pricing: unknown (site shows a free sign-in; no paid plan found).
   // note: pricing unknown, so priceFromUsd null. pricingModel stays 'paid' because the column is free, freemium or paid and cannot be empty. A sign-in is not stored as a free tier. The price label says pricing is not published.

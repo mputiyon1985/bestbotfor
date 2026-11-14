@@ -139,7 +139,7 @@ export async function resolveGoRedirect(input: {
         }
       : null
 
-  // Sendr and Julius codes are the path. Decide that on the allowlisted URL
+  // Sendr, Julius, and Context.dev codes are the path. Decide that on the allowlisted URL
   // before inbound utm_* are copied, then return it with no query. Every other
   // program still copies inbound utm_* first and adds ours only when the
   // destination has none.
