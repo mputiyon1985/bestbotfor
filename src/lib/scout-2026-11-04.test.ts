@@ -46,6 +46,9 @@ describe('bot scout 2026-11-04', () => {
       if (slug === 'context-dev') {
         expect(tool.affiliate.affiliateUrl, slug).toBe('https://link.context.dev/mark-putiyon')
         expect(tool.allowedHosts, slug).toEqual(['context.dev', 'link.context.dev/mark-putiyon'])
+      } else if (slug === 'videco') {
+        expect(tool.affiliate.affiliateUrl, slug).toBe('https://videco.io?via=mark276')
+        expect(tool.allowedHosts, slug).toEqual(['videco.io', 'videco.io/?via=mark276'])
       } else {
         expect(tool.affiliate.affiliateUrl, slug).toBeUndefined()
         expect(tool.allowedHosts, slug).toEqual([host])
@@ -93,20 +96,27 @@ describe('bot scout 2026-11-04', () => {
     expect(seed('videco').longDesc).not.toMatch(/Black Friday|promo code/i)
   })
 
-  it('activates Context.dev’s exact tracking link and leaves Videco inactive', () => {
-    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev'])
+  it('activates Videco and Context.dev’s exact tracking links', () => {
+    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco'])
     const videco = seed('videco')
     expect(videco.affiliate).toEqual({
       hasProgram: true,
       network: 'Endorsely',
       sourceUrl: 'https://videco.io/affiliate',
-      status: 'inactive',
-      commissionNote:
-        '50% of subscription revenue from referrals on paid plans, recurring while the referral stays subscribed. Switched off, with no tracking link stored.',
+      status: 'active',
+      commissionNote: '50% recurring',
+      affiliateUrl: 'https://videco.io?via=mark276',
     })
-    expect(videco.allowedHosts).toEqual(['videco.io'])
-    expect(servesAffiliateLink('videco', null, videco.affiliate.status)).toBe(false)
-    expect(servesAffiliateLink('videco', 'https://videco.io/affiliate', 'inactive')).toBe(false)
+    expect(videco.allowedHosts).toEqual(['videco.io', 'videco.io/?via=mark276'])
+    expect(servesAffiliateLink('videco', 'https://videco.io?via=mark276', 'active')).toBe(true)
+    expect(servesAffiliateLink('videco', 'https://videco.io?via=mark276', 'inactive')).toBe(false)
+    expect(servesAffiliateLink('videco', 'https://videco.io/affiliate', 'active')).toBe(false)
+    const videcoVisit = renderToStaticMarkup(createElement(OutboundLink, { slug: 'videco', affiliate: true, children: 'Visit Videco' }))
+    expect(videcoVisit).toContain('href="/go/videco"')
+    expect(videcoVisit).toContain('rel="sponsored nofollow noopener"')
+    const videcoNote = renderToStaticMarkup(createElement(AffiliateDisclosure, { affiliate: true, vendor: 'Videco' }))
+    expect(videcoNote).toContain(AFFILIATE_BUTTON_NOTE)
+    expect(videcoNote).toContain('Affiliate link')
     const context = seed('context-dev')
     expect(context.affiliate).toEqual({
       hasProgram: true,
@@ -136,7 +146,7 @@ describe('bot scout 2026-11-04', () => {
         commissionNote: null,
       })
     }
-    for (const slug of ['elevenlabs', 'synthesia', 'context-dev'] as const) {
+    for (const slug of ['elevenlabs', 'synthesia', 'context-dev', 'videco'] as const) {
       expect(seed(slug).affiliate.status).toBe('active')
       expect(seed(slug).affiliate.affiliateUrl).toMatch(/^https:\/\//)
     }
@@ -176,7 +186,7 @@ describe('bot scout 2026-11-04', () => {
 
   it('sends /go for each new tool to that tool’s official URL', async () => {
     for (const slug of SLUGS) {
-      if (slug === 'context-dev') continue
+      if (slug === 'context-dev' || slug === 'videco') continue
       const tool = seed(slug)
       const official = `${new URL(tool.url).origin}/`
       const head = resolveHeadGoRedirect(slug)

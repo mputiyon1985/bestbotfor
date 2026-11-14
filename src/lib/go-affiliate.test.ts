@@ -137,15 +137,36 @@ describe('network tracking hosts', () => {
     expect(servesAffiliateLink('papermark', papermark, 'inactive')).toBe(false)
 
     const docsalot = 'https://docsalot.dev/?utm-source=bestbotfor'
-    expect(hosts('docsalot')).toEqual(['docsalot.dev', 'docsalot.dev/?utm-source=bestbotfor'])
+    const startup = 'https://buy.stripe.com/dRmbJ197SdjH3jRa8f2Ji08'
+    const team = 'https://buy.stripe.com/eVqbJ1bg02F3f2z4NV2Ji07'
+    expect(hosts('docsalot')).toEqual([
+      'docsalot.dev',
+      'docsalot.dev/?utm-source=bestbotfor',
+      'buy.stripe.com/dRmbJ197SdjH3jRa8f2Ji08',
+      'buy.stripe.com/eVqbJ1bg02F3f2z4NV2Ji07',
+    ])
     expect(affiliateRedirectUrl(docsalot, hosts('docsalot'))).toBe(docsalot)
     expect(affiliateRedirectUrl('https://docsalot.dev/?utm-source=other', hosts('docsalot'))).toBeNull()
     expect(affiliateRedirectUrl('https://docsalot.dev/?utm-source=bestbotfor&next=1', hosts('docsalot'))).toBeNull()
     expect(affiliateRedirectUrl('https://docsalot.dev/phish?utm-source=bestbotfor', hosts('docsalot'))).toBeNull()
     expect(affiliateRedirectUrl('https://docs.docsalot.dev/?utm-source=bestbotfor', hosts('docsalot'))).toBeNull()
     expect(officialHttpsUrl('https://docsalot.dev/', hosts('docsalot'))).toBe('https://docsalot.dev/')
+    expect(affiliateRedirectUrl(startup, hosts('docsalot'))).toBe(startup)
+    expect(affiliateRedirectUrl(team, hosts('docsalot'))).toBe(team)
+    expect(affiliateRedirectUrl('https://buy.stripe.com/other', hosts('docsalot'))).toBeNull()
+    expect(affiliateRedirectUrl(`${startup}/extra`, hosts('docsalot'))).toBeNull()
+    expect(affiliateRedirectUrl(`${startup}evil`, hosts('docsalot'))).toBeNull()
+    expect(affiliateRedirectUrl(`${startup}?next=1`, hosts('docsalot'))).toBe(`${startup}?next=1`)
+    expect(affiliateRedirectUrl('https://stripe.com/dRmbJ197SdjH3jRa8f2Ji08', hosts('docsalot'))).toBeNull()
+    expect(affiliateRedirectUrl('https://evil.buy.stripe.com/dRmbJ197SdjH3jRa8f2Ji08', hosts('docsalot'))).toBeNull()
+    expect(officialHttpsUrl('https://buy.stripe.com/', hosts('docsalot'))).toBeNull()
+    expect(officialHttpsUrl(startup, hosts('docsalot'))).toBe(startup)
     expect(servesAffiliateLink('docsalot', docsalot, 'active')).toBe(true)
     expect(servesAffiliateLink('docsalot', docsalot, 'inactive')).toBe(false)
+    expect(servesAffiliateLink('docsalot-startup', startup, 'active')).toBe(true)
+    expect(servesAffiliateLink('docsalot-team', team, 'active')).toBe(true)
+    expect(servesAffiliateLink('docsalot-startup', startup, 'inactive')).toBe(false)
+    expect(servesAffiliateLink('docsalot-startup', 'https://buy.stripe.com/other', 'active')).toBe(false)
 
     const sendr = 'https://sendr.cello.so/LOp5fYtd9Jc'
     expect(hosts('sendr')).toEqual(['www.sendr.ai', 'sendr.cello.so/LOp5fYtd9Jc'])
@@ -182,6 +203,21 @@ describe('network tracking hosts', () => {
     expect(officialHttpsUrl('https://link.context.dev/', hosts('context-dev'))).toBeNull()
     expect(servesAffiliateLink('context-dev', context, 'active')).toBe(true)
     expect(servesAffiliateLink('context-dev', context, 'inactive')).toBe(false)
+    const videco = 'https://videco.io/?via=mark276'
+    expect(hosts('videco')).toEqual(['videco.io', 'videco.io/?via=mark276'])
+    expect(affiliateRedirectUrl('https://videco.io?via=mark276', hosts('videco'))).toBe(videco)
+    expect(affiliateRedirectUrl(videco, hosts('videco'))).toBe(videco)
+    expect(affiliateRedirectUrl('https://videco.io/?via=other', hosts('videco'))).toBeNull()
+    expect(affiliateRedirectUrl('https://videco.io/?via=mark276&next=1', hosts('videco'))).toBeNull()
+    expect(affiliateRedirectUrl('https://videco.io/phish?via=mark276', hosts('videco'))).toBeNull()
+    expect(affiliateRedirectUrl('https://videco.io/?via=mark276evil', hosts('videco'))).toBeNull()
+    expect(affiliateRedirectUrl('https://www.videco.io/?via=mark276', hosts('videco'))).toBeNull()
+    expect(officialHttpsUrl('https://videco.io/', hosts('videco'))).toBe('https://videco.io/')
+    expect(affiliateRedirectUrl('https://videco.io/', hosts('videco'))).toBeNull()
+    expect(officialHttpsUrl('https://videco.io/?via=mark276', hosts('videco'))).toBe(videco)
+    expect(servesAffiliateLink('videco', 'https://videco.io?via=mark276', 'active')).toBe(true)
+    expect(servesAffiliateLink('videco', 'https://videco.io?via=mark276', 'inactive')).toBe(false)
+    expect(servesAffiliateLink('videco', 'https://videco.io/affiliate', 'active')).toBe(false)
     const synthesia = 'https://www.synthesia.io/?via=mark-putiyon'
     expect(affiliateRedirectUrl(synthesia, hosts('synthesia'))).toBe(synthesia)
     expect(affiliateRedirectUrl('https://www.synthesia.io/?via=other', hosts('synthesia'))).toBeNull()

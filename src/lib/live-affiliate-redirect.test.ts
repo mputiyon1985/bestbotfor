@@ -104,6 +104,12 @@ describe('live affiliate redirects match main', () => {
         subIdParam: null,
         official: 'https://context.dev/',
       },
+      videco: {
+        stored: 'https://videco.io?via=mark276',
+        location: 'https://videco.io?via=mark276',
+        subIdParam: null,
+        official: 'https://videco.io/',
+      },
     } as const
 
     for (const [slug, expected] of Object.entries(activated)) {
@@ -115,6 +121,52 @@ describe('live affiliate redirects match main', () => {
         click: { affiliate: true, programId: 1, subIdParam: expected.subIdParam },
       })
       expect(resolveHeadGoRedirect(slug), slug).toMatchObject({ status: 302, location: expected.official })
+    }
+  })
+
+  it('sends Videco and the DocsAlot plan aliases to their exact links and drops any inbound query', async () => {
+    const docsalot = toolSeeds.find((tool) => tool.slug === 'docsalot')
+    if (!docsalot) throw new Error('docsalot')
+    const plans = {
+      'docsalot-startup': 'https://buy.stripe.com/dRmbJ197SdjH3jRa8f2Ji08',
+      'docsalot-team': 'https://buy.stripe.com/eVqbJ1bg02F3f2z4NV2Ji07',
+    } as const
+    for (const [slug, tracking] of Object.entries(plans)) {
+      expect(resolveHeadGoRedirect(slug), slug).toMatchObject({ status: 302, location: 'https://docsalot.dev/' })
+      for (const search of ['', '?utm_source=x', '?utm_source=x&utm_medium=email&foo=1', '?ref=other']) {
+        const outcome = await resolveGoRedirect({
+          headers: new Headers(),
+          ip: null,
+          siteUrl: 'https://bestbotfor.com',
+          search,
+          seedUrl: docsalot.url,
+          seedAffiliateUrl: tracking,
+          seedAffiliateStatus: 'active',
+          seedNetwork: null,
+          allowedHosts: [...docsalot.allowedHosts],
+          limit: async () => ({ ok: true }),
+          loadTool: async () => ({
+            id: 1,
+            url: docsalot.url,
+            affiliateUrl: tracking,
+            affiliateStatus: 'active',
+            network: null,
+          }),
+        })
+        expect(outcome, `${slug}${search}`).toMatchObject({
+          status: 302,
+          location: tracking,
+          click: { affiliate: true, programId: 1, subIdParam: null },
+        })
+      }
+    }
+    for (const search of ['', '?utm_source=x', '?utm_source=x&utm_medium=email&foo=1', '?ref=other']) {
+      const outcome = await go('videco', search)
+      expect(outcome, search).toMatchObject({
+        status: 302,
+        location: 'https://videco.io?via=mark276',
+        click: { affiliate: true, programId: 1, subIdParam: null },
+      })
     }
   })
 

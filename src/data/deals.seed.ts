@@ -5,6 +5,7 @@
  * `vendor` is required; it is the catalog vendor for that tool.
  */
 export const CONTEXT_DEV_DEAL_START_MS = Date.UTC(2026, 10, 14)
+export const DOCSALOT_DEAL_START_MS = Date.UTC(2026, 10, 14)
 
 export const dealSeeds = [
   {
@@ -19,5 +20,18 @@ export const dealSeeds = [
     expiresAt: null,
     active: true,
     createdAt: CONTEXT_DEV_DEAL_START_MS,
+  },
+  {
+    toolSlug: 'docsalot',
+    vendor: 'DocsAlot',
+    title: '30% off your first 6 months',
+    discountText: '30% off your first 6 months',
+    code: 'BESTBOTFOR30',
+    dealUrl: '/go/docsalot',
+    terms: '30% off the first 6 months of a new monthly Startup or Team plan, plus a 1-week free trial.',
+    startsAt: DOCSALOT_DEAL_START_MS,
+    expiresAt: null,
+    active: true,
+    createdAt: DOCSALOT_DEAL_START_MS,
   },
 ] as const

@@ -68,7 +68,12 @@ describe('bot scout 2026-11-09', () => {
       commissionNote: '50% for the life of the customer, across all plans, as stated on the affiliates page.',
       affiliateUrl: TRACKING,
     })
-    expect(tool.allowedHosts).toEqual(['docsalot.dev', 'docsalot.dev/?utm-source=bestbotfor'])
+    expect(tool.allowedHosts).toEqual([
+      'docsalot.dev',
+      'docsalot.dev/?utm-source=bestbotfor',
+      'buy.stripe.com/dRmbJ197SdjH3jRa8f2Ji08',
+      'buy.stripe.com/eVqbJ1bg02F3f2z4NV2Ji07',
+    ])
     expect(servesAffiliateLink('docsalot', TRACKING, 'active')).toBe(true)
     expect(servesAffiliateLink('docsalot', TRACKING, 'inactive')).toBe(false)
 
