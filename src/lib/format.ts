@@ -26,6 +26,8 @@ const PRICE_LABEL_OVERRIDES: Readonly<Record<string, string>> = {
   willo: 'Free to start; paid plans not open yet',
   // 49agents.com/qorqbot, Nov 13, 2026: personal use is free. The commercial license is free until 2027, then $10/mo billed annually.
   qorqbot: 'Free; commercial license $10/mo billed annually from 2027',
+  // talkify.cc, Nov 14, 2026: one plan at $32 a year. That is a yearly total, not a monthly rate, so it is not stored as priceFromUsd.
+  talkify: '$32 a year',
 }
 
 export const budgetLabel: Record<Budget, string> = {
