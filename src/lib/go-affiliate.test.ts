@@ -171,6 +171,17 @@ describe('network tracking hosts', () => {
     expect(servesAffiliateLink('julius-ai', julius, 'active')).toBe(true)
     expect(servesAffiliateLink('julius', julius, 'active')).toBe(true)
     expect(servesAffiliateLink('julius-ai', julius, 'inactive')).toBe(false)
+    const context = 'https://link.context.dev/mark-putiyon'
+    expect(hosts('context-dev')).toEqual(['context.dev', 'link.context.dev/mark-putiyon'])
+    expect(affiliateRedirectUrl(context, hosts('context-dev'))).toBe(context)
+    expect(affiliateRedirectUrl('https://link.context.dev/other', hosts('context-dev'))).toBeNull()
+    expect(affiliateRedirectUrl('https://link.context.dev/mark-putiyon/extra', hosts('context-dev'))).toBeNull()
+    expect(affiliateRedirectUrl('https://link.context.dev/mark-putiyonevil', hosts('context-dev'))).toBeNull()
+    expect(affiliateRedirectUrl('https://context.dev/mark-putiyon', hosts('context-dev'))).toBeNull()
+    expect(officialHttpsUrl('https://context.dev/', hosts('context-dev'))).toBe('https://context.dev/')
+    expect(officialHttpsUrl('https://link.context.dev/', hosts('context-dev'))).toBeNull()
+    expect(servesAffiliateLink('context-dev', context, 'active')).toBe(true)
+    expect(servesAffiliateLink('context-dev', context, 'inactive')).toBe(false)
     const synthesia = 'https://www.synthesia.io/?via=mark-putiyon'
     expect(affiliateRedirectUrl(synthesia, hosts('synthesia'))).toBe(synthesia)
     expect(affiliateRedirectUrl('https://www.synthesia.io/?via=other', hosts('synthesia'))).toBeNull()

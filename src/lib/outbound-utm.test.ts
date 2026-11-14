@@ -35,6 +35,10 @@ describe('outbound UTMs', () => {
     expect(withOutboundUtm(julius, 'direct')).toBe(julius)
     expect(withOutboundUtm(julius, 'tool')).toBe(julius)
     expect(withOutboundUtm(`${julius}?utm_source=x&foo=1`, 'direct')).toBe(julius)
+    const context = 'https://link.context.dev/mark-putiyon'
+    expect(withOutboundUtm(context, 'direct')).toBe(context)
+    expect(withOutboundUtm(context, 'tool')).toBe(context)
+    expect(withOutboundUtm(`${context}?utm_source=x&foo=1`, 'direct')).toBe(context)
   })
 
   it('keeps the host', () => {

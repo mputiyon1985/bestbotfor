@@ -98,6 +98,12 @@ describe('live affiliate redirects match main', () => {
         subIdParam: null,
         official: 'https://julius.ai/',
       },
+      'context-dev': {
+        stored: 'https://link.context.dev/mark-putiyon',
+        location: 'https://link.context.dev/mark-putiyon',
+        subIdParam: null,
+        official: 'https://context.dev/',
+      },
     } as const
 
     for (const [slug, expected] of Object.entries(activated)) {
