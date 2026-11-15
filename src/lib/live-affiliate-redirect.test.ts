@@ -110,6 +110,12 @@ describe('live affiliate redirects match main', () => {
         subIdParam: null,
         official: 'https://videco.io/',
       },
+      getimg: {
+        stored: 'https://refer.getimg.ai/mark-putiyon',
+        location: 'https://refer.getimg.ai/mark-putiyon',
+        subIdParam: null,
+        official: 'https://getimg.ai/',
+      },
     } as const
 
     for (const [slug, expected] of Object.entries(activated)) {
@@ -165,6 +171,19 @@ describe('live affiliate redirects match main', () => {
       expect(outcome, search).toMatchObject({
         status: 302,
         location: 'https://videco.io?via=mark276',
+        click: { affiliate: true, programId: 1, subIdParam: null },
+      })
+    }
+  })
+
+  it('sends /go/getimg to the exact tracking link and drops any inbound query', async () => {
+    const tracking = 'https://refer.getimg.ai/mark-putiyon'
+    expect(resolveHeadGoRedirect('getimg')).toMatchObject({ status: 302, location: 'https://getimg.ai/' })
+    for (const search of ['', '?utm_source=x', '?utm_source=x&utm_medium=email&foo=1', '?ref=other']) {
+      const outcome = await go('getimg', search)
+      expect(outcome, search).toMatchObject({
+        status: 302,
+        location: tracking,
         click: { affiliate: true, programId: 1, subIdParam: null },
       })
     }

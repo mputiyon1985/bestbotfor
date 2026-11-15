@@ -6,9 +6,10 @@
  * inbound passthrough), so an affiliate URL's own UTMs, or UTMs passed in on
  * the /go link, are never overwritten or mixed with ours. A key counts when
  * it starts with utm_ or utm-. DocsAlot's tracking link uses the hyphen.
- * Sendr's Cello code, Julius AI's Dub code, Context.dev's link code, and
- * DocsAlot's Stripe checkout codes are the path. Videco's Endorsely code is
- * the via query. Those links are returned exactly, with no extra query.
+ * Sendr's Cello code, Julius AI's Dub code, Context.dev's link code,
+ * getimg.ai's referral code, and DocsAlot's Stripe checkout codes are the path.
+ * Videco's Endorsely code is the via query. Those links are returned exactly,
+ * with no extra query.
  */
 const EXISTING_UTM_KEY = /^utm[_-]/i
 
@@ -26,6 +27,7 @@ const EXACT_TRACKING_URLS: readonly {
   { host: 'sendr.cello.so', pathname: '/LOp5fYtd9Jc', url: 'https://sendr.cello.so/LOp5fYtd9Jc' },
   { host: 'julius.dub.link', pathname: '/mark-putiyon', url: 'https://julius.dub.link/mark-putiyon' },
   { host: 'link.context.dev', pathname: '/mark-putiyon', url: 'https://link.context.dev/mark-putiyon' },
+  { host: 'refer.getimg.ai', pathname: '/mark-putiyon', url: 'https://refer.getimg.ai/mark-putiyon' },
   { host: 'docsalot.dev', pathname: '/', search: '?utm-source=bestbotfor', url: 'https://docsalot.dev/?utm-source=bestbotfor' },
   { host: 'buy.stripe.com', pathname: '/dRmbJ197SdjH3jRa8f2Ji08', url: 'https://buy.stripe.com/dRmbJ197SdjH3jRa8f2Ji08' },
   { host: 'buy.stripe.com', pathname: '/eVqbJ1bg02F3f2z4NV2Ji07', url: 'https://buy.stripe.com/eVqbJ1bg02F3f2z4NV2Ji07' },
@@ -83,7 +85,7 @@ export function withOutboundUtm(destination: string, pageType: string): string {
   } catch {
     return destination
   }
-  // Approved Sendr, Julius, Context.dev, DocsAlot checkout, and Videco links. A query already on a path-coded one is removed. /go applies this before inbound params.
+  // Approved Sendr, Julius, Context.dev, getimg.ai, DocsAlot checkout, and Videco links. A query already on a path-coded one is removed. /go applies this before inbound params.
   const pinned = exactPinnedTrackingUrl(destination)
   if (pinned) return pinned
   for (const key of url.searchParams.keys()) {

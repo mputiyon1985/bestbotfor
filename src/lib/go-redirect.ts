@@ -156,8 +156,8 @@ export async function resolveGoRedirect(input: {
         }
       : null
 
-  // Sendr, Julius, Context.dev, DocsAlot checkout, and Videco codes are the path or a
-  // pinned query. Decide that on the allowlisted URL before inbound utm_* are
+  // Sendr, Julius, Context.dev, getimg.ai, DocsAlot checkout, and Videco codes are the
+  // path or a pinned query. Decide that on the allowlisted URL before inbound utm_* are
   // copied, then return the approved URL with no extra query. Every other
   // program still copies inbound utm_* first and adds ours only when the
   // destination has none.

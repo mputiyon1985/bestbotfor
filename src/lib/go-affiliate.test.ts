@@ -92,7 +92,7 @@ describe('network tracking hosts', () => {
     return tool.allowedHosts
   }
 
-  it('pins a live tracking path and refuses shared-domain wildcards that have no link yet', () => {
+  it('pins a live tracking path and refuses shared-domain wildcards that have no link yet', async () => {
     const elevenPath = 'https://try.elevenlabs.io/8hbaa9knuwda'
     expect(officialHttpsUrl(elevenPath, hosts('elevenlabs'))).toBe(elevenPath)
     expect(officialHttpsUrl('https://try.elevenlabs.io/8hbaa9knuwda/extra', hosts('elevenlabs'))).toBeNull()
@@ -203,6 +203,23 @@ describe('network tracking hosts', () => {
     expect(officialHttpsUrl('https://link.context.dev/', hosts('context-dev'))).toBeNull()
     expect(servesAffiliateLink('context-dev', context, 'active')).toBe(true)
     expect(servesAffiliateLink('context-dev', context, 'inactive')).toBe(false)
+    const getimg = 'https://refer.getimg.ai/mark-putiyon'
+    expect(hosts('getimg')).toEqual(['getimg.ai', 'refer.getimg.ai/mark-putiyon'])
+    expect(affiliateRedirectUrl(getimg, hosts('getimg'))).toBe(getimg)
+    expect(affiliateRedirectUrl('https://refer.getimg.ai/other', hosts('getimg'))).toBeNull()
+    expect(affiliateRedirectUrl('https://refer.getimg.ai/mark-putiyon/extra', hosts('getimg'))).toBeNull()
+    expect(affiliateRedirectUrl('https://refer.getimg.ai/mark-putiyonevil', hosts('getimg'))).toBeNull()
+    expect(affiliateRedirectUrl('https://getimg.ai/mark-putiyon', hosts('getimg'))).toBeNull()
+    expect(affiliateRedirectUrl('https://evil.refer.getimg.ai/mark-putiyon', hosts('getimg'))).toBeNull()
+    expect(officialHttpsUrl('https://getimg.ai/', hosts('getimg'))).toBe('https://getimg.ai/')
+    expect(officialHttpsUrl('https://refer.getimg.ai/', hosts('getimg'))).toBeNull()
+    expect(servesAffiliateLink('getimg', getimg, 'active')).toBe(true)
+    expect(servesAffiliateLink('getimg', getimg, 'inactive')).toBe(false)
+    const { OutboundLink } = await import('@/components/outbound-link')
+    const getimgVisit = renderToStaticMarkup(createElement(OutboundLink, { slug: 'getimg', affiliate: true, children: 'Visit getimg.ai' }))
+    expect(getimgVisit).toContain('href="/go/getimg"')
+    expect(getimgVisit).toContain('rel="sponsored nofollow noopener"')
+    expect(toolSeeds.find((tool) => tool.slug === 'getimg')?.affiliate.commissionNote).toBe('Up to 30% per sale for 1 year.')
     const videco = 'https://videco.io/?via=mark276'
     expect(hosts('videco')).toEqual(['videco.io', 'videco.io/?via=mark276'])
     expect(affiliateRedirectUrl('https://videco.io?via=mark276', hosts('videco'))).toBe(videco)
