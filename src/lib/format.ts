@@ -28,6 +28,18 @@ const PRICE_LABEL_OVERRIDES: Readonly<Record<string, string>> = {
   qorqbot: 'Free; commercial license $10/mo billed annually from 2027',
   // talkify.cc, Nov 14, 2026: one plan at $32 a year. That is a yearly total, not a monthly rate, so it is not stored as priceFromUsd.
   talkify: '$32 a year',
+  // tesseract.dev, Nov 15, 2026: the app is free. Pay-as-you-go top-ups start at $10. That is not a monthly plan.
+  'tesseract-eightcell': 'Free tier; top-ups from $10',
+  // tacie.app, Nov 15, 2026: free beta. A later subscription is planned and its price is not published.
+  tacie: 'Free during beta; subscription price not published',
+  // mindwiki.io, Nov 15, 2026: Pro is $200 a year. That is a yearly total, not a monthly rate. The Power plan price is not published.
+  mindwiki: 'Free tier, then $200 a year',
+  // makethemcode.com, Nov 15, 2026: input is $1 per 1M tokens. That is not a monthly plan.
+  makethemcode: '$1 per 1M input tokens',
+  // constor.ai, Nov 15, 2026: demo-led. No price is published.
+  constor: 'Pricing not published',
+  // trydori.io, Nov 15, 2026: the pricing page requires sign-in. No price is published.
+  dori: 'Pricing not published',
 }
 
 export const budgetLabel: Record<Budget, string> = {
