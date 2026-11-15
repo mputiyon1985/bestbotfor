@@ -22,6 +22,7 @@ const SCOUTED_2026_11_11 = '2026-11-11'
 const SCOUTED_2026_11_12 = '2026-11-12'
 const SCOUTED_2026_11_13 = '2026-11-13'
 const SCOUTED_2026_11_14 = '2026-11-14'
+const SCOUTED_2026_11_15 = '2026-11-15'
 const BACKLOG_BATCH_02 = '2026-10-25'
 const BACKLOG_BATCH_03 = '2026-10-25'
 
@@ -8754,6 +8755,539 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_11_14,
+    fits: [],
+    affiliate: none,
+  }),
+  // Bot scout 2026-11-15. Unrated: no editorial score, pros or cons until Forge rubric review.
+  // Scout ratings stay in the comments and are not shown.
+  // Akked has an affiliate program. It is inactive: hasProgram only, not applied or accepted, no tracking URL.
+  // The other twenty-two have unknown affiliate programs and use the empty affiliate.
+  // No BestBotFor sponsorship is recorded. Alchemist's press address is not a sponsorship.
+  // Public vendor offers are not stored as deals. Promo codes are not stored. No /go tracking link is stored.
+  // Tesseract is Eightcell Labs' desktop agent at https://tesseract.dev. It is not Tesseract OCR. The slug is tesseract-eightcell.
+  // Spark is https://spark.site. It is not Spark Mail. The slug is spark-site.
+  // Replay is the Mac meeting recorder at https://tryreplay.online. The slug is replay-mac.
+  // Alchemist's url is https://olbrain.com/developers/. Olbrain is the parent.
+  // Rakazo is from Inbox Zero Inc.
+  // Akked is Arabic-first. The English pricing page is https://akked.app/en/pricing. The catalog URL stays https://akked.app.
+  // There is no Marketing, Legal or Construction category. Sendhour, Get Shouting, Corply and Akked stay on Automation. Constor stays on Productivity.
+  // Enzo stays on Meetings. It also does dictation.
+  // Alchemist's enterprise run prices are in INR. No dollar from-price is stored for those rupee prices. Builder is in USD.
+  // Pricing is unknown for Constor (demo-led) and Dori (the pricing page requires sign-in). MindWiki's Power plan price is unknown.
+  // MindWiki Pro is $200 a year, a yearly total, so priceFromUsd stays null.
+  // GEOHATS is a lifetime license paid once. The $149 a month plan is done-for-you, with AI included, and is not the stored from-price.
+  // Get Shouting's launch was "MCP + app" on Product Hunt Nov 14. How old the core product is could not be verified.
+  // scout 2026-11-15 | category: Coding assistant | scout rating 4.1 (not shown) | launch: 2026-11-15 (Product Hunt, featured) | pricing: Free $0 (10 box-hours/month, up to 2 boxes at once). Pro $40/mo (200 box-hours, up to 100 boxes, auto-keep and auto-review on every PR). Max $100/mo (1,000 box-hours). Team $40/seat/mo (each seat is Pro). Annual billing = 2 months free. Credits with auto top-up above the allowance; billed per running second. Model usage not included (your own Claude/ChatGPT subscription).
+  // note: priceFromUsd is Pro monthly, $40. The $0 plan is a free tier. Annual billing and credit top-ups are not the stored from-price. The no-card free plan is the vendor's public offer. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'talyn',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Talyn',
+    vendor: 'Talyn',
+    url: 'https://www.talyn.dev',
+    allowedHosts: ['www.talyn.dev'],
+    category: 'Coding assistant',
+    shortDesc: 'Runs Claude Code and Codex in parallel cloud sandboxes and keeps each pull request mergeable after you close the laptop.',
+    longDesc:
+      'Talyn is a Mac and web app that runs Claude Code and Codex in parallel cloud sandboxes. Each task gets its own box and branch. Agents keep working after you close the laptop, and Talyn keeps each pull request mergeable until it is green. You bring your own Claude or ChatGPT subscription. GitHub is the only host. A mobile app is not out yet. Free is $0 for 10 box-hours a month and up to 2 boxes at once, with no card. That $0 plan is the free tier. Pro is $40 a month for 200 box-hours, up to 100 boxes, and auto-keep and auto-review on every pull request. Max is $100 a month for 1,000 box-hours. Team is $40 a seat a month, and each seat is Pro. Annual billing is two months free. Credits with auto top-up sit above the allowance and are billed per running second. The stored from-price is Pro at $40 a month. Annual billing and the credit top-ups are the vendor\'s public billing and are not the stored from-price. The free plan is the vendor\'s public offer.',
+    pricingModel: 'freemium',
+    priceFromUsd: 40,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Web', 'macOS'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Agent builder | scout rating 4.0 (not shown) | launch: 2026-11-15 (Product Hunt, featured) | pricing: Self-hosted: free (Apache-2.0, any model). Hosted with your own model: Standard $15/mo ($12/mo yearly), Pro $49/mo, Max $99/mo (more bot-computer hours and power). Rakazo credits from $20/mo (model usage at provider price, no markup). 7-day free trial on hosted plans (10 bot-computer hours).
+  // note: priceFromUsd is Standard monthly, $15. The self-hosted engine is a free tier. The $12 yearly rate, credit packs and the 7-day trial are not the stored from-price. The trial is not a free plan. Vendor is Inbox Zero Inc. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'rakazo',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Rakazo',
+    vendor: 'Inbox Zero Inc',
+    url: 'https://rakazo.com',
+    allowedHosts: ['rakazo.com'],
+    category: 'Agent builder',
+    shortDesc: 'An open-source platform for a team of AI bots that each get a computer, run on routines and take messages from Slack, Teams or SMS.',
+    longDesc:
+      'Rakazo, from Inbox Zero Inc, is an open-source platform for a team of AI bots with jobs such as inbox manager, sales outbound, expense manager, coding agent and chief of staff. Each bot gets its own computer, runs on routines and can be messaged from Slack, Teams or iMessage and SMS. WhatsApp and Telegram are available when you self-host. The self-hosted engine is free under the Apache-2.0 license and can use any model. That free engine is the free tier. Hosted plans use your own model. Standard is $15 a month, or $12 a month billed yearly. Pro is $49 a month. Max is $99 a month, with more bot-computer hours and power. Rakazo credits start at $20 a month for model usage at the provider price, with no markup. Hosted plans include a 7-day free trial with 10 bot-computer hours. The stored from-price is Standard at $15 a month. The yearly rate, the credit packs and the trial are not the stored from-price. The trial is the vendor\'s public offer. It is not a free plan.',
+    pricingModel: 'freemium',
+    priceFromUsd: 15,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Web', 'Self-hosted'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Meetings (it also does dictation; Meetings already exists) | scout rating 4.0 (not shown) | launch: 2026-11-14 (Show HN) | pricing: Free $0 with no time limit (5,000 dictated words/week, 60 meeting minutes/week, AI at Low effort). Plus $10/mo or $100/yr (30,000 words/week, 360 meeting minutes/week, 6x AI). Pro $20/mo or $200/yr (unlimited dictation and meetings, 3x Plus AI). 14-day money-back guarantee on paid plans. Apple silicon, macOS 15+.
+  // note: priceFromUsd is Plus monthly, $10. The $0 plan is a free tier. Yearly prices are two months free and are not the stored from-price. The money-back window is the vendor's public offer and is not a free plan. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'enzo',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Enzo',
+    vendor: 'Enzo',
+    url: 'https://tryenzo.ai',
+    allowedHosts: ['tryenzo.ai'],
+    category: 'Meetings',
+    shortDesc: 'A Mac-notch assistant for offline dictation, bot-free meeting notes, on-device recall and chat over your mail and files.',
+    longDesc:
+      'Enzo lives in the Mac notch. It dictates offline into any app, records meetings without a bot and writes notes and follow-ups with speaker names. On-device screen Recall and chat can answer from mail, calendar, messages, notes and folders. Dictation and transcription work offline, and history stays on the Mac. Chat and meeting AI use online models. It needs Apple silicon and macOS 15 or later. Free is $0 with no time limit: 5,000 dictated words a week, 60 meeting minutes a week and AI at Low effort. That $0 plan is the free tier. Plus is $10 a month or $100 a year, with 30,000 words a week, 360 meeting minutes a week and 6 times the AI. Pro is $20 a month or $200 a year, with unlimited dictation and meetings and 3 times the Plus AI. Yearly billing is two months free. The stored from-price is Plus at $10 a month. The yearly prices are the vendor\'s public billing and are not the stored from-price. Paid plans have a 14-day money-back guarantee. That guarantee is the vendor\'s public offer. It is not a free plan.',
+    pricingModel: 'freemium',
+    priceFromUsd: 10,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['macOS'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Productivity | scout rating 3.9 (not shown) | launch: 2026-11-14 (Product Hunt) | pricing: App free. AI: free with your own Claude, ChatGPT or Gemini subscription/API key, or a free allowance that refills automatically; pay-as-you-go top-ups from $10 (bonus on first top-up; unlocks the most capable models).
+  // note: the $10 figure is a top-up, not a monthly plan, so priceFromUsd stays null. The free app and the refilling allowance are a free tier. The first-top-up bonus is the vendor's public offer and is not a free plan. This product is https://tesseract.dev from Eightcell Labs. It is not Tesseract OCR. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'tesseract-eightcell',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Tesseract (Eightcell Labs)',
+    vendor: 'Eightcell Labs',
+    url: 'https://tesseract.dev',
+    allowedHosts: ['tesseract.dev'],
+    category: 'Productivity',
+    shortDesc: 'A free desktop agent for Mac, Windows and Linux that makes slides, sites, logos, video and documents from words or voice.',
+    longDesc:
+      'Tesseract, from Eightcell Labs, is a free desktop AI agent for Mac, Windows and Linux. It makes presentations, websites, logos, videos and documents from plain words or voice, and it bundles office and media editors, an agentic IDE for 14 coding agents, remote desktop and team chat. The site is tesseract.dev. The app is free. AI is free with a Claude, ChatGPT or Gemini subscription or API key you already have, or with a free allowance that refills automatically. That free app is the free tier. Pay-as-you-go top-ups start at $10 and unlock the most capable models. The $10 figure is a top-up. It is not a monthly plan, so no monthly price is stored. A bonus on the first top-up is the vendor\'s public offer. It is not a free plan.',
+    pricingModel: 'freemium',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['macOS', 'Windows', 'Linux'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Productivity | scout rating 3.8 (not shown) | launch: 2026-11-15 (Product Hunt) | pricing: Free $0 (up to 1,000 notes / 25 MB text, unlimited AIs, 3 read-only shares, no expiry). Pro $9/mo (unlimited notes and shares, one extra writer, 2 GB attachments, semantic search, 30 versions). Team $7/seat/mo from 3 seats (company brain, single invoice; yearly = 2 months free). Prices exclude sales tax; USD or EUR.
+  // note: priceFromUsd is Pro monthly, $9. The $0 plan is a free tier. Team yearly billing and the founding-teams price are not the stored from-price. USD prices are published, so the dollar from-price is stored. Euro amounts were not recorded. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'cobrain',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Cobrain',
+    vendor: 'Cobrain',
+    url: 'https://cobrain.space',
+    allowedHosts: ['cobrain.space'],
+    category: 'Productivity',
+    shortDesc: 'A shared memory of Markdown notes that Claude, ChatGPT, Cursor and other MCP clients can read and update.',
+    longDesc:
+      'Cobrain is a shared memory for your AIs. A brain of Markdown notes, covering decisions, constraints and details, can be read and updated by Claude, ChatGPT, Claude Code, Codex, Cursor or any MCP client, and shared with a team. Data is stored in Europe. Claude needs a paid plan for custom connectors. Free is $0 for up to 1,000 notes or 25 MB of text, unlimited AIs and 3 read-only shares, with no expiry and no card. That $0 plan is the free tier. Pro is $9 a month for unlimited notes and shares, one extra writer, 2 GB of attachments, semantic search and 30 versions. Team is $7 a seat a month from 3 seats, with a company brain and a single invoice. Yearly Team billing is two months free. Prices exclude sales tax and are shown in US dollars or euros. No euro amount is recorded. The stored from-price is Pro at $9 a month. Yearly billing is the vendor\'s public billing and is not the stored from-price. Founding teams, until November 30, get 2 months of Team free and then $5 a seat for a year instead of $7. That offer is the vendor\'s public offer and is not a free plan.',
+    pricingModel: 'freemium',
+    priceFromUsd: 9,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Productivity | scout rating 3.8 (not shown) | launch: 2026-11-15 (Product Hunt, featured) | pricing: Free $0 (1,000 blocks, 1 GB, 1 deployed app, 3 GB lifetime traffic). Pro $15/member/mo ($12 yearly; unlimited blocks, 20 GB, 3 apps, own domain, integrations). Business $25/member/mo ($20 yearly; 100 GB, 5 apps). Enterprise custom. 30-day Pro trial.
+  // note: priceFromUsd is Pro monthly, $15. The $0 plan is a free tier. Yearly rates are not the stored from-price. The 30-day trial and the Black Friday first-payment discount are the vendor's public offer and are not a free plan. No promo code is stored. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'tulvo',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Tulvo',
+    vendor: 'Tulvo',
+    url: 'https://www.tulvo.io',
+    allowedHosts: ['www.tulvo.io'],
+    category: 'Productivity',
+    shortDesc: 'An adaptive workspace that builds docs, boards, databases, reports and hosted apps from a description, on one data set.',
+    longDesc:
+      'Tulvo is an adaptive AI workspace. You describe what you need and it builds the docs, boards, databases, reports and hosted apps or sites on one shared data set. You can use it from ChatGPT, Claude, Grok and Cursor through Tulvo MCP, which is in beta. Free is $0 for 1,000 blocks, 1 GB, 1 deployed app and 3 GB of lifetime traffic. That $0 plan is the free tier. Pro is $15 a member a month, or $12 a member a month billed yearly, with unlimited blocks, 20 GB, 3 apps, your own domain and integrations. Business is $25 a member a month, or $20 billed yearly, with 100 GB and 5 apps. Enterprise is custom. The stored from-price is Pro at $15 a member a month. The yearly rates are the vendor\'s public billing and are not the stored from-price. A 30-day Pro trial and 50 percent off the first payment on Pro and Business are the vendor\'s public offer. The discount is applied by the site. It is not a free plan. No promo code is stored.',
+    pricingModel: 'freemium',
+    priceFromUsd: 15,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Automation (no Marketing category; a social find-make-schedule loop stays on Automation) | scout rating 3.8 (not shown) | launch: 2026-11-14 (Product Hunt) | pricing: Starter $29/mo ($23/mo yearly; 5 accounts, 200 AI credits). Growth $49/mo ($39 yearly; 15 accounts, 500 credits). Agency $99/mo ($79 yearly; 50 accounts, 1,200 credits). Scale $199/mo ($159 yearly; 100 accounts, 3,000 credits). Credit top-ups $15/100, $35/300, $90/1,000. 14-day money-back guarantee.
+  // note: priceFromUsd is Starter monthly, $29. Yearly rates and credit top-ups are not the stored from-price. The money-back window is the vendor's public offer and is not a free plan. No free plan was found. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'sendhour',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Sendhour',
+    vendor: 'Sendhour',
+    url: 'https://sendhour.com',
+    allowedHosts: ['sendhour.com'],
+    category: 'Automation',
+    shortDesc: 'Finds viral posts in your niche, remakes them for your brand and schedules them, including from an AI agent over MCP.',
+    longDesc:
+      'Sendhour finds viral posts in your niche and your rivals\' best posts, remakes them for your brand with AI slideshows, images and video, and schedules them across social networks. AI agents such as Claude, Codex, Gemini and Grok can run the find-make-schedule loop through its API and MCP server, with drafts-only access. Teammates and scheduling are unlimited on every plan. Monthly AI credits do not roll over. Starter is $29 a month, or $23 a month billed yearly, for 5 accounts and 200 AI credits. Growth is $49 a month, or $39 billed yearly, for 15 accounts and 500 credits. Agency is $99 a month, or $79 billed yearly, for 50 accounts and 1,200 credits. Scale is $199 a month, or $159 billed yearly, for 100 accounts and 3,000 credits. Credit top-ups are $15 for 100, $35 for 300 and $90 for 1,000. The stored from-price is Starter at $29 a month. Yearly rates and the top-ups are not the stored from-price. A 14-day money-back guarantee is the vendor\'s public offer. It is not a free plan. No free plan was found.',
+    pricingModel: 'paid',
+    priceFromUsd: 29,
+    hasFreeTier: false,
+    skillLevel: 'beginner',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: SEO | scout rating 3.7 (not shown) | launch: 2026-11-14 (Product Hunt) | pricing: Lifetime, paid once: 1 website $47 (next price $67), 5 websites $97 (next $117), unlimited $249 (next $269); price rises $20 every 5 licenses. Local business done-for-you plan $149/mo (AI included). AI usage billed by your providers at cost (about $4 for a monthly 30-question scan). 7-day money-back guarantee.
+  // note: priceFromUsd is the current one-time license for 1 website, $47, same one-time convention as Pauta. The later founder prices, the about-$4 provider scan and the $149/mo done-for-you plan are not the stored from-price. The money-back window is the vendor's public offer and is not a free plan. No free plan was found. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'geohats',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'GEOHATS',
+    vendor: 'GEOHATS',
+    url: 'https://geohats.com',
+    allowedHosts: ['geohats.com'],
+    category: 'SEO',
+    shortDesc: 'Tracks what ChatGPT, Claude, Perplexity, Gemini and Grok say about your brand and writes pages built to be cited.',
+    longDesc:
+      'GEOHATS is a generative-engine optimization tool. It tracks what ChatGPT, Claude, Perplexity, Gemini and Grok say about your brand, finds ranked gaps, writes quality-gated pages built to be cited, runs mention outreach to pages AI already cites and fixes your site for AI crawlers. An MCP server works with Cursor and Claude Code. It runs on your own AI keys. The license is paid once. One website is $47, and the next price is $67. Five websites are $97, next $117. Unlimited is $249, next $269. The price rises $20 every 5 licenses. A local-business done-for-you plan is $149 a month and includes AI. Provider usage is billed by your providers at cost, about $4 for a monthly scan of 30 questions. The stored from-price is the current one-website license, $47, paid once. The later founder prices, the provider scan and the $149 a month done-for-you plan are not the stored from-price. A 7-day money-back guarantee is the vendor\'s public offer. It is not a free plan. No free plan was found.',
+    pricingModel: 'paid',
+    priceFromUsd: 47,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Meetings | scout rating 3.7 (not shown) | launch: 2026-11-14 (Product Hunt #23) | pricing: Free beta with a monthly usage limit; a subscription is planned later (price not published). macOS 14+, Apple Silicon; iPhone app coming soon.
+  // note: the later subscription price is not published, so priceFromUsd stays null. The free beta is a free tier. The iPhone app is not out, so iOS is not stored. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'tacie',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Tacie',
+    vendor: 'Tacie',
+    url: 'https://tacie.app/en',
+    allowedHosts: ['tacie.app'],
+    category: 'Meetings',
+    shortDesc: 'A Mac meeting assistant with no bot in the call that looks up answers from Notion, Jira, Linear and GitHub while you meet.',
+    longDesc:
+      'Tacie is a Mac meeting assistant with no bot in the call. It listens to meeting audio on your Mac, writes up decisions and to-dos, and when a question comes up mid-meeting it looks up the answer with sources in Notion, Jira, Linear and GitHub. It is a free beta with a monthly usage limit. That free beta is the free tier. A subscription is planned later. Its price is not published, so no paid price is stored. It needs macOS 14 or later on Apple silicon. An iPhone app is described as coming soon and is not stored. The free beta is the vendor\'s public offer.',
+    pricingModel: 'freemium',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['macOS'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Vibe coding | scout rating 3.7 (not shown) | launch: 2026-11-14 (Product Hunt) | pricing: Free $0 (one-time $15 build + $15 app credits, publish on a spark.site address with badge). Starter $25/mo ($25 build + $25 app credits monthly, custom domain, payments, 10% fee on sales). Pro $200/mo ($250 + $250 credits, 5% fee on sales). Stripe fees separate; credit top-ups available.
+  // note: priceFromUsd is Starter monthly, $25. The $0 plan is a free tier. The sales fee and Stripe fees are not the stored from-price. This product is https://spark.site. It is not Spark Mail. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'spark-site',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Spark',
+    vendor: 'Spark',
+    url: 'https://spark.site',
+    allowedHosts: ['spark.site'],
+    category: 'Vibe coding',
+    shortDesc: 'Builds an app, website or internal tool from a description, with payments, sign-in, hosting and email included.',
+    longDesc:
+      'Spark is an AI business builder at spark.site. You describe an idea and it builds the app, website or internal tool, with payments, sign-in, hosting and email built in, plus help with market research and marketing. Free is $0: a one-time $15 of build credits and $15 of app credits, published on a spark.site address with a badge. That $0 plan is the free tier. Starter is $25 a month, with $25 of build credits and $25 of app credits each month, a custom domain, payments and a 10 percent fee on sales. Pro is $200 a month, with $250 and $250 credits and a 5 percent fee on sales. Stripe fees are separate, and credit top-ups are available. The stored from-price is Starter at $25 a month. The sales fee, Stripe fees and top-ups are not the stored from-price. The free credits are the vendor\'s public offer.',
+    pricingModel: 'freemium',
+    priceFromUsd: 25,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Automation (no Legal category; forming a company from an agent stays on Automation) | scout rating 3.7 (not shown) | launch: 2026-11-14 (Product Hunt) | pricing: Formation $329 one-time (Delaware filing + service); 83(b) filing $70 per founder; founder stock, EIN and banking setup free. Essentials $35/mo (required; registered agent, mailbox, phone, deadline tracking). Compliance $69/mo (Corply files annual report/franchise tax and up to 2 states' sales tax). Annual saves 15%+. Government fees at cost.
+  // note: priceFromUsd is the required Essentials monthly price, $35. The $329 formation fee, the $70 filing and annual billing are not the stored from-price. Included setup is not a free plan. No free plan was found. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'corply',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Corply',
+    vendor: 'Corply',
+    url: 'https://corply.dev',
+    allowedHosts: ['corply.dev'],
+    category: 'Automation',
+    shortDesc: 'Forms and runs a Delaware C-corp from Claude, Claude Code or Codex, then handles EIN, banking and compliance.',
+    longDesc:
+      'Corply forms and runs a Delaware C-corp from Claude, Claude Code or Codex through MCP. An AI agent guides the application, prepares documents, coordinates founder review and signatures and routes the filing, then handles EIN, banking setup, a registered agent, a mailbox and compliance. It is not a law firm or a bank. Formation is $329 once, covering the Delaware filing and the service. An 83(b) filing is $70 per founder. Founder stock, EIN and banking setup are included. Essentials is $35 a month and is required: registered agent, mailbox, phone and deadline tracking. Compliance is $69 a month. Corply files the annual report and franchise tax and up to 2 states\' sales tax. Annual billing saves 15 percent or more. Government fees are at cost. The stored from-price is Essentials at $35 a month. The formation fee, the per-founder filing and annual billing are not the stored from-price. Included setup is the vendor\'s public offer. It is not a free plan. No free plan was found.',
+    pricingModel: 'paid',
+    priceFromUsd: 35,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Automation (no Marketing category; a WhatsApp commerce inbox stays on Automation) | scout rating 3.6 (not shown) | launch: 2026-11-15 (Product Hunt) | pricing: Free $0 (30 customers contacted/month, 1 store, 1 channel). Growth $19.99/mo (2,000 customers, 1,000 AI actions, 3 seats). Pro $49/mo (10,000 customers, 5,000 AI actions). Business $149/mo (50,000 customers, 25,000 AI actions, white-label). Yearly = 2 months free. Meta WhatsApp fees billed by Meta.
+  // note: priceFromUsd is Growth monthly, $19.99. The $0 plan is a free tier. Yearly billing and Meta message fees are not the stored from-price. The catalog URL is https://akked.app. The English pricing page is https://akked.app/en/pricing and is the same host.
+  // affiliate: in-house (partner program for freelancers and agencies, application form). 20% of what each referred store pays for 12 months from its first payment, or another rate agreed in writing. Paid manually around the 10th of each month once over $10, on payments older than 14 days. Recurring for 12 months. Apply page https://akked.app/partners, on the official host. Not applied or accepted. Seeded inactive, hasProgram only. No tracking link.
+  tool({
+    slug: 'akked',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Akked',
+    vendor: 'Akked',
+    url: 'https://akked.app',
+    allowedHosts: ['akked.app'],
+    category: 'Automation',
+    shortDesc: 'An Arabic-first WhatsApp commerce platform that confirms orders, recovers checkouts and answers from store data.',
+    longDesc:
+      'Akked is an AI WhatsApp commerce platform for online stores, built for MENA and Arabic-first. It sends order confirmations, recovers abandoned checkouts and keeps a shared inbox across WhatsApp, Instagram, Messenger, Telegram and site chat. AI agents answer from store data and can create orders, with a human takeover. It uses the official WhatsApp Business Platform, and Meta message fees are billed by Meta. Free is $0 for 30 customers contacted a month, 1 store and 1 channel. That $0 plan is the free tier. Growth is $19.99 a month for 2,000 customers, 1,000 AI actions and 3 seats. Pro is $49 a month for 10,000 customers and 5,000 AI actions. Business is $149 a month for 50,000 customers, 25,000 AI actions and white-label. Yearly billing is two months free. The stored from-price is Growth at $19.99 a month. Yearly billing and the Meta fees are not the stored from-price. The free plan and the yearly billing are the vendor\'s public offer.',
+    pricingModel: 'freemium',
+    priceFromUsd: 19.99,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: {
+      hasProgram: true,
+      network: 'in-house (partner program for freelancers and agencies, application form)',
+      sourceUrl: 'https://akked.app/partners',
+      status: 'inactive',
+      commissionNote:
+        '20% of what each referred store pays for 12 months from its first payment, or another rate agreed in writing. Paid manually around the 10th of each month once over $10, on payments older than 14 days. Recurring for 12 months. Not applied or accepted. No tracking link stored.',
+    },
+  }),
+  // scout 2026-11-15 | category: Meetings | scout rating 3.6 (not shown) | launch: 2026-11-14 (Product Hunt #10) | pricing: $10 once (US, before tax), no subscription; activate on two Macs; works offline after setup. Local prices via Paddle.
+  // note: priceFromUsd is the US one-time price, $10, same one-time convention as Pauta. Local Paddle prices were not recorded, so none are stored as a dollar amount. No free plan was found. No deal was found. This product is https://tryreplay.online. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'replay-mac',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Replay',
+    vendor: 'Replay',
+    url: 'https://tryreplay.online',
+    allowedHosts: ['tryreplay.online'],
+    category: 'Meetings',
+    shortDesc: 'A Mac meeting recorder with no bot that captures video and both sides of the call, then drafts notes with Apple Intelligence.',
+    longDesc:
+      'Replay is a Mac meeting recorder at tryreplay.online. No bot joins the call. It records video and both sides of Google Meet, Zoom, Teams calls and Slack huddles, transcribes locally and drafts editable notes with Apple Intelligence. The US price is $10 once, before tax, with no subscription, and it activates on two Macs. It works offline after setup. Local prices are sold through Paddle and were not recorded, so they are not stored. The stored from-price is $10, paid once. It needs macOS 26 and Apple silicon, and notes depend on Apple Intelligence. No free plan was found. No public offer was found.',
+    pricingModel: 'paid',
+    priceFromUsd: 10,
+    hasFreeTier: false,
+    skillLevel: 'beginner',
+    platforms: ['macOS'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Productivity | scout rating 3.6 (not shown) | launch: 2026-11-14 (Product Hunt) | pricing: Free $0, no card (vault synced across Mac and web, connect one AI, ask Pixel quick questions). Pro $200/yr (yearly = two months free). Power plan listed; price not shown in page text (unknown).
+  // note: $200 is a yearly total, not a monthly rate, so priceFromUsd stays null. Do not divide it into a monthly figure. The $0 plan is a free tier. The Power plan price is not published. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'mindwiki',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'MindWiki',
+    vendor: 'MindWiki',
+    url: 'https://www.mindwiki.io',
+    allowedHosts: ['www.mindwiki.io'],
+    category: 'Productivity',
+    shortDesc: 'A cloud vault of notes and files that you and your connected AI agents share, with cited answers from an in-app assistant.',
+    longDesc:
+      'MindWiki is a cloud vault for notes, files and project knowledge shared by you and your connected AI agents. It has a Markdown or rich editor, backlinks and a graph, an in-app assistant named Pixel with cited answers, and a connector so an AI can find, read and save notes. The Mac app keeps a local Markdown copy and works offline. Free is $0, with no card: the vault syncs across Mac and web, you can connect one AI, and you can ask Pixel quick questions. That $0 plan is the free tier. Pro is $200 a year. The page says yearly billing is two months free. That price is a yearly total, so it is not a monthly from-price. A Power plan is listed and its price is not shown, so no Power price is stored. Mac and the web are the only apps named.',
+    pricingModel: 'freemium',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['Web', 'macOS'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Vibe coding | scout rating 3.5 (not shown) | launch: 2026-11-14 (Product Hunt) | pricing: Pay as you go, no subscription or seats: input $1.00/1M tokens, output $5.00/1M; cache read $0.10/1M, cache write $1.25/1M ($2.00 for 1 hour). $1.00 free credit per new project. Examples: text/colour change about $0.023, new page about $0.13. Monthly limits per project and member.
+  // note: token rates are not a monthly plan, so priceFromUsd stays null. The $1 credit is the vendor's public offer and is not a free plan. No free plan was found. The phone OS was not named, so platforms stays Web for the browser. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'makethemcode',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'MakeThemCode',
+    vendor: 'MakeThemCode',
+    url: 'https://makethemcode.com',
+    allowedHosts: ['makethemcode.com'],
+    category: 'Vibe coding',
+    shortDesc: 'Lets a non-technical team ask for changes to an existing site, preview them in the browser and send them for developer approval.',
+    longDesc:
+      'MakeThemCode brings a Claude Code-style AI to non-technical teams. You ask in chat for changes to an existing website or app, preview them live in the browser and submit them for developer approval. Nothing is installed, and it works on a phone. The phone operating system was not named. There is no subscription and there are no seats. You pay for tokens: input is $1.00 per 1 million, output is $5.00 per 1 million, cache read is $0.10 per 1 million and cache write is $1.25 per 1 million, or $2.00 for 1 hour. A text or colour change is about $0.023, and a new page is about $0.13. Those rates are not a monthly plan, so no monthly price is stored. Each new project includes $1.00 of free credit. That credit is the vendor\'s public offer. It is not a free plan. No free plan was found. Monthly limits apply per project and per member.',
+    pricingModel: 'paid',
+    priceFromUsd: null,
+    hasFreeTier: false,
+    skillLevel: 'beginner',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Research | scout rating 3.5 (not shown) | launch: 2026-11-15 (Product Hunt) | pricing: Free (one database, morning briefing, Telegram chat). Paid: per database per year with volume discounts, quote required. Cloud version for a central database with branches: quote. Discounts on request for startups, schools and non-profits.
+  // note: paid prices are quotes, so priceFromUsd stays null. The free plan for one database is a free tier. The extra discount is the vendor's public offer and is not a free plan. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'cuedis',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Cuedis',
+    vendor: 'Cuedis',
+    url: 'https://cuedis.com',
+    allowedHosts: ['cuedis.com'],
+    category: 'Research',
+    shortDesc: 'A read-only business-memory AI beside MySQL or SQL Server that sends a morning briefing and plain-word answers.',
+    longDesc:
+      'Cuedis is a business-memory AI that sits beside your MySQL or SQL Server database, including point of sale, ERP, accounting and orders. It learns what is normal for every customer, supplier, product and staff member, and it sends a morning briefing, real-time alerts and plain-word answers, including on Telegram. It is read-only. Data stays on your computer unless you choose an online AI. It runs on Windows or Mac. Free covers one database, the morning briefing and Telegram chat. That free plan is the free tier. Paid plans are priced per database per year, with volume discounts, and a quote is required. A cloud version for a central database with branches is also a quote. Those prices are not published, so no paid price is stored. An extra discount on request for startups, schools and non-profits is the vendor\'s public offer. It is not a free plan.',
+    pricingModel: 'freemium',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['Windows', 'macOS'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Development | scout rating 3.5 (not shown) | launch: 2026-11-14 (Show HN) | pricing: Open source: free forever (MIT core: authorize() policy engine, decision ledger, CLI/TUI, MCP server, x402 authorization). Team: coming soon. Enterprise: contact.
+  // note: the engine is free, so the model is free and priceFromUsd stays null. Team is not available yet and the Enterprise price is not published, so no paid price is stored. No desktop operating system was named, so platforms stays Terminal for the CLI and terminal UI. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'shotoku',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Shotoku',
+    vendor: 'Shotoku',
+    url: 'https://www.shotoku.dev',
+    allowedHosts: ['www.shotoku.dev'],
+    category: 'Development',
+    shortDesc: 'Local spend controls for AI agents, with budgets, approvals and a tamper-evident ledger before any payment.',
+    longDesc:
+      'Shotoku is local-first spend control for AI agents. Budgets, approvals and a hash-chained, tamper-evident audit ledger are enforced on your machine before any payment, including x402. It has a command-line tool, a terminal UI and an MCP server for Claude, Cursor and others. It does not take custody of funds. The open-source core is free forever under the MIT license: the authorize policy engine, the decision ledger, the command-line and terminal UI, the MCP server and x402 authorization. Team is coming soon. Enterprise is by contact, and its price is not published, so no paid price is stored. No desktop operating system was named.',
+    pricingModel: 'free',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['Terminal'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Automation (no Marketing category; a multi-channel campaign runner stays on Automation) | scout rating 3.4 (not shown) | launch: 2026-11-14 (Product Hunt; the listing was "MCP + app". How old the core product is could not be verified.) | pricing: Basic $24.99/mo, Pro $49.99/mo, Agency $499.99/mo (yearly billing prices shown). 14-day free trial, no card. Email/SMS: 500 free sends/month, then $14.99 per 2,500 sends.
+  // note: priceFromUsd is Basic monthly, $24.99. Yearly dollar amounts were not recorded, so they are not stored. The send pack is not the stored from-price. The 14-day trial is not a free plan. No free plan was found. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'get-shouting',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Get Shouting',
+    vendor: 'Get Shouting',
+    url: 'https://www.getshouting.com',
+    allowedHosts: ['www.getshouting.com'],
+    category: 'Automation',
+    shortDesc: 'Builds multi-channel campaigns across social, email, SMS and CRM from store data, including from Claude or ChatGPT over MCP.',
+    longDesc:
+      'Get Shouting is an automated marketing department for e-commerce, small businesses and agencies. It builds multi-channel campaigns across organic and paid social, email, SMS and CRM from store data. An MCP app lets Claude, ChatGPT, Gemini or Grok create and run campaigns. Basic is $24.99 a month. Pro is $49.99 a month. Agency is $499.99 a month. Yearly billing prices are shown on the site. Those yearly amounts were not recorded, so they are not stored. The stored from-price is Basic at $24.99 a month. Email and SMS include 500 sends a month, then $14.99 per 2,500 sends. That send price is not the stored from-price. A 14-day free trial needs no card. The trial is the vendor\'s public offer. It is not a free plan. No free plan was found.',
+    pricingModel: 'paid',
+    priceFromUsd: 24.99,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Chat assistant | scout rating 3.4 (not shown) | launch: 2026-11-15 (Product Hunt) | pricing: Free "for you, forever", no card needed.
+  // note: the app is free, so the model is free and priceFromUsd stays null. No paid plan was found. The desktop version is not out, and no phone operating system was named, so platforms stays empty. The catalog URL is the product page https://www.da.care/leda. da.care is the parent. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'leda',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Leda (da.care)',
+    vendor: 'da.care',
+    url: 'https://www.da.care/leda',
+    allowedHosts: ['www.da.care'],
+    category: 'Chat assistant',
+    shortDesc: 'A calm, ad-free assistant you ask by voice or text, which can turn a description into a small app and brief the family.',
+    longDesc:
+      'Leda, from da.care, is a calm, ad-free AI assistant. You ask anything by voice or text, describe a tool and Leda builds it as a small app, and keep calendar, mail and notes in one quiet place. It can coordinate a daily brief for the family. Ready-made apps include scam check, magnifier and transcribe. It is free, with no card, and the page says it is free for you forever. No paid plan was found. There is no feed and there are no streaks. A desktop version is not out yet. No phone operating system was named.',
+    pricingModel: 'free',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: [],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Productivity | scout rating 3.4 (not shown) | launch: 2026-11-14 (Product Hunt, featured) | pricing: Free, no account. Optional AI chat uses your own API key (billed by your provider).
+  // note: the app is free, so the model is free and priceFromUsd stays null. Provider charges for an optional key are not a VB Notes price. No paid plan was found. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'vb-notes',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'VB Notes',
+    vendor: 'VB Notes',
+    url: 'https://vbnotes.com',
+    allowedHosts: ['vbnotes.com'],
+    category: 'Productivity',
+    shortDesc: 'A free, account-free notes app that keeps every note as Markdown in a folder you choose and finds notes by meaning on device.',
+    longDesc:
+      'VB Notes is a free, account-free notes app for Mac, Windows, Linux, iOS and Android. Every note is a plain Markdown file in a folder you choose. It finds notes by meaning with an on-device model, so notes do not leave the device. Version 0.4.3 adds chat with an AI about one note or all of them, using your own API key, plus wiki links between notes. The app is free and needs no account. Optional AI chat is billed by your provider, not by VB Notes, so no paid price is stored. No paid plan was found. Sync uses a folder you already have, such as iCloud Drive. It does not run its own sync service.',
+    pricingModel: 'free',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['macOS', 'Windows', 'Linux', 'iOS', 'Android'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Agent builder | scout rating 3.3 (not shown) | launch: 2026-11-14 (Product Hunt) | pricing: Building (developers): Free start $0 (300 credits for 90 days after email verification); Builder $24/mo (2,000 credits; ₹1,999 + GST in India); top-ups $6/500, $12/1,000, $30/2,500 credits. Running agents (enterprise): ₹20,000/month per agent, Superagent or app after a 30-day trial, plus ₹2/message and usage-based workflow fees. Prices exclude 18% GST.
+  // note: priceFromUsd is Builder monthly, $24. The India builder price and the enterprise run prices are in rupees, so they are not a dollar from-price. Do not convert rupees to dollars. Top-ups are not the stored from-price. The 90-day credit start and the 30-day run trial are the vendor's public offer and are not a free plan. No ongoing free plan was found. The catalog URL is https://olbrain.com/developers/. Olbrain is the parent. A press address (press@olbrain.com) is not a sponsorship. Affiliate unknown, not seeded.
+  tool({
+    slug: 'olbrain-alchemist',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Alchemist by Olbrain',
+    vendor: 'Olbrain',
+    url: 'https://olbrain.com/developers/',
+    allowedHosts: ['olbrain.com'],
+    category: 'Agent builder',
+    shortDesc: 'Olbrain\'s agent builder that plugs into Claude Code, Codex and Claude so developers can plan, build and test agents that run on Agent OS.',
+    longDesc:
+      'Alchemist, from Olbrain, plugs into Claude Code, Codex and Claude.ai as a plugin or MCP server. Developers plan, build and test multi-agent systems that then run and are governed on Olbrain Agent OS. A free start is $0: 300 credits for 90 days after email verification. Builder is $24 a month for 2,000 credits. In India that plan is ₹1,999 plus GST. Top-ups are $6 for 500 credits, $12 for 1,000 and $30 for 2,500. Running an agent, Superagent or app for an enterprise customer is ₹20,000 a month per agent after a 30-day trial, plus ₹2 a message and usage-based workflow fees. Prices exclude 18 percent GST. The stored from-price is Builder at $24 a month. The rupee prices are not a dollar from-price. Top-ups are not the stored from-price. The 90-day start and the 30-day trial are the vendor\'s public offer. They are not a free plan. No ongoing free plan was found. The product page is olbrain.com/developers/.',
+    pricingModel: 'paid',
+    priceFromUsd: 24,
+    hasFreeTier: false,
+    skillLevel: 'pro',
+    platforms: ['Web'],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Productivity (no Construction category) | scout rating 3.3 (not shown) | launch: 2026-11-13 (Launch YC) | pricing: unknown (demo-led; "Book a demo")
+  // note: no price is published, so priceFromUsd stays null and the label says pricing is not published. A demo is not a free plan. No platform was named, so platforms stays empty. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'constor',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Constor',
+    vendor: 'Constor',
+    url: 'https://constor.ai',
+    allowedHosts: ['constor.ai'],
+    category: 'Productivity',
+    shortDesc: 'Reads construction plans and returns structured quantity takeoffs for HVAC, piping, ducts, surfaces and equipment.',
+    longDesc:
+      'Constor is an AI quantity takeoff for construction. It reads plans and detects HVAC networks, piping, ducts, surfaces and equipment, returning structured takeoffs for 1 to 50 plans in under 30 minutes. It is in the Y Combinator Fall 2026 batch. The site is in French, English, Portuguese and Chinese. Pricing is not published. The page asks you to book a demo. No price is stored. The demo is the vendor\'s public offer. It is not a free plan. No platform was named.',
+    pricingModel: 'paid',
+    priceFromUsd: null,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: [],
+    lastVerifiedAt: SCOUTED_2026_11_15,
+    fits: [],
+    affiliate: none,
+  }),
+  // scout 2026-11-15 | category: Research | scout rating 3.1 (not shown) | launch: 2026-11-14 (Product Hunt) | pricing: unknown (pricing page requires sign-in)
+  // note: the pricing page requires sign-in, so no price is stored and priceFromUsd stays null. The label says pricing is not published. No free plan is recorded because the page could not be read. No platform was named, so platforms stays empty. No deal was found. Affiliate unknown, not seeded. Sponsorship unknown.
+  tool({
+    slug: 'dori',
+    addedAt: SCOUTED_2026_11_15,
+    name: 'Dori',
+    vendor: 'Dori',
+    url: 'https://trydori.io',
+    allowedHosts: ['trydori.io'],
+    category: 'Research',
+    shortDesc: 'Builds an audience of AI participants that simulate how people use a product, to find friction before you ship.',
+    longDesc:
+      'Dori is synthetic customer testing. You build an audience of AI participants that simulate how people think, decide and interact with your product, to find friction in onboarding, conversion and AI-agent flows before you ship. Custom audiences can be built for a specific question. The pricing page requires sign-in, so no price is published and no price is stored. No free plan is recorded, because that page could not be read. No platform was named. No public offer was found.',
+    pricingModel: 'paid',
+    priceFromUsd: null,
+    hasFreeTier: false,
+    skillLevel: 'intermediate',
+    platforms: [],
+    lastVerifiedAt: SCOUTED_2026_11_15,
     fits: [],
     affiliate: none,
   }),
