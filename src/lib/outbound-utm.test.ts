@@ -39,6 +39,10 @@ describe('outbound UTMs', () => {
     expect(withOutboundUtm(context, 'direct')).toBe(context)
     expect(withOutboundUtm(context, 'tool')).toBe(context)
     expect(withOutboundUtm(`${context}?utm_source=x&foo=1`, 'direct')).toBe(context)
+    const getimg = 'https://refer.getimg.ai/mark-putiyon'
+    expect(withOutboundUtm(getimg, 'direct')).toBe(getimg)
+    expect(withOutboundUtm(getimg, 'tool')).toBe(getimg)
+    expect(withOutboundUtm(`${getimg}?utm_source=x&foo=1`, 'direct')).toBe(getimg)
     const startup = 'https://buy.stripe.com/dRmbJ197SdjH3jRa8f2Ji08'
     const team = 'https://buy.stripe.com/eVqbJ1bg02F3f2z4NV2Ji07'
     expect(withOutboundUtm(startup, 'direct')).toBe(startup)

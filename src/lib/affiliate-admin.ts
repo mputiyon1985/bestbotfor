@@ -23,6 +23,7 @@ export const APPROVED_ACTIVE_AFFILIATES: readonly string[] = [
   'julius-ai',
   'context-dev',
   'videco',
+  'getimg',
 ]
 
 /** Prepared programs. A slug here is live only when it is also in APPROVED_ACTIVE_AFFILIATES. */
@@ -37,6 +38,7 @@ export const PREPARED_AFFILIATE_SLUGS = [
   'julius-ai',
   'context-dev',
   'videco',
+  'getimg',
   'writesonic',
   'lovable',
 ] as const

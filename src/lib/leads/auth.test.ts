@@ -29,6 +29,13 @@ function loginRequest(password: string, ip = '203.0.113.20', extra: Record<strin
   })
 }
 
+/** Flip the first signature character. The last base64url character can change unused bits only. */
+function tamperToken(token: string): string {
+  const dot = token.lastIndexOf('.')
+  const sig = token.slice(dot + 1)
+  return `${token.slice(0, dot + 1)}${sig.startsWith('A') ? 'B' : 'A'}${sig.slice(1)}`
+}
+
 function cookieValue(response: Response): string {
   const header = response.headers.getSetCookie().find((item) => item.startsWith(`${LEADS_SESSION_COOKIE}=`)) ?? ''
   const pair = header.split(';')[0] ?? ''
@@ -96,7 +103,7 @@ describe('leads session', () => {
     expect(Buffer.from(token.split('.')[0] ?? '', 'base64url').toString('utf8')).not.toContain(PASSWORD)
     expect(verifyLeadsSession(token, SECRET, 1_700_000_000_000)?.nonce).toBe(session.nonce)
 
-    const flipped = `${token.slice(0, -1)}${token.endsWith('a') ? 'b' : 'a'}`
+    const flipped = tamperToken(token)
     expect(verifyLeadsSession(flipped, SECRET, 1_700_000_000_000)).toBeNull()
     expect(verifyLeadsSession(token, 'rotated-leads-session-secret-value', 1_700_000_000_000)).toBeNull()
     expect(verifyLeadsSession(token, SECRET, 1_700_000_000_000 + LEADS_SESSION_TTL_SECONDS * 1000)).toBeNull()
@@ -218,7 +225,7 @@ describe('leads logout and import auth', () => {
     expect(loggedOut.status).toBe(303)
     expect(loggedOut.headers.getSetCookie().join(';').toLowerCase()).toContain('max-age=0')
 
-    const tampered = `${token.slice(0, -1)}${token.endsWith('a') ? 'b' : 'a'}`
+    const tampered = tamperToken(token)
     const rejected = await importLeads(
       new Request('https://dash.example/admin/leads/import', {
         method: 'POST',

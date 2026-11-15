@@ -4017,13 +4017,14 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: none,
   }),
   // source: https://getimg.ai/pricing | FLAG: No free plan shown on the pricing page.
+  // affiliate: approved and seeded active. Tracking URL https://refer.getimg.ai/mark-putiyon. The allowlist pins that path. /go/getimg sends that URL and does not add other parameters. Commission note: up to 30% per sale for 1 year. New users get 15% off the first purchase. There is no code, so no deal row is stored. Network is unset, so no SubID is added.
   tool({
     slug: 'getimg',
     addedAt: '2026-10-22',
     name: 'getimg.ai',
     vendor: 'getimg.ai',
     url: 'https://getimg.ai',
-    allowedHosts: ['getimg.ai'],
+    allowedHosts: ['getimg.ai', 'refer.getimg.ai/mark-putiyon'],
     category: 'Images',
     shortDesc: 'An all-in-one AI image and video studio with many models on one credit plan.',
     longDesc: 'getimg.ai is a creative studio for images, video, music and speech built on a credit plan, with commercial rights on paid plans. The Entry plan is $15 a month for 8,000 credits.',
@@ -4034,7 +4035,14 @@ export const toolSeeds: ToolSeed[] = [
     platforms: ['Web'],
     lastVerifiedAt: FRESHNESS_2026_10_22,
     fits: [],
-    affiliate: none,
+    affiliate: {
+      hasProgram: true,
+      network: null,
+      sourceUrl: null,
+      status: 'active',
+      commissionNote: 'Up to 30% per sale for 1 year.',
+      affiliateUrl: 'https://refer.getimg.ai/mark-putiyon',
+    },
   }),
   // source: https://www.magnific.com/pricing | FLAG: freepik.com/pricing redirects to magnific.com. The free stock tier is not shown as a plan, so hasFreeTier is kept false (verify).
   tool({
