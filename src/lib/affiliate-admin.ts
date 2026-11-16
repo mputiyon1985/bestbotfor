@@ -25,6 +25,7 @@ export const APPROVED_ACTIVE_AFFILIATES: readonly string[] = [
   'videco',
   'getimg',
   'rankfender',
+  'polylane',
 ]
 
 /** Prepared programs. A slug here is live only when it is also in APPROVED_ACTIVE_AFFILIATES. */
@@ -41,6 +42,7 @@ export const PREPARED_AFFILIATE_SLUGS = [
   'videco',
   'getimg',
   'rankfender',
+  'polylane',
   'writesonic',
   'lovable',
 ] as const

@@ -4481,13 +4481,14 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-24 | category: Coding assistant | scout rating 4.0 (not shown) | pricing: Free $0 (2 members, 2 cloud accounts, 10 impact assessments/mo); Starter $80/mo; Team $200/mo; Business $500/mo; Scale $800/mo; Premium $2,000/mo; Ultimate $5,000/mo (20% off yearly); Enterprise custom.
+  // affiliate: approved and seeded active. Tracking URL https://go.polylane.com/mark-putiyon. The allowlist pins that path. /go/polylane sends that URL and does not add other parameters. Commission note: 15% of each sale for 1 year. The program is Dub. Network is unset, so no SubID is added.
   tool({
     slug: 'polylane',
     addedAt: '2026-10-24',
     name: 'Polylane',
     vendor: 'Polylane',
     url: 'https://polylane.com',
-    allowedHosts: ['polylane.com'],
+    allowedHosts: ['polylane.com', 'go.polylane.com/mark-putiyon'],
     category: 'Coding assistant',
     shortDesc: 'An AI on-call engineer that investigates production issues and opens fix PRs.',
     longDesc: 'AI on-call engineer that detects production issues (including Cloudflare apps), investigates them and opens pull requests with fixes; also checks PRs for production impact.',
@@ -4498,7 +4499,14 @@ export const toolSeeds: ToolSeed[] = [
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_10_24,
     fits: [],
-    affiliate: { ...none, status: 'verify' },
+    affiliate: {
+      hasProgram: true,
+      network: null,
+      sourceUrl: null,
+      status: 'active',
+      commissionNote: '15% of each sale for 1 year.',
+      affiliateUrl: 'https://go.polylane.com/mark-putiyon',
+    },
   }),
   // scout 2026-10-24 | category: Security (FLAG: scout category "Security" has no catalog category; mapped to Coding assistant (guards coding agents)) | scout rating 3.7 (not shown) | pricing: $4.99/mo after a 7-day free trial (no card, trial never auto-converts); one Mac at a time.
   tool({
