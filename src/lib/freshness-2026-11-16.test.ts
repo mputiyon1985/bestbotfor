@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { toolSeeds } from '@/data/catalog'
+import { catalogFromSeeds } from '@/test/catalog-from-seeds'
 import { APPROVED_ACTIVE_AFFILIATES } from './affiliate-admin'
 import { priceLabel } from './format'
 import { resolveGoRedirect, resolveHeadGoRedirect, servesAffiliateLink } from './go-redirect'
@@ -44,6 +45,31 @@ describe('catalog freshness 2026-11-16', () => {
 
     expect(seed('lindy')).toMatchObject({ pricingModel: 'paid', hasFreeTier: false, priceFromUsd: 29.99, lastVerifiedAt: '2026-10-15' })
     expect(seed('runinfra')).toMatchObject({ pricingModel: 'paid', hasFreeTier: false, priceFromUsd: 10, lastVerifiedAt: '2026-10-22' })
+  })
+
+  it('keeps rendered pros, cons, and descriptions off the old from-prices', () => {
+    const catalog = catalogFromSeeds()
+    const stale: Record<string, RegExp> = {
+      composio: /\$29(?!\d)/,
+      pulsedev: /\$18(?!\d)/,
+      sendr: /\$119\b|\$1,199/,
+      futureproof: /\$1,000|\$1000/,
+    }
+    for (const [slug, pattern] of Object.entries(stale)) {
+      const tool = catalog.tools.find((item) => item.slug === slug)
+      expect(tool, slug).toBeTruthy()
+      if (!tool) continue
+      const rendered = [
+        tool.shortDesc,
+        tool.longDesc,
+        tool.editorial?.rationale ?? '',
+        ...tool.pros.map((point) => point.text),
+        ...tool.cons.map((point) => point.text),
+      ].join('\n')
+      expect(rendered, slug).not.toMatch(pattern)
+    }
+    const composio = catalog.tools.find((item) => item.slug === 'composio')
+    expect(composio?.pros.map((point) => point.text)).toContain('Standard is $18 per seat a month and includes $18 of usage credit')
   })
 
   it('adds five unrated tools in categories that already exist', () => {
