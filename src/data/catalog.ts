@@ -24,6 +24,7 @@ const SCOUTED_2026_11_13 = '2026-11-13'
 const SCOUTED_2026_11_14 = '2026-11-14'
 const SCOUTED_2026_11_15 = '2026-11-15'
 const SCOUTED_2026_11_16 = '2026-11-16'
+const FRESHNESS_2026_11_16 = '2026-11-16'
 const BACKLOG_BATCH_02 = '2026-10-25'
 const BACKLOG_BATCH_03 = '2026-10-25'
 
@@ -3628,6 +3629,7 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: { ...none, status: 'verify' },
   }),
   // scout 2026-10-22 | category: Agent builder | scout rating 4.3 (not shown) | pricing: Hobby $0 (100K tool calls, 50K triggers, 3 seats); Pro $29/mo incl. $29 usage credit, then metered ($0.0003/tool call); 
+  // freshness 2026-11-16: priceFromUsd 29 -> 18. https://composio.dev/pricing shows Free at $0 and Standard at $18 per seat a month, with $18 in credits per seat each month. No $29 on the page. The free tier is unchanged.
   tool({
     slug: 'composio',
     addedAt: '2026-10-22',
@@ -3639,11 +3641,11 @@ export const toolSeeds: ToolSeed[] = [
     shortDesc: 'Tools and managed auth for AI agents, with 1,500+ app integrations and an MCP gateway.',
     longDesc: 'Tool and auth layer for AI agents: 1,500+ app integrations with managed OAuth, an MCP gateway, and new "Instant" tools agents can pay for per call without separate API keys.',
     pricingModel: 'freemium',
-    priceFromUsd: 29,
+    priceFromUsd: 18,
     hasFreeTier: true,
     skillLevel: 'pro',
     platforms: ['Web', 'API'],
-    lastVerifiedAt: SCOUTED_2026_10_22,
+    lastVerifiedAt: FRESHNESS_2026_11_16,
     fits: [
       { task: 'agents', score: 70, notes: 'Tools and managed auth for AI agents, with 1,500+ app integrations and an MCP gateway.' },
     ],
@@ -5028,6 +5030,7 @@ export const toolSeeds: ToolSeed[] = [
   }),
   // scout 2026-10-25 | category: Productivity | scout rating 3.6 (not shown) | launch: 2026-10-25 | pricing: From $1,000/mo for all six agents, the ledger, every integration and a monthly specialist review; no per-seat fees; larger businesses scoped on a call. Free trial (14 days per There's An AI For That; site says no card needed).
   // note: Free trial (14 days per TAAFT).
+  // freshness 2026-11-16: priceFromUsd 1000 -> 300. https://www.runfutureproof.com/pricing says paid plans start at $300 a month and scale with net revenue, reaching $1,000 a month between $1M and $2M. hasFreeTier stays false.
   tool({
     slug: 'futureproof',
     addedAt: '2026-10-25',
@@ -5039,11 +5042,11 @@ export const toolSeeds: ToolSeed[] = [
     shortDesc: 'An AI finance team of six agents on its own ledger, for ecommerce brands and startups.',
     longDesc: 'AI finance team for ecommerce brands and startups: six agents (bookkeeping, receivables, payables, FP&A, revenue/margin, investor reporting) run on a general ledger that replaces your accounting software, plus a monthly review with a human specialist.',
     pricingModel: 'paid',
-    priceFromUsd: 1000,
+    priceFromUsd: 300,
     hasFreeTier: false,
     skillLevel: 'intermediate',
     platforms: ['Web'],
-    lastVerifiedAt: SCOUTED_2026_10_25,
+    lastVerifiedAt: FRESHNESS_2026_11_16,
     fits: [],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -5894,6 +5897,7 @@ export const toolSeeds: ToolSeed[] = [
   }),
   // scout 2026-10-30 | category: Coding assistant | scout rating 3.9 (not shown) | launch: 2026-10-27 (Product Hunt #8 Product of the Day) | pricing: Free $0 forever (1 project, 1 agent, unlimited runs). Pro: launch price $12/mo on the Monthly tab through Nov 3, 2026 (page strikes $18 and says "Lock it in before Nov 3"), then $18/mo. Yearly is labeled "Save 33%". Founder Lifetime $149 once, first 200 buyers. Checked pulsedev.app 2026-10-30.
   // note: priceFromUsd is $18, the monthly price after the launch window ends on Nov 3, 2026. The page's current Monthly card is the $12 launch price. The scout's $96/yr figure is not printed on the page.
+  // freshness 2026-11-16: priceFromUsd 18 -> 12. https://pulsedev.app/pricing shows Pro at $12 a month or $96 a year, and Founder Lifetime at $149 once. A sale price on the page is not the from-price.
   tool({
     slug: 'pulsedev',
     addedAt: SCOUTED_2026_10_30,
@@ -5903,13 +5907,13 @@ export const toolSeeds: ToolSeed[] = [
     allowedHosts: ['pulsedev.app'],
     category: 'Coding assistant',
     shortDesc: 'Click an element on your localhost site, and your coding agent edits the source after you approve the diff.',
-    longDesc: 'macOS desktop app: click any element on your localhost site, say what\'s wrong, and Claude Code, Codex, Gemini CLI or OpenCode edits the real source; watch the agent\'s log beside the page and approve or reject the diff before anything is written. Runs locally, no PulseDev cloud. Pro is $12 a month through November 3, 2026, then $18 a month.',
+    longDesc: 'macOS desktop app: click any element on your localhost site, say what\'s wrong, and Claude Code, Codex, Gemini CLI or OpenCode edits the real source; watch the agent\'s log beside the page and approve or reject the diff before anything is written. Runs locally, no PulseDev cloud. Pro is $12 a month, or $96 a year. Founder Lifetime is $149 once, for the first 200 buyers.',
     pricingModel: 'freemium',
-    priceFromUsd: 18,
+    priceFromUsd: 12,
     hasFreeTier: true,
     skillLevel: 'intermediate',
     platforms: ['macOS'],
-    lastVerifiedAt: SCOUTED_2026_10_30,
+    lastVerifiedAt: FRESHNESS_2026_11_16,
     fits: [],
     affiliate: { ...none, status: 'verify' },
   }),
@@ -7735,6 +7739,7 @@ export const toolSeeds: ToolSeed[] = [
   }),
   // scout 2026-11-12 | category: Sales (FLAG: scout category "Sales" mapped to Automation; Needle and Alsona, the catalog's outbound tools, are Automation) | scout rating 4.0 (not shown) | launch: 2026-11-12 (Product Hunt, Sendr V4) | pricing: checked 2026-11-12 at https://www.sendr.ai/pricing. Public offers in the page schema: Monthly $119; Annual Bundle $1,199. 14-day free trial with 1,500 credits and 2 sending channels, no card. Included: 3,000 credits/month and 2 sending channels. Add-ons: +1,000 credits $10/mo, +1 channel $10/mo.
   // note: priceFromUsd is Monthly, $119. The Annual Bundle is $1,199, not a monthly rate, and is not the stored from-price. The trial is not a free plan. No free plan was found. Sponsorship unknown.
+  // freshness 2026-11-16: priceFromUsd 119 -> 99. https://www.sendr.ai shows Monthly at $99 and annual billing at $79 a month. The 14-day trial is still not a free plan. The affiliate row is unchanged.
   // affiliate: Cello. Approved and seeded active. 30% of monthly subscription revenue, up to $5,000 per referral. Apply page https://www.sendr.ai/affiliates#apply-form. Tracking URL https://sendr.cello.so/LOp5fYtd9Jc. The allowlist pins that path. /go/sendr sends that URL and drops every query parameter. The apply page stays on the official host.
   tool({
     slug: 'sendr',
@@ -7746,13 +7751,13 @@ export const toolSeeds: ToolSeed[] = [
     category: 'Automation',
     shortDesc: 'Builds outreach sequences from buying signals across email, LinkedIn and WhatsApp.',
     longDesc:
-      'Sendr turns buying signals into outreach sequences across email, LinkedIn and WhatsApp, including personalized video. A campaign copilot drafts a campaign, and the vendor describes a contact database of verified emails and mobiles. Monthly is $119. The Annual Bundle is $1,199. The plan includes 3,000 credits a month and 2 sending channels. Another 1,000 credits are $10 a month, and another channel is $10 a month. A 14-day trial includes 1,500 credits and 2 channels and does not need a card. The trial is not a free plan. No free plan was found. The Annual Bundle is the vendor\'s public billing. It is not the stored from-price. The trial is the vendor\'s public offer.',
+      'Sendr turns buying signals into outreach sequences across email, LinkedIn and WhatsApp, including personalized video. A campaign copilot drafts a campaign, and the vendor describes a contact database of verified emails and mobiles. Monthly is $99. Annual billing is $79 a month. The plan includes 3,000 credits a month and 2 sending channels. Another 1,000 credits are $10 a month, and another channel is $10 a month. A 14-day trial includes 1,500 credits and 2 channels and does not need a card. The trial is not a free plan. No free plan was found. The trial is the vendor\'s public offer.',
     pricingModel: 'paid',
-    priceFromUsd: 119,
+    priceFromUsd: 99,
     hasFreeTier: false,
     skillLevel: 'intermediate',
     platforms: ['Web'],
-    lastVerifiedAt: SCOUTED_2026_11_12,
+    lastVerifiedAt: FRESHNESS_2026_11_16,
     fits: [],
     affiliate: {
       hasProgram: true,
@@ -10243,6 +10248,116 @@ export const toolSeeds: ToolSeed[] = [
     skillLevel: 'beginner',
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_11_16,
+    fits: [],
+    affiliate: none,
+  }),
+  // freshness 2026-11-16 (Forge). Unrated (fits: []), addedAt so the quiz rating gate applies.
+  // Appended after the 2026-11-15 scout block. The 2026-11-09 Part A price edits did not land and are not applied here.
+  // Lindy stays $29.99. RunInfra stays $10. No affiliate URL, no tracking link, and no reader deal.
+  // source: https://dipoleml.com/pricing (Free $0 forever / Pro $20 a month / Ultra $100 a month / DCode $29 a month) ; https://dipoleml.com/news/the-new-raven-app (November 11, 2026)
+  tool({
+    slug: 'raven',
+    addedAt: FRESHNESS_2026_11_16,
+    name: 'Raven',
+    vendor: 'Dipole ML',
+    url: 'https://raven.dipoleml.com',
+    allowedHosts: ['raven.dipoleml.com'],
+    category: 'Chat assistant',
+    shortDesc: 'An AI assistant with a real in-chat browser, cited research, image Studio, projects and scheduled routines.',
+    longDesc:
+      'Raven is Dipole ML\'s AI assistant. The rebuilt app went live on November 11, 2026 with a real browser you take over to sign in, web search and deeper research that ends in a cited report, a Studio for images, a Files area, projects with their own instructions and memory, and routines that run on a schedule. Free is $0 forever with automatically replenishing limits. Pro is $20 a month ($200 a year) and Ultra is $100 a month. A separate DCode Coding Plan is $29 a month and the API is pay-as-you-go from $5 of prepaid credits.',
+    pricingModel: 'freemium',
+    priceFromUsd: 20,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['Web'],
+    lastVerifiedAt: FRESHNESS_2026_11_16,
+    fits: [],
+    affiliate: none,
+  }),
+  // source: https://beeble.ai/pricing-cloud (Creator $19 a month, $16 billed annually; Professional $75 a month, $60 billed annually; free accounts get 90 credits a month for non-commercial use) ; https://beeble.ai/research/switchx-3-0 (November 10, 2026)
+  tool({
+    slug: 'beeble',
+    addedAt: FRESHNESS_2026_11_16,
+    name: 'Beeble',
+    vendor: 'Beeble',
+    url: 'https://beeble.ai',
+    allowedHosts: ['beeble.ai'],
+    category: 'AI video',
+    shortDesc: 'A cloud VFX toolkit (SwitchX video-to-video, relighting, background removal) with a node-based Canvas.',
+    longDesc:
+      'Beeble Cloud is an AI VFX toolkit: SwitchX video-to-video (change the background, lighting and scene around a locked performance), Reframe, Background Remover, VFX Pass Generator, 3D Relight, SDR to HDR, an upscaler and built-in image and video generators, wired together in a node-based Canvas. SwitchX 3.0 launched on November 10, 2026 (up to four references, moving backgrounds, camera tracking, up to 4K) at the same credit price as 2.0. Creator is $19 a month ($16 billed annually) with 540 credits and a commercial license. Professional is $75 a month ($60 billed annually) with 2,400 credits and 4K / 10-bit output. Accounts without a paid plan get 90 credits a month for the VFX Pass Generator and 3D Relight, for non-commercial use only.',
+    pricingModel: 'freemium',
+    priceFromUsd: 19,
+    hasFreeTier: true,
+    skillLevel: 'pro',
+    platforms: ['Web'],
+    lastVerifiedAt: FRESHNESS_2026_11_16,
+    fits: [],
+    affiliate: none,
+  }),
+  // source: https://nod.n8n.io (free to download, Apache 2.0; you connect your own AI service) ; https://blog.n8n.io/meet-nod/ ; https://github.com/n8n-io/nod
+  tool({
+    slug: 'nod',
+    addedAt: FRESHNESS_2026_11_16,
+    name: 'Nod',
+    vendor: 'n8n Labs',
+    url: 'https://nod.n8n.io',
+    allowedHosts: ['nod.n8n.io'],
+    category: 'Automation',
+    shortDesc: 'An open-source personal agent from n8n Labs that runs on your own computer and asks before it acts.',
+    longDesc:
+      'Nod is a standalone, open-source personal agent from n8n Labs, released as a research preview on November 10, 2026 for Mac and Windows. It runs on your machine with its own computer, preps a call brief each morning from your threads and calendar, chases invoices, watches pages for price changes and cancels trials, and asks for approval before it speaks or acts for you. The app is free to download under the Apache 2.0 licence. You connect your own AI service or a supported plan and pay that provider directly.',
+    pricingModel: 'free',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'intermediate',
+    platforms: ['macOS', 'Windows'],
+    lastVerifiedAt: FRESHNESS_2026_11_16,
+    fits: [],
+    affiliate: none,
+  }),
+  // source: https://captureflow.dev/pricing (Free $0 / Light $5 / Pro $12 per member, monthly; yearly billing saves 20%) ; Product Hunt launch November 14, 2026
+  tool({
+    slug: 'captureflow',
+    addedAt: FRESHNESS_2026_11_16,
+    name: 'CaptureFlow',
+    vendor: 'CaptureFlow',
+    url: 'https://captureflow.dev',
+    allowedHosts: ['captureflow.dev'],
+    category: 'Productivity',
+    shortDesc: 'An open-source screen recorder with instant share links that AI agents can also drive over MCP.',
+    longDesc:
+      'CaptureFlow records your screen from a Chrome extension and gives you a share link, with transcripts, captions and editing from the transcript. Its MCP server lets an AI agent record demos, how-tos and bug reports for you. It launched on Product Hunt on November 14, 2026 and can also be self-hosted for free. Free covers your first 25 recordings (5 minutes each). Light is $5 per member per month with unlimited recordings in data-saver quality. Pro is $12 per member per month with full quality, AI clean-up and custom branding.',
+    pricingModel: 'freemium',
+    priceFromUsd: 5,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['Web', 'Chrome'],
+    lastVerifiedAt: FRESHNESS_2026_11_16,
+    fits: [],
+    affiliate: none,
+  }),
+  // source: https://tk.xyz (checked 2026-11-16, HTTP 200, title "TK — A new way to write from Medium"). https://tk.medium.com returned 403. https://medium.com is the publisher, not the app.
+  // Medium handbook https://medium.com/medium-handbook/tk-is-open-to-everyone-477439517a88 (open November 9, 2026, free). TechCrunch 2026-11-09: free for a Medium account, on the web, desktop app on the roadmap.
+  // Category Writing matches the product title and those two sources. iOS and Android were named by The Verge and were not checked, so they are not listed.
+  tool({
+    slug: 'tk-medium',
+    addedAt: FRESHNESS_2026_11_16,
+    name: 'TK by Medium',
+    vendor: 'Medium',
+    url: 'https://tk.xyz',
+    allowedHosts: ['tk.xyz'],
+    category: 'Writing',
+    shortDesc: 'Medium\'s writing app for messy notes and drafts, with an @TK assistant that helps you write rather than writing for you.',
+    longDesc:
+      'TK is Medium\'s writing app, opened to everyone on November 9, 2026. It is a private-by-default place for notes and half-finished drafts, with an @TK assistant for lookups, editorial and headline feedback and Medium style-guide checks, a way to share early drafts for human feedback, and an MCP server and Claude skill to connect your own agent. Medium says the AI helps you write, does not generate your text, and never trains on your writing. TK is free for anyone with a Medium account. It is on the web today. A desktop app is on the roadmap.',
+    pricingModel: 'free',
+    priceFromUsd: null,
+    hasFreeTier: true,
+    skillLevel: 'beginner',
+    platforms: ['Web'],
+    lastVerifiedAt: FRESHNESS_2026_11_16,
     fits: [],
     affiliate: none,
   }),
