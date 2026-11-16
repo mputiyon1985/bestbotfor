@@ -128,6 +128,12 @@ describe('live affiliate redirects match main', () => {
         subIdParam: null,
         official: 'https://polylane.com/',
       },
+      snapdub: {
+        stored: 'https://snapdub.ai?via=bestbotfor',
+        location: 'https://snapdub.ai?via=bestbotfor',
+        subIdParam: null,
+        official: 'https://snapdub.ai/',
+      },
     } as const
 
     for (const [slug, expected] of Object.entries(activated)) {
@@ -185,6 +191,21 @@ describe('live affiliate redirects match main', () => {
         location: 'https://videco.io?via=mark276',
         click: { affiliate: true, programId: 1, subIdParam: null },
       })
+    }
+  })
+
+  it('sends /go/snapdub to the exact tracking link and drops any inbound query', async () => {
+    const tracking = 'https://snapdub.ai?via=bestbotfor'
+    expect(resolveHeadGoRedirect('snapdub')).toMatchObject({ status: 302, location: 'https://snapdub.ai/' })
+    for (const search of ['', '?utm_source=x', '?utm_source=x&utm_medium=email&foo=1', '?ref=other']) {
+      const outcome = await go('snapdub', search)
+      expect(outcome, search).toMatchObject({
+        status: 302,
+        location: tracking,
+        click: { affiliate: true, programId: 1, subIdParam: null },
+      })
+      expect(outcome.status === 302 && outcome.location.includes('utm_'), search).toBe(false)
+      expect(outcome.status === 302 && outcome.location.includes('externalId'), search).toBe(false)
     }
   })
 

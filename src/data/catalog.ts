@@ -8380,10 +8380,10 @@ export const toolSeeds: ToolSeed[] = [
   }),
   // Bot scout 2026-11-14. Unrated: no editorial score, pros or cons until Forge rubric review.
   // Scout ratings stay in the comments and are not shown.
-  // SnapDub, Dex Semantics, Trainn MCP, AdFlame.ai and Thrive have affiliate programs. All five are inactive: hasProgram only, not applied or accepted, no tracking URL.
+  // SnapDub, Dex Semantics, Trainn MCP, AdFlame.ai and Thrive have affiliate programs. SnapDub is approved and seeded active. Its tracking link is on that row. Dex, Trainn, AdFlame and Thrive stay inactive: hasProgram only, not applied or accepted, and no tracking link.
   // Caveman Code, Antelog, HiringNow, GAtrends, Gamma PDF, Holp, Problembot, Aven App Agent, miingl social, Talkify and Anvil have unknown affiliate programs and use the empty affiliate.
   // No BestBotFor sponsorship is recorded. Thrive's founding-partner page is a vendor sponsor offer and is not stored. Caveman's press address is not a sponsorship.
-  // Public vendor offers are not stored as deals. Promo codes are not stored. No /go tracking link is stored.
+  // Public vendor offers are not stored as deals. Promo codes are not stored. The four inactive programs store no /go tracking link.
   // Gamma PDF is https://gammapdf.com. It is not gamma.app, and it does not replace the Gamma tool.
   // Problembot's url is https://bot.problembo.com/features. Problembo is the parent.
   // Holp is priced in pounds. SnapDub is priced in euros. Anvil's card billing is Zambian kwacha. No dollar from-price is stored for those three.
@@ -8434,14 +8434,14 @@ export const toolSeeds: ToolSeed[] = [
   }),
   // scout 2026-11-14 | category: Video editing | scout rating 4.0 (not shown) | launch: 2026-11-13 (Product Hunt, per StartupCorners recap) | pricing: Free €0 (500 one-time credits, watermark, first 3 clips per video, 14-day retention). Starter €12/mo (€120/yr; 3,000 credits/mo, 3 users). Pro €27/mo launch price (€270/yr; 9,000 credits, 10 users, brand kit, Premiere/DaVinci export, AI dubbing beta). Business €99/mo (€990/yr; 33,000 credits, 50 users). Posting add-ons €12–€39/mo. Yearly = 2 months free. USD prices also shown.
   // note: prices are in euros, so priceFromUsd stays null. Do not convert euros to dollars. The dollar amounts are not recorded, so none are stored. The €0 plan is a free tier. Yearly prices and posting add-ons are not a dollar from-price. The Black Friday code is not stored. The first-month discount through December 4 is the vendor's public offer.
-  // affiliate: in-house. 30% of every payment a referred customer makes for their first 12 months; 90-day click window; paid monthly via PayPal or Wise once over €25, after a 30-day refund window; no cap. Recurring for 12 months. Apply page https://snapdub.ai/affiliate, on the official host, so no extra allowlist host is added. Not applied or accepted. Seeded inactive, hasProgram only. No tracking link.
+  // affiliate: approved and seeded active. Tracking URL https://snapdub.ai?via=bestbotfor. The allowlist pins that query on the empty path. /go/snapdub sends that URL and does not add other parameters. Commission note: 30% of each sale for 12 months (90-day cookie). Network stays in-house, which has no SubID key, so none is added.
   tool({
     slug: 'snapdub',
     addedAt: SCOUTED_2026_11_14,
     name: 'SnapDub',
     vendor: 'SnapDub',
     url: 'https://snapdub.ai',
-    allowedHosts: ['snapdub.ai'],
+    allowedHosts: ['snapdub.ai', 'snapdub.ai/?via=bestbotfor'],
     category: 'Video editing',
     shortDesc: 'Turns a YouTube, Twitch or podcast link into captioned vertical clips and can schedule the posts.',
     longDesc:
@@ -8457,9 +8457,9 @@ export const toolSeeds: ToolSeed[] = [
       hasProgram: true,
       network: 'in-house',
       sourceUrl: 'https://snapdub.ai/affiliate',
-      status: 'inactive',
-      commissionNote:
-        '30% of every payment a referred customer makes for their first 12 months. 90-day click window. Paid monthly via PayPal or Wise once over €25, after a 30-day refund window. No cap. Recurring for 12 months. Not applied or accepted. No tracking link stored.',
+      status: 'active',
+      commissionNote: '30% of each sale for 12 months (90-day cookie).',
+      affiliateUrl: 'https://snapdub.ai?via=bestbotfor',
     },
   }),
   // scout 2026-11-14 | category: Productivity | scout rating 3.9 (not shown) | launch: 2026-11-14 (Product Hunt) | pricing: Free: $0 (10 auto-applies one-time, no card required). Pro: $29/mo billed monthly (100 auto-applies/month). Autopilot: $49/mo billed monthly (300 auto-applies/month). Autopilot Max: $99/mo billed monthly (1,000 auto-applies/month). Quarterly billing saves ~33% (e.g., Pro $59/quarter). Top-up packs available on paid plans.

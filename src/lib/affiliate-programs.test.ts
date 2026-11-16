@@ -35,11 +35,12 @@ const LIVE_AFFILIATE_URLS = {
   getimg: 'https://refer.getimg.ai/mark-putiyon',
   rankfender: 'https://rankfender.com/r/mark',
   polylane: 'https://go.polylane.com/mark-putiyon',
+  snapdub: 'https://snapdub.ai?via=bestbotfor',
 } as const
 
 describe('approved affiliate programs', () => {
   it('activates only the approved slugs and stores their exact tracking links', () => {
-    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg', 'rankfender', 'polylane'])
+    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg', 'rankfender', 'polylane', 'snapdub'])
     for (const tool of toolSeeds) {
       const approved = (APPROVED_ACTIVE_AFFILIATES as readonly string[]).includes(tool.slug)
       if (!approved) {
@@ -68,6 +69,10 @@ describe('approved affiliate programs', () => {
     expect(read('src/data/deals.seed.ts')).not.toContain("toolSlug: 'rankfender'")
     expect(toolSeeds.find((tool) => tool.slug === 'polylane')?.affiliate.commissionNote).toBe('15% of each sale for 1 year.')
     expect(read('src/data/deals.seed.ts')).not.toContain("toolSlug: 'polylane'")
+    expect(toolSeeds.find((tool) => tool.slug === 'snapdub')?.affiliate.commissionNote).toBe(
+      '30% of each sale for 12 months (90-day cookie).',
+    )
+    expect(read('src/data/deals.seed.ts')).not.toContain("toolSlug: 'snapdub'")
     expect(toolSeeds.find((tool) => tool.slug === 'lovable')?.allowedHosts).toEqual(['lovable.dev'])
     expect(toolSeeds.find((tool) => tool.slug === 'writesonic')?.allowedHosts).toEqual(['writesonic.com'])
     const catalog = read('src/data/catalog.ts')
@@ -176,11 +181,12 @@ describe('affiliate disclosure and ops', () => {
     expect(html).toContain('getimg.ai — active')
     expect(html).toContain('Rankfender 3.0 — active')
     expect(html).toContain('Polylane — active')
-    expect(html.match(/— active/g)).toHaveLength(13)
+    expect(html).toContain('SnapDub (in-house) — active')
+    expect(html.match(/— active/g)).toHaveLength(14)
     expect(html).toContain('Writesonic — switched off')
     expect(html).toContain('Lovable (Impact) — switched off')
     expect(html).toContain('switched off')
-    for (const name of ['ElevenLabs', 'Synthesia', 'Descript', 'Murf', 'Papermark', 'DocsAlot', 'Sendr', 'Julius AI', 'Context.dev', 'Videco', 'getimg.ai', 'Rankfender 3.0', 'Polylane', 'Writesonic', 'Lovable']) {
+    for (const name of ['ElevenLabs', 'Synthesia', 'Descript', 'Murf', 'Papermark', 'DocsAlot', 'Sendr', 'Julius AI', 'Context.dev', 'Videco', 'getimg.ai', 'Rankfender 3.0', 'Polylane', 'SnapDub', 'Writesonic', 'Lovable']) {
       expect(html).toContain(name)
     }
     for (const file of ['src/app/best/[task]/page.tsx', 'src/app/tools/[slug]/page.tsx', 'src/app/result/page.tsx']) {

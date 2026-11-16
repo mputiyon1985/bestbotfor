@@ -58,8 +58,13 @@ describe('bot scout 2026-11-14', () => {
       expect(tool.needsVerification, slug).toBeFalsy()
       expect(tool.url.includes('?'), slug).toBe(false)
       expect(tool.url.startsWith('https://'), slug).toBe(true)
-      expect(tool.affiliate.affiliateUrl, slug).toBeUndefined()
-      expect(tool.allowedHosts, slug).toEqual([new URL(tool.url).hostname])
+      if (slug === 'snapdub') {
+        expect(tool.affiliate.affiliateUrl, slug).toBe('https://snapdub.ai?via=bestbotfor')
+        expect(tool.allowedHosts, slug).toEqual(['snapdub.ai', 'snapdub.ai/?via=bestbotfor'])
+      } else {
+        expect(tool.affiliate.affiliateUrl, slug).toBeUndefined()
+        expect(tool.allowedHosts, slug).toEqual([new URL(tool.url).hostname])
+      }
       expect(unratedSlugs, slug).toContain(slug)
     }
     expect(seed('caveman-code').name).toBe('Caveman Code')
@@ -224,11 +229,12 @@ describe('bot scout 2026-11-14', () => {
     expect(seed('anvil').longDesc).toContain("vendor's public offer")
   })
 
-  it('seeds only SnapDub, Dex, Trainn, AdFlame and Thrive as inactive programs, and leaves the approved set unchanged', () => {
-    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg', 'rankfender', 'polylane'])
-    expect(APPROVED_ACTIVE_AFFILIATES).toHaveLength(13)
-    expect(PREPARED_AFFILIATE_SLUGS).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg', 'rankfender', 'polylane', 'writesonic', 'lovable'])
+  it('seeds Dex, Trainn, AdFlame and Thrive as inactive programs, and leaves SnapDub on the approved set', () => {
+    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg', 'rankfender', 'polylane', 'snapdub'])
+    expect(APPROVED_ACTIVE_AFFILIATES).toHaveLength(14)
+    expect(PREPARED_AFFILIATE_SLUGS).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg', 'rankfender', 'polylane', 'snapdub', 'writesonic', 'lovable'])
     for (const slug of SLUGS) {
+      if (slug === 'snapdub') continue
       expect(APPROVED_ACTIVE_AFFILIATES, slug).not.toContain(slug)
       expect(PREPARED_AFFILIATE_SLUGS as readonly string[], slug).not.toContain(slug)
     }
@@ -236,10 +242,14 @@ describe('bot scout 2026-11-14', () => {
       hasProgram: true,
       network: 'in-house',
       sourceUrl: 'https://snapdub.ai/affiliate',
-      status: 'inactive',
-      commissionNote:
-        '30% of every payment a referred customer makes for their first 12 months. 90-day click window. Paid monthly via PayPal or Wise once over €25, after a 30-day refund window. No cap. Recurring for 12 months. Not applied or accepted. No tracking link stored.',
+      status: 'active',
+      commissionNote: '30% of each sale for 12 months (90-day cookie).',
+      affiliateUrl: 'https://snapdub.ai?via=bestbotfor',
     })
+    expect(seed('snapdub').allowedHosts).toEqual(['snapdub.ai', 'snapdub.ai/?via=bestbotfor'])
+    expect(servesAffiliateLink('snapdub', 'https://snapdub.ai?via=bestbotfor', 'active')).toBe(true)
+    expect(servesAffiliateLink('snapdub', 'https://snapdub.ai?via=bestbotfor', 'inactive')).toBe(false)
+    expect(servesAffiliateLink('snapdub', 'https://snapdub.ai/', 'active')).toBe(false)
     expect(seed('exmergo-dex').affiliate).toEqual({
       hasProgram: true,
       network: 'in-house partner program (Referral, Agency, Value-Added Reseller)',
@@ -284,17 +294,23 @@ describe('bot scout 2026-11-14', () => {
       expect(seed(slug).affiliate, slug).toEqual(NONE)
       expect(servesAffiliateLink(slug, null, seed(slug).affiliate.status), slug).toBe(false)
     }
-    for (const slug of ['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg', 'rankfender', 'polylane'] as const) {
+    for (const slug of ['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg', 'rankfender', 'polylane', 'snapdub'] as const) {
       expect(seed(slug).affiliate.status).toBe('active')
       expect(seed(slug).affiliate.affiliateUrl).toMatch(/^https:\/\//)
     }
     const catalog = readFileSync(new URL('../data/catalog.ts', import.meta.url), 'utf8')
     const scoutBlock = catalog.slice(catalog.indexOf('Bot scout 2026-11-14'))
-    expect(scoutBlock).not.toContain('affiliateUrl')
-    expect(scoutBlock).not.toContain('camp_id')
-    expect(scoutBlock).not.toContain('rel="sponsored"')
-    expect(scoutBlock).not.toMatch(/status: 'active'/)
-    expect(scoutBlock).not.toMatch(/\?ref=|\?via=|utm_/)
+    const snapStart = scoutBlock.indexOf('// affiliate: approved and seeded active. Tracking URL https://snapdub.ai')
+    const hiring = scoutBlock.indexOf("slug: 'hiringnow'")
+    expect(snapStart).toBeGreaterThan(-1)
+    expect(hiring).toBeGreaterThan(snapStart)
+    const withoutSnapdub = scoutBlock.slice(0, snapStart) + scoutBlock.slice(hiring)
+    expect(withoutSnapdub).not.toContain('affiliateUrl')
+    expect(withoutSnapdub).not.toContain('camp_id')
+    expect(withoutSnapdub).not.toContain('rel="sponsored"')
+    expect(withoutSnapdub).not.toMatch(/status: 'active'/)
+    expect(withoutSnapdub).not.toMatch(/\?ref=|\?via=|utm_/)
+    expect(scoutBlock).toContain('https://snapdub.ai?via=bestbotfor')
     expect(scoutBlock).toContain("SCOUTED_2026_11_14")
   })
 

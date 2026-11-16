@@ -179,9 +179,9 @@ describe('bot scout 2026-11-13', () => {
   })
 
   it('seeds only YouArt, Insight7 and Willo as inactive programs, and leaves the approved set unchanged', () => {
-    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg', 'rankfender', 'polylane'])
-    expect(APPROVED_ACTIVE_AFFILIATES).toHaveLength(13)
-    expect(PREPARED_AFFILIATE_SLUGS).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg', 'rankfender', 'polylane', 'writesonic', 'lovable'])
+    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg', 'rankfender', 'polylane', 'snapdub'])
+    expect(APPROVED_ACTIVE_AFFILIATES).toHaveLength(14)
+    expect(PREPARED_AFFILIATE_SLUGS).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg', 'rankfender', 'polylane', 'snapdub', 'writesonic', 'lovable'])
     for (const slug of SLUGS) {
       expect(APPROVED_ACTIVE_AFFILIATES, slug).not.toContain(slug)
       expect(PREPARED_AFFILIATE_SLUGS as readonly string[], slug).not.toContain(slug)
@@ -227,12 +227,12 @@ describe('bot scout 2026-11-13', () => {
       expect(seed(slug).affiliate, slug).toEqual(NONE)
       expect(servesAffiliateLink(slug, null, seed(slug).affiliate.status), slug).toBe(false)
     }
-    for (const slug of ['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg', 'rankfender', 'polylane'] as const) {
+    for (const slug of ['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg', 'rankfender', 'polylane', 'snapdub'] as const) {
       expect(seed(slug).affiliate.status).toBe('active')
       expect(seed(slug).affiliate.affiliateUrl).toMatch(/^https:\/\//)
     }
     const catalog = readFileSync(new URL('../data/catalog.ts', import.meta.url), 'utf8')
-    const scoutBlock = catalog.slice(catalog.indexOf('Bot scout 2026-11-13'))
+    const scoutBlock = catalog.slice(catalog.indexOf('Bot scout 2026-11-13'), catalog.indexOf('Bot scout 2026-11-14'))
     expect(scoutBlock).not.toContain('affiliateUrl')
     expect(scoutBlock).not.toContain('camp_id')
     expect(scoutBlock).not.toContain('rel="sponsored"')

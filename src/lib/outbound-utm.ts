@@ -9,8 +9,8 @@
  * Sendr's Cello code, Julius AI's Dub code, Context.dev's link code,
  * getimg.ai's referral code, Rankfender's referral path, Polylane's Dub path,
  * and DocsAlot's Stripe checkout codes are the path.
- * Videco's Endorsely code is the via query. Those links are returned exactly,
- * with no extra query.
+ * Videco's Endorsely code and SnapDub's in-house code are the via query on an
+ * empty path. Those links are returned exactly, with no extra query.
  */
 const EXISTING_UTM_KEY = /^utm[_-]/i
 
@@ -35,6 +35,7 @@ const EXACT_TRACKING_URLS: readonly {
   { host: 'buy.stripe.com', pathname: '/dRmbJ197SdjH3jRa8f2Ji08', url: 'https://buy.stripe.com/dRmbJ197SdjH3jRa8f2Ji08' },
   { host: 'buy.stripe.com', pathname: '/eVqbJ1bg02F3f2z4NV2Ji07', url: 'https://buy.stripe.com/eVqbJ1bg02F3f2z4NV2Ji07' },
   { host: 'videco.io', pathname: '/', search: '?via=mark276', url: 'https://videco.io?via=mark276' },
+  { host: 'snapdub.ai', pathname: '/', search: '?via=bestbotfor', url: 'https://snapdub.ai?via=bestbotfor' },
 ]
 
 /**
@@ -88,7 +89,7 @@ export function withOutboundUtm(destination: string, pageType: string): string {
   } catch {
     return destination
   }
-  // Approved Sendr, Julius, Context.dev, getimg.ai, Rankfender, Polylane, DocsAlot checkout, and Videco links. A query already on a path-coded one is removed. /go applies this before inbound params.
+  // Approved Sendr, Julius, Context.dev, getimg.ai, Rankfender, Polylane, DocsAlot checkout, Videco, and SnapDub links. A query already on a path-coded one is removed. /go applies this before inbound params.
   const pinned = exactPinnedTrackingUrl(destination)
   if (pinned) return pinned
   for (const key of url.searchParams.keys()) {
