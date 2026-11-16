@@ -34,11 +34,16 @@ describe('bot scout 2026-11-07', () => {
       expect(tool.lastVerifiedAt, slug).toBe(SCOUT)
       expect(tool.fits, slug).toEqual([])
       expect(tool.unlisted, slug).toBeFalsy()
-      expect(tool.affiliate.affiliateUrl, slug).toBeUndefined()
       expect(tool.url.includes('?'), slug).toBe(false)
       expect(tool.url.startsWith('https://'), slug).toBe(true)
       const host = new URL(tool.url).hostname
-      expect(tool.allowedHosts, slug).toEqual([host])
+      if (slug === 'rankfender') {
+        expect(tool.affiliate.affiliateUrl, slug).toBe('https://rankfender.com/r/mark')
+        expect(tool.allowedHosts, slug).toEqual(['rankfender.com', 'rankfender.com/r/mark'])
+      } else {
+        expect(tool.affiliate.affiliateUrl, slug).toBeUndefined()
+        expect(tool.allowedHosts, slug).toEqual([host])
+      }
     }
   })
 
@@ -93,7 +98,7 @@ describe('bot scout 2026-11-07', () => {
   })
 
   it('seeds only crystl as an inactive program, and leaves the approved set unchanged', () => {
-    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg'])
+    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg', 'rankfender'])
     expect(APPROVED_ACTIVE_AFFILIATES).not.toContain('crystl')
     const crystl = seed('crystl')
     expect(crystl.affiliate).toEqual({
@@ -109,11 +114,23 @@ describe('bot scout 2026-11-07', () => {
     expect(servesAffiliateLink('crystl', 'https://crystl.dev/affiliates/', 'inactive')).toBe(false)
     expect(servesAffiliateLink('crystl', 'https://crystl.dev/?ref=bestbotfor', 'inactive')).toBe(false)
     for (const slug of SLUGS) {
-      if (slug === 'crystl') continue
+      if (slug === 'crystl' || slug === 'rankfender') continue
       expect(seed(slug).affiliate, slug).toEqual(NONE)
       expect(servesAffiliateLink(slug, null, seed(slug).affiliate.status), slug).toBe(false)
     }
-    for (const slug of ['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg'] as const) {
+    expect(seed('rankfender').affiliate).toEqual({
+      hasProgram: true,
+      network: null,
+      sourceUrl: null,
+      status: 'active',
+      commissionNote: '30% of subscription payments for 12 months, with a 90-day cookie.',
+      affiliateUrl: 'https://rankfender.com/r/mark',
+    })
+    expect(seed('rankfender').allowedHosts).toEqual(['rankfender.com', 'rankfender.com/r/mark'])
+    expect(servesAffiliateLink('rankfender', 'https://rankfender.com/r/mark', 'active')).toBe(true)
+    expect(servesAffiliateLink('rankfender', 'https://rankfender.com/r/mark', 'inactive')).toBe(false)
+    expect(servesAffiliateLink('rankfender', 'https://rankfender.com/', 'active')).toBe(false)
+    for (const slug of ['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg', 'rankfender'] as const) {
       expect(seed(slug).affiliate.status).toBe('active')
       expect(seed(slug).affiliate.affiliateUrl).toMatch(/^https:\/\//)
     }

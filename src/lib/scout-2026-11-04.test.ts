@@ -97,7 +97,7 @@ describe('bot scout 2026-11-04', () => {
   })
 
   it('activates Videco and Context.dev’s exact tracking links', () => {
-    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg'])
+    expect(APPROVED_ACTIVE_AFFILIATES).toEqual(['elevenlabs', 'synthesia', 'descript', 'murf', 'papermark', 'docsalot', 'sendr', 'julius-ai', 'context-dev', 'videco', 'getimg', 'rankfender'])
     const videco = seed('videco')
     expect(videco.affiliate).toEqual({
       hasProgram: true,
