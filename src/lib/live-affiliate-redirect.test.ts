@@ -122,6 +122,12 @@ describe('live affiliate redirects match main', () => {
         subIdParam: null,
         official: 'https://rankfender.com/',
       },
+      polylane: {
+        stored: 'https://go.polylane.com/mark-putiyon',
+        location: 'https://go.polylane.com/mark-putiyon',
+        subIdParam: null,
+        official: 'https://polylane.com/',
+      },
     } as const
 
     for (const [slug, expected] of Object.entries(activated)) {
@@ -177,6 +183,19 @@ describe('live affiliate redirects match main', () => {
       expect(outcome, search).toMatchObject({
         status: 302,
         location: 'https://videco.io?via=mark276',
+        click: { affiliate: true, programId: 1, subIdParam: null },
+      })
+    }
+  })
+
+  it('sends /go/polylane to the exact tracking link and drops any inbound query', async () => {
+    const tracking = 'https://go.polylane.com/mark-putiyon'
+    expect(resolveHeadGoRedirect('polylane')).toMatchObject({ status: 302, location: 'https://polylane.com/' })
+    for (const search of ['', '?utm_source=x', '?utm_source=x&utm_medium=email&foo=1', '?ref=other']) {
+      const outcome = await go('polylane', search)
+      expect(outcome, search).toMatchObject({
+        status: 302,
+        location: tracking,
         click: { affiliate: true, programId: 1, subIdParam: null },
       })
     }

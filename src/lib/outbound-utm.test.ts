@@ -48,6 +48,11 @@ describe('outbound UTMs', () => {
     expect(withOutboundUtm(rankfender, 'tool')).toBe(rankfender)
     expect(withOutboundUtm(`${rankfender}?utm_source=x&foo=1`, 'direct')).toBe(rankfender)
     expect(withOutboundUtm('https://rankfender.com/', 'direct')).toContain('utm_source=bestbotfor')
+    const polylane = 'https://go.polylane.com/mark-putiyon'
+    expect(withOutboundUtm(polylane, 'direct')).toBe(polylane)
+    expect(withOutboundUtm(polylane, 'tool')).toBe(polylane)
+    expect(withOutboundUtm(`${polylane}?utm_source=x&foo=1`, 'direct')).toBe(polylane)
+    expect(withOutboundUtm('https://polylane.com/', 'direct')).toContain('utm_source=bestbotfor')
     const startup = 'https://buy.stripe.com/dRmbJ197SdjH3jRa8f2Ji08'
     const team = 'https://buy.stripe.com/eVqbJ1bg02F3f2z4NV2Ji07'
     expect(withOutboundUtm(startup, 'direct')).toBe(startup)
