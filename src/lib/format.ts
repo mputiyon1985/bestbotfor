@@ -40,6 +40,34 @@ const PRICE_LABEL_OVERRIDES: Readonly<Record<string, string>> = {
   constor: 'Pricing not published',
   // trydori.io, Nov 15, 2026: the pricing page requires sign-in. No price is published.
   dori: 'Pricing not published',
+  // open.bot, Nov 16, 2026: personal use is free. Business is up to $29 per active user a month, and the rate falls as the team grows, so $29 is a cap and not a from-price.
+  openbot: 'Free for personal use; business up to $29 a user',
+  // celesto.ai, Nov 16, 2026: sandbox runtime is billed by the hour. There is no monthly platform fee.
+  celesto: '$0.015 per hour',
+  // lingomic.com, Nov 16, 2026: the current 6-month plan is $29 every 6 months. That is not a monthly plan.
+  lingomic: '$29 every 6 months',
+  // flamigo.ai, Nov 16, 2026: credits are bought once. The smallest pack is $2 for 2,000,000 credits. That is not a monthly plan.
+  flamigo: '$2 for 2,000,000 credits',
+  // farsideresearch.com, Nov 16, 2026: research credits are packs. The smallest pack is $15 for 500 credits. That is not a monthly plan.
+  'farside-research': '$15 for 500 credits',
+  // syrev.ai, Nov 16, 2026: a review is priced per review. Academic Replay is $149. That is not a monthly plan.
+  syrev: '$149 per academic review',
+  // lexicad.com, Nov 16, 2026: compute is billed by the core-hour. No rate is published.
+  lexicad: 'Pricing not published',
+  // dimensionkit.com, Nov 16, 2026: Starter is free during open beta. The planned $19/mo price is not charged yet.
+  dimensionkit: 'Free during open beta; Starter planned at $19/mo',
+  // readywhen.ai, Nov 16, 2026: no price is published.
+  readywhen: 'Pricing not published',
+  // simpleton.io, Nov 16, 2026: no price is published.
+  simpleton: 'Pricing not published',
+  // perit.ai/marketplace, Nov 16, 2026: pricing is a quote. No price is published.
+  'perit-marketplace': 'Pricing not published',
+  // brainmate.dev, Nov 16, 2026: pilot only. No price is published.
+  brainmate: 'Pricing not published',
+  // pammy.ai, Nov 16, 2026: no price is published.
+  pammy: 'Pricing not published',
+  // moonbird.tv, Nov 16, 2026: no price is published.
+  moonbird: 'Pricing not published',
 }
 
 export const budgetLabel: Record<Budget, string> = {
