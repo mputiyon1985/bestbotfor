@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { outboundPageType, withOutboundUtm } from './outbound-utm'
+import { exactPinnedTrackingUrl, outboundPageType, withOutboundUtm } from './outbound-utm'
 
 describe('outbound UTMs', () => {
   it('maps paths to page types without echoing the path', () => {
@@ -53,6 +53,17 @@ describe('outbound UTMs', () => {
     expect(withOutboundUtm(polylane, 'tool')).toBe(polylane)
     expect(withOutboundUtm(`${polylane}?utm_source=x&foo=1`, 'direct')).toBe(polylane)
     expect(withOutboundUtm('https://polylane.com/', 'direct')).toContain('utm_source=bestbotfor')
+    const snapdub = 'https://snapdub.ai?via=bestbotfor'
+    expect(exactPinnedTrackingUrl(snapdub)).toBe(snapdub)
+    expect(exactPinnedTrackingUrl('https://snapdub.ai/?via=bestbotfor')).toBe(snapdub)
+    expect(exactPinnedTrackingUrl('https://snapdub.ai/')).toBeNull()
+    expect(exactPinnedTrackingUrl('https://snapdub.ai?via=other')).toBeNull()
+    expect(exactPinnedTrackingUrl('https://snapdub.ai?via=bestbotfor&utm_source=x')).toBeNull()
+    expect(withOutboundUtm(snapdub, 'direct')).toBe(snapdub)
+    expect(withOutboundUtm(snapdub, 'tool')).toBe(snapdub)
+    expect(withOutboundUtm('https://snapdub.ai/?via=bestbotfor', 'direct')).toBe(snapdub)
+    expect(withOutboundUtm('https://snapdub.ai/', 'direct')).toContain('utm_source=bestbotfor')
+    expect(withOutboundUtm('https://snapdub.ai/', 'direct')).not.toContain('via=')
     const startup = 'https://buy.stripe.com/dRmbJ197SdjH3jRa8f2Ji08'
     const team = 'https://buy.stripe.com/eVqbJ1bg02F3f2z4NV2Ji07'
     expect(withOutboundUtm(startup, 'direct')).toBe(startup)
