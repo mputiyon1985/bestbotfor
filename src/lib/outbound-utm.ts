@@ -7,7 +7,8 @@
  * the /go link, are never overwritten or mixed with ours. A key counts when
  * it starts with utm_ or utm-. DocsAlot's tracking link uses the hyphen.
  * Sendr's Cello code, Julius AI's Dub code, Context.dev's link code,
- * getimg.ai's referral code, and DocsAlot's Stripe checkout codes are the path.
+ * getimg.ai's referral code, Rankfender's referral path, and DocsAlot's Stripe
+ * checkout codes are the path.
  * Videco's Endorsely code is the via query. Those links are returned exactly,
  * with no extra query.
  */
@@ -28,6 +29,7 @@ const EXACT_TRACKING_URLS: readonly {
   { host: 'julius.dub.link', pathname: '/mark-putiyon', url: 'https://julius.dub.link/mark-putiyon' },
   { host: 'link.context.dev', pathname: '/mark-putiyon', url: 'https://link.context.dev/mark-putiyon' },
   { host: 'refer.getimg.ai', pathname: '/mark-putiyon', url: 'https://refer.getimg.ai/mark-putiyon' },
+  { host: 'rankfender.com', pathname: '/r/mark', url: 'https://rankfender.com/r/mark' },
   { host: 'docsalot.dev', pathname: '/', search: '?utm-source=bestbotfor', url: 'https://docsalot.dev/?utm-source=bestbotfor' },
   { host: 'buy.stripe.com', pathname: '/dRmbJ197SdjH3jRa8f2Ji08', url: 'https://buy.stripe.com/dRmbJ197SdjH3jRa8f2Ji08' },
   { host: 'buy.stripe.com', pathname: '/eVqbJ1bg02F3f2z4NV2Ji07', url: 'https://buy.stripe.com/eVqbJ1bg02F3f2z4NV2Ji07' },
@@ -85,7 +87,7 @@ export function withOutboundUtm(destination: string, pageType: string): string {
   } catch {
     return destination
   }
-  // Approved Sendr, Julius, Context.dev, getimg.ai, DocsAlot checkout, and Videco links. A query already on a path-coded one is removed. /go applies this before inbound params.
+  // Approved Sendr, Julius, Context.dev, getimg.ai, Rankfender, DocsAlot checkout, and Videco links. A query already on a path-coded one is removed. /go applies this before inbound params.
   const pinned = exactPinnedTrackingUrl(destination)
   if (pinned) return pinned
   for (const key of url.searchParams.keys()) {
