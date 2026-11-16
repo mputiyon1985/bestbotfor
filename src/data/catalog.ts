@@ -6778,14 +6778,15 @@ export const toolSeeds: ToolSeed[] = [
     affiliate: none,
   }),
   // scout 2026-11-07 | category: Marketing (FLAG: scout category "Marketing" mapped to SEO; this is an SEO and AI-answer suite, and Surfer and the other SEO tools use SEO) | scout rating 4.0 (not shown) | launch: 2026-11-06 (Product Hunt #3, v3.0) | pricing: Essential $89/mo (1 brand, 15 AI prompts weekly, 5 articles/mo); Professional $199/mo (2 brands, 30 prompts every 2 days, 15 articles); Business $499/mo (5 brands, 80 prompts daily, 30 articles, 5 seats, link building); Agencies custom; excl. VAT; about 17% off yearly.
-  // note: priceFromUsd is Essential $89/mo. No free plan was found. The yearly discount is not the stored from-price and is not a catalog deal. Affiliate unknown, not seeded. A partnerships contact is listed; that is not a sponsorship.
+  // note: priceFromUsd is Essential $89/mo. No free plan was found. The yearly discount is not the stored from-price and is not a catalog deal. A partnerships contact is listed; that is not a sponsorship.
+  // affiliate: approved and seeded active. Tracking URL https://rankfender.com/r/mark. The allowlist pins that path. /go/rankfender sends that URL and does not add other parameters. Commission note: 30% of subscription payments for 12 months, with a 90-day cookie. Network is unset, so no SubID is added.
   tool({
     slug: 'rankfender',
     addedAt: SCOUTED_2026_11_07,
     name: 'Rankfender 3.0',
     vendor: 'Rankfender',
     url: 'https://rankfender.com',
-    allowedHosts: ['rankfender.com'],
+    allowedHosts: ['rankfender.com', 'rankfender.com/r/mark'],
     category: 'SEO',
     shortDesc: 'An SEO and AI-answer platform that audits a site, tracks how assistants mention your brand and publishes articles.',
     longDesc: 'Rankfender is an SEO and AI-answer visibility platform. It runs a site audit of about 60 checks, keyword and competitor research, and an AI content writer that can publish to WordPress. It tracks how ChatGPT, Claude, Gemini, Perplexity and up to four more assistants mention your brand, from weekly down to daily, and it can be run from Claude or ChatGPT. Essential is $89 a month for 1 brand, 15 AI prompts a week and 5 articles a month. Professional is $199 a month for 2 brands, 30 prompts every 2 days and 15 articles. Business is $499 a month for 5 brands, 80 prompts a day, 30 articles, 5 seats and link building. Agencies are custom. Prices exclude VAT. Yearly billing is about 17% off. No free plan was found.',
@@ -6796,7 +6797,14 @@ export const toolSeeds: ToolSeed[] = [
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_11_07,
     fits: [],
-    affiliate: none,
+    affiliate: {
+      hasProgram: true,
+      network: null,
+      sourceUrl: null,
+      status: 'active',
+      commissionNote: '30% of subscription payments for 12 months, with a 90-day cookie.',
+      affiliateUrl: 'https://rankfender.com/r/mark',
+    },
   }),
   // scout 2026-11-07 | category: Developer tools (FLAG: scout category "Developer tools" mapped to Development) | scout rating 4.1 (not shown) | launch: 2026-11-06 (Product Hunt #6) | pricing: Apprentice $0 forever; crystl Guild $18/mo or $170/yr (orchestration, full agent CLI, unlimited scheduling, iPhone from anywhere, up to 3 devices).
   // note: priceFromUsd is Guild $18/mo. Apprentice at $0 is a free tier. The yearly price is not the stored from-price. Affiliate codes that take 20% off the first year of annual Guild are not a catalog deal and are not stored. A press contact is listed; that is not a sponsorship.

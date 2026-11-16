@@ -116,6 +116,12 @@ describe('live affiliate redirects match main', () => {
         subIdParam: null,
         official: 'https://getimg.ai/',
       },
+      rankfender: {
+        stored: 'https://rankfender.com/r/mark',
+        location: 'https://rankfender.com/r/mark',
+        subIdParam: null,
+        official: 'https://rankfender.com/',
+      },
     } as const
 
     for (const [slug, expected] of Object.entries(activated)) {
@@ -171,6 +177,19 @@ describe('live affiliate redirects match main', () => {
       expect(outcome, search).toMatchObject({
         status: 302,
         location: 'https://videco.io?via=mark276',
+        click: { affiliate: true, programId: 1, subIdParam: null },
+      })
+    }
+  })
+
+  it('sends /go/rankfender to the exact tracking link and drops any inbound query', async () => {
+    const tracking = 'https://rankfender.com/r/mark'
+    expect(resolveHeadGoRedirect('rankfender')).toMatchObject({ status: 302, location: 'https://rankfender.com/' })
+    for (const search of ['', '?utm_source=x', '?utm_source=x&utm_medium=email&foo=1', '?ref=other']) {
+      const outcome = await go('rankfender', search)
+      expect(outcome, search).toMatchObject({
+        status: 302,
+        location: tracking,
         click: { affiliate: true, programId: 1, subIdParam: null },
       })
     }
