@@ -164,10 +164,14 @@ describe('bot scout 2026-11-17', () => {
       expect(tool.fits, slug).toEqual([])
       expect(tool.unlisted, slug).toBeFalsy()
       expect(tool.needsVerification, slug).toBeFalsy()
-      expect(tool.url.includes('?'), slug).toBe(false)
+      if (slug !== 'retriever-app') expect(tool.url.includes('?'), slug).toBe(false)
       expect(tool.url.startsWith('https://'), slug).toBe(true)
       expect(tool.affiliate.affiliateUrl, slug).toBeUndefined()
-      expect(tool.allowedHosts, slug).toEqual([new URL(tool.url).hostname])
+      if (slug === 'retriever-app') {
+        expect(tool.allowedHosts, slug).toEqual(['play.google.com', 'play.google.com/store/apps/details?id=app.retriever'])
+      } else {
+        expect(tool.allowedHosts, slug).toEqual([new URL(tool.url).hostname])
+      }
       expect(unratedSlugs, slug).toContain(slug)
     }
     expect(seed('coral-gateway').name).toBe('Coral')
@@ -180,8 +184,10 @@ describe('bot scout 2026-11-17', () => {
     expect(seed('circles-whatsapp').name).toBe('Circles for WhatsApp')
     expect(seed('circles-whatsapp').url).toBe('https://usecircles.app/en')
     expect(seed('retriever-app').name).toBe('Retriever')
-    expect(seed('retriever-app').url).toBe('https://play.google.com/store/apps/details')
+    expect(seed('retriever-app').url).toBe('https://play.google.com/store/apps/details?id=app.retriever')
+    expect(seed('retriever-app').allowedHosts).toEqual(['play.google.com', 'play.google.com/store/apps/details?id=app.retriever'])
     expect(seed('retriever-app').longDesc).toContain('app.retriever')
+    expect(seed('retriever-app').longDesc).not.toMatch(/catalog URL|query string/i)
     expect(seed('askprobe').name).toBe('Probe')
     expect(seed('askprobe').url).toBe('https://askprobe.com')
     expect(seed('acta-ai').name).toBe('Acta')
@@ -685,7 +691,11 @@ describe('bot scout 2026-11-17', () => {
       expect(head, slug).toMatchObject({ status: 302 })
       if (head.status !== 302) continue
       expect(`${new URL(head.location).origin}${new URL(head.location).pathname}`, slug).toBe(officialPath)
-      expect(new URL(head.location).search, slug).toBe('')
+      if (slug === 'retriever-app') {
+        expect(new URL(head.location).search, slug).toBe('?id=app.retriever')
+      } else {
+        expect(new URL(head.location).search, slug).toBe('')
+      }
       expect(head.location, slug).not.toMatch(/affiliate|rewardful|camp_id|cello|endorsely|im_ref|via=|ref=|creators|sponsored/)
 
       const get = await resolveGoRedirect({
@@ -707,7 +717,12 @@ describe('bot scout 2026-11-17', () => {
       expect(destination.searchParams.get('utm_source'), slug).toBe('bestbotfor')
       expect(destination.searchParams.get('utm_medium'), slug).toBe('referral')
       expect(destination.searchParams.get('utm_campaign'), slug).toBe('direct')
-      expect([...destination.searchParams.keys()].sort(), slug).toEqual(['utm_campaign', 'utm_medium', 'utm_source'])
+      if (slug === 'retriever-app') {
+        expect(destination.searchParams.get('id'), slug).toBe('app.retriever')
+        expect([...destination.searchParams.keys()].sort(), slug).toEqual(['id', 'utm_campaign', 'utm_medium', 'utm_source'])
+      } else {
+        expect([...destination.searchParams.keys()].sort(), slug).toEqual(['utm_campaign', 'utm_medium', 'utm_source'])
+      }
       expect(get.location, slug).not.toMatch(/rewardful|camp_id|cello|endorsely|im_ref|via=|ref=|creators|sponsored/)
       expect(get.click?.affiliate, slug).toBe(false)
       expect(get.click?.subIdParam, slug).toBeNull()

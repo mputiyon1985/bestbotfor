@@ -10379,7 +10379,7 @@ export const toolSeeds: ToolSeed[] = [
   // ZEUS is the local coding agent at https://zeus-agent.web.app. The slug is zeus-agent.
   // Apertrue Witness is https://witness.apertrue.photo. It is not Witness (witness.vision). The slug is apertrue-witness.
   // Circles for WhatsApp is https://usecircles.app. The slug is circles-whatsapp.
-  // Retriever is the Android app. The Play listing package is app.retriever. The catalog URL has no query string. The slug is retriever-app.
+  // Retriever is the Android app. The catalog URL is https://play.google.com/store/apps/details?id=app.retriever. The allowlist pins that path and id query, the same way Videco and SnapDub pin a query. The slug is retriever-app.
   // Probe is https://askprobe.com. The slug is askprobe.
   // Acta is https://acta.ai. The slug is acta-ai.
   // Trading Agents is Alpha Vantage's hosted product at https://trading-agents.ai. The slug is trading-agents.
@@ -10394,7 +10394,7 @@ export const toolSeeds: ToolSeed[] = [
   // Prices in Indian rupees: MotionRepo, SecureThread, InterviewEngine and Chalkie. Acta also lists an India price beside the dollar seat price. No rupee amount is stored as dollars.
   // KIRA.id is priced in Indonesian rupiah. Al-Narjis AI is priced in Saudi riyals. Arvak's free plan is 0 Turkish lira, and the paid plan is not open. Probe and Apertrue Witness are priced in pounds. No dollar from-price is stored for those non-dollar prices.
   // Wron's published rates are monthly figures billed annually. The slug is on ANNUAL_BILLED_SLUGS. priceFromUsd is Starter at $4.99.
-  // Scatter's catalog URL drops a landing query. Retriever's catalog URL drops the Play Store id query.
+  // Scatter's catalog URL drops a landing query.
   // scout 2026-11-17 | category: SEO | scout rating 3.9 (not shown) | launch: 2026-11-17 (Product Hunt, featured) | pricing: Pay-as-you-go, no subscription. Start free with $1 welcome credit. Top up from $10 minimum. Per-action pricing: Article written $3; AI visibility check $0.004; Keyword update $0.15 per site; Backlink update $0.07 per site; Email found $0.065; Email sent $0.025; Google search $0.0025; Page read $0.004; Indexing request $0.01; Image generated AI cost +30%; Chat/edit in RankSpot AI cost +30%; Competitor tracking, mailbox connect, replies, edits with own AI free. Credit rolls over, nothing renews.
   // note: The price label is Top-ups from $10. Affiliate not seeded. Sponsorship unknown.
   tool({
@@ -11243,7 +11243,7 @@ export const toolSeeds: ToolSeed[] = [
     category: 'Productivity',
     shortDesc: 'Grows a mind map on an infinite canvas as you ask questions, in the browser.',
     longDesc:
-      'Scatter grows an AI mind map. You ask a question, get a structured overview, and follow a marked term into a connected explanation, on an infinite canvas. Projects and keys stay in the browser. It is free and source-available. You bring API keys for a cloud or local model, including Ollama. No paid plan was found. A desktop browser is recommended. The catalog URL is scatter.study. A landing query on the scout URL is not stored. The free app is the vendor\'s public offer.',
+      'Scatter grows an AI mind map. You ask a question, get a structured overview, and follow a marked term into a connected explanation, on an infinite canvas. Projects and keys stay in the browser. It is free and source-available. You bring API keys for a cloud or local model, including Ollama. No paid plan was found. A desktop browser is recommended. The free app is the vendor\'s public offer.',
     pricingModel: 'free',
     priceFromUsd: null,
     hasFreeTier: true,
@@ -11727,7 +11727,7 @@ export const toolSeeds: ToolSeed[] = [
     category: 'Development',
     shortDesc: 'Records one browser tab as a timestamped text walkthrough an agent can read.',
     longDesc:
-      'NarWal records one browser tab, including the page, your narration and pointer marks, and writes a timestamped text walkthrough. It stays in the browser unless you share it. It supports Chrome and Edge 116 and newer. Edge is not a stored platform name, so the platform stored is Chrome. The extension is free to install, with no account and no card. That free install is the free tier. Document text is $0.10 per thousand words. Live speech is $0.30 a minute. File analysis is $0.15 a minute. There is no minimum. Those rates are not a monthly plan, so no monthly price is stored. The document rate is $0.10 per thousand words. Volume discounts were mentioned without a published schedule, so no discount price is stored.',
+      'NarWal records one browser tab, including the page, your narration and pointer marks, and writes a timestamped text walkthrough. It stays in the browser unless you share it. It supports Chrome and Edge 116 and newer. The extension is free to install, with no account and no card. That free install is the free tier. Document text is $0.10 per thousand words. Live speech is $0.30 a minute. File analysis is $0.15 a minute. There is no minimum. Those rates are not a monthly plan, so no monthly price is stored. The document rate is $0.10 per thousand words. Volume discounts were mentioned without a published schedule, so no discount price is stored.',
     pricingModel: 'freemium',
     priceFromUsd: null,
     hasFreeTier: true,
@@ -12057,7 +12057,7 @@ export const toolSeeds: ToolSeed[] = [
     category: 'Research',
     shortDesc: 'ContextLM\'s workspace for asking questions of private documents, with a citation on each answer.',
     longDesc:
-      'Semdex, from ContextLM, turns private documents into a knowledge base. Each answer cites the paragraph it came from, and you can share a project with a revocable link. The product site is agent.contextlm.top. The scout JSON listed contextlm.top. Free includes 5 hours, about 100,000 tokens, 7-day retention and up to 3 shareable projects. Private use is free. That free allowance is the free tier. Plus is $3.19 a month. Pro is $5.99 a month. Model inference, document parsing and web search are charged by usage on top of the plan. The stored from-price is Plus at $3.19 a month. Usage charges are not the stored from-price. The free allowance is the vendor\'s public offer.',
+      'Semdex, from ContextLM, turns private documents into a knowledge base. Each answer cites the paragraph it came from, and you can share a project with a revocable link. The product site is agent.contextlm.top. Free includes 5 hours, about 100,000 tokens, 7-day retention and up to 3 shareable projects. Private use is free. That free allowance is the free tier. Plus is $3.19 a month. Pro is $5.99 a month. Model inference, document parsing and web search are charged by usage on top of the plan. The stored from-price is Plus at $3.19 a month. Usage charges are not the stored from-price. The free allowance is the vendor\'s public offer.',
     pricingModel: 'freemium',
     priceFromUsd: 3.19,
     hasFreeTier: true,
@@ -12299,7 +12299,7 @@ export const toolSeeds: ToolSeed[] = [
     category: 'Productivity',
     shortDesc: 'A local reading app that compresses a PDF or EPUB and links every sentence back to the source.',
     longDesc:
-      'Omnitome is a local-first reading app. It compresses PDFs and EPUBs and keeps a clickable source for every sentence, with speech on the device. It is free and open source under AGPL-3.0. No paid plan was found. The catalog URL is the GitHub repository. The desktop operating system was not named. There is no mobile or web app. The free app is the vendor\'s public offer.',
+      'Omnitome is a local-first reading app. It compresses PDFs and EPUBs and keeps a clickable source for every sentence, with speech on the device. It is free and open source under AGPL-3.0. No paid plan was found. The desktop operating system was not named. There is no mobile or web app. The free app is the vendor\'s public offer.',
     pricingModel: 'free',
     priceFromUsd: null,
     hasFreeTier: true,
@@ -12492,12 +12492,12 @@ export const toolSeeds: ToolSeed[] = [
     addedAt: SCOUTED_2026_11_17,
     name: 'Retriever',
     vendor: 'Retriever',
-    url: 'https://play.google.com/store/apps/details',
-    allowedHosts: ['play.google.com'],
+    url: 'https://play.google.com/store/apps/details?id=app.retriever',
+    allowedHosts: ['play.google.com', 'play.google.com/store/apps/details?id=app.retriever'],
     category: 'Productivity',
     shortDesc: 'Searches photos, screenshots, documents and videos on an Android phone by describing them.',
     longDesc:
-      'Retriever searches photos, screenshots, documents and videos on an Android phone by describing them. It runs on the device with Google\'s EmbeddingGemma 2 model. There is no account and no cloud. It needs Android 11 or later on a 64-bit phone, and description search needs at least 4 GB of RAM. The Play listing package is app.retriever. The catalog URL does not store that query string. Pricing is not published, so no price is stored. No free plan is recorded. No public price was found.',
+      'Retriever searches photos, screenshots, documents and videos on an Android phone by describing them. It runs on the device with Google\'s EmbeddingGemma 2 model. There is no account and no cloud. It needs Android 11 or later on a 64-bit phone, and description search needs at least 4 GB of RAM. The Play Store package is app.retriever. Pricing is not published, so no price is stored. No free plan is recorded. No public price was found.',
     pricingModel: 'paid',
     priceFromUsd: null,
     hasFreeTier: false,
@@ -12695,7 +12695,7 @@ export const toolSeeds: ToolSeed[] = [
     category: 'Agent builder',
     shortDesc: 'Orama\'s open-source stack for training and shipping your own models, agents and workflows.',
     longDesc:
-      'Orama Lake is a stack for designing, training and shipping custom models, agents, workflows and warehouses. It is MIT-licensed and meant to run on your own hardware, including on-premises and air-gapped setups. The catalog URL is the GitHub repository. No paid plan was found. It expects Kubernetes experience. The free license is the vendor\'s public offer.',
+      'Orama Lake is a stack for designing, training and shipping custom models, agents, workflows and warehouses. It is MIT-licensed and meant to run on your own hardware, including on-premises and air-gapped setups. No paid plan was found. It expects Kubernetes experience. The free license is the vendor\'s public offer.',
     pricingModel: 'free',
     priceFromUsd: null,
     hasFreeTier: true,
