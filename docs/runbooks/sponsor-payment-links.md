@@ -118,10 +118,13 @@ The idempotency key is the Checkout Session id, stored on `payment_link_recovery
 
 The message reuses the in-app Resend send. It includes the signed one-click unsubscribe link, `List-Unsubscribe`, and `List-Unsubscribe-Post`. From and Reply-To are `CHECKOUT_RECOVERY_FROM_EMAIL`, or `mark@bestbotfor.com` when that variable is blank. The postal address is `CHECKOUT_RECOVERY_POSTAL_ADDRESS` only. A missing postal address or unsubscribe secret skips the send and does not call Stripe. The footer is that postal address, then `Reply 'no thanks' and we won't email you again.` A live event is not emailed, and Stripe is not called, unless `CHECKOUT_RECOVERY_EMAIL_LIVE` is exactly `true`. The allowlist is checked before any Stripe read.
 
-Featured week (`plink_1Uaz53IJUbygfAucHbIqUfzb`) and newsletter mention (`plink_1Uaz54IJUbygfAuckBQccflM`) stay off the list until Mark adds them. A featured week does not reserve the page, so a follow-up could sell a week that is already booked. The newsletter mention does not create an in-app slot either. Adding either id is Mark's decision, not a default.
+Featured week (`plink_1Uaz53IJUbygfAucHbIqUfzb`, $99) and newsletter mention (`plink_1Uaz54IJUbygfAuckBQccflM`, $49) stay off the list until Mark adds them. A featured week does not reserve the page, so a follow-up could sell a week that is already booked. The newsletter mention does not create an in-app slot either. Adding either id is Mark's decision, not a default. The proposed allowlist, pending Mark's yes and not set by this change, is `plink_1Uaz53IJUbygfAucHbIqUfzb,plink_1Uaz54IJUbygfAuckBQccflM,plink_1UbIagIJUbygfAucs4m5ADjE` ($99 Featured week, $49 newsletter mention, $497 audit).
 
-This change does not edit the live webhook, any Payment Link, or env vars. Dashboard steps, still manual:
+`payment_link_recovery_emails` rows older than 90 days (`created_at`) and `checkout_recovery_address_claims` rows older than 90 days (`claimed_at`) are deleted by the existing data-retention cron, on the same clock as `sponsor_abandoned_checkouts`. `checkout_recovery_suppressions` is still not deleted on that schedule.
 
+This change does not edit the live webhook, any Payment Link, or env vars. Dashboard and go-live steps, still manual:
+
+0. On a preview deployment, with test-mode Stripe and `CHECKOUT_RECOVERY_EMAIL_LIVE` unset, run a concurrency check: two expired sessions for the same opted-in address at the same time. Only one recovery email is claimed. Do this before the live flag is set.
 1. Add `checkout.session.expired` to endpoint `we_1URwkHIJUbygfAucFVXA9X0z` if it is not already there. Saving replaces the event list, so copy the current events first.
 2. Turn on the promotional-email checkbox (`consent_collection.promotions` = `auto`) only on Payment Links Mark has put on the allowlist. Leave promotion codes off. Do not turn that checkbox on for featured week or newsletter mention unless Mark adds those ids.
 
@@ -145,10 +148,12 @@ The unpaid $299 Sponsor Monthly session that expired on Nov 1, 2026 cannot be re
 
 This change does not call the Stripe API and does not edit the live Payment Link or the live webhook. A test-mode Payment Link, if one exists, can take the same promotions checkbox. Do not create or change the live link from this repo. The mail variables below are not set by this change:
 
-- `CHECKOUT_RECOVERY_RESEND_API_KEY` — Resend API key (`re_…`). Test mode sends use a test key.
-- `CHECKOUT_RECOVERY_FROM` — verified From address, for example `BestBotFor <mark@bestbotfor.com>`.
-- `CHECKOUT_RECOVERY_EMAIL_LIVE` — leave unset. The exact value `true` is required before a live (`livemode: true`) event is emailed.
-- `CHECKOUT_RECOVERY_POSTAL_ADDRESS` — the postal address printed in every recovery email. Blank or unset skips the send and does not claim it. This repo does not contain an address.
-- `CHECKOUT_RECOVERY_UNSUBSCRIBE_SECRET` — at least 32 characters, not trimmed. Signs the one-click unsubscribe token. Missing or shorter skips the send.
+- `CHECKOUT_RECOVERY_RESEND_API_KEY` — Resend API key (`re_…`). Test mode sends use a test key. Empty in `.env.example`.
+- `CHECKOUT_RECOVERY_FROM` — verified From address for the in-app recovery email, for example `BestBotFor <mark@bestbotfor.com>`. The Payment Link email does not read this.
+- `CHECKOUT_RECOVERY_FROM_EMAIL` — From and Reply-To for the Payment Link recovery email. Blank uses `mark@bestbotfor.com`. Empty in `.env.example`.
+- `CHECKOUT_RECOVERY_EMAIL_LIVE` — leave unset. The exact value `true` is required before a live (`livemode: true`) event is emailed or before that event calls Stripe. Empty in `.env.example`.
+- `CHECKOUT_RECOVERY_POSTAL_ADDRESS` — the postal address printed in every recovery email. Blank or unset skips the send and does not claim it. This repo does not contain an address. Empty in `.env.example`.
+- `CHECKOUT_RECOVERY_UNSUBSCRIBE_SECRET` — at least 32 characters, not trimmed. Signs the one-click unsubscribe token. Missing or shorter skips the send. Empty in `.env.example`.
+- `CHECKOUT_RECOVERY_PAYMENT_LINK_IDS` — comma-separated `plink_` ids. No default. Empty sends nothing. Do not set the proposed list until Mark says yes: `plink_1Uaz53IJUbygfAucHbIqUfzb` ($99 Featured week), `plink_1Uaz54IJUbygfAuckBQccflM` ($49 newsletter mention), `plink_1UbIagIJUbygfAucs4m5ADjE` ($497 audit). A featured week does not reserve the page, so a follow-up could sell a week that is already booked. The newsletter mention does not create an in-app slot either. Empty in `.env.example`.
 
 An opted-out address is stored in `checkout_recovery_suppressions` and is not emailed again. That table is not part of the 90-day abandoned-checkout purge. The email's List-Unsubscribe header points at `https://bestbotfor.com/checkout-recovery/unsubscribe?token=…` and also lists privacy@bestbotfor.com. `List-Unsubscribe-Post` is `List-Unsubscribe=One-Click`. A GET shows a confirmation form and does not opt the address out. A POST, including the one-click body, records the opt-out with no login.
