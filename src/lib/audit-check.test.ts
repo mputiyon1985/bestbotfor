@@ -115,11 +115,15 @@ function picomatchReport(id = 'GHSA-fc5q-39xc-vjpf'): AuditReport {
   }
 }
 
-function evaluate(report: AuditReport, options: { now?: Date; lockfile?: Lockfile; publishedVersions?: Record<string, string[]> } = {}) {
+function evaluate(
+  report: AuditReport,
+  options: { now?: Date; lockfile?: Lockfile; publishedVersions?: Record<string, string[]>; omitDevOutput?: string } = {},
+) {
   return evaluateAudit(report, {
     now: BEFORE,
     lockfile: devLock(),
     publishedVersions: { picomatch: VULNERABLE_VERSIONS },
+    omitDevOutput: '{"vulnerabilities":{}}',
     ...options,
   })
 }
@@ -208,6 +212,42 @@ describe('audit allowlist', () => {
     expect(result.failures.map((item) => item.reason).join('\n')).toContain('reachable from a production dependency')
   })
 
+  it('does not waive a devOptional picomatch copy', () => {
+    const packages = devLock().packages
+    const optionalCopy = NODES[0]
+    if (optionalCopy === undefined) throw new Error('picomatch node missing')
+    packages[optionalCopy] = { devOptional: true, version: '4.0.7' }
+    const result = evaluate(picomatchReport(), { lockfile: { packages } })
+    expect(result.ok).toBe(false)
+    expect(result.waived).toEqual([])
+    expect(result.failures.map((item) => item.reason).join('\n')).toContain('reachable from a production dependency')
+  })
+
+  it('does not waive an advisory id that only extends the allowlisted id', () => {
+    for (const id of ['GHSA-fc5q-39xc-vjpfX', 'GHSA-fc5q-39xc-vjpf-extra']) {
+      const result = evaluate(picomatchReport(id))
+      expect(result.ok).toBe(false)
+      expect(result.waived).toEqual([])
+      expect(result.failures.some((item) => item.id?.toLowerCase() === 'ghsa-fc5q-39xc-vjpf')).toBe(false)
+    }
+  })
+
+  it('voids the waiver when the production audit output contains the advisory id', () => {
+    const present = evaluate(picomatchReport(), {
+      omitDevOutput: '{"vulnerabilities":{"picomatch":{"via":[{"url":"https://github.com/advisories/GHSA-fc5q-39xc-vjpf"}]}}}',
+    })
+    expect(present.ok).toBe(false)
+    expect(present.waived).toEqual([])
+    expect(present.failures.map((item) => item.reason).join('\n')).toContain('appears in npm audit --omit=dev output')
+
+    const longerIds = evaluate(picomatchReport(), {
+      omitDevOutput:
+        '{"url":"https://github.com/advisories/GHSA-fc5q-39xc-vjpf-extra"} https://github.com/advisories/GHSA-fc5q-39xc-vjpfX',
+    })
+    expect(longerIds.ok).toBe(true)
+    expect(longerIds.waived.map((item) => item.id)).toEqual(['GHSA-fc5q-39xc-vjpf'])
+  })
+
   it('fails the allowlisted advisory once a patched stable release exists', () => {
     const result = evaluate(picomatchReport(), {
       publishedVersions: { picomatch: [...VULNERABLE_VERSIONS, '4.0.8'] },
@@ -263,11 +303,18 @@ describe('audit allowlist', () => {
     expect(workflow).toContain('npm run check:audit')
     expect(workflow).toContain('bash scripts/ci-lighthouse.sh')
     expect(script).toContain("'--audit-level=high'")
+    expect(script).toContain("'--omit=dev'")
+    expect(script).toContain("'--prefer-online'")
+    expect(script).toContain('return entry?.dev === true')
     expect(script).toContain("id: 'GHSA-fc5q-39xc-vjpf'")
     expect(script).toContain("expires: '2026-12-01'")
     expect(runbook).toContain('GHSA-fc5q-39xc-vjpf')
     expect(runbook).toContain('2026-12-01')
+    expect(runbook).toContain('`dev: true`')
+    expect(runbook).toContain('`devOptional` is not dev-only')
+    expect(runbook).toContain('npm audit --omit=dev --json')
     expect(changelog).toContain('GHSA-fc5q-39xc-vjpf')
+    expect(changelog).toContain('`devOptional` is not dev-only')
     const auditStep = workflow.slice(workflow.indexOf('- name: Audit'), workflow.indexOf('- run: npm run lint'))
     expect(auditStep).toContain('npm run check:audit')
     expect(auditStep).not.toContain('npm audit')

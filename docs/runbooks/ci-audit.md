@@ -15,8 +15,9 @@ The script runs `npm audit --json --audit-level=high` and reads that JSON. High 
 The entry waives that advisory id only while all of these stay true:
 
 - The UTC date is before `2026-12-01`. On `2026-12-01` the waiver stops and the advisory fails the job again.
-- Every installed copy is a dev dependency. The script reads `package-lock.json` and requires `dev: true` or `devOptional: true` on each `npm audit` node and on every lockfile copy of that package. A copy that production can reach fails the job, and the waiver is not applied.
-- No stable release of the package sits outside the advisory range. The script reads `npm view picomatch versions --json`. Prereleases are ignored. A stable version outside `<=4.0.7` means a patched picomatch is published, the waiver stops, and the job fails on the advisory again.
+- Every installed copy has `dev: true` in `package-lock.json`, on each `npm audit` node and on every lockfile copy of that package. `devOptional` is not dev-only: `npm ls --omit=dev` still installs those packages. A copy without `dev: true` fails the job, and the waiver is not applied.
+- `npm audit --omit=dev --json` does not contain this advisory id. The script reads that output. An exact id match voids the waiver. A longer id such as `GHSA-fc5q-39xc-vjpfX` or `GHSA-fc5q-39xc-vjpf-extra` is a different advisory.
+- No stable release of the package sits outside the advisory range. The script reads `npm view picomatch versions --json --prefer-online`. Prereleases are ignored. A stable version outside `<=4.0.7` means a patched picomatch is published, the waiver stops, and the job fails on the advisory again.
 
 npm currently suggests fixing the finding by moving vitest to `3.1.4`, a semver-major downgrade of a different package. The waiver looks for a stable picomatch release outside `<=4.0.7`. The latest stable picomatch when this entry was added was `4.0.7`.
 
@@ -38,7 +39,7 @@ Checked on the lockfile with `npm ls picomatch --all` and `npm audit --omit=dev`
 - `node_modules/vite/node_modules/picomatch`
 - `node_modules/tinyglobby/node_modules/picomatch`
 
-Each of those entries is `dev: true`.
+Each of those entries is `dev: true`. `devOptional` would not qualify.
 
 Parents that npm marks high only because they depend on this advisory (`fdir`, `tinyglobby`, `vite`, `vitest`, and `@typescript-eslint/typescript-estree` through `tinyglobby`) follow the same waiver. A different high or critical advisory on any of those packages still fails the job.
 

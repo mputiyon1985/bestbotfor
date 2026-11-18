@@ -12,9 +12,12 @@ export function evaluateAudit(
     now?: Date
     allowlist?: readonly { id: string; expires: string; reason: string }[]
     lockfile?: {
-      packages?: Record<string, { dev?: boolean; devOptional?: boolean; version?: string }>
+      // Dev-only means `dev: true`. `devOptional` is not dev-only: production installs can include it.
+      packages?: Record<string, { dev?: boolean; version?: string }>
     }
     publishedVersions?: Record<string, readonly string[]>
+    /** Raw `npm audit --omit=dev --json` stdout. A waiver requires this string, and stops when it contains the advisory id. */
+    omitDevOutput?: string
   },
 ): {
   ok: boolean

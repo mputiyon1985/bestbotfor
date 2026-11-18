@@ -10,8 +10,9 @@ import { fileURLToPath } from 'node:url'
  * high and critical fail, moderate and below do not.
  *
  * One allowlist entry can waive a single advisory id. It applies only while
- * the UTC date is before `expires`, every installed copy is a dev dependency,
- * and no stable release of that package sits outside the advisory range.
+ * the UTC date is before `expires`, every installed copy has `dev: true`
+ * (`devOptional` is not enough), `npm audit --omit=dev --json` does not
+ * contain that exact id, and no stable release sits outside the advisory range.
  */
 export const AUDIT_LEVEL = 'high'
 
@@ -30,10 +31,24 @@ function rank(severity) {
   return Object.prototype.hasOwnProperty.call(SEVERITY_RANK, severity) ? SEVERITY_RANK[severity] : -1
 }
 
+function exactAdvisoryIds(text) {
+  if (typeof text !== 'string' || text === '') return []
+  const ids = []
+  const pattern = /(?<![0-9A-Za-z-])(GHSA-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4})(?![0-9A-Za-z-])/gi
+  for (const match of text.matchAll(pattern)) {
+    if (match[1]) ids.push(match[1])
+  }
+  return ids
+}
+
 function advisoryId(via) {
   const url = typeof via?.url === 'string' ? via.url : ''
-  const match = /GHSA-[0-9a-z]{4}-[0-9a-z]{4}-[0-9a-z]{4}/i.exec(url)
-  return match ? match[0] : null
+  const ids = exactAdvisoryIds(url)
+  return ids.length === 1 ? ids[0] : null
+}
+
+function outputContainsAdvisoryId(output, id) {
+  return exactAdvisoryIds(output).some((found) => sameId(found, id))
 }
 
 function sameId(left, right) {
@@ -138,7 +153,8 @@ function hasStableReleaseOutsideRange(versions, range) {
 }
 
 function isDevOnlyEntry(entry) {
-  return entry?.dev === true || entry?.devOptional === true
+  // devOptional packages are still installed by `npm ls --omit=dev` / a production install.
+  return entry?.dev === true
 }
 
 function installedCopies(lockfile, packageName) {
@@ -172,6 +188,12 @@ function waiverFor(vuln, via, context) {
   if (!copiesAreDevOnly(context.lockfile, packageName, vuln.nodes)) {
     return { waived: false, id, reason: `${entry.id} is reachable from a production dependency` }
   }
+  if (typeof context.omitDevOutput !== 'string') {
+    return { waived: false, id, reason: `${entry.id} was not checked against npm audit --omit=dev` }
+  }
+  if (outputContainsAdvisoryId(context.omitDevOutput, entry.id)) {
+    return { waived: false, id, reason: `${entry.id} appears in npm audit --omit=dev output` }
+  }
   const versions = context.publishedVersions?.[packageName]
   if (!Array.isArray(versions)) {
     return { waived: false, id, reason: `published versions for ${packageName} were not checked` }
@@ -199,6 +221,7 @@ export function evaluateAudit(report, options = {}) {
     allowlist: options.allowlist ?? ALLOWLIST,
     lockfile: options.lockfile ?? { packages: {} },
     publishedVersions: options.publishedVersions ?? {},
+    omitDevOutput: options.omitDevOutput,
   }
   const threshold = rank(AUDIT_LEVEL)
   const vulns = report?.vulnerabilities
@@ -340,7 +363,7 @@ function allowlistedPackageNames(report) {
 function publishedVersions(names, cwd) {
   const versions = {}
   for (const name of names) {
-    const viewed = run(['view', name, 'versions', '--json'], cwd)
+    const viewed = run(['view', name, 'versions', '--json', '--prefer-online'], cwd)
     if (!viewed.ok || viewed.status !== 0) {
       return { error: `could not list published versions of ${name}` }
     }
@@ -355,23 +378,31 @@ function publishedVersions(names, cwd) {
   return { versions }
 }
 
-function main() {
-  const root = repoRoot()
-  const audit = run(['audit', '--json', '--audit-level=high'], root)
-  if (!audit.ok) return fail(audit.error)
+function readAudit(args, root) {
+  const audit = run(args, root)
+  if (!audit.ok) return { error: audit.error }
   if (audit.status !== 0 && audit.status !== 1) {
-    return fail(`npm audit exited ${audit.status}: ${audit.stderr.trim()}`)
+    return { error: `npm ${args.join(' ')} exited ${audit.status}: ${audit.stderr.trim()}` }
   }
   let report
   try {
     report = JSON.parse(audit.stdout)
   } catch {
-    return fail('npm audit did not return JSON')
+    return { error: `npm ${args.join(' ')} did not return JSON` }
   }
   if (report?.error) {
     const summary = report.error.summary || report.error.message || 'npm audit failed'
-    return fail(summary)
+    return { error: summary }
   }
+  return { report, stdout: audit.stdout }
+}
+
+function main() {
+  const root = repoRoot()
+  const audit = readAudit(['audit', '--json', '--audit-level=high'], root)
+  if (audit.error) return fail(audit.error)
+  const omitDev = readAudit(['audit', '--omit=dev', '--json', '--audit-level=high'], root)
+  if (omitDev.error) return fail(omitDev.error)
 
   let lockfile
   try {
@@ -380,11 +411,15 @@ function main() {
     return fail('could not read package-lock.json')
   }
 
-  const names = allowlistedPackageNames(report)
+  const names = allowlistedPackageNames(audit.report)
   const published = publishedVersions(names, root)
   if (published.error) return fail(published.error)
 
-  const result = evaluateAudit(report, { lockfile, publishedVersions: published.versions })
+  const result = evaluateAudit(audit.report, {
+    lockfile,
+    publishedVersions: published.versions,
+    omitDevOutput: omitDev.stdout,
+  })
   for (const item of result.waived) {
     const entry = ALLOWLIST.find((candidate) => sameId(candidate.id, item.id))
     console.log(`audit-check: waived ${item.id} on ${item.packageName} before ${entry?.expires}: ${item.reason}`)
