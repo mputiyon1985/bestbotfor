@@ -543,7 +543,7 @@ describe('recovery email', () => {
     expect(open?.recoveryUrl).toBe('https://buy.stripe.com/r/test_member_open')
   })
 
-  it('does not store or email a one-time Payment Link, or any other source=payment_link session without kind=sponsorship', async () => {
+  it('does not store a one-time Payment Link on the sponsor lead table, or email it from this recorder', async () => {
     const { db, close } = await createTestDatabase()
     const sent: CheckoutRecoveryMessage[] = []
     const mailer = async (message: CheckoutRecoveryMessage) => {
@@ -592,6 +592,28 @@ describe('recovery email', () => {
     }
     expect(sent).toEqual([])
     expect(await db.select().from(sponsorAbandonedCheckouts)).toEqual([])
+    await close()
+  })
+
+  it('stores an opted-in Payment Link and does not send the in-app recovery email', async () => {
+    const { db, close } = await createTestDatabase()
+    let calls = 0
+    const event = expired('evt_link_no_old_mail', {
+      id: 'cs_test_link_no_old_mail',
+      payment_status: 'unpaid',
+      payment_link: 'plink_1URyeXIJUbygfAucnLlkSP5u',
+      consent: { promotions: 'opt_in' },
+      customer_details: { email: 'link@example.com' },
+      metadata: { offer: 'sponsor_monthly', source: 'payment_link' },
+    })
+    await recordExpiredSponsorCheckout(db, event, 39, async () => {
+      calls += 1
+      return 'sent'
+    })
+    expect(calls).toBe(0)
+    const leads = await db.select().from(sponsorAbandonedCheckouts)
+    expect(leads[0]?.recoveryEmailSentAt).toBeNull()
+    expect(leads[0]?.source).toBe('payment_link')
     await close()
   })
 

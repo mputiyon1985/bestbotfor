@@ -16,6 +16,7 @@ import { getStripe, stripeWebhookSecret } from './stripe'
 import { liveModeAllowed } from './stripe-key'
 import { sanitizeSponsorCompany } from './sponsor-company'
 import { linkSponsorCreative } from './sponsor-card'
+import { recoverExpiredPaymentLink } from './payment-link-recovery'
 import { recordExpiredSponsorCheckout } from './sponsor-abandoned'
 import { alertFoundingOverCap } from './founding-cap-alert'
 import { flagPlacementOverlap } from './sponsor-overlap'
@@ -871,7 +872,9 @@ async function applySponsorshipRefund(db: Database, stripe: Stripe, event: Strip
 
 async function applyEvent(db: Database, stripe: Stripe, event: Stripe.Event, now?: number): Promise<void> {
   if (event.type === 'checkout.session.expired') {
-    await recordExpiredSponsorCheckout(db, event, now ?? Date.now())
+    const nowMs = now ?? Date.now()
+    await recordExpiredSponsorCheckout(db, event, nowMs)
+    await recoverExpiredPaymentLink(db, stripe, event, nowMs)
     return
   }
 

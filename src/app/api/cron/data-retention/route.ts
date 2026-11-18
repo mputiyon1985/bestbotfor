@@ -199,12 +199,39 @@ async function abandonedCheckoutsReady(client: Client): Promise<boolean> {
   return ['stripe_checkout_session_id', 'expired_at', 'email'].every((column) => present.has(column))
 }
 
+async function paymentLinkRecoveryReady(client: Client): Promise<boolean> {
+  const result = await client.execute('PRAGMA table_info(payment_link_recovery_emails)')
+  const present = new Set(result.rows.map((row) => String(row.name)))
+  return ['stripe_checkout_session_id', 'created_at', 'email'].every((column) => present.has(column))
+}
+
 async function deleteOldAbandonedCheckouts(client: Client, cutoff: number, batchSize: number, maxBatches: number): Promise<number> {
   let deleted = 0
   for (let batch = 0; batch < maxBatches; batch += 1) {
     const result = await client.execute({
       sql: `DELETE FROM sponsor_abandoned_checkouts WHERE stripe_checkout_session_id IN (
         SELECT stripe_checkout_session_id FROM sponsor_abandoned_checkouts WHERE expired_at < ? LIMIT ?
+      )`,
+      args: [cutoff, batchSize],
+    })
+    const affected = countOf(result.rowsAffected)
+    deleted += affected
+    if (affected < batchSize) break
+  }
+  return deleted
+}
+
+async function deleteOldPaymentLinkRecovery(
+  client: Client,
+  cutoff: number,
+  batchSize: number,
+  maxBatches: number,
+): Promise<number> {
+  let deleted = 0
+  for (let batch = 0; batch < maxBatches; batch += 1) {
+    const result = await client.execute({
+      sql: `DELETE FROM payment_link_recovery_emails WHERE stripe_checkout_session_id IN (
+        SELECT stripe_checkout_session_id FROM payment_link_recovery_emails WHERE created_at < ? LIMIT ?
       )`,
       args: [cutoff, batchSize],
     })
@@ -262,10 +289,15 @@ export async function runDataRetention(
       )
     : 0
   const abandonedReady = await abandonedCheckoutsReady(client)
+  const recoveryReady = await paymentLinkRecoveryReady(client)
   const abandonedCutoff = abandonedCheckoutCutoff(options.now)
-  const abandonedCheckoutsEligible = abandonedReady
+  const abandonedSponsorEligible = abandonedReady
     ? await countRows(client, 'SELECT COUNT(*) AS n FROM sponsor_abandoned_checkouts WHERE expired_at < ?', abandonedCutoff)
     : 0
+  const recoveryEligible = recoveryReady
+    ? await countRows(client, 'SELECT COUNT(*) AS n FROM payment_link_recovery_emails WHERE created_at < ?', abandonedCutoff)
+    : 0
+  const abandonedCheckoutsEligible = abandonedSponsorEligible + recoveryEligible
   const counted = {
     rateLimitsEligible,
     resultWindowsEligible,
@@ -290,9 +322,13 @@ export async function runDataRetention(
   const suggestionEmailsCleared = suggestionsReady
     ? await clearOldSuggestionEmails(client, emailCutoff, batchSize, maxBatches)
     : 0
-  const abandonedCheckoutsDeleted = abandonedReady
+  const abandonedSponsorDeleted = abandonedReady
     ? await deleteOldAbandonedCheckouts(client, abandonedCutoff, batchSize, maxBatches)
     : 0
+  const recoveryDeleted = recoveryReady
+    ? await deleteOldPaymentLinkRecovery(client, abandonedCutoff, batchSize, maxBatches)
+    : 0
+  const abandonedCheckoutsDeleted = abandonedSponsorDeleted + recoveryDeleted
   const reviewTextPurged = reviewsOn ? await purgeWithdrawnReviewText(client, batchSize, maxBatches, options.now) : 0
   return {
     event: 'data_retention',

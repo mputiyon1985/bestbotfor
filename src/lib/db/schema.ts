@@ -635,6 +635,25 @@ export const checkoutRecoverySuppressions = sqliteTable('checkout_recovery_suppr
 })
 
 /**
+ * One Payment Link recovery email per Checkout Session. The primary key is the
+ * session id and is inserted before the send. created_at starts the 7-day
+ * cooldown for that address. sent_at is set only after Resend accepts it.
+ */
+export const paymentLinkRecoveryEmails = sqliteTable(
+  'payment_link_recovery_emails',
+  {
+    stripeCheckoutSessionId: text('stripe_checkout_session_id').primaryKey(),
+    email: text('email').notNull(),
+    paymentLinkId: text('payment_link_id').notNull(),
+    productName: text('product_name').notNull(),
+    recoveryUrl: text('recovery_url').notNull(),
+    createdAt: integer('created_at').notNull(),
+    sentAt: integer('sent_at'),
+  },
+  (table) => [index('payment_link_recovery_emails_email_idx').on(table.email)],
+)
+
+/**
  * Private outreach list for /admin/leads. contact_email is stored lowercased
  * and is the unique upsert key. amount_closed_usd is dollars for status closed.
  * Counts on the page are rows in each status. No public page reads this table.

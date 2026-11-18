@@ -231,19 +231,51 @@ export function recoveryMailConfig(
   return { ok: true, config: { apiKey, from } }
 }
 
-export type RecoverySendResult = 'sent' | 'retry' | 'rejected'
+/** Payment Link recovery is always this address. The in-app recovery From stays on CHECKOUT_RECOVERY_FROM. */
+export const PAYMENT_LINK_RECOVERY_FROM = 'mark@bestbotfor.com'
 
 /**
- * POST one email to Resend. The Idempotency-Key is the Checkout Session id,
- * so a webhook retry does not deliver a second copy. Does not log the address,
- * the body, or the API key.
+ * Resend key and live-mode gate for a Payment Link recovery email.
+ * The From address is mark@bestbotfor.com and does not read CHECKOUT_RECOVERY_FROM.
  */
-export async function postRecoveryEmail(
-  message: CheckoutRecoveryMessage,
+export function paymentLinkRecoveryMailConfig(
+  env: Record<string, string | undefined>,
+  livemode: boolean,
+): { ok: true; config: RecoveryMailConfig } | { ok: false; reason: 'mail-not-configured' | 'live-email-off' } {
+  if (livemode && env[CHECKOUT_RECOVERY_EMAIL_LIVE] !== 'true') return { ok: false, reason: 'live-email-off' }
+  const apiKey = env[CHECKOUT_RECOVERY_RESEND_API_KEY]?.trim() ?? ''
+  if (!apiKey.startsWith('re_') || apiKey.length < 8 || /\s/.test(apiKey)) return { ok: false, reason: 'mail-not-configured' }
+  return { ok: true, config: { apiKey, from: PAYMENT_LINK_RECOVERY_FROM } }
+}
+
+export type RecoverySendResult = 'sent' | 'retry' | 'rejected'
+
+export type ResendEmail = {
+  idempotencyKey: string
+  to: string
+  subject: string
+  text: string
+  html: string
+  headers?: Record<string, string>
+}
+
+/**
+ * POST one email to Resend. Does not log the address, the body, or the API key.
+ * A network error, 429, or 5xx is `retry`. Any other 4xx is `rejected`.
+ */
+export async function postResendEmail(
+  message: ResendEmail,
   config: RecoveryMailConfig,
   fetchImpl: typeof fetch = fetch,
 ): Promise<RecoverySendResult> {
-  const idempotencyKey = `checkout-recovery-${message.sessionId}`.slice(0, 255)
+  const body: Record<string, unknown> = {
+    from: config.from,
+    to: [message.to],
+    subject: message.subject,
+    text: message.text,
+    html: message.html,
+  }
+  if (message.headers) body.headers = message.headers
   let response: Response
   try {
     response = await fetchImpl(RESEND_EMAILS_URL, {
@@ -253,19 +285,9 @@ export async function postRecoveryEmail(
       headers: {
         Authorization: `Bearer ${config.apiKey}`,
         'Content-Type': 'application/json',
-        'Idempotency-Key': idempotencyKey,
+        'Idempotency-Key': message.idempotencyKey.slice(0, 255),
       },
-      body: JSON.stringify({
-        from: config.from,
-        to: [message.to],
-        subject: message.subject,
-        text: message.text,
-        html: message.html,
-        headers: {
-          'List-Unsubscribe': message.listUnsubscribe,
-          'List-Unsubscribe-Post': message.listUnsubscribePost,
-        },
-      }),
+      body: JSON.stringify(body),
     })
   } catch {
     return 'retry'
@@ -273,4 +295,30 @@ export async function postRecoveryEmail(
   if (response.ok) return 'sent'
   if (response.status === 429 || response.status >= 500) return 'retry'
   return 'rejected'
+}
+
+/**
+ * POST one in-app recovery email to Resend. The Idempotency-Key is the
+ * Checkout Session id, so a webhook retry does not deliver a second copy.
+ */
+export async function postRecoveryEmail(
+  message: CheckoutRecoveryMessage,
+  config: RecoveryMailConfig,
+  fetchImpl: typeof fetch = fetch,
+): Promise<RecoverySendResult> {
+  return postResendEmail(
+    {
+      idempotencyKey: `checkout-recovery-${message.sessionId}`.slice(0, 255),
+      to: message.to,
+      subject: message.subject,
+      text: message.text,
+      html: message.html,
+      headers: {
+        'List-Unsubscribe': message.listUnsubscribe,
+        'List-Unsubscribe-Post': message.listUnsubscribePost,
+      },
+    },
+    config,
+    fetchImpl,
+  )
 }

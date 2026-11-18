@@ -139,8 +139,9 @@ function rawPaymentLinkId(value: unknown): string | null {
 
 /**
  * Featured week and newsletter mention. Left out of PAYMENT_LINK_OFFER so an
- * expired session is not stored. Also refused here, so adding the id to that
- * map later still does not store or email it.
+ * expired session is not stored on sponsor_abandoned_checkouts. Also refused
+ * here, so adding the id to that map later still does not store it in this
+ * table. Payment Link recovery email is recoverExpiredPaymentLink.
  */
 const ONE_TIME_PAYMENT_LINK_IDS: ReadonlySet<string> = new Set(
   SPONSOR_PAYMENT_LINKS.filter((link) => link.billing === 'one_time').map((link) => link.paymentLinkId),
@@ -183,7 +184,8 @@ function membershipOffering(metadata: Record<string, unknown>): 'membership_mont
  * checkout. A recovery URL is kept only for offerings that may reopen
  * Checkout. Featured week, newsletter mention, and any other
  * `source=payment_link` session without `kind=sponsorship` are not stored
- * and therefore not emailed. The Monthly link stays on the allowlist.
+ * here. Payment Link recovery email is a separate send. The Monthly link
+ * stays on this allowlist.
  */
 export function parseExpiredSponsorCheckout(event: { type?: string; created?: number; data?: { object?: unknown } }, now: number): AbandonedSponsorLead | null {
   if (event.type !== 'checkout.session.expired') return null
@@ -262,6 +264,8 @@ function logRecoveryEmail(sessionId: string, result: RecoverySendResult | Recove
  * recovery URL or task and leaves the rest. One recovery email per session,
  * and only for opt_in. Pass mailer in tests. Omit it to use the Resend env
  * config. Pass null to record the lead and send nothing.
+ * A Payment Link lead is stored and not emailed here. recoverExpiredPaymentLink
+ * sends that message, so this function must not send a second one.
  */
 export async function recordExpiredSponsorCheckout(
   db: Database,
@@ -292,6 +296,8 @@ export async function recordExpiredSponsorCheckout(
         taskSlug: sql`coalesce(${sponsorAbandonedCheckouts.taskSlug}, excluded.task_slug)`,
       },
     })
+
+  if (lead.source === 'payment_link') return
 
   const compliance = recoveryCompliance(process.env)
   if (!compliance.ok) {

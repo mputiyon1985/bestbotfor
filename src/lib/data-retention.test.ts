@@ -7,7 +7,7 @@ import { createClient } from '@libsql/client'
 import { drizzle } from 'drizzle-orm/libsql'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { createTestDatabase } from '@/test/db'
-import { clicks, rateLimits, sponsorAbandonedCheckouts, suggestions } from '@/lib/db/schema'
+import { clicks, paymentLinkRecoveryEmails, rateLimits, sponsorAbandonedCheckouts, suggestions } from '@/lib/db/schema'
 import { DATA_RETENTION_PRODUCTION_LAUNCH } from './retention-flags'
 import {
   CLICK_HASH_RETENTION_MS,
@@ -305,13 +305,35 @@ describe('data retention job', () => {
           createdAt: now,
         },
       ])
+      await db.insert(paymentLinkRecoveryEmails).values([
+        {
+          stripeCheckoutSessionId: 'cs_recovery_old',
+          email: 'old-recovery@example.com',
+          paymentLinkId: 'plink_1Uaz53IJUbygfAucHbIqUfzb',
+          productName: 'Featured spot',
+          recoveryUrl: 'https://buy.stripe.com/28E28s2bCaOeaVI4AYfrW06',
+          createdAt: now - ABANDONED_CHECKOUT_RETENTION_MS - 1,
+          sentAt: now - ABANDONED_CHECKOUT_RETENTION_MS - 1,
+        },
+        {
+          stripeCheckoutSessionId: 'cs_recovery_new',
+          email: 'new-recovery@example.com',
+          paymentLinkId: 'plink_1Uaz53IJUbygfAucHbIqUfzb',
+          productName: 'Featured spot',
+          recoveryUrl: 'https://buy.stripe.com/28E28s2bCaOeaVI4AYfrW06',
+          createdAt: now - day,
+          sentAt: now - day,
+        },
+      ])
       const dry = await runDataRetention(db, { dryRun: true, now })
-      expect(dry.abandonedCheckoutsEligible).toBe(1)
+      expect(dry.abandonedCheckoutsEligible).toBe(2)
       expect(dry.abandonedCheckoutsDeleted).toBe(0)
       const report = await runDataRetention(db, { dryRun: false, now })
-      expect(report).toMatchObject({ abandonedCheckoutsDeleted: 1, wrote: true })
+      expect(report).toMatchObject({ abandonedCheckoutsDeleted: 2, wrote: true })
       const left = await db.select().from(sponsorAbandonedCheckouts)
       expect(left.map((row) => row.stripeCheckoutSessionId)).toEqual(['cs_edge'])
+      const recoveryLeft = await db.select().from(paymentLinkRecoveryEmails)
+      expect(recoveryLeft.map((row) => row.stripeCheckoutSessionId)).toEqual(['cs_recovery_new'])
       expect(JSON.stringify(report)).not.toMatch(/example\.com/)
     } finally {
       await close()
