@@ -3,6 +3,12 @@ import 'server-only'
 import { and, desc, eq, isNull, lt, or, sql } from 'drizzle-orm'
 import type Stripe from 'stripe'
 import {
+  claimRecoveryAddress,
+  markRecoveryAddressFailed,
+  markRecoveryAddressSent,
+  releaseRecoveryAddressClaim,
+} from './checkout-recovery-claim'
+import {
   checkoutRecoveryMessage,
   checkoutRecoveryUrlAllowed,
   postRecoveryEmail,
@@ -255,7 +261,7 @@ export const RECOVERY_EMAIL_CLAIM_LEASE_MS = 60_000
 
 export type RecoveryMailer = (message: CheckoutRecoveryMessage) => Promise<RecoverySendResult>
 
-function logRecoveryEmail(sessionId: string, result: RecoverySendResult | RecoveryMailSkip): void {
+function logRecoveryEmail(sessionId: string, result: RecoverySendResult | RecoveryMailSkip | 'cooldown'): void {
   console.info('checkout_recovery_email', JSON.stringify({ session: sessionId, result }))
 }
 
@@ -264,8 +270,9 @@ function logRecoveryEmail(sessionId: string, result: RecoverySendResult | Recove
  * recovery URL or task and leaves the rest. One recovery email per session,
  * and only for opt_in. Pass mailer in tests. Omit it to use the Resend env
  * config. Pass null to record the lead and send nothing.
- * A Payment Link lead is stored and not emailed here. recoverExpiredPaymentLink
- * sends that message, so this function must not send a second one.
+ * Monthly and the retired founding Payment Link stay on this email.
+ * Other Payment Links are not leads here. The address claim is shared with
+ * Payment Link recovery so the two senders do not both email one address.
  */
 export async function recordExpiredSponsorCheckout(
   db: Database,
@@ -296,8 +303,6 @@ export async function recordExpiredSponsorCheckout(
         taskSlug: sql`coalesce(${sponsorAbandonedCheckouts.taskSlug}, excluded.task_slug)`,
       },
     })
-
-  if (lead.source === 'payment_link') return
 
   const compliance = recoveryCompliance(process.env)
   if (!compliance.ok) {
@@ -334,6 +339,12 @@ export async function recordExpiredSponsorCheckout(
   }
   if (!send) return
 
+  const addressClaim = await claimRecoveryAddress(db, lead.email, lead.sessionId, now)
+  if (addressClaim !== 'claimed') {
+    logRecoveryEmail(lead.sessionId, 'cooldown')
+    return
+  }
+
   const claimed = await db
     .update(sponsorAbandonedCheckouts)
     .set({ recoveryEmailClaimedAt: now })
@@ -349,7 +360,10 @@ export async function recordExpiredSponsorCheckout(
       ),
     )
     .returning({ id: sponsorAbandonedCheckouts.stripeCheckoutSessionId })
-  if (claimed.length === 0) return
+  if (claimed.length === 0) {
+    await releaseRecoveryAddressClaim(db, lead.email, lead.sessionId)
+    return
+  }
 
   let result: RecoverySendResult
   try {
@@ -362,6 +376,7 @@ export async function recordExpiredSponsorCheckout(
       .update(sponsorAbandonedCheckouts)
       .set({ recoveryEmailSentAt: now })
       .where(eq(sponsorAbandonedCheckouts.stripeCheckoutSessionId, lead.sessionId))
+    await markRecoveryAddressSent(db, lead.email, lead.sessionId, now)
     logRecoveryEmail(lead.sessionId, 'sent')
     return
   }
@@ -375,6 +390,8 @@ export async function recordExpiredSponsorCheckout(
         isNull(sponsorAbandonedCheckouts.recoveryEmailSentAt),
       ),
     )
+  if (result === 'rejected') await markRecoveryAddressFailed(db, lead.email, lead.sessionId)
+  else await releaseRecoveryAddressClaim(db, lead.email, lead.sessionId)
   logRecoveryEmail(lead.sessionId, result)
   // A reject is a 4xx from the mail API. The lease is cleared and sent_at stays
   // null, so the row still shows as unsent. A retry is a 429, a 5xx, or a

@@ -240,6 +240,20 @@ export async function adoptPaymentLinkRecoveryEmails(client: Client): Promise<vo
   await client.execute(
     'CREATE INDEX IF NOT EXISTS payment_link_recovery_emails_email_idx ON payment_link_recovery_emails (email)',
   )
+  await addMissingColumns(client, 'payment_link_recovery_emails', [{ name: 'send_status', ddl: 'TEXT' }])
+}
+
+/** One address claim shared by both recovery senders. Additive. Nothing is deleted. */
+export const CHECKOUT_RECOVERY_ADDRESS_CLAIMS_DDL = `CREATE TABLE IF NOT EXISTS checkout_recovery_address_claims (
+  email TEXT PRIMARY KEY,
+  stripe_checkout_session_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  claimed_at INTEGER NOT NULL,
+  sent_at INTEGER
+)`
+
+export async function adoptCheckoutRecoveryAddressClaims(client: Client): Promise<void> {
+  await client.execute(CHECKOUT_RECOVERY_ADDRESS_CLAIMS_DDL)
 }
 
 export async function adoptSponsorAbandonedCheckouts(client: Client): Promise<void> {
@@ -360,6 +374,7 @@ export async function applyMigrations(url: string, authToken?: string, migration
   await adoptSponsorAbandonedCheckouts(client)
   await adoptCheckoutRecoverySuppressions(client)
   await adoptPaymentLinkRecoveryEmails(client)
+  await adoptCheckoutRecoveryAddressClaims(client)
 
   client.close()
 }

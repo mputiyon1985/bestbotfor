@@ -1,44 +1,41 @@
 import 'server-only'
 
-import { and, eq, gte, isNull, sql } from 'drizzle-orm'
+import { and, eq, isNull, lt, or } from 'drizzle-orm'
 import type Stripe from 'stripe'
 import {
+  CHECKOUT_RECOVERY_EMAIL_LIVE,
+  CHECKOUT_RECOVERY_PAYMENT_LINK_IDS,
   paymentLinkRecoveryMailConfig,
-  postResendEmail,
-  type RecoverySendResult,
+  postRecoveryEmail,
+  recoveryCompliance,
+  type CheckoutRecoveryMessage,
 } from './checkout-recovery-mail'
-import { recoveryEmailSuppressed } from './checkout-recovery-unsubscribe'
+import {
+  claimRecoveryAddress,
+  markRecoveryAddressFailed,
+  markRecoveryAddressSent,
+  releaseRecoveryAddressClaim,
+} from './checkout-recovery-claim'
+import {
+  CHECKOUT_RECOVERY_UNSUBSCRIBE_PATH,
+  checkoutRecoveryUnsubscribeToken,
+  recoveryEmailSuppressed,
+} from './checkout-recovery-unsubscribe'
 import type { Database } from './db'
-import { paymentLinkRecoveryEmails, sponsorAbandonedCheckouts, subscribers } from './db/schema'
+import { paymentLinkRecoveryEmails, subscribers } from './db/schema'
 import { UNSUBSCRIBED_SUBSCRIBER_STATUS } from './newsletter-status'
-import { RETIRED_FOUNDING_PAYMENT_LINK_ID } from './sponsor-abandoned'
+import { RECOVERY_EMAIL_CLAIM_LEASE_MS, parseExpiredSponsorCheckout } from './sponsor-abandoned'
 import { SPONSOR_PAYMENT_LINKS } from './sponsor-payment-links'
+import { getSiteUrl } from './site'
 import { emailSchema } from './validation'
 
-/** Footer line required on every Payment Link recovery email. */
-export const PAYMENT_LINK_RECOVERY_ADDRESS = 'BestBotFor, 2525 Pointe Center Court, Suite 200, Dumfries, VA 22026'
-
-/** Second footer line. This repo does not read inbound replies. */
+/** Second footer line, after the postal address from CHECKOUT_RECOVERY_POSTAL_ADDRESS. */
 export const PAYMENT_LINK_RECOVERY_OPT_OUT = "Reply 'no thanks' and we won't email you again."
 
-/** A second recovery email to the same address waits this long. */
-export const PAYMENT_LINK_RECOVERY_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000
+export { CHECKOUT_RECOVERY_PAYMENT_LINK_IDS } from './checkout-recovery-mail'
 
-/**
- * Public URL of the retired founding Payment Link. It is not on
- * SPONSOR_PAYMENT_LINKS. The record is in docs/runbooks/sponsor-payment-links.md.
- */
-const RETIRED_FOUNDING_PAYMENT_LINK = {
-  paymentLinkId: RETIRED_FOUNDING_PAYMENT_LINK_ID,
-  url: 'https://buy.stripe.com/fZudRabMce0q5BoebyfrW04',
-  productName: 'Founding sponsor',
-} as const
-
-export type PaymentLinkTarget = {
-  paymentLinkId: string
-  url: string
-  productName: string
-}
+const PAYMENT_LINK_ID = /^plink_[A-Za-z0-9]+$/
+const UNSUBSCRIBE_MAILTO = 'mailto:privacy@bestbotfor.com?subject=Unsubscribe'
 
 export type PaymentLinkRecoverySkip =
   | 'not-payment-link'
@@ -46,9 +43,14 @@ export type PaymentLinkRecoverySkip =
   | 'paid'
   | 'no-consent'
   | 'no-email'
+  | 'not-allowlisted'
+  | 'sponsor-checkout'
   | 'no-url'
+  | 'inactive'
   | 'mail-not-configured'
   | 'live-email-off'
+  | 'postal-address-missing'
+  | 'unsubscribe-secret-missing'
   | 'suppressed'
   | 'cooldown'
   | 'duplicate'
@@ -59,8 +61,6 @@ export type PaymentLinkRecoveryResult = { action: 'sent' } | { action: 'skipped'
 type ParsedPaymentLink =
   | { ok: true; sessionId: string; email: string; paymentLinkId: string }
   | { ok: false; reason: 'not-payment-link' | 'bad-session' | 'paid' | 'no-consent' | 'no-email' }
-
-const PAYMENT_LINK_ID = /^plink_[A-Za-z0-9]+$/
 
 function sessionRecord(event: { type?: string; data?: { object?: unknown } }): Record<string, unknown> | null {
   if (event.type !== 'checkout.session.expired') return null
@@ -83,6 +83,19 @@ export function paymentLinkIdOf(value: unknown): string | null {
     return value.id
   }
   return null
+}
+
+/**
+ * Comma-separated plink ids from CHECKOUT_RECOVERY_PAYMENT_LINK_IDS.
+ * There is no default. Unset, blank, and ids that are not plink_… are ignored.
+ */
+export function checkoutRecoveryPaymentLinkIds(env: Record<string, string | undefined>): ReadonlySet<string> {
+  const ids = new Set<string>()
+  for (const part of (env[CHECKOUT_RECOVERY_PAYMENT_LINK_IDS] ?? '').split(',')) {
+    const id = part.trim()
+    if (PAYMENT_LINK_ID.test(id)) ids.add(id)
+  }
+  return ids
 }
 
 function promotionsOptIn(session: Record<string, unknown>): boolean {
@@ -142,21 +155,12 @@ export function cleanProductName(value: string): string {
   return cleaned || 'a BestBotFor offer'
 }
 
-/** Known Payment Links, including the retired founding link. No Stripe call. */
-export function knownPaymentLink(paymentLinkId: string): PaymentLinkTarget | null {
-  const live = SPONSOR_PAYMENT_LINKS.find((link) => link.paymentLinkId === paymentLinkId)
-  if (live) return { paymentLinkId, url: live.url, productName: cleanProductName(live.title) }
-  if (paymentLinkId === RETIRED_FOUNDING_PAYMENT_LINK.paymentLinkId) {
-    return {
-      paymentLinkId,
-      url: RETIRED_FOUNDING_PAYMENT_LINK.url,
-      productName: RETIRED_FOUNDING_PAYMENT_LINK.productName,
-    }
-  }
-  return null
+function escapeHtml(value: string): string {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 }
 
 type StripePaymentLinkShape = {
+  active?: boolean
   url?: string | null
   line_items?: {
     data?: Array<{
@@ -166,108 +170,100 @@ type StripePaymentLinkShape = {
   } | null
 }
 
-function productNameFromLink(link: StripePaymentLinkShape): string {
+function productNameFromLink(link: StripePaymentLinkShape, paymentLinkId: string): string {
   const item = link.line_items?.data?.[0]
   const product = item?.price?.product
   const fromProduct = product && typeof product === 'object' && typeof product.name === 'string' ? product.name : ''
   const fromDescription = typeof item?.description === 'string' ? item.description : ''
-  return cleanProductName(fromProduct || fromDescription)
+  const known = SPONSOR_PAYMENT_LINKS.find((entry) => entry.paymentLinkId === paymentLinkId)?.title ?? ''
+  return cleanProductName(fromProduct || fromDescription || known)
 }
 
-async function resolvePaymentLink(stripe: Stripe, paymentLinkId: string): Promise<PaymentLinkTarget | null> {
-  const known = knownPaymentLink(paymentLinkId)
-  if (known) return paymentLinkUrlOk(known.url) ? known : null
+/**
+ * Active Payment Link only. An inactive link, or a url that is not
+ * https://buy.stripe.com/…, is not emailed.
+ */
+async function activePaymentLink(
+  stripe: Stripe,
+  paymentLinkId: string,
+): Promise<{ url: string; productName: string } | null> {
   const link = (await stripe.paymentLinks.retrieve(paymentLinkId, {
     expand: ['line_items', 'line_items.data.price.product'],
   })) as unknown as StripePaymentLinkShape
+  if (link.active !== true) return null
   const url = typeof link.url === 'string' ? link.url : ''
   if (!paymentLinkUrlOk(url)) return null
-  return { paymentLinkId, url, productName: productNameFromLink(link) }
+  return { url, productName: productNameFromLink(link, paymentLinkId) }
 }
 
-function escapeHtml(value: string): string {
-  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
-}
-
-export type PaymentLinkRecoveryMessage = {
-  sessionId: string
-  to: string
-  subject: string
-  text: string
-  html: string
-}
-
-/** Short plain copy. The footer is the address line, then the reply line. */
+/** Short copy plus the same unsubscribe line the in-app recovery email uses. */
 export function paymentLinkRecoveryMessage(input: {
   sessionId: string
   email: string
   productName: string
   url: string
-}): PaymentLinkRecoveryMessage | null {
+  postalAddress: string
+  unsubscribeUrl: string
+}): CheckoutRecoveryMessage | null {
   const sessionId = checkoutSessionId(input.sessionId)
   const email = emailSchema.safeParse(input.email)
   if (!sessionId || !email.success) return null
   if (!paymentLinkUrlOk(input.url)) return null
+  if (!input.unsubscribeUrl.includes(CHECKOUT_RECOVERY_UNSUBSCRIBE_PATH)) return null
+  const postal = input.postalAddress.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim()
+  if (!postal || postal.includes('<') || postal.includes('>')) return null
   const product = cleanProductName(input.productName)
   const subject = `Finish checkout for ${product}`.slice(0, 180)
   const text = [
     `You started checkout for ${product}. Here's the link to finish:`,
     input.url,
     '',
-    PAYMENT_LINK_RECOVERY_ADDRESS,
+    `Unsubscribe: ${input.unsubscribeUrl}`,
+    'Or email privacy@bestbotfor.com with the subject Unsubscribe.',
+    '',
+    postal,
     PAYMENT_LINK_RECOVERY_OPT_OUT,
   ].join('\n')
   const safeProduct = escapeHtml(product)
   const safeUrl = escapeHtml(input.url)
+  const safeUnsub = escapeHtml(input.unsubscribeUrl)
+  const safePostal = escapeHtml(postal).replace(/\n/g, '<br>')
   const html = [
     `<p>You started checkout for ${safeProduct}. Here's the link to finish:</p>`,
     `<p><a href="${safeUrl}">${safeUrl}</a></p>`,
-    `<p>${escapeHtml(PAYMENT_LINK_RECOVERY_ADDRESS)}<br>${escapeHtml(PAYMENT_LINK_RECOVERY_OPT_OUT)}</p>`,
+    `<p><a href="${safeUnsub}">Unsubscribe</a>. Or email privacy@bestbotfor.com with the subject Unsubscribe.</p>`,
+    `<p>${safePostal}<br>${escapeHtml(PAYMENT_LINK_RECOVERY_OPT_OUT)}</p>`,
   ].join('')
-  return { sessionId, to: email.data.toLowerCase(), subject, text, html }
-}
-
-type QueryDb = Pick<Database, 'select'>
-
-async function blockReason(db: QueryDb, email: string, now: number): Promise<'suppressed' | 'cooldown' | null> {
-  if (await recoveryEmailSuppressed(db as Database, email)) return 'suppressed'
-  const subscriber = await db
-    .select({ status: subscribers.status })
-    .from(subscribers)
-    .where(eq(subscribers.email, email))
-    .limit(1)
-  if (subscriber[0]?.status === UNSUBSCRIBED_SUBSCRIBER_STATUS) return 'suppressed'
-  const cutoff = now - PAYMENT_LINK_RECOVERY_COOLDOWN_MS
-  const recent = await db
-    .select({ id: paymentLinkRecoveryEmails.stripeCheckoutSessionId })
-    .from(paymentLinkRecoveryEmails)
-    .where(and(sql`lower(${paymentLinkRecoveryEmails.email}) = ${email}`, gte(paymentLinkRecoveryEmails.createdAt, cutoff)))
-    .limit(1)
-  if (recent.length > 0) return 'cooldown'
-  const prior = await db
-    .select({ id: sponsorAbandonedCheckouts.stripeCheckoutSessionId })
-    .from(sponsorAbandonedCheckouts)
-    .where(
-      and(
-        sql`lower(${sponsorAbandonedCheckouts.email}) = ${email}`,
-        gte(sponsorAbandonedCheckouts.recoveryEmailSentAt, cutoff),
-      ),
-    )
-    .limit(1)
-  if (prior.length > 0) return 'cooldown'
-  return null
+  return {
+    sessionId,
+    to: email.data.toLowerCase(),
+    subject,
+    text,
+    html,
+    listUnsubscribe: `<${input.unsubscribeUrl}>, <${UNSUBSCRIBE_MAILTO}>`,
+    listUnsubscribePost: 'List-Unsubscribe=One-Click',
+  }
 }
 
 function logRecovery(sessionId: string, result: 'sent' | 'retry' | PaymentLinkRecoverySkip): void {
   console.info('payment_link_recovery_email', JSON.stringify({ session: sessionId, result }))
 }
 
+async function addressSuppressed(db: Database, email: string): Promise<boolean> {
+  if (await recoveryEmailSuppressed(db, email)) return true
+  const subscriber = await db
+    .select({ status: subscribers.status })
+    .from(subscribers)
+    .where(eq(subscribers.email, email))
+    .limit(1)
+  return subscriber[0]?.status === UNSUBSCRIBED_SUBSCRIBER_STATUS
+}
+
 /**
- * One recovery email for an expired Payment Link Checkout.
- * The session id is inserted before the send. A second delivery hits that
- * primary key and does not send again. A retryable mail failure deletes the
- * unsent row and throws so Stripe can deliver the event again. The Resend
- * Idempotency-Key is the same session id.
+ * One recovery email for an expired Payment Link that is on the env allowlist
+ * and is not already handled by the in-app sponsor email.
+ * Live mode and the allowlist are checked before any Stripe read. The live
+ * flag off means this returns without calling Stripe.
  */
 export async function recoverExpiredPaymentLink(
   db: Database,
@@ -279,74 +275,111 @@ export async function recoverExpiredPaymentLink(
   const parsed = parseExpiredPaymentLink(event)
   if (!parsed.ok) return { action: 'skipped', reason: parsed.reason }
 
-  const target = await resolvePaymentLink(stripe, parsed.paymentLinkId)
-  if (!target) {
-    logRecovery(parsed.sessionId, 'no-url')
-    return { action: 'skipped', reason: 'no-url' }
+  const env = options?.env ?? process.env
+  if (event.livemode === true && env[CHECKOUT_RECOVERY_EMAIL_LIVE] !== 'true') {
+    logRecovery(parsed.sessionId, 'live-email-off')
+    return { action: 'skipped', reason: 'live-email-off' }
   }
+  if (!checkoutRecoveryPaymentLinkIds(env).has(parsed.paymentLinkId)) {
+    logRecovery(parsed.sessionId, 'not-allowlisted')
+    return { action: 'skipped', reason: 'not-allowlisted' }
+  }
+  // Monthly and the retired founding link already get the in-app email.
+  if (parseExpiredSponsorCheckout(event, now)) {
+    logRecovery(parsed.sessionId, 'sponsor-checkout')
+    return { action: 'skipped', reason: 'sponsor-checkout' }
+  }
+  const compliance = recoveryCompliance(env)
+  if (!compliance.ok) {
+    logRecovery(parsed.sessionId, compliance.reason)
+    return { action: 'skipped', reason: compliance.reason }
+  }
+  const plan = paymentLinkRecoveryMailConfig(env, event.livemode === true)
+  if (!plan.ok) {
+    logRecovery(parsed.sessionId, plan.reason)
+    return { action: 'skipped', reason: plan.reason }
+  }
+  if (await addressSuppressed(db, parsed.email)) {
+    logRecovery(parsed.sessionId, 'suppressed')
+    return { action: 'skipped', reason: 'suppressed' }
+  }
+
+  const target = await activePaymentLink(stripe, parsed.paymentLinkId)
+  if (!target) {
+    logRecovery(parsed.sessionId, 'inactive')
+    return { action: 'skipped', reason: 'inactive' }
+  }
+  const token = checkoutRecoveryUnsubscribeToken(compliance.compliance.unsubscribeSecret, parsed.email)
+  const unsubscribeUrl = token
+    ? `${getSiteUrl()}${CHECKOUT_RECOVERY_UNSUBSCRIBE_PATH}?token=${encodeURIComponent(token)}`
+    : ''
   const message = paymentLinkRecoveryMessage({
     sessionId: parsed.sessionId,
     email: parsed.email,
     productName: target.productName,
     url: target.url,
+    postalAddress: compliance.compliance.postalAddress,
+    unsubscribeUrl,
   })
   if (!message) {
     logRecovery(parsed.sessionId, 'no-email')
     return { action: 'skipped', reason: 'no-email' }
   }
 
-  const env = options?.env ?? process.env
-  const plan = paymentLinkRecoveryMailConfig(env, event.livemode === true)
-  if (!plan.ok) {
-    logRecovery(parsed.sessionId, plan.reason)
-    return { action: 'skipped', reason: plan.reason }
+  const address = await claimRecoveryAddress(db, parsed.email, parsed.sessionId, now)
+  if (address !== 'claimed') {
+    logRecovery(parsed.sessionId, address)
+    return { action: 'skipped', reason: address }
   }
-
-  const claim = await db.transaction(async (tx) => {
-    const blocked = await blockReason(tx, parsed.email, now)
-    if (blocked) return blocked
-    const inserted = await tx
-      .insert(paymentLinkRecoveryEmails)
-      .values({
-        stripeCheckoutSessionId: parsed.sessionId,
+  const inserted = await db
+    .insert(paymentLinkRecoveryEmails)
+    .values({
+      stripeCheckoutSessionId: parsed.sessionId,
+      email: parsed.email,
+      paymentLinkId: parsed.paymentLinkId,
+      productName: target.productName,
+      recoveryUrl: target.url,
+      createdAt: now,
+      sentAt: null,
+      sendStatus: 'claimed',
+    })
+    .onConflictDoUpdate({
+      target: paymentLinkRecoveryEmails.stripeCheckoutSessionId,
+      set: {
         email: parsed.email,
-        paymentLinkId: target.paymentLinkId,
+        paymentLinkId: parsed.paymentLinkId,
         productName: target.productName,
         recoveryUrl: target.url,
         createdAt: now,
         sentAt: null,
-      })
-      .onConflictDoNothing()
-      .returning({ id: paymentLinkRecoveryEmails.stripeCheckoutSessionId })
-    if (inserted.length === 0) return 'duplicate' as const
-    return 'claimed' as const
-  })
-  if (claim !== 'claimed') {
-    logRecovery(parsed.sessionId, claim)
-    return { action: 'skipped', reason: claim }
-  }
-
-  let result: RecoverySendResult
-  try {
-    result = await postResendEmail(
-      {
-        idempotencyKey: parsed.sessionId,
-        to: message.to,
-        subject: message.subject,
-        text: message.text,
-        html: message.html,
+        sendStatus: 'claimed',
       },
-      plan.config,
-      options?.fetchImpl,
-    )
+      setWhere: or(
+        eq(paymentLinkRecoveryEmails.sendStatus, 'failed'),
+        and(
+          eq(paymentLinkRecoveryEmails.sendStatus, 'claimed'),
+          lt(paymentLinkRecoveryEmails.createdAt, now - RECOVERY_EMAIL_CLAIM_LEASE_MS),
+        ),
+      ),
+    })
+    .returning({ id: paymentLinkRecoveryEmails.stripeCheckoutSessionId })
+  if (inserted.length === 0) {
+    await releaseRecoveryAddressClaim(db, parsed.email, parsed.sessionId)
+    logRecovery(parsed.sessionId, 'duplicate')
+    return { action: 'skipped', reason: 'duplicate' }
+  }
+  let result: 'sent' | 'retry' | 'rejected'
+  try {
+    result = await postRecoveryEmail(message, plan.config, options?.fetchImpl)
   } catch {
     result = 'retry'
   }
   if (result === 'sent') {
     await db
       .update(paymentLinkRecoveryEmails)
-      .set({ sentAt: now })
+      .set({ sentAt: now, sendStatus: 'sent' })
       .where(eq(paymentLinkRecoveryEmails.stripeCheckoutSessionId, parsed.sessionId))
+    await markRecoveryAddressSent(db, parsed.email, parsed.sessionId, now)
     logRecovery(parsed.sessionId, 'sent')
     return { action: 'sent' }
   }
@@ -359,9 +392,15 @@ export async function recoverExpiredPaymentLink(
           isNull(paymentLinkRecoveryEmails.sentAt),
         ),
       )
+    await releaseRecoveryAddressClaim(db, parsed.email, parsed.sessionId)
     logRecovery(parsed.sessionId, 'retry')
     throw new Error('payment link recovery email retry')
   }
+  await db
+    .update(paymentLinkRecoveryEmails)
+    .set({ sentAt: null, sendStatus: 'failed' })
+    .where(eq(paymentLinkRecoveryEmails.stripeCheckoutSessionId, parsed.sessionId))
+  await markRecoveryAddressFailed(db, parsed.email, parsed.sessionId)
   logRecovery(parsed.sessionId, 'rejected')
   return { action: 'skipped', reason: 'rejected' }
 }

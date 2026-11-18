@@ -15,6 +15,9 @@ const ALLOWED = new Set([
   // One Payment Link recovery email per Checkout Session. The session id is
   // inserted before the send. A retryable failure deletes that unsent row.
   'src/lib/payment-link-recovery.ts',
+  // One recovery-email claim per address, shared by both senders. A 4xx is
+  // `failed` and is outside the 7-day window.
+  'src/lib/checkout-recovery-claim.ts',
   // Checkout recovery unsubscribe list. One row per address. Not deleted on a schedule.
   'src/lib/checkout-recovery-unsubscribe.ts',
   // Sponsor tool cards, their review audit log, and the checkout slot claim.

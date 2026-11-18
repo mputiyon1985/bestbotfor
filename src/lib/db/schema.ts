@@ -649,9 +649,23 @@ export const paymentLinkRecoveryEmails = sqliteTable(
     recoveryUrl: text('recovery_url').notNull(),
     createdAt: integer('created_at').notNull(),
     sentAt: integer('sent_at'),
+    /** `claimed` while sending, `sent` after accept, `failed` after a 4xx. A 4xx does not start the 7-day window. */
+    sendStatus: text('send_status'),
   },
   (table) => [index('payment_link_recovery_emails_email_idx').on(table.email)],
 )
+
+/**
+ * One recovery-email claim per address, shared by the in-app sender and the
+ * Payment Link sender. `failed` is a rejected send and is outside the 7-day window.
+ */
+export const checkoutRecoveryAddressClaims = sqliteTable('checkout_recovery_address_claims', {
+  email: text('email').primaryKey(),
+  stripeCheckoutSessionId: text('stripe_checkout_session_id').notNull(),
+  status: text('status').notNull(),
+  claimedAt: integer('claimed_at').notNull(),
+  sentAt: integer('sent_at'),
+})
 
 /**
  * Private outreach list for /admin/leads. contact_email is stored lowercased

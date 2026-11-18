@@ -14,6 +14,8 @@ import { emailSchema } from './validation'
 export const CHECKOUT_RECOVERY_RESEND_API_KEY = 'CHECKOUT_RECOVERY_RESEND_API_KEY'
 export const CHECKOUT_RECOVERY_FROM = 'CHECKOUT_RECOVERY_FROM'
 export const CHECKOUT_RECOVERY_EMAIL_LIVE = 'CHECKOUT_RECOVERY_EMAIL_LIVE'
+/** Comma-separated plink ids. Unset means no Payment Link recovery emails. */
+export const CHECKOUT_RECOVERY_PAYMENT_LINK_IDS = 'CHECKOUT_RECOVERY_PAYMENT_LINK_IDS'
 export const CHECKOUT_RECOVERY_POSTAL_ADDRESS = 'CHECKOUT_RECOVERY_POSTAL_ADDRESS'
 
 const RESEND_EMAILS_URL = 'https://api.resend.com/emails'
@@ -216,7 +218,7 @@ export function recoveryCompliance(
   return { ok: true, compliance: { postalAddress, unsubscribeSecret: secret } }
 }
 
-export type RecoveryMailConfig = { apiKey: string; from: string }
+export type RecoveryMailConfig = { apiKey: string; from: string; replyTo?: string }
 
 /** Whether Resend may be called. Live mode stays off until the flag is exactly true. */
 export function recoveryMailConfig(
@@ -231,12 +233,26 @@ export function recoveryMailConfig(
   return { ok: true, config: { apiKey, from } }
 }
 
-/** Payment Link recovery is always this address. The in-app recovery From stays on CHECKOUT_RECOVERY_FROM. */
-export const PAYMENT_LINK_RECOVERY_FROM = 'mark@bestbotfor.com'
+/** Bare From address for Payment Link recovery. Unset uses mark@bestbotfor.com. */
+export const CHECKOUT_RECOVERY_FROM_EMAIL = 'CHECKOUT_RECOVERY_FROM_EMAIL'
+export const PAYMENT_LINK_RECOVERY_DEFAULT_FROM = 'mark@bestbotfor.com'
+
+const BARE_EMAIL = /^[^<>\r\n @]+@[^<>\r\n ]+$/
+
+/**
+ * From and Reply-To for a Payment Link recovery email.
+ * A blank value uses mark@bestbotfor.com. A value that is not one bare address is refused.
+ */
+export function paymentLinkFromEmail(env: Record<string, string | undefined>): string | null {
+  const value = (env[CHECKOUT_RECOVERY_FROM_EMAIL] ?? '').trim()
+  if (!value) return PAYMENT_LINK_RECOVERY_DEFAULT_FROM
+  if (!BARE_EMAIL.test(value) || value.length > 200) return null
+  return value
+}
 
 /**
  * Resend key and live-mode gate for a Payment Link recovery email.
- * The From address is mark@bestbotfor.com and does not read CHECKOUT_RECOVERY_FROM.
+ * The From address is CHECKOUT_RECOVERY_FROM_EMAIL, not CHECKOUT_RECOVERY_FROM.
  */
 export function paymentLinkRecoveryMailConfig(
   env: Record<string, string | undefined>,
@@ -245,7 +261,9 @@ export function paymentLinkRecoveryMailConfig(
   if (livemode && env[CHECKOUT_RECOVERY_EMAIL_LIVE] !== 'true') return { ok: false, reason: 'live-email-off' }
   const apiKey = env[CHECKOUT_RECOVERY_RESEND_API_KEY]?.trim() ?? ''
   if (!apiKey.startsWith('re_') || apiKey.length < 8 || /\s/.test(apiKey)) return { ok: false, reason: 'mail-not-configured' }
-  return { ok: true, config: { apiKey, from: PAYMENT_LINK_RECOVERY_FROM } }
+  const from = paymentLinkFromEmail(env)
+  if (!from) return { ok: false, reason: 'mail-not-configured' }
+  return { ok: true, config: { apiKey, from, replyTo: from } }
 }
 
 export type RecoverySendResult = 'sent' | 'retry' | 'rejected'
@@ -257,6 +275,7 @@ export type ResendEmail = {
   text: string
   html: string
   headers?: Record<string, string>
+  replyTo?: string
 }
 
 /**
@@ -275,6 +294,7 @@ export async function postResendEmail(
     text: message.text,
     html: message.html,
   }
+  if (message.replyTo) body.reply_to = message.replyTo
   if (message.headers) body.headers = message.headers
   let response: Response
   try {
@@ -317,6 +337,7 @@ export async function postRecoveryEmail(
         'List-Unsubscribe': message.listUnsubscribe,
         'List-Unsubscribe-Post': message.listUnsubscribePost,
       },
+      replyTo: config.replyTo,
     },
     config,
     fetchImpl,
