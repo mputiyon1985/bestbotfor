@@ -13166,7 +13166,6 @@ export const toolSeeds: ToolSeed[] = [
   // DocDost AI is the iPhone app at https://apps.apple.com/us/app/docdost-ai/id6828870317. The slug is docdost-ai.
   // Every hand-off category already exists. No category was remapped in this batch.
   // Prices in euros: Ridian, Revix AI, Letterslot, Scanaris, Spokendocs, Fefou and Yakafa. Prices in pounds: Machinence and Verspa. Prices in rupees: nutri and lally. No dollar from-price is stored for those.
-  // ai Canvas, ai Music Maker and ai Spar use a lowercase-first display name, the same way myPip does. The tools index orders tools.name with SQLite BINARY collation, so a capital "AI " sorts before AIVA and would push the first hosted logo below the first screen.
   // Helpwing sells minute packs in dollars and in rupees. RingVia lists US and Canadian dollars. The stored from-price is the US dollar monthly rate.
   // Mermaid Flow, Arcade, Ody and Baylo publish monthly rates billed annually. Those four slugs are on ANNUAL_BILLED_SLUGS.
   // scout 2026-11-18 | category: Productivity | scout rating 3.9 (not shown) | launch: 2026-11-17 (Product Hunt, featured) | pricing: Free: Always free (2 calendar accounts, 1 one-way sync, 1 funnel, 50 leads/month, 1 calendar feed, 100 subscribers, 100 AI credits/month, unlimited Agent Connect). Basic: €8/user/mo (€72 upfront first year, then €8/mo) includes 3 calendar accounts, 5 syncs, 3 funnels, 250 leads/month, 3 calendar feeds, 1,000 subscribers, 1,000 AI credits/month, 3 Agent Mailboxes, 7-day access log. Professional: €15/user/mo (€144 upfront first year, then €15/mo) includes everything in Basic plus higher limits. Alvin Plus add-on: +€10/user/mo for 3,000 AI credits + WhatsApp. Try Professional free for 7 days, no credit card required. Product Hunt offer: 50% off the first invoice. The code is not stored.
@@ -13438,8 +13437,8 @@ export const toolSeeds: ToolSeed[] = [
   tool({
     slug: 'ai-canvas',
     addedAt: SCOUTED_2026_11_18,
-    name: 'ai Canvas',
-    vendor: 'ai Canvas',
+    name: 'AI Canvas',
+    vendor: 'AI Canvas',
     url: 'https://aicanvas.me',
     allowedHosts: ['aicanvas.me'],
     category: 'Design',
@@ -14120,8 +14119,8 @@ export const toolSeeds: ToolSeed[] = [
   tool({
     slug: 'ai-music-maker',
     addedAt: SCOUTED_2026_11_18,
-    name: 'ai Music Maker',
-    vendor: 'ai Music Maker',
+    name: 'AI Music Maker',
+    vendor: 'AI Music Maker',
     url: 'https://aimusicmaker.org',
     allowedHosts: ['aimusicmaker.org'],
     category: 'Music',
@@ -15792,8 +15791,8 @@ export const toolSeeds: ToolSeed[] = [
   tool({
     slug: 'ai-spar',
     addedAt: SCOUTED_2026_11_18,
-    name: 'ai Spar',
-    vendor: 'ai Spar',
+    name: 'AI Spar',
+    vendor: 'AI Spar',
     url: 'https://aispar.app',
     allowedHosts: ['aispar.app'],
     category: 'Research',

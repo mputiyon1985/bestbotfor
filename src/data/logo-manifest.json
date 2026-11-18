@@ -10,6 +10,21 @@
     "fetchedAt": "2026-10-16"
   },
   {
+    "slug": "ai-canvas",
+    "sourceUrl": "https://aicanvas.me/icon.svg",
+    "fetchedAt": "2026-11-18"
+  },
+  {
+    "slug": "ai-music-maker",
+    "sourceUrl": "https://aimusicmaker.org/logo.png",
+    "fetchedAt": "2026-11-18"
+  },
+  {
+    "slug": "ai-spar",
+    "sourceUrl": "https://aispar.app/static/favicon.svg",
+    "fetchedAt": "2026-11-18"
+  },
+  {
     "slug": "aiva",
     "sourceUrl": "https://www.aiva.ai/assets/img/favicon.ico",
     "fetchedAt": "2026-10-16"

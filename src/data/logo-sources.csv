@@ -604,7 +604,7 @@ plinth-cloud,,https://useplinth.cloud,,,missing
 ui-verify,,https://uiverify.ai,,,missing
 polyroom,,https://polyroom.ai/en,,,missing
 machinence,,https://machinence.io,,,missing
-ai-canvas,,https://aicanvas.me,,,missing
+ai-canvas,https://aicanvas.me/icon.svg,https://aicanvas.me,svg,vector,ok
 arcade-ai-video,,https://arcade.software,,,missing
 anyimg,,https://anyimg.ai,,,missing
 mermaid-flow,,https://mermaid.ai/products/flow,,,missing
@@ -635,7 +635,7 @@ tengochat,,https://tengochat.com,,,missing
 scanaris,,https://www.scanaris.com,,,missing
 toozi,,https://toozitax.app,,,missing
 face-shape-haircut-ai,,https://faceshapehaircut.com,,,missing
-ai-music-maker,,https://aimusicmaker.org,,,missing
+ai-music-maker,https://aimusicmaker.org/logo.png,https://aimusicmaker.org,png,512x512,ok
 rally-ai,,https://rallywith.ai,,,missing
 crosshead,,https://crosshead.sh,,,missing
 sikemux,,https://sikemux.com,,,missing
@@ -711,6 +711,6 @@ solarian,,https://solarian.dev,,,missing
 r3-hyperlogue,,https://r3.hyperlogue.tech,,,missing
 yantra-app,,https://yantra.app,,,missing
 murer-ai,,https://murer.ai,,,missing
-ai-spar,,https://aispar.app,,,missing
+ai-spar,https://aispar.app/static/favicon.svg,https://aispar.app,svg,vector,ok
 bysicle,,https://www.bysicle.com,,,missing
 docdost-ai,,https://apps.apple.com/us/app/docdost-ai/id6828870317,,,missing
