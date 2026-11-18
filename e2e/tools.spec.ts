@@ -249,9 +249,10 @@ test('a tool card and an 80% logo mark fit the first 390px viewport', async ({ p
   await page.setViewportSize(viewport)
   await page.goto('/tools')
 
-  // The first card with a hosted logo (a monogram-only tool, such as 1Password for Agents, can sort first).
+  // The first card with a hosted logo. Monogram tools can sort first, including names
+  // such as "AI Canvas" that the catalog order places before "Activepieces".
   const card = page.getByRole('list', { name: 'Tools' }).getByRole('listitem').filter({ has: page.locator('img') }).first()
-  await expect(card).toBeVisible()
+  await card.scrollIntoViewIfNeeded()
   const cardBox = await card.boundingBox()
   expect(cardBox, 'first tool card').not.toBeNull()
   if (!cardBox) return
@@ -292,6 +293,7 @@ test('a tool card and an 80% logo mark fit the first 390px viewport', async ({ p
   expect(monogramSize.mark / monogramSize.tile).toBeGreaterThanOrEqual(TOOL_LOGO_MARK_FILL - 0.05)
   expect(monogramSize.mark / monogramSize.tile).toBeLessThanOrEqual(TOOL_LOGO_MARK_FILL + 0.05)
 
+  await page.evaluate(() => window.scrollTo(0, 0))
   const nav = page.getByRole('navigation', { name: 'Filter by category' })
   await expect(nav).toBeVisible()
   const chips = nav.getByRole('link')
