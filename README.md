@@ -70,12 +70,15 @@ npm run check:stripe-keys
 npm run check:gitleaks
 npm run check:db-writes
 npm run check:members
+npm run check:audit
 npm run build
 npm run test:e2e
 npm run stripe:setup-test
 ```
 
 End-to-end tests build the production server themselves through Playwright. Set `TURSO_DATABASE_URL=file:./data/e2e.db` and `NEXT_PUBLIC_SITE_URL=http://127.0.0.1:3000` if you run them outside CI.
+
+`npm run check:audit` is the CI audit gate (`scripts/audit-check.mjs`). It runs `npm audit --json --audit-level=high`. High and critical advisories fail the job. One dev-only entry, `GHSA-fc5q-39xc-vjpf` (picomatch `<=4.0.7`), is waived while the UTC date is before `2026-12-01` and no patched picomatch release is published. The record is `docs/runbooks/ci-audit.md`.
 
 ## Encoded dot segments
 
