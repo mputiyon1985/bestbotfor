@@ -3,6 +3,12 @@ import 'server-only'
 import { and, desc, eq, isNull, lt, or, sql } from 'drizzle-orm'
 import type Stripe from 'stripe'
 import {
+  claimRecoveryAddress,
+  markRecoveryAddressFailed,
+  markRecoveryAddressSent,
+  releaseRecoveryAddressClaim,
+} from './checkout-recovery-claim'
+import {
   checkoutRecoveryMessage,
   checkoutRecoveryUrlAllowed,
   postRecoveryEmail,
@@ -139,8 +145,9 @@ function rawPaymentLinkId(value: unknown): string | null {
 
 /**
  * Featured week and newsletter mention. Left out of PAYMENT_LINK_OFFER so an
- * expired session is not stored. Also refused here, so adding the id to that
- * map later still does not store or email it.
+ * expired session is not stored on sponsor_abandoned_checkouts. Also refused
+ * here, so adding the id to that map later still does not store it in this
+ * table. Payment Link recovery email is recoverExpiredPaymentLink.
  */
 const ONE_TIME_PAYMENT_LINK_IDS: ReadonlySet<string> = new Set(
   SPONSOR_PAYMENT_LINKS.filter((link) => link.billing === 'one_time').map((link) => link.paymentLinkId),
@@ -183,7 +190,8 @@ function membershipOffering(metadata: Record<string, unknown>): 'membership_mont
  * checkout. A recovery URL is kept only for offerings that may reopen
  * Checkout. Featured week, newsletter mention, and any other
  * `source=payment_link` session without `kind=sponsorship` are not stored
- * and therefore not emailed. The Monthly link stays on the allowlist.
+ * here. Payment Link recovery email is a separate send. The Monthly link
+ * stays on this allowlist.
  */
 export function parseExpiredSponsorCheckout(event: { type?: string; created?: number; data?: { object?: unknown } }, now: number): AbandonedSponsorLead | null {
   if (event.type !== 'checkout.session.expired') return null
@@ -253,7 +261,7 @@ export const RECOVERY_EMAIL_CLAIM_LEASE_MS = 60_000
 
 export type RecoveryMailer = (message: CheckoutRecoveryMessage) => Promise<RecoverySendResult>
 
-function logRecoveryEmail(sessionId: string, result: RecoverySendResult | RecoveryMailSkip): void {
+function logRecoveryEmail(sessionId: string, result: RecoverySendResult | RecoveryMailSkip | 'cooldown'): void {
   console.info('checkout_recovery_email', JSON.stringify({ session: sessionId, result }))
 }
 
@@ -262,6 +270,9 @@ function logRecoveryEmail(sessionId: string, result: RecoverySendResult | Recove
  * recovery URL or task and leaves the rest. One recovery email per session,
  * and only for opt_in. Pass mailer in tests. Omit it to use the Resend env
  * config. Pass null to record the lead and send nothing.
+ * Monthly and the retired founding Payment Link stay on this email.
+ * Other Payment Links are not leads here. The address claim is shared with
+ * Payment Link recovery so the two senders do not both email one address.
  */
 export async function recordExpiredSponsorCheckout(
   db: Database,
@@ -328,6 +339,12 @@ export async function recordExpiredSponsorCheckout(
   }
   if (!send) return
 
+  const addressClaim = await claimRecoveryAddress(db, lead.email, lead.sessionId, now)
+  if (addressClaim !== 'claimed') {
+    logRecoveryEmail(lead.sessionId, 'cooldown')
+    return
+  }
+
   const claimed = await db
     .update(sponsorAbandonedCheckouts)
     .set({ recoveryEmailClaimedAt: now })
@@ -343,7 +360,10 @@ export async function recordExpiredSponsorCheckout(
       ),
     )
     .returning({ id: sponsorAbandonedCheckouts.stripeCheckoutSessionId })
-  if (claimed.length === 0) return
+  if (claimed.length === 0) {
+    await releaseRecoveryAddressClaim(db, lead.email, lead.sessionId)
+    return
+  }
 
   let result: RecoverySendResult
   try {
@@ -356,6 +376,7 @@ export async function recordExpiredSponsorCheckout(
       .update(sponsorAbandonedCheckouts)
       .set({ recoveryEmailSentAt: now })
       .where(eq(sponsorAbandonedCheckouts.stripeCheckoutSessionId, lead.sessionId))
+    await markRecoveryAddressSent(db, lead.email, lead.sessionId, now)
     logRecoveryEmail(lead.sessionId, 'sent')
     return
   }
@@ -369,6 +390,8 @@ export async function recordExpiredSponsorCheckout(
         isNull(sponsorAbandonedCheckouts.recoveryEmailSentAt),
       ),
     )
+  if (result === 'rejected') await markRecoveryAddressFailed(db, lead.email, lead.sessionId)
+  else await releaseRecoveryAddressClaim(db, lead.email, lead.sessionId)
   logRecoveryEmail(lead.sessionId, result)
   // A reject is a 4xx from the mail API. The lease is cleared and sent_at stays
   // null, so the row still shows as unsent. A retry is a 429, a 5xx, or a

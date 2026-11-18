@@ -225,6 +225,20 @@
       "when": 1792203000000,
       "tag": "0033_bbf_leads",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1792204000000,
+      "tag": "0034_payment_link_recovery",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1792205000000,
+      "tag": "0035_checkout_recovery_address_claim",
+      "breakpoints": true
     }
   ]
 }
