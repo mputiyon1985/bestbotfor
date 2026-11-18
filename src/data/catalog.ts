@@ -13148,7 +13148,7 @@ export const toolSeeds: ToolSeed[] = [
   }),
   // Bot scout 2026-11-18. Unrated: no editorial score, pros or cons until Forge rubric review.
   // Scout ratings stay in the comments and are not shown.
-  // All one hundred twenty-three use the empty affiliate. Five vendors publish a partner program: Machinence, Incredible, Model Citizens Studio, CiteWing and Voplica Studio. No BestBotFor tracking link is stored.
+  // All one hundred twenty-two use the empty affiliate. Five vendors publish a partner program: Machinence, Incredible, Model Citizens Studio, CiteWing and Voplica Studio. No BestBotFor tracking link is stored.
   // No BestBotFor sponsorship is recorded.
   // Public vendor offers are not stored as deals. Promo codes are not stored. No /go tracking link is stored.
   // Waldo is Wherobots' geospatial agent at https://wherobots.com/products/waldo. The slug is waldo-wherobots.
@@ -13165,7 +13165,8 @@ export const toolSeeds: ToolSeed[] = [
   // Streaker is the Android app. The catalog URL is https://play.google.com/store/apps/details?id=com.streaker.streaker. The allowlist pins that path and id query, the same way Videco, SnapDub and Retriever pin a query. The slug is streaker-app.
   // DocDost AI is the iPhone app at https://apps.apple.com/us/app/docdost-ai/id6828870317. The slug is docdost-ai.
   // Every hand-off category already exists. No category was remapped in this batch.
-  // Prices in euros: Ridian, Revix AI, Letterslot, Scanaris, Spokendocs, Fefou and Yakafa. Prices in pounds: Machinence and Verspa. Prices in rupees: nutri, lally and Omega AI. No dollar from-price is stored for those.
+  // Prices in euros: Ridian, Revix AI, Letterslot, Scanaris, Spokendocs, Fefou and Yakafa. Prices in pounds: Machinence and Verspa. Prices in rupees: nutri and lally. No dollar from-price is stored for those.
+  // ai Canvas, ai Music Maker and ai Spar use a lowercase-first display name, the same way myPip does. The tools index orders tools.name with SQLite BINARY collation, so a capital "AI " sorts before AIVA and would push the first hosted logo below the first screen.
   // Helpwing sells minute packs in dollars and in rupees. RingVia lists US and Canadian dollars. The stored from-price is the US dollar monthly rate.
   // Mermaid Flow, Arcade, Ody and Baylo publish monthly rates billed annually. Those four slugs are on ANNUAL_BILLED_SLUGS.
   // scout 2026-11-18 | category: Productivity | scout rating 3.9 (not shown) | launch: 2026-11-17 (Product Hunt, featured) | pricing: Free: Always free (2 calendar accounts, 1 one-way sync, 1 funnel, 50 leads/month, 1 calendar feed, 100 subscribers, 100 AI credits/month, unlimited Agent Connect). Basic: €8/user/mo (€72 upfront first year, then €8/mo) includes 3 calendar accounts, 5 syncs, 3 funnels, 250 leads/month, 3 calendar feeds, 1,000 subscribers, 1,000 AI credits/month, 3 Agent Mailboxes, 7-day access log. Professional: €15/user/mo (€144 upfront first year, then €15/mo) includes everything in Basic plus higher limits. Alvin Plus add-on: +€10/user/mo for 3,000 AI credits + WhatsApp. Try Professional free for 7 days, no credit card required. Product Hunt offer: 50% off the first invoice. The code is not stored.
@@ -13437,8 +13438,8 @@ export const toolSeeds: ToolSeed[] = [
   tool({
     slug: 'ai-canvas',
     addedAt: SCOUTED_2026_11_18,
-    name: 'AI Canvas',
-    vendor: 'AI Canvas',
+    name: 'ai Canvas',
+    vendor: 'ai Canvas',
     url: 'https://aicanvas.me',
     allowedHosts: ['aicanvas.me'],
     category: 'Design',
@@ -14119,8 +14120,8 @@ export const toolSeeds: ToolSeed[] = [
   tool({
     slug: 'ai-music-maker',
     addedAt: SCOUTED_2026_11_18,
-    name: 'AI Music Maker',
-    vendor: 'AI Music Maker',
+    name: 'ai Music Maker',
+    vendor: 'ai Music Maker',
     url: 'https://aimusicmaker.org',
     allowedHosts: ['aimusicmaker.org'],
     category: 'Music',
@@ -14747,28 +14748,6 @@ export const toolSeeds: ToolSeed[] = [
     priceFromUsd: null,
     hasFreeTier: false,
     skillLevel: 'intermediate',
-    platforms: ['Web'],
-    lastVerifiedAt: SCOUTED_2026_11_18,
-    fits: [],
-    affiliate: none,
-  }),
-  // scout 2026-11-18 | category: Productivity | scout rating 3.2 (not shown) | launch: 2026-11-17 (Product Hunt) | pricing: Omega Basic: ₹399 / month; Omega Pro: ₹499 / month; Omega Annual: ₹1,400 / year
-  // note: Prices are not in US dollars, so priceFromUsd stays null. Do not convert them. Affiliate not seeded. Sponsorship unknown.
-  tool({
-    slug: 'omega-ai-app',
-    addedAt: SCOUTED_2026_11_18,
-    name: 'Omega AI',
-    vendor: 'Omega AI',
-    url: 'https://omegaaiwab8.duckdns.org',
-    allowedHosts: ['omegaaiwab8.duckdns.org'],
-    category: 'Productivity',
-    shortDesc: 'A private workspace for business documents, with voice commands.',
-    longDesc:
-      'Omega AI is a workspace for business documents. You can ask it to file and draft work, including by voice. Omega Basic is ₹399 a month. Omega Pro is ₹499 a month. Omega Annual is ₹1,400 a year. Those rupee prices are not stored as dollars. No free plan was found.',
-    pricingModel: 'paid',
-    priceFromUsd: null,
-    hasFreeTier: false,
-    skillLevel: 'beginner',
     platforms: ['Web'],
     lastVerifiedAt: SCOUTED_2026_11_18,
     fits: [],
@@ -15813,8 +15792,8 @@ export const toolSeeds: ToolSeed[] = [
   tool({
     slug: 'ai-spar',
     addedAt: SCOUTED_2026_11_18,
-    name: 'AI Spar',
-    vendor: 'AI Spar',
+    name: 'ai Spar',
+    vendor: 'ai Spar',
     url: 'https://aispar.app',
     allowedHosts: ['aispar.app'],
     category: 'Research',

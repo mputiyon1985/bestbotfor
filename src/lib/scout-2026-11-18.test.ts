@@ -80,7 +80,6 @@ const SLUGS = [
   'yakafa',
   'inferbase-ai',
   'mixos',
-  'omega-ai-app',
   'baylo',
   'to3d',
   'warmprose',
@@ -147,14 +146,14 @@ function seed(slug: string) {
 }
 
 describe('bot scout 2026-11-18', () => {
-  it('adds 123 unique unrated tools and does not reuse a slug', () => {
-    expect(new Set(SLUGS).size).toBe(123)
-    expect(toolSeeds.filter((tool) => SLUGS.includes(tool.slug as (typeof SLUGS)[number]))).toHaveLength(123)
+  it('adds 122 unique unrated tools and does not reuse a slug', () => {
+    expect(new Set(SLUGS).size).toBe(122)
+    expect(toolSeeds.filter((tool) => SLUGS.includes(tool.slug as (typeof SLUGS)[number]))).toHaveLength(122)
     expect(new Set(toolSeeds.map((tool) => tool.slug)).size).toBe(toolSeeds.length)
-    expect(toolSeeds).toHaveLength(716)
-    expect(toolSeeds.filter((tool) => !tool.unlisted)).toHaveLength(712)
+    expect(toolSeeds).toHaveLength(715)
+    expect(toolSeeds.filter((tool) => !tool.unlisted)).toHaveLength(711)
     expect(toolSeeds.filter((tool) => tool.unlisted)).toHaveLength(4)
-    expect(unratedSlugs).toHaveLength(604)
+    expect(unratedSlugs).toHaveLength(603)
     for (const slug of SLUGS) {
       const tool = seed(slug)
       expect(tool.addedAt, slug).toBe(SCOUT)
@@ -275,7 +274,6 @@ describe('bot scout 2026-11-18', () => {
       'yakafa': 'Productivity',
       'inferbase-ai': 'Development',
       'mixos': 'Design',
-      'omega-ai-app': 'Productivity',
       'baylo': 'Productivity',
       'to3d': 'Design',
       'warmprose': 'Writing',
@@ -407,7 +405,6 @@ describe('bot scout 2026-11-18', () => {
       'yakafa': { pricingModel: 'paid', priceFromUsd: null, hasFreeTier: false, label: '€9 a month' },
       'inferbase-ai': { pricingModel: 'freemium', priceFromUsd: 25, hasFreeTier: true, label: 'Free tier, then $25 and up' },
       'mixos': { pricingModel: 'paid', priceFromUsd: null, hasFreeTier: false, label: 'Pricing not published' },
-      'omega-ai-app': { pricingModel: 'paid', priceFromUsd: null, hasFreeTier: false, label: '₹399 a month' },
       'baylo': { pricingModel: 'paid', priceFromUsd: 5.42, hasFreeTier: false, label: '$5.42/mo and up, billed annually' },
       'to3d': { pricingModel: 'paid', priceFromUsd: 10, hasFreeTier: false, label: '$10 and up' },
       'warmprose': { pricingModel: 'freemium', priceFromUsd: null, hasFreeTier: true, label: 'Free checks; full rewrite price not published' },
@@ -532,7 +529,6 @@ describe('bot scout 2026-11-18', () => {
       'yakafa': ['Web'],
       'inferbase-ai': ['Web'],
       'mixos': ['Web'],
-      'omega-ai-app': ['Web'],
       'baylo': ['Web'],
       'to3d': ['Web'],
       'warmprose': ['Web'],
@@ -595,7 +591,7 @@ describe('bot scout 2026-11-18', () => {
       expect(priceLabel(tool), slug).toBe(expected.label)
       expect(tool.platforms, slug).toEqual(platforms[slug])
     }
-    for (const slug of ["ridian","revix-ai","machinence","letterslot","scanaris","spokendocs","nutri-ai","fefou","yakafa","omega-ai-app","verspa","lally-ai"] as const) {
+    for (const slug of ["ridian","revix-ai","machinence","letterslot","scanaris","spokendocs","nutri-ai","fefou","yakafa","verspa","lally-ai"] as const) {
       expect(seed(slug).longDesc, slug).not.toMatch(/\$\d/)
       expect(seed(slug).priceFromUsd, slug).toBeNull()
     }

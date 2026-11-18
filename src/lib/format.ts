@@ -136,7 +136,6 @@ const PRICE_LABEL_OVERRIDES: Readonly<Record<string, string>> = {
   'voplica-studio': 'Pricing not published',
   'yakafa': '€9 a month',
   'mixos': 'Pricing not published',
-  'omega-ai-app': '₹399 a month',
   'warmprose': 'Free checks; full rewrite price not published',
   'soreqen-code': 'Pricing not published',
   'kadeep-ai': 'Pricing not published',
