@@ -35,7 +35,7 @@ jobs:
       - name: Member route protection
         run: npm run check:members
       - name: Audit
-        run: npm audit --audit-level=high
+        run: npm run check:audit
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
