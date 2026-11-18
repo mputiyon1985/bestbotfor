@@ -77,8 +77,8 @@ describe('catalog freshness 2026-11-16', () => {
     expect(new Set(SLUGS).size).toBe(5)
     expect(toolSeeds.filter((tool) => SLUGS.includes(tool.slug as (typeof SLUGS)[number]))).toHaveLength(5)
     expect(new Set(toolSeeds.map((tool) => tool.slug)).size).toBe(toolSeeds.length)
-    expect(toolSeeds).toHaveLength(593)
-    expect(toolSeeds.filter((tool) => !tool.unlisted)).toHaveLength(589)
+    expect(toolSeeds).toHaveLength(716)
+    expect(toolSeeds.filter((tool) => !tool.unlisted)).toHaveLength(712)
     expect(toolSeeds.filter((tool) => tool.unlisted)).toHaveLength(4)
     for (const slug of SLUGS) {
       const tool = seed(slug)

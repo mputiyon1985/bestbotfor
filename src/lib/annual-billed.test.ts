@@ -13,6 +13,10 @@ const ANNUAL_PRICE: Record<(typeof ANNUAL_BILLED_SLUGS)[number], string> = {
   youart: 'Free tier, then $7.99/mo and up, billed annually',
   bytevoice: 'Free tier, then $12/mo and up, billed annually',
   wron: '$4.99/mo and up, billed annually',
+  'mermaid-flow': 'Free tier, then $10/mo and up, billed annually',
+  'arcade-ai-video': 'Free tier, then $49/mo and up, billed annually',
+  'ody-ai-phone': '$15/mo and up, billed annually',
+  baylo: '$5.42/mo and up, billed annually',
 }
 
 function metaLead(tool: { name: string; vendor: string; shortDesc: string }): string {
@@ -37,7 +41,7 @@ const seed = (slug: string) => {
 
 describe('annual-billed price labels', () => {
   it('marks every annual-list tool on the card label and the search snippet', () => {
-    expect([...ANNUAL_BILLED_SLUGS]).toEqual(['perplexity', 'lalal-ai', 'agentspot', 'viggle-jst-2', 'lottiefiles', 'youart', 'bytevoice', 'wron'])
+    expect([...ANNUAL_BILLED_SLUGS]).toEqual(['perplexity', 'lalal-ai', 'agentspot', 'viggle-jst-2', 'lottiefiles', 'youart', 'bytevoice', 'wron', 'mermaid-flow', 'arcade-ai-video', 'ody-ai-phone', 'baylo'])
     for (const slug of ANNUAL_BILLED_SLUGS) {
       const tool = seed(slug)
       expect(priceLabel(tool), slug).toBe(ANNUAL_PRICE[slug])
