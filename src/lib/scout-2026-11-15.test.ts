@@ -52,10 +52,10 @@ describe('bot scout 2026-11-15', () => {
     expect(new Set(SLUGS).size).toBe(23)
     expect(toolSeeds.filter((tool) => SLUGS.includes(tool.slug as (typeof SLUGS)[number]))).toHaveLength(23)
     expect(new Set(toolSeeds.map((tool) => tool.slug)).size).toBe(toolSeeds.length)
-    expect(toolSeeds).toHaveLength(715)
-    expect(toolSeeds.filter((tool) => !tool.unlisted)).toHaveLength(711)
+    expect(toolSeeds).toHaveLength(915)
+    expect(toolSeeds.filter((tool) => !tool.unlisted)).toHaveLength(911)
     expect(toolSeeds.filter((tool) => tool.unlisted)).toHaveLength(4)
-    expect(unratedSlugs).toHaveLength(603)
+    expect(unratedSlugs).toHaveLength(803)
     for (const slug of SLUGS) {
       const tool = seed(slug)
       expect(tool.addedAt, slug).toBe(SCOUT)

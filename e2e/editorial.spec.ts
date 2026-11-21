@@ -62,8 +62,9 @@ test('a scored tool shows fractional stars, the rubric, and no review schema', a
 })
 
 test('unrated tools hide the score and keep pros and cons', async ({ page }) => {
-  test.setTimeout(240_000)
-  expect(unratedSlugs).toHaveLength(603)
+  // Same checks as the 599-page walk. 799 listed unrated pages need the longer clock.
+  test.setTimeout(400_000)
+  expect(unratedSlugs).toHaveLength(803)
   const unlisted = new Set(toolSeeds.filter((item) => item.unlisted).map((item) => item.slug))
   for (const slug of unratedSlugs.filter((item) => !unlisted.has(item))) {
     const tool = toolSeeds.find((item) => item.slug === slug)
