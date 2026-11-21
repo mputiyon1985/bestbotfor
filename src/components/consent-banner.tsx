@@ -65,8 +65,18 @@ function loadGoogleAnalytics(gaId: string) {
   document.head.appendChild(script)
 }
 
-export function ConsentBanner({ gaId, secGpc }: { gaId: string | null; secGpc: boolean }) {
-  const [visible, setVisible] = useState(false)
+export function ConsentBanner({
+  gaId,
+  secGpc,
+  initialVisible,
+}: {
+  gaId: string | null
+  secGpc: boolean
+  initialVisible: boolean
+}) {
+  // The server already decided from the cookie and Sec-GPC, so the banner is in the first HTML.
+  // Mounting it later, during the focus scroll, lets its box overlap a footer link.
+  const [visible, setVisible] = useState(initialVisible)
   const [tracking, setTracking] = useState(false)
   const [gpc, setGpc] = useState(secGpc)
   const pathname = usePathname()

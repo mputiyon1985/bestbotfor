@@ -82,9 +82,11 @@ export default async function ComparePage({ params }: { params: Promise<{ pair: 
       <JsonLd data={itemListJsonLd(heading, path, [a, b])} nonce={nonce} />
       <JsonLd data={faqJsonLd(faqs)} nonce={nonce} />
       <Breadcrumbs items={crumbs} />
-      <div className="flex min-w-0 items-center gap-3">
-        <ToolLogo name={a.name} slug={a.slug} />
-        <ToolLogo name={b.name} slug={b.slug} />
+      <div className="flex min-w-0 items-start gap-3 md:items-center">
+        <div className="flex shrink-0 items-center gap-3">
+          <ToolLogo name={a.name} slug={a.slug} />
+          <ToolLogo name={b.name} slug={b.slug} />
+        </div>
         <h1 className="min-w-0 font-bold text-5xl leading-tight">{heading}</h1>
       </div>
       {view ? (

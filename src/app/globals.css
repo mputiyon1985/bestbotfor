@@ -118,7 +118,10 @@
 }
 
 html {
-  scroll-behavior: smooth;
+  /* Instant, not smooth. A focused footer link and the consent banner are
+     measured one after another; a smooth scroll puts those two reads at
+     different offsets, so the boxes look like they overlap. */
+  scroll-behavior: auto;
   /* Metric-matched face first. Poppins is applied after the largest paint. */
   font-family: bbf-metric, ui-sans-serif, system-ui, sans-serif;
   font-synthesis: none;
