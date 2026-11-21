@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Metadata, Viewport } from 'next'
 import localFont from 'next/font/local'
-import { headers } from 'next/headers'
+import { cookies, headers } from 'next/headers'
 import { ClerkShell } from '@/components/clerk-shell'
 import { ConsentBanner } from '@/components/consent-banner'
 import { JsonLd } from '@/components/json-ld'
@@ -11,7 +11,8 @@ import { SiteFooter } from '@/components/site-footer'
 import { SiteHeader } from '@/components/site-header'
 import { SuggestionDialog, SuggestSomethingLink } from '@/components/suggest-something'
 import { APPLE_TOUCH_ICON_PATH, BRAND, OG_IMAGE_PATH } from '@/lib/brand'
-import { secGpcOptOut } from '@/lib/gpc'
+import { CONSENT_COOKIE, consentChoice } from '@/lib/consent'
+import { consentDecision, secGpcOptOut } from '@/lib/gpc'
 import { isProductionDeployment } from '@/lib/indexing'
 import { organizationJsonLd, websiteJsonLd } from '@/lib/jsonld'
 import { homeDescription, homeTitle } from '@/lib/metadata'
@@ -82,9 +83,16 @@ const IMPACT_META_ATTRS: Record<string, string> = { value: IMPACT_SITE_VERIFICAT
 // go through the unstable_cache wrappers in src/lib/catalog.ts.
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
-  const headerStore = await headers()
+  const [headerStore, cookieStore] = await Promise.all([headers(), cookies()])
   const nonce = headerStore.get('x-nonce')
   const secGpc = secGpcOptOut(headerStore.get('sec-gpc'))
+  const consent = consentChoice(cookieStore.get(CONSENT_COOKIE)?.value)
+  const initialVisible = consentDecision({
+    choice: consent,
+    gpc: secGpc,
+    gaId: gaId.success ? gaId.data : null,
+    adminPath: false,
+  }).visible
   const publishableKey = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim() ?? ''
 
   const content = (
@@ -98,7 +106,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
       </main>
       <SiteFooter />
       <SuggestionDialog />
-      <ConsentBanner gaId={gaId.success ? gaId.data : null} secGpc={secGpc} />
+      <ConsentBanner gaId={gaId.success ? gaId.data : null} secGpc={secGpc} initialVisible={initialVisible} />
       <JsonLd data={websiteJsonLd()} nonce={nonce} />
       <JsonLd data={organizationJsonLd()} nonce={nonce} />
       <SiteAnalytics secGpc={secGpc} />
