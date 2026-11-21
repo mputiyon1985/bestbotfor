@@ -1,8 +1,18 @@
 [
   {
+    "slug": "2speech-ai",
+    "sourceUrl": "https://2speech.com/assets/2speech.png",
+    "fetchedAt": "2026-11-21"
+  },
+  {
     "slug": "activepieces",
     "sourceUrl": "https://www.activepieces.com/favicon.svg",
     "fetchedAt": "2026-10-16"
+  },
+  {
+    "slug": "ade",
+    "sourceUrl": "https://ade-app.dev/favicon.png",
+    "fetchedAt": "2026-11-21"
   },
   {
     "slug": "ahrefs",
