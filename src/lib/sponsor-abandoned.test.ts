@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type Stripe from 'stripe'
 import { createTestDatabase } from '@/test/db'
 import { applyMigrations } from './db/migrate'
-import { sponsorAbandonedCheckouts, sponsorships } from './db/schema'
+import { checkoutRecoveryAddressClaims, sponsorAbandonedCheckouts, sponsorships } from './db/schema'
 import { handleStripeWebhook } from './stripe-webhook'
 import { parseExpiredSponsorCheckout, recordExpiredSponsorCheckout, RECOVERY_EMAIL_CLAIM_LEASE_MS, sponsorRecoveryUrl } from './sponsor-abandoned'
 import { SPONSOR_PAYMENT_LINKS } from './sponsor-payment-links'
@@ -494,6 +494,10 @@ describe('recovery email', () => {
       .update(sponsorAbandonedCheckouts)
       .set({ recoveryEmailSentAt: null, recoveryEmailClaimedAt: 100 })
       .where(eq(sponsorAbandonedCheckouts.stripeCheckoutSessionId, 'cs_test_lease'))
+    await db
+      .update(checkoutRecoveryAddressClaims)
+      .set({ status: 'claimed', claimedAt: 100, sentAt: null })
+      .where(eq(checkoutRecoveryAddressClaims.email, 'buyer@example.com'))
     let calls = 0
     await recordExpiredSponsorCheckout(db, { ...event, id: 'evt_lease_held' } as Stripe.Event, 100 + 1_000, async () => {
       calls += 1
@@ -543,7 +547,7 @@ describe('recovery email', () => {
     expect(open?.recoveryUrl).toBe('https://buy.stripe.com/r/test_member_open')
   })
 
-  it('does not store or email a one-time Payment Link, or any other source=payment_link session without kind=sponsorship', async () => {
+  it('does not store a one-time Payment Link on the sponsor lead table, or email it from this recorder', async () => {
     const { db, close } = await createTestDatabase()
     const sent: CheckoutRecoveryMessage[] = []
     const mailer = async (message: CheckoutRecoveryMessage) => {
@@ -592,6 +596,28 @@ describe('recovery email', () => {
     }
     expect(sent).toEqual([])
     expect(await db.select().from(sponsorAbandonedCheckouts)).toEqual([])
+    await close()
+  })
+
+  it('still sends the in-app recovery email for the Monthly Payment Link', async () => {
+    const { db, close } = await createTestDatabase()
+    let calls = 0
+    const event = expired('evt_link_old_mail', {
+      id: 'cs_test_link_old_mail',
+      payment_status: 'unpaid',
+      payment_link: 'plink_1URyeXIJUbygfAucnLlkSP5u',
+      consent: { promotions: 'opt_in' },
+      customer_details: { email: 'link@example.com' },
+      metadata: { offer: 'sponsor_monthly', source: 'payment_link' },
+    })
+    await recordExpiredSponsorCheckout(db, event, 39, async () => {
+      calls += 1
+      return 'sent'
+    })
+    expect(calls).toBe(1)
+    const leads = await db.select().from(sponsorAbandonedCheckouts)
+    expect(leads[0]?.recoveryEmailSentAt).toBe(39)
+    expect(leads[0]?.source).toBe('payment_link')
     await close()
   })
 

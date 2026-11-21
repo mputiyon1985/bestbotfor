@@ -221,6 +221,41 @@ export async function adoptCheckoutRecoverySuppressions(client: Client): Promise
   await client.execute(CHECKOUT_RECOVERY_SUPPRESSIONS_DDL)
 }
 
+/**
+ * Exact DDL for `payment_link_recovery_emails`. The SQL file and this helper
+ * share it. One row per Checkout Session. Additive. Nothing is deleted.
+ */
+export const PAYMENT_LINK_RECOVERY_EMAILS_DDL = `CREATE TABLE IF NOT EXISTS payment_link_recovery_emails (
+  stripe_checkout_session_id TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  payment_link_id TEXT NOT NULL,
+  product_name TEXT NOT NULL,
+  recovery_url TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  sent_at INTEGER
+)`
+
+export async function adoptPaymentLinkRecoveryEmails(client: Client): Promise<void> {
+  await client.execute(PAYMENT_LINK_RECOVERY_EMAILS_DDL)
+  await client.execute(
+    'CREATE INDEX IF NOT EXISTS payment_link_recovery_emails_email_idx ON payment_link_recovery_emails (email)',
+  )
+  await addMissingColumns(client, 'payment_link_recovery_emails', [{ name: 'send_status', ddl: 'TEXT' }])
+}
+
+/** One address claim shared by both recovery senders. Additive. Nothing is deleted. */
+export const CHECKOUT_RECOVERY_ADDRESS_CLAIMS_DDL = `CREATE TABLE IF NOT EXISTS checkout_recovery_address_claims (
+  email TEXT PRIMARY KEY,
+  stripe_checkout_session_id TEXT NOT NULL,
+  status TEXT NOT NULL,
+  claimed_at INTEGER NOT NULL,
+  sent_at INTEGER
+)`
+
+export async function adoptCheckoutRecoveryAddressClaims(client: Client): Promise<void> {
+  await client.execute(CHECKOUT_RECOVERY_ADDRESS_CLAIMS_DDL)
+}
+
 export async function adoptSponsorAbandonedCheckouts(client: Client): Promise<void> {
   await client.execute(SPONSOR_ABANDONED_CHECKOUTS_DDL)
   await addMissingColumns(client, 'sponsor_abandoned_checkouts', SPONSOR_ABANDONED_ADOPT_COLUMNS)
@@ -338,6 +373,8 @@ export async function applyMigrations(url: string, authToken?: string, migration
   await adoptSuggestionsSchema(client)
   await adoptSponsorAbandonedCheckouts(client)
   await adoptCheckoutRecoverySuppressions(client)
+  await adoptPaymentLinkRecoveryEmails(client)
+  await adoptCheckoutRecoveryAddressClaims(client)
 
   client.close()
 }
