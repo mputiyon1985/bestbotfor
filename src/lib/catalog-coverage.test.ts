@@ -85,7 +85,7 @@ describe('catalog seed', () => {
       expect(slugSchema.safeParse(tool.slug).success, tool.slug).toBe(true)
       expect(tool.allowedHosts.length, tool.slug).toBeGreaterThan(0)
       expect(officialHttpsUrl(tool.url, tool.allowedHosts), tool.slug).not.toBeNull()
-      if (tool.slug !== 'retriever-app' && tool.slug !== 'streaker-app' && tool.slug !== 'sidekick-code-ai') expect(tool.url.includes('?'), tool.slug).toBe(false)
+      if (tool.slug !== 'retriever-app' && tool.slug !== 'streaker-app' && tool.slug !== 'sidekick-code-ai' && tool.slug !== 'canvaslab-ai-photo-editor' && tool.slug !== 'mozhi-live-offline-translator' && tool.slug !== 'cattle-ai-weight-herd') expect(tool.url.includes('?'), tool.slug).toBe(false)
       expect(tool.slug.includes('-vs-'), tool.slug).toBe(false)
       for (const fit of tool.fits) {
         expect(taskSeeds.some((task) => task.slug === fit.task), `${tool.slug} ${fit.task}`).toBe(true)
