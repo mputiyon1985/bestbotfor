@@ -109,8 +109,8 @@ async function visitUnratedListedPage(page: Page, slug: string): Promise<void> {
 
 test('unrated tools hide the score and keep pros and cons', async ({ page }) => {
   test.setTimeout(UNRATED_WALK_TIMEOUT_MS)
-  expect(unratedSlugs).toHaveLength(803)
-  expect(listedUnratedSlugs).toHaveLength(799)
+  expect(unratedSlugs).toHaveLength(1001)
+  expect(listedUnratedSlugs).toHaveLength(997)
 
   const extraPages: Page[] = []
   for (let lane = 1; lane < UNRATED_WALK_CONCURRENCY; lane += 1) extraPages.push(await page.context().newPage())
