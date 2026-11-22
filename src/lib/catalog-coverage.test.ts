@@ -81,6 +81,9 @@ describe('catalog seed', () => {
     const slugs = new Set(catalog.tools.map((tool) => tool.slug))
     expect(new Set(toolSeeds.map((tool) => tool.slug)).size).toBe(toolSeeds.length)
 
+    const taskSlugs = new Set(taskSeeds.map((task) => task.slug))
+    const listedByTask = new Map<string, typeof toolSeeds>()
+    const listedKeys = new Set<string>()
     for (const tool of toolSeeds) {
       expect(slugSchema.safeParse(tool.slug).success, tool.slug).toBe(true)
       expect(tool.allowedHosts.length, tool.slug).toBeGreaterThan(0)
@@ -88,8 +91,15 @@ describe('catalog seed', () => {
       if (tool.slug !== 'retriever-app' && tool.slug !== 'streaker-app' && tool.slug !== 'sidekick-code-ai' && tool.slug !== 'canvaslab-ai-photo-editor' && tool.slug !== 'mozhi-live-offline-translator' && tool.slug !== 'cattle-ai-weight-herd') expect(tool.url.includes('?'), tool.slug).toBe(false)
       expect(tool.slug.includes('-vs-'), tool.slug).toBe(false)
       for (const fit of tool.fits) {
-        expect(taskSeeds.some((task) => task.slug === fit.task), `${tool.slug} ${fit.task}`).toBe(true)
+        expect(taskSlugs.has(fit.task), `${tool.slug} ${fit.task}`).toBe(true)
         expect(fit.notes, `${tool.slug} ${fit.task}`).not.toContain('Secondary fit')
+        if (tool.unlisted) continue
+        const key = `${tool.slug}\0${fit.task}`
+        if (listedKeys.has(key)) continue
+        listedKeys.add(key)
+        const listed = listedByTask.get(fit.task)
+        if (listed) listed.push(tool)
+        else listedByTask.set(fit.task, [tool])
       }
     }
 
@@ -151,7 +161,7 @@ describe('catalog seed', () => {
 
     for (const task of taskSeeds) {
       const ranked = toolsForTask(catalog, task.slug)
-      const fitted = toolSeeds.filter((tool) => !tool.unlisted && tool.fits.some((fit) => fit.task === task.slug))
+      const fitted = listedByTask.get(task.slug) ?? []
       expect(ranked, task.slug).toHaveLength(fitted.length)
       const qualified = fitted.filter((tool) => (tool.fits.find((fit) => fit.task === task.slug)?.score ?? 0) >= MIN_QUIZ_FIT_SCORE)
       for (const budget of budgets) {

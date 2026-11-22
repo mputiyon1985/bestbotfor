@@ -1,4 +1,4 @@
-import { and, eq, notInArray } from 'drizzle-orm'
+import { and, eq, notInArray, sql } from 'drizzle-orm'
 
 export type RatingWriteCounts = {
   scoresInserted: number
@@ -25,6 +25,18 @@ export function seedPruneEnabled(value: string | undefined = process.env.SEED_PR
   return value === '1'
 }
 
+/**
+ * Stay under SQLite's default 999-variable limit. The widest row written here
+ * has 16 columns, so 40 rows is 640 variables.
+ */
+const SEED_BATCH = 40
+
+function batches<T>(rows: readonly T[], size = SEED_BATCH): T[][] {
+  const chunks: T[][] = []
+  for (let index = 0; index < rows.length; index += size) chunks.push(rows.slice(index, index + size))
+  return chunks
+}
+
 export async function seed(): Promise<RatingWriteCounts> {
 for (const tool of toolSeeds) reviewedToolUrl(tool)
 
@@ -49,54 +61,60 @@ const counts: RatingWriteCounts = {
   prosUpdated: 0,
   prosRemoved: 0,
 }
+const catalogFitKeys = new Set(toolSeeds.flatMap((tool) => tool.fits.map((fit) => `${tool.slug}\0${fit.task}`)))
 await db.transaction(async (tx) => {
-for (const task of taskSeeds) {
+for (const batch of batches(taskSeeds)) {
   await tx
     .insert(tasks)
-    .values(task)
+    .values([...batch])
     .onConflictDoUpdate({
       target: tasks.slug,
-      set: { name: task.name, category: task.category, description: task.description },
+      set: {
+        name: sql`excluded.name`,
+        category: sql`excluded.category`,
+        description: sql`excluded.description`,
+      },
     })
 }
 
-for (const tool of toolSeeds) {
+const toolRowsToWrite = toolSeeds.map((tool) => ({
+  slug: tool.slug,
+  name: tool.name,
+  vendor: tool.vendor,
+  url: tool.url,
+  category: tool.category,
+  shortDesc: tool.shortDesc,
+  longDesc: tool.longDesc,
+  pricingModel: tool.pricingModel,
+  priceFromUsd: tool.priceFromUsd,
+  hasFreeTier: tool.hasFreeTier,
+  skillLevel: tool.skillLevel,
+  platforms: JSON.stringify(tool.platforms),
+  lastVerifiedAt: tool.lastVerifiedAt,
+  status: tool.unlisted ? 'unlisted' : 'active',
+  needsVerification: tool.needsVerification === true,
+}))
+for (const batch of batches(toolRowsToWrite)) {
   await tx
     .insert(tools)
-    .values({
-      slug: tool.slug,
-      name: tool.name,
-      vendor: tool.vendor,
-      url: tool.url,
-      category: tool.category,
-      shortDesc: tool.shortDesc,
-      longDesc: tool.longDesc,
-      pricingModel: tool.pricingModel,
-      priceFromUsd: tool.priceFromUsd,
-      hasFreeTier: tool.hasFreeTier,
-      skillLevel: tool.skillLevel,
-      platforms: JSON.stringify(tool.platforms),
-      lastVerifiedAt: tool.lastVerifiedAt,
-      status: tool.unlisted ? 'unlisted' : 'active',
-      needsVerification: tool.needsVerification === true,
-    })
+    .values(batch)
     .onConflictDoUpdate({
       target: tools.slug,
       set: {
-        name: tool.name,
-        vendor: tool.vendor,
-        url: tool.url,
-        category: tool.category,
-        shortDesc: tool.shortDesc,
-        longDesc: tool.longDesc,
-        pricingModel: tool.pricingModel,
-        priceFromUsd: tool.priceFromUsd,
-        hasFreeTier: tool.hasFreeTier,
-        skillLevel: tool.skillLevel,
-        platforms: JSON.stringify(tool.platforms),
-        lastVerifiedAt: tool.lastVerifiedAt,
-        status: tool.unlisted ? 'unlisted' : 'active',
-        needsVerification: tool.needsVerification === true,
+        name: sql`excluded.name`,
+        vendor: sql`excluded.vendor`,
+        url: sql`excluded.url`,
+        category: sql`excluded.category`,
+        shortDesc: sql`excluded.short_desc`,
+        longDesc: sql`excluded.long_desc`,
+        pricingModel: sql`excluded.pricing_model`,
+        priceFromUsd: sql`excluded.price_from_usd`,
+        hasFreeTier: sql`excluded.has_free_tier`,
+        skillLevel: sql`excluded.skill_level`,
+        platforms: sql`excluded.platforms`,
+        lastVerifiedAt: sql`excluded.last_verified_at`,
+        status: sql`excluded.status`,
+        needsVerification: sql`excluded.needs_verification`,
       },
     })
 }
@@ -110,58 +128,70 @@ for (const [toolSlug, taskSlug] of retiredFitSeeds) {
   const retiredTool = toolId.get(toolSlug)
   const retiredTask = taskId.get(taskSlug)
   if (!retiredTool || !retiredTask) throw new Error(`Unknown retired fit ${toolSlug}/${taskSlug}`)
-  if (toolSeeds.some((tool) => tool.slug === toolSlug && tool.fits.some((fit) => fit.task === taskSlug))) {
+  if (catalogFitKeys.has(`${toolSlug}\0${taskSlug}`)) {
     throw new Error(`Retired fit ${toolSlug}/${taskSlug} is still in the catalog`)
   }
   await tx.delete(toolTasks).where(and(eq(toolTasks.toolId, retiredTool), eq(toolTasks.taskId, retiredTask)))
 }
 
+const fitRows: { toolId: number; taskId: number; fitScore: number; notes: string }[] = []
+const affiliateRows: {
+  toolId: number
+  hasProgram: boolean
+  network: string | null
+  sourceUrl: string | null
+  status: string
+  affiliateUrl: string | null
+  commissionNote: string | null
+  verifiedAt: string
+}[] = []
 for (const tool of toolSeeds) {
   const id = toolId.get(tool.slug)
   if (!id) throw new Error(`Missing tool id for ${tool.slug}`)
   for (const fit of tool.fits) {
     const task = taskId.get(fit.task)
     if (!task) throw new Error(`Unknown task ${fit.task} on ${tool.slug}`)
-    await tx
-      .insert(toolTasks)
-      .values({
-        toolId: id,
-        taskId: task,
-        fitScore: fit.score,
-        notes: fit.notes,
-      })
-      .onConflictDoUpdate({
-        target: [toolTasks.toolId, toolTasks.taskId],
-        set: {
-          fitScore: fit.score,
-          notes: fit.notes,
-        },
-      })
+    fitRows.push({ toolId: id, taskId: task, fitScore: fit.score, notes: fit.notes })
   }
 
   const affiliate = affiliateSeedValues(tool)
+  affiliateRows.push({
+    toolId: id,
+    hasProgram: tool.affiliate.hasProgram,
+    network: tool.affiliate.network,
+    sourceUrl: tool.affiliate.sourceUrl,
+    status: affiliate.status,
+    affiliateUrl: affiliate.affiliateUrl,
+    commissionNote: tool.affiliate.commissionNote,
+    verifiedAt: tool.lastVerifiedAt,
+  })
+}
+for (const batch of batches(fitRows)) {
+  await tx
+    .insert(toolTasks)
+    .values(batch)
+    .onConflictDoUpdate({
+      target: [toolTasks.toolId, toolTasks.taskId],
+      set: {
+        fitScore: sql`excluded.fit_score`,
+        notes: sql`excluded.notes`,
+      },
+    })
+}
+for (const batch of batches(affiliateRows)) {
   await tx
     .insert(affiliatePrograms)
-    .values({
-      toolId: id,
-      hasProgram: tool.affiliate.hasProgram,
-      network: tool.affiliate.network,
-      sourceUrl: tool.affiliate.sourceUrl,
-      status: affiliate.status,
-      affiliateUrl: affiliate.affiliateUrl,
-      commissionNote: tool.affiliate.commissionNote,
-      verifiedAt: tool.lastVerifiedAt,
-    })
+    .values(batch)
     .onConflictDoUpdate({
       target: affiliatePrograms.toolId,
       set: {
-        hasProgram: tool.affiliate.hasProgram,
-        network: tool.affiliate.network,
-        sourceUrl: tool.affiliate.sourceUrl,
-        status: affiliate.status,
-        affiliateUrl: affiliate.affiliateUrl,
-        commissionNote: tool.affiliate.commissionNote,
-        verifiedAt: tool.lastVerifiedAt,
+        hasProgram: sql`excluded.has_program`,
+        network: sql`excluded.network`,
+        sourceUrl: sql`excluded.source_url`,
+        status: sql`excluded.status`,
+        affiliateUrl: sql`excluded.affiliate_url`,
+        commissionNote: sql`excluded.commission_note`,
+        verifiedAt: sql`excluded.verified_at`,
       },
     })
 }
@@ -183,10 +213,12 @@ const existingScoreIds = new Set(existingScores.map((row) => row.toolId))
 counts.scoresInserted = ratedIds.filter((id) => !existingScoreIds.has(id)).length
 counts.scoresUpdated = ratedIds.filter((id) => existingScoreIds.has(id)).length
 counts.scoresRemoved = pruneScores ? [...existingScoreIds].filter((id) => !ratedIdSet.has(id)).length : 0
+const scoreRows = []
 for (const entry of ratingSeeds) {
   const id = toolId.get(entry.slug)
   if (!id) throw new Error(`Missing tool id for rating seed ${entry.slug}`)
-  const score = {
+  scoreRows.push({
+    toolId: id,
     features: entry.features,
     value: entry.value,
     ease: entry.ease,
@@ -201,13 +233,30 @@ for (const entry of ratingSeeds) {
     note: entry.note,
     ratingStatus: entry.ratingStatus,
     quizEligible: entry.quizEligible,
-  }
+  })
+}
+for (const batch of batches(scoreRows)) {
   await tx
     .insert(toolScores)
-    .values({ toolId: id, ...score })
+    .values(batch)
     .onConflictDoUpdate({
       target: toolScores.toolId,
-      set: score,
+      set: {
+        features: sql`excluded.features`,
+        value: sql`excluded.value`,
+        ease: sql`excluded.ease`,
+        quality: sql`excluded.quality`,
+        overall: sql`excluded.overall`,
+        rationale: sql`excluded.rationale`,
+        sources: sql`excluded.sources`,
+        reviewedAt: sql`excluded.reviewed_at`,
+        primaryCategory: sql`excluded.primary_category`,
+        categoryRankDisplay: sql`excluded.category_rank_display`,
+        tieGroup: sql`excluded.tie_group`,
+        note: sql`excluded.note`,
+        ratingStatus: sql`excluded.rating_status`,
+        quizEligible: sql`excluded.quiz_eligible`,
+      },
     })
 }
 if (pruneScores) {
@@ -232,25 +281,28 @@ const existingPointKeys = new Set(existingPoints.map((row) => `${row.toolId}:${r
 counts.prosInserted = pointKeys.filter((key) => !existingPointKeys.has(key)).length
 counts.prosUpdated = pointKeys.filter((key) => existingPointKeys.has(key)).length
 counts.prosRemoved = 0
+const pointRows: { toolId: number; kind: string; position: number; body: string; sourceUrl: string }[] = []
 for (const entry of pointSeeds) {
   const id = toolId.get(entry.slug)
   if (!id) throw new Error(`Missing tool id for pros and cons ${entry.slug}`)
-  const points = [
-    ...entry.pros.map((point, index) => ({ kind: 'pro', position: index + 1, body: point.text, sourceUrl: point.sourceUrl })),
-    ...entry.cons.map((point, index) => ({ kind: 'con', position: index + 1, body: point.text, sourceUrl: point.sourceUrl })),
-  ]
-  for (const point of points) {
-    await tx
-      .insert(toolProsCons)
-      .values({ toolId: id, ...point })
-      .onConflictDoUpdate({
-        target: [toolProsCons.toolId, toolProsCons.kind, toolProsCons.position],
-        set: { body: point.body, sourceUrl: point.sourceUrl },
-      })
-  }
+  entry.pros.forEach((point, index) => pointRows.push({ toolId: id, kind: 'pro', position: index + 1, body: point.text, sourceUrl: point.sourceUrl }))
+  entry.cons.forEach((point, index) => pointRows.push({ toolId: id, kind: 'con', position: index + 1, body: point.text, sourceUrl: point.sourceUrl }))
+}
+for (const batch of batches(pointRows)) {
+  await tx
+    .insert(toolProsCons)
+    .values(batch)
+    .onConflictDoUpdate({
+      target: [toolProsCons.toolId, toolProsCons.kind, toolProsCons.position],
+      set: {
+        body: sql`excluded.body`,
+        sourceUrl: sql`excluded.source_url`,
+      },
+    })
 }
 
 const now = Date.now()
+const domainRows: { toolId: number; domain: string; source: 'tool_url'; createdAt: number }[] = []
 for (const tool of toolSeeds) {
   // Unlisted tools (for example Mercury 3) are hidden from the site, so they get no vendor domain.
   if (tool.unlisted) continue
@@ -259,25 +311,32 @@ for (const tool of toolSeeds) {
   const domain = registrableDomain(tool.url)
   if (!domain) throw new Error(`Tool ${tool.slug} has no registrable domain`)
   // Insert only. A manual row for the same domain stays manual, and old tool_url rows are not deleted.
-  await tx.insert(toolVendorDomains).values({ toolId: id, domain, source: 'tool_url', createdAt: now }).onConflictDoNothing()
+  domainRows.push({ toolId: id, domain, source: 'tool_url', createdAt: now })
+}
+for (const batch of batches(domainRows)) {
+  await tx.insert(toolVendorDomains).values(batch).onConflictDoNothing()
 }
 
+const dealRows = []
 for (const deal of dealSeeds) {
   if (!knownSlugs.has(deal.toolSlug)) throw new Error(`Deal ${deal.code} is for unknown tool ${deal.toolSlug}`)
+  dealRows.push({ ...deal })
+}
+for (const batch of batches(dealRows)) {
   await tx
     .insert(deals)
-    .values({ ...deal })
+    .values([...batch])
     .onConflictDoUpdate({
       target: [deals.toolSlug, deals.code],
       set: {
-        vendor: deal.vendor,
-        title: deal.title,
-        discountText: deal.discountText,
-        dealUrl: deal.dealUrl,
-        terms: deal.terms,
-        startsAt: deal.startsAt,
-        expiresAt: deal.expiresAt,
-        active: deal.active,
+        vendor: sql`excluded.vendor`,
+        title: sql`excluded.title`,
+        discountText: sql`excluded.discount_text`,
+        dealUrl: sql`excluded.deal_url`,
+        terms: sql`excluded.terms`,
+        startsAt: sql`excluded.starts_at`,
+        expiresAt: sql`excluded.expires_at`,
+        active: sql`excluded.active`,
       },
     })
 }

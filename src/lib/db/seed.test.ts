@@ -37,7 +37,27 @@ function pointTotal(rows: { pros: unknown[]; cons: unknown[] }[]): number {
 }
 
 const prosConsTotal = pointTotal(editorialSeeds) + pointTotal(supplementalProsConsSeeds)
+const editorialBySlug = new Map(editorialSeeds.map((row) => [row.slug, row]))
+const ratingBySlug = new Map(ratingSeeds.map((row) => [row.slug, row]))
+const ratedSlugSet = new Set(ratingBySlug.keys())
+const supplementalBySlug = new Map(supplementalProsConsSeeds.map((row) => [row.slug, row]))
+const keptBySlug = new Map(keptProsConsSeeds.map((row) => [row.slug, row]))
+const toolSeedBySlug = new Map(toolSeeds.map((tool) => [tool.slug, tool]))
 const directories: string[] = []
+
+function groupByToolId<T extends { toolId: number }>(rows: readonly T[]): Map<number, T[]> {
+  const byTool = new Map<number, T[]>()
+  for (const row of rows) {
+    const list = byTool.get(row.toolId)
+    if (list) list.push(row)
+    else byTool.set(row.toolId, [row])
+  }
+  return byTool
+}
+
+function bodiesFor(pointsByTool: ReadonlyMap<number, { kind: string; body: string }[]>, toolId: number | undefined, kind: string): string[] {
+  return (pointsByTool.get(toolId ?? -1) ?? []).filter((row) => row.kind === kind).map((row) => row.body)
+}
 
 afterEach(async () => {
   try {
@@ -156,7 +176,7 @@ describe('catalog seed', () => {
         active: seed.active,
         createdAt: seed.createdAt,
       })
-      expect(toolSeeds.find((tool) => tool.slug === seed.toolSlug)?.vendor, seed.code).toBe(seed.vendor)
+      expect(toolSeedBySlug.get(seed.toolSlug)?.vendor, seed.code).toBe(seed.vendor)
     }
   })
 
@@ -306,7 +326,7 @@ describe('catalog seed', () => {
     const expectedPoints = prosConsTotal + 1
     expect(scores).toHaveLength(ratingSeeds.length)
     expect(points).toHaveLength(expectedPoints)
-    const claudeRating = ratingSeeds.find((row) => row.slug === 'claude')
+    const claudeRating = ratingBySlug.get('claude')
     const restored = scores.find((row) => row.toolId === claude.id)
     expect(restored?.rationale).toBe(claudeRating?.rationale)
     expect(restored?.overall).toBe(claudeRating?.overall)
@@ -324,7 +344,7 @@ describe('catalog seed', () => {
     expect(relevance?.hasFreeTier).toBe(false)
     expect(relevance?.priceFromUsd).toBe(19)
     expect(scores.some((row) => row.toolId === relevance?.id)).toBe(false)
-    const relevancePoints = editorialSeeds.find((row) => row.slug === 'relevance-ai')
+    const relevancePoints = editorialBySlug.get('relevance-ai')
     expect(relevancePoints).toBeTruthy()
     const storedRelevance = points.filter((row) => row.toolId === relevance?.id)
     expect(storedRelevance.filter((row) => row.kind === 'pro').map((row) => row.body)).toEqual(
@@ -336,7 +356,7 @@ describe('catalog seed', () => {
     expect(scores.some((row) => row.toolId === 999_999)).toBe(false)
     expect(points.some((row) => row.toolId === 999_999 && row.body === 'Keep this sentinel point.')).toBe(true)
     const claudePros = points.filter((row) => row.toolId === claude.id && row.kind === 'pro')
-    const v1Pros = keptProsConsSeeds.find((row) => row.slug === 'claude')?.pros.map((point) => point.text)
+    const v1Pros = keptBySlug.get('claude')?.pros.map((point) => point.text)
     expect(claudePros.map((row) => row.body)).toEqual(v1Pros)
   })
 
@@ -357,9 +377,12 @@ describe('catalog seed', () => {
     const scores = await db.select().from(toolScores)
     const points = await db.select().from(toolProsCons)
     const idToSlug = new Map(toolRows.map((row) => [row.id, row.slug]))
+    const scoreIds = new Set(scores.map((row) => row.toolId))
+    const pointsByTool = groupByToolId(points)
     const rated = scores.map((row) => idToSlug.get(row.toolId)).sort()
     const csvSlugs = ratingSeeds.map((row) => row.slug).sort()
-    const v1Slugs = new Set(editorialSeeds.map((row) => row.slug))
+    const csvSlugSet = new Set(csvSlugs)
+    const v1Slugs = new Set(editorialBySlug.keys())
     expect(ratingSeeds).toHaveLength(112)
     expect(unratedSlugs).toHaveLength(1001)
     expect(rated).toEqual(csvSlugs)
@@ -372,20 +395,16 @@ describe('catalog seed', () => {
     expect(JSON.stringify(scores)).not.toContain('evidence.jsonl')
     expect(JSON.stringify(scores)).not.toContain('third_party')
     expect(JSON.stringify(scores)).not.toContain('source_urls')
-    expect(scores.some((row) => row.toolId === cursor.id)).toBe(true)
-    expect(scores.some((row) => row.toolId === windsurf.id)).toBe(true)
-    expect(points.filter((row) => row.toolId === cursor.id && row.kind === 'pro').map((row) => row.body)).toEqual(
-      supplementalProsConsSeeds.find((row) => row.slug === 'cursor')?.pros.map((point) => point.text),
-    )
-    expect(points.filter((row) => row.toolId === windsurf.id && row.kind === 'con').map((row) => row.body)).toEqual(
-      supplementalProsConsSeeds.find((row) => row.slug === 'windsurf')?.cons.map((point) => point.text),
-    )
+    expect(scoreIds.has(cursor.id)).toBe(true)
+    expect(scoreIds.has(windsurf.id)).toBe(true)
+    expect(bodiesFor(pointsByTool, cursor.id, 'pro')).toEqual(supplementalBySlug.get('cursor')?.pros.map((point) => point.text))
+    expect(bodiesFor(pointsByTool, windsurf.id, 'con')).toEqual(supplementalBySlug.get('windsurf')?.cons.map((point) => point.text))
     for (const slug of ['grok', 'semantic-scholar'] as const) {
-      expect(points.some((row) => row.toolId === bySlug.get(slug)?.id), slug).toBe(false)
+      expect(pointsByTool.has(bySlug.get(slug)?.id ?? -1), slug).toBe(false)
     }
-    expect(scores.some((row) => row.toolId === chatgpt.id)).toBe(true)
+    expect(scoreIds.has(chatgpt.id)).toBe(true)
     const kept = keptProsConsSeeds.length
-    const removedSlugs = editorialSeeds.filter((row) => !csvSlugs.includes(row.slug))
+    const removedSlugs = editorialSeeds.filter((row) => !csvSlugSet.has(row.slug))
     expect(kept).toBe(93)
     expect(removedSlugs).toHaveLength(53)
     expect(ratingSeeds.filter((row) => !v1Slugs.has(row.slug)).map((row) => row.slug).sort()).toEqual([
@@ -418,12 +437,11 @@ describe('catalog seed', () => {
     for (const slug of unratedSlugs) {
       const tool = bySlug.get(slug)
       expect(tool, slug).toBeTruthy()
-      expect(scores.some((row) => row.toolId === tool?.id), slug).toBe(false)
-      const v1 = editorialSeeds.find((row) => row.slug === slug)
-      const stored = points.filter((row) => row.toolId === tool?.id)
-      expect(stored.filter((row) => row.kind === 'pro').map((row) => row.body), slug).toEqual(v1?.pros.map((point) => point.text) ?? [])
-      expect(stored.filter((row) => row.kind === 'con').map((row) => row.body), slug).toEqual(v1?.cons.map((point) => point.text) ?? [])
-      expect(ratingSeeds.some((row) => row.slug === slug), slug).toBe(false)
+      expect(scoreIds.has(tool?.id ?? -1), slug).toBe(false)
+      const v1 = editorialBySlug.get(slug)
+      expect(bodiesFor(pointsByTool, tool?.id, 'pro'), slug).toEqual(v1?.pros.map((point) => point.text) ?? [])
+      expect(bodiesFor(pointsByTool, tool?.id, 'con'), slug).toEqual(v1?.cons.map((point) => point.text) ?? [])
+      expect(ratedSlugSet.has(slug), slug).toBe(false)
     }
     expect(windsurf.name).toBe('Devin Desktop (formerly Windsurf)')
     expect(windsurf.vendor).toBe('Cognition')
@@ -436,7 +454,7 @@ describe('catalog seed', () => {
     expect(cursor.longDesc).toContain('Pro $20 is for legacy subscribers only')
 
     const relevance = bySlug.get('relevance-ai')
-    const seeded = toolSeeds.find((tool) => tool.slug === 'relevance-ai')
+    const seeded = toolSeedBySlug.get('relevance-ai')
     expect(seeded?.hasFreeTier).toBe(false)
     expect(seeded?.pricingModel).toBe('paid')
     expect(seeded?.priceFromUsd).toBe(19)
@@ -449,8 +467,9 @@ describe('catalog seed', () => {
     expect(named).toEqual(['cursor'])
     await db.$client.executeMultiple(sql)
     const deleted = await db.select().from(toolScores)
-    expect(deleted.some((row) => row.toolId === cursor.id)).toBe(false)
-    expect(deleted.some((row) => row.toolId === chatgpt.id)).toBe(true)
+    const deletedIds = new Set(deleted.map((row) => row.toolId))
+    expect(deletedIds.has(cursor.id)).toBe(false)
+    expect(deletedIds.has(chatgpt.id)).toBe(true)
     await seed()
     const restoredRows = await db.select().from(tools)
     const restoredIds = new Map(restoredRows.map((row) => [row.id, row.slug]))
@@ -458,12 +477,13 @@ describe('catalog seed', () => {
     const restoredScores = await db.select().from(toolScores)
     const restored = restoredScores.map((row) => restoredIds.get(row.toolId)).sort()
     const restoredPoints = await db.select().from(toolProsCons)
+    const restoredPointsByTool = groupByToolId(restoredPoints)
     expect(restored).toEqual(csvSlugs)
-    expect(restoredPoints.filter((row) => row.toolId === restoredCursor?.id && row.kind === 'pro').map((row) => row.body)).toEqual(
-      supplementalProsConsSeeds.find((row) => row.slug === 'cursor')?.pros.map((point) => point.text),
+    expect(bodiesFor(restoredPointsByTool, restoredCursor?.id, 'pro')).toEqual(
+      supplementalBySlug.get('cursor')?.pros.map((point) => point.text),
     )
     const cursorScore = restoredScores.find((row) => row.toolId === restoredCursor?.id)
-    expect(cursorScore?.overall).toBe(ratingSeeds.find((row) => row.slug === 'cursor')?.overall)
+    expect(cursorScore?.overall).toBe(ratingBySlug.get('cursor')?.overall)
     expect(cursorScore?.sources).toBe('[]')
 
     const fresh = await seed()
@@ -510,11 +530,13 @@ describe('catalog seed', () => {
     const bySlug = new Map(toolRows.map((row) => [row.slug, row]))
     await db.delete(toolScores)
     await db.delete(toolProsCons)
+    const staleScores = []
+    const stalePoints: { toolId: number; kind: 'pro' | 'con'; position: number; body: string; sourceUrl: string }[] = []
     for (const row of editorialSeeds) {
       const id = bySlug.get(row.slug)?.id
       expect(id, row.slug).toBeTruthy()
       if (!id) return
-      await db.insert(toolScores).values({
+      staleScores.push({
         toolId: id,
         features: row.features,
         value: row.value,
@@ -525,13 +547,14 @@ describe('catalog seed', () => {
         sources: '["https://example.com/stale"]',
         reviewedAt: row.reviewedAt,
       })
-      const points = [
-        ...row.pros.map((point, index) => ({ kind: 'pro' as const, position: index + 1, body: point.text, sourceUrl: point.sourceUrl })),
-        ...row.cons.map((point, index) => ({ kind: 'con' as const, position: index + 1, body: point.text, sourceUrl: point.sourceUrl })),
-      ]
-      for (const point of points) {
-        await db.insert(toolProsCons).values({ toolId: id, ...point })
-      }
+      row.pros.forEach((point, index) => stalePoints.push({ toolId: id, kind: 'pro', position: index + 1, body: point.text, sourceUrl: point.sourceUrl }))
+      row.cons.forEach((point, index) => stalePoints.push({ toolId: id, kind: 'con', position: index + 1, body: point.text, sourceUrl: point.sourceUrl }))
+    }
+    for (let index = 0; index < staleScores.length; index += 40) {
+      await db.insert(toolScores).values(staleScores.slice(index, index + 40))
+    }
+    for (let index = 0; index < stalePoints.length; index += 40) {
+      await db.insert(toolProsCons).values(stalePoints.slice(index, index + 40))
     }
 
     process.env.SEED_PRUNE = '1'
@@ -594,31 +617,31 @@ describe('catalog seed', () => {
     const scores = await db.select().from(toolScores)
     const points = await db.select().from(toolProsCons)
     const idToSlug = new Map(toolRows.map((row) => [row.id, row.slug]))
+    const scoreByTool = new Map(scores.map((row) => [row.toolId, row]))
+    const pointsByTool = groupByToolId(points)
     const rated = scores.map((row) => idToSlug.get(row.toolId)).sort()
     expect(rated).toEqual(ratingSeeds.map((row) => row.slug).sort())
     for (const slug of unratedSlugs) {
       const tool = bySlug.get(slug)
-      expect(scores.some((row) => row.toolId === tool?.id), slug).toBe(false)
-      const v1 = editorialSeeds.find((row) => row.slug === slug)
-      const bodies = points.filter((row) => row.toolId === tool?.id).map((row) => row.body)
+      expect(scoreByTool.has(tool?.id ?? -1), slug).toBe(false)
+      const v1 = editorialBySlug.get(slug)
+      const bodies = (pointsByTool.get(tool?.id ?? -1) ?? []).map((row) => row.body)
       for (const point of [...(v1?.pros ?? []), ...(v1?.cons ?? [])]) {
         expect(bodies, slug).toContain(point.text)
       }
     }
-    expect(points.some((row) => row.toolId === unratedTool.id && row.body === 'Stale unrated pro that must stay.')).toBe(true)
+    expect((pointsByTool.get(unratedTool.id) ?? []).some((row) => row.body === 'Stale unrated pro that must stay.')).toBe(true)
     for (const slug of ['cursor', 'windsurf'] as const) {
       const tool = bySlug.get(slug)
-      const score = scores.find((row) => row.toolId === tool?.id)
-      const expected = ratingSeeds.find((row) => row.slug === slug)
-      const seededPoints = supplementalProsConsSeeds.find((row) => row.slug === slug)
+      const score = scoreByTool.get(tool?.id ?? -1)
+      const expected = ratingBySlug.get(slug)
+      const seededPoints = supplementalBySlug.get(slug)
       expect(score?.overall).toBe(expected?.overall)
       expect(score?.rationale).toBe(expected?.rationale)
       expect(score?.sources).toBe('[]')
       expect(score?.reviewedAt).toBe(expected?.reviewedAt)
-      expect(points.some((row) => row.toolId === tool?.id && row.body.startsWith('Stale'))).toBe(false)
-      expect(points.filter((row) => row.toolId === tool?.id && row.kind === 'pro').map((row) => row.body)).toEqual(
-        seededPoints?.pros.map((point) => point.text),
-      )
+      expect((pointsByTool.get(tool?.id ?? -1) ?? []).some((row) => row.body.startsWith('Stale'))).toBe(false)
+      expect(bodiesFor(pointsByTool, tool?.id, 'pro')).toEqual(seededPoints?.pros.map((point) => point.text))
     }
     expect(JSON.stringify(scores)).not.toContain('stale.example')
     expect(points.filter((row) => row.sourceUrl.includes('stale.example'))).toHaveLength(1)
@@ -651,6 +674,6 @@ describe('catalog seed', () => {
     const scores = await db.select().from(toolScores)
     expect(scores).toHaveLength(ratingSeeds.length + 1)
     expect(scores.some((row) => row.toolId === 999_999)).toBe(true)
-    expect(scores.find((row) => row.toolId === claude.id)?.rationale).toBe(ratingSeeds.find((row) => row.slug === 'claude')?.rationale)
+    expect(scores.find((row) => row.toolId === claude.id)?.rationale).toBe(ratingBySlug.get('claude')?.rationale)
   })
 })

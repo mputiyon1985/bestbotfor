@@ -37,6 +37,17 @@ const ratingCsv = readFileSync(csvPath, 'utf8')
 
 const POINT_COLUMNS = ['pro1', 'pro1_source', 'pro2', 'pro2_source', 'pro3', 'pro3_source', 'con1', 'con1_source', 'con2', 'con2_source', 'con3', 'con3_source'] as const
 
+/** One parse of a CSV text, shared by every caller in this process. Callers must not mutate the table. */
+const parsedCsvTables = new Map<string, string[][]>()
+
+function csvTable(text: string): string[][] {
+  const cached = parsedCsvTables.get(text)
+  if (cached) return cached
+  const table = parseCsv(text)
+  parsedCsvTables.set(text, table)
+  return table
+}
+
 export const ratingSeeds: RatingSeed[] = ratingRowsFromCsv(ratingCsv)
 
 const rated = new Set(ratingSeeds.map((row) => row.slug))
@@ -49,8 +60,9 @@ export const keptProsConsSeeds = v1EditorialSeeds.filter((row) => rated.has(row.
  * Cursor and Windsurf are in this list. Grok and Semantic Scholar are not:
  * their pro and con columns are blank.
  */
+const v1Slugs = new Set(v1EditorialSeeds.map((row) => row.slug))
 export const supplementalProsConsSeeds: { slug: string; pros: EditorialSeedPoint[]; cons: EditorialSeedPoint[] }[] =
-  prosConsRowsFromRatingCsv(ratingCsv).filter((row) => !v1EditorialSeeds.some((existing) => existing.slug === row.slug))
+  prosConsRowsFromRatingCsv(ratingCsv).filter((row) => !v1Slugs.has(row.slug))
 
 /** Catalog tools with no v2.3 score. The score and rank stay hidden; pros and cons stay. */
 export const unratedSlugs = toolSeeds
@@ -59,7 +71,7 @@ export const unratedSlugs = toolSeeds
   .sort()
 
 export function ratingRowsFromCsv(text: string): RatingSeed[] {
-  const table = parseCsv(text)
+  const table = csvTable(text)
   const header = table[0]
   if (!header) throw new Error('Ratings CSV is empty')
   const index = new Map(header.map((name, position) => [name, position]))
@@ -106,7 +118,7 @@ function point(slug: string, key: string, raw: string): number {
 
 /** Rows that actually have pros or cons. A blank set is omitted, not stored as empty strings. */
 export function prosConsRowsFromRatingCsv(text: string): { slug: string; pros: EditorialSeedPoint[]; cons: EditorialSeedPoint[] }[] {
-  const table = parseCsv(text)
+  const table = csvTable(text)
   const header = table[0]
   if (!header) throw new Error('Ratings CSV is empty')
   const index = new Map(header.map((name, position) => [name, position]))
