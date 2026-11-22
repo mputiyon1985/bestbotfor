@@ -1,4 +1,4 @@
-import { expect, test } from './fixtures'
+import { expect, test, type Page } from './fixtures'
 import { editorialSeeds } from '../src/data/scores-pros-cons.seed'
 import { keptProsConsSeeds, ratingSeeds, unratedSlugs } from '../src/data/scores-v23.seed'
 import { ratingAriaLabel, starFills } from '../src/lib/editorial'
@@ -61,36 +61,92 @@ test('a scored tool shows fractional stars, the rubric, and no review schema', a
   expect(combined).not.toContain('out of 5')
 })
 
+/**
+ * Pages checked at once inside the one walk. CI keeps the suite on two workers
+ * (half the runner's cores), and the other worker is busy with the rest of the
+ * suite, so this test supplies its own lanes.
+ */
+const UNRATED_WALK_CONCURRENCY = 8
+
+/**
+ * The sequential walk of 799 listed pages took 272s on CI (about 340ms a page;
+ * run 44934909215, from "Running 190 tests" at 18:23:56Z to "190 passed" at
+ * 18:28:28Z). Eight lanes share one server, so the clock assumes a 2x speedup
+ * rather than an 8x one. At 1,500 listed pages that is 255s. The timeout is
+ * twice that, rounded up. A passing run returns when the lanes finish.
+ */
+const UNRATED_WALK_TIMEOUT_MS = 540_000
+
+const unlistedSlugs = new Set(toolSeeds.filter((item) => item.unlisted).map((item) => item.slug))
+const listedUnratedSlugs = unratedSlugs.filter((slug) => !unlistedSlugs.has(slug))
+
+async function visitUnratedListedPage(page: Page, slug: string): Promise<void> {
+  const tool = toolSeeds.find((item) => item.slug === slug)
+  const v1 = editorialSeeds.find((row) => row.slug === slug)
+  await page.goto(`/tools/${slug}`)
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText(tool?.name ?? slug)
+  await expect(page.getByRole('heading', { name: 'Our rating', exact: true })).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'How we score' })).toHaveCount(0)
+  await expect(page.locator('[data-category-rank]')).toHaveCount(0)
+  await expect(page.locator('[data-score-note]')).toHaveCount(0)
+  await expect(page.locator('[data-score-section]')).toHaveCount(0)
+  const prosAndCons = page.getByRole('region', { name: 'Pros and cons' })
+  if (v1) {
+    await expect(prosAndCons.getByRole('heading', { name: 'Pros and cons' })).toBeVisible()
+    await expect(prosAndCons.getByText(v1.pros[0]?.text ?? '', { exact: true })).toBeVisible()
+    await expect(prosAndCons.getByText(v1.cons[0]?.text ?? '', { exact: true })).toBeVisible()
+  } else {
+    await expect(prosAndCons).toHaveCount(0)
+  }
+  await expect(page.getByRole('img', { name: /Rated/ })).toHaveCount(0)
+  await expect(page.getByRole('link', { name: 'Source', exact: true })).toHaveCount(0)
+  const html = await page.content()
+  expect(html).not.toContain('pcmag.com')
+  expect(html).not.toContain('third_party')
+  expect(html).not.toContain('evidence.jsonl')
+  expect(html).not.toContain('source_urls')
+}
+
 test('unrated tools hide the score and keep pros and cons', async ({ page }) => {
-  // Same checks as the 599-page walk. 799 listed unrated pages need the longer clock.
-  test.setTimeout(400_000)
+  test.setTimeout(UNRATED_WALK_TIMEOUT_MS)
   expect(unratedSlugs).toHaveLength(803)
-  const unlisted = new Set(toolSeeds.filter((item) => item.unlisted).map((item) => item.slug))
-  for (const slug of unratedSlugs.filter((item) => !unlisted.has(item))) {
-    const tool = toolSeeds.find((item) => item.slug === slug)
-    const v1 = editorialSeeds.find((row) => row.slug === slug)
-    await page.goto(`/tools/${slug}`)
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText(tool?.name ?? slug)
-    await expect(page.getByRole('heading', { name: 'Our rating', exact: true })).toHaveCount(0)
-    await expect(page.getByRole('heading', { name: 'How we score' })).toHaveCount(0)
-    await expect(page.locator('[data-category-rank]')).toHaveCount(0)
-    await expect(page.locator('[data-score-note]')).toHaveCount(0)
-    await expect(page.locator('[data-score-section]')).toHaveCount(0)
-    const prosAndCons = page.getByRole('region', { name: 'Pros and cons' })
-    if (v1) {
-      await expect(prosAndCons.getByRole('heading', { name: 'Pros and cons' })).toBeVisible()
-      await expect(prosAndCons.getByText(v1.pros[0]?.text ?? '', { exact: true })).toBeVisible()
-      await expect(prosAndCons.getByText(v1.cons[0]?.text ?? '', { exact: true })).toBeVisible()
-    } else {
-      await expect(prosAndCons).toHaveCount(0)
+  expect(listedUnratedSlugs).toHaveLength(799)
+
+  const extraPages: Page[] = []
+  for (let lane = 1; lane < UNRATED_WALK_CONCURRENCY; lane += 1) extraPages.push(await page.context().newPage())
+  const lanes = [page, ...extraPages]
+  const seen: string[] = []
+  let next = 0
+  let failed = false
+
+  async function lane(lanePage: Page): Promise<void> {
+    for (;;) {
+      if (failed) return
+      const index = next
+      next += 1
+      const slug = listedUnratedSlugs[index]
+      if (!slug) return
+      try {
+        await visitUnratedListedPage(lanePage, slug)
+      } catch (error) {
+        failed = true
+        const message = error instanceof Error ? error.message : String(error)
+        throw new Error(`/tools/${slug}: ${message}`, { cause: error })
+      }
+      seen.push(slug)
     }
-    await expect(page.getByRole('img', { name: /Rated/ })).toHaveCount(0)
-    await expect(page.getByRole('link', { name: 'Source', exact: true })).toHaveCount(0)
-    const html = await page.content()
-    expect(html).not.toContain('pcmag.com')
-    expect(html).not.toContain('third_party')
-    expect(html).not.toContain('evidence.jsonl')
-    expect(html).not.toContain('source_urls')
+  }
+
+  const started = Date.now()
+  try {
+    const results = await Promise.allSettled(lanes.map((lanePage) => lane(lanePage)))
+    const rejected = results.find((result): result is PromiseRejectedResult => result.status === 'rejected')
+    if (rejected) throw rejected.reason
+    expect(seen.slice().sort()).toEqual(listedUnratedSlugs.slice().sort())
+    const elapsed = Date.now() - started
+    console.log(`unrated-page walk: ${seen.length} pages, ${UNRATED_WALK_CONCURRENCY} at a time, ${elapsed}ms`)
+  } finally {
+    await Promise.all(extraPages.map((lanePage) => lanePage.close()))
   }
 })
 
